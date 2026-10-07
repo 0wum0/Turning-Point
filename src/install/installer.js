@@ -1,5 +1,6 @@
 'use strict';
 const fs = require('fs');
+const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
@@ -24,7 +25,8 @@ function systemCheck() {
   checks.push({ id: 'appdir', label: 'App-Ordner', ok: true, detail: config.APP_ROOT });
   checks.push({ id: 'mem', label: 'Arbeitsspeicher', ok: true, detail: `${Math.round(os.totalmem() / 1048576)} MB gesamt, ${Math.round(os.freemem() / 1048576)} MB frei` });
   checks.push({ id: 'env', label: 'Installationsschutz', ok: true, warn: !process.env.TP_INSTALL_KEY, detail: process.env.TP_INSTALL_KEY ? 'TP_INSTALL_KEY ist gesetzt – der Installer ist geschützt.' : 'Empfehlung: Setze vor dem ersten Aufruf die Umgebungsvariable TP_INSTALL_KEY, damit niemand sonst die Installation ausführen kann.' });
-  return { checks, ok: checks.every((c) => c.ok), needsKey: !!process.env.TP_INSTALL_KEY, dataDir: dir.dir };
+  const ed = config.envDb();
+  return { checks, ok: checks.every((c) => c.ok), needsKey: !!process.env.TP_INSTALL_KEY, dataDir: dir.dir, prefill: ed ? { host: ed.host, port: ed.port, database: ed.database, user: ed.user, passwordFromEnv: true } : null };
 }
 
 function keyOk(req) {
@@ -36,10 +38,12 @@ function keyOk(req) {
 }
 
 function cleanDb(b) {
+  const envDb = config.envDb();
   const d = {
     host: String(b.host || 'localhost').trim(), port: Number(b.port) || 3306, user: String(b.user || '').trim(),
     password: String(b.password || ''), database: String(b.database || '').trim(),
   };
+  if (envDb && (b.password === '__ENV__' || (!d.password && d.user === envDb.user && d.database === envDb.database))) d.password = envDb.password;
   if (!d.host || !d.user || !d.database) throw new Error('Bitte Host, Benutzer und Datenbankname angeben.');
   return d;
 }
@@ -104,7 +108,10 @@ async function runInstall(body, publicOrigin) {
   config.saveConfig(cfg);
   step('Konfiguration gespeichert (außerhalb der App).');
   fs.writeFileSync(config.paths.lockFile, `installed ${new Date().toISOString()}\n`);
-  return { steps, reconnect, adminLogin: reconnect ? null : username };
+  const suggestDir = path.resolve(config.APP_ROOT, '..', 'turning-point-data');
+  const fromEnv = !!config.envDb();
+  const env = fromEnv ? null : { TP_DB_HOST: dbCfg.host, TP_DB_PORT: String(dbCfg.port), TP_DB_NAME: dbCfg.database, TP_DB_USER: dbCfg.user, TP_DB_PASS: dbCfg.password, TP_DATA_DIR: dir.volatile ? suggestDir : dir.dir };
+  return { steps, reconnect, adminLogin: reconnect ? null : username, env, dataDir: dir.dir, volatile: !!dir.volatile };
 }
 
 function createInstallerApp({ onInstalled }) {

@@ -64,6 +64,13 @@
     <ul class="log" id="log"></ul>
     <div id="doneBox" class="hide">
       <div class="alert good"><%- icon('circle-check') %><div><b>Fertig!</b> Turning Point ist installiert. Konfiguration und Uploads liegen außerhalb des App-Ordners und überstehen jeden Redeploy.</div></div>
+      <div id="envBox" class="card flat mt hide">
+        <h3 style="font-size:1.15rem"><%- icon('shield') %> Einmalig erledigen: Zugangsdaten dauerhaft hinterlegen</h3>
+        <p class="dim small">Damit du nach einem Redeploy <b>nie wieder installieren</b> musst, trage diese Werte in Hostinger unter <em>Node.js-App → Umgebungsvariablen</em> ein und speichere/deploye einmal neu. Umgebungsvariablen überleben jeden Redeploy; Spielstände liegen ohnehin in der Datenbank.</p>
+        <pre id="envPre" class="logbox" style="user-select:all"></pre>
+        <div class="row end mt"><button class="btn sm" id="envCopy">Kopieren</button></div>
+        <p class="dim small mb0">Hinweis: <code>TP_DATA_DIR</code> sollte auf einen Ordner außerhalb des Node.js-Ordners zeigen, damit hochgeladene Bilder erhalten bleiben.</p>
+      </div>
       <div class="row mt"><a class="btn primary lg" href="/login">Zur Anmeldung</a><a class="btn lg" href="/admin">Zum Admin-Panel</a></div>
     </div>
     <div id="errBox" class="hide"><div class="alert bad"><%- icon('circle-alert') %><div id="errText"></div></div><button class="btn mt" id="retry">Zurück zu den Einstellungen</button></div>

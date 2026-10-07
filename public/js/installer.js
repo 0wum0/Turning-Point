@@ -17,7 +17,7 @@
     return fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(function (r) { return r.json(); });
   }
   function dbBody() {
-    return { host: $('#db_host').value, port: $('#db_port').value, database: $('#db_name').value, user: $('#db_user').value, password: $('#db_pass').value };
+    return { host: $('#db_host').value, port: $('#db_port').value, database: $('#db_name').value, user: $('#db_user').value, password: $('#db_pass').value || (state.pwEnv ? '__ENV__' : '') };
   }
 
   fetch('/install/api/check').then(function (r) { return r.json(); }).then(function (res) {
@@ -26,6 +26,7 @@
       return '<div class="check-row ' + cls + '">' + icon(!c.ok ? 'circle-alert' : c.warn ? 'triangle-alert' : 'circle-check') + '<div><b>' + c.label + '</b><span>' + c.detail.replace(/</g, '&lt;') + '</span></div></div>';
     }).join('');
     $('#to2').disabled = !res.ok;
+    if (res.prefill) { state.pwEnv = true; $('#db_host').value = res.prefill.host; $('#db_port').value = res.prefill.port; $('#db_name').value = res.prefill.database; $('#db_user').value = res.prefill.user; $('#db_pass').placeholder = 'aus Umgebungsvariable TP_DB_PASS'; }
   });
   $('#to2').addEventListener('click', function () { show(2); });
   document.querySelectorAll('[data-back]').forEach(function (b) { b.addEventListener('click', function () { show(Number(b.dataset.back)); }); });
@@ -61,7 +62,16 @@
       if (!res.ok) { $('#errBox').classList.remove('hide'); $('#errText').textContent = res.error; $('#doneTitle').textContent = 'Installation fehlgeschlagen'; return; }
       var i = 0;
       (function next() {
-        if (i >= res.steps.length) { $('#doneTitle').textContent = 'Installation abgeschlossen'; $('#doneBox').classList.remove('hide'); return; }
+        if (i >= res.steps.length) {
+          $('#doneTitle').textContent = 'Installation abgeschlossen'; $('#doneBox').classList.remove('hide');
+          if (res.env) {
+            $('#envBox').classList.remove('hide');
+            var txt = Object.keys(res.env).map(function (k) { return k + '=' + res.env[k]; }).join('\n');
+            $('#envPre').textContent = txt;
+            $('#envCopy').onclick = function () { navigator.clipboard.writeText(txt).then(function () { $('#envCopy').textContent = 'Kopiert ✓'; }); };
+          }
+          return;
+        }
         var li = document.createElement('li'); li.innerHTML = icon('circle-check') + '<span></span>'; li.lastChild.textContent = res.steps[i++]; $('#log').appendChild(li);
         setTimeout(next, 220);
       })();

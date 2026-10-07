@@ -96,15 +96,18 @@ function envConfig() {
   };
 }
 
+/**
+ * Umgebungsvariablen (Hostinger → Node.js-App → Environment variables) überleben jedes Redeploy.
+ * Sind TP_DB_* gesetzt, haben sie Vorrang vor der config.json – dann ist nie wieder eine Neuinstallation nötig.
+ */
 function loadConfig() {
-  try {
-    const raw = fs.readFileSync(paths.configFile, 'utf8');
-    const cfg = JSON.parse(raw);
-    return cfg;
-  } catch (_) {
-    return envConfig();
-  }
+  let file = null;
+  try { file = JSON.parse(fs.readFileSync(paths.configFile, 'utf8')); } catch (_) { /* keine Datei */ }
+  const env = envConfig();
+  if (env) return { ...(file || {}), ...env, sessionSecret: env.sessionSecret || (file && file.sessionSecret) || null, siteUrl: env.siteUrl || (file && file.siteUrl) || null };
+  return file;
 }
+const envDb = () => { const e = envConfig(); return e ? e.db : null; };
 
 function writeAtomic(file, cfg) {
   const tmp = `${file}.tmp`;
@@ -126,4 +129,4 @@ function saveConfig(cfg) {
   }
 }
 
-module.exports = { resetResolve, paths, resolveDataDir, ensureDirs, loadConfig, saveConfig, isWritableDir, candidates, APP_ROOT };
+module.exports = { envDb, resetResolve, paths, resolveDataDir, ensureDirs, loadConfig, saveConfig, isWritableDir, candidates, APP_ROOT };

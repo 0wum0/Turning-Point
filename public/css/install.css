@@ -6,4 +6,5 @@
 .check-row.ok .i { color: var(--good); } .check-row.warn .i { color: var(--warn); } .check-row.bad .i { color: var(--bad); }
 .log { list-style: none; padding: 0; margin: 1rem 0; display: grid; gap: .45rem; font-size: .9rem; }
 .log li { display: flex; gap: .6rem; align-items: center; animation: toastin .3s var(--ease); } .log li .i { color: var(--good); }
+pre.logbox { margin: 0; padding: .8rem; border-radius: 12px; border: 1px solid var(--border); background: color-mix(in srgb, var(--bg) 70%, transparent); font: 500 .8rem/1.5 ui-monospace, Menlo, monospace; white-space: pre-wrap; word-break: break-all; }
 code { font-family: ui-monospace, Menlo, monospace; font-size: .85em; background: var(--surface-2); padding: .1rem .35rem; border-radius: 6px; }

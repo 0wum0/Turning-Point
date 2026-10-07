@@ -18,6 +18,7 @@ root.set('trust proxy', 1);
 let live = null;
 let installer = null;
 let retryTimer = null;
+let needsInstall = false;
 
 function stateApp(code, title, message) {
   const app = express();
@@ -45,7 +46,16 @@ async function doBoot() {
     const world = require('./src/game/world');
     world.invalidate();
     await world.load();
-    if (!cfg.sessionSecret) throw new Error('config.json ohne sessionSecret');
+    // Noch nicht installiert (z. B. leere Datenbank mit Zugang aus den Umgebungsvariablen) → Installer
+    const inst = await db.one("SELECT 1 AS x FROM settings WHERE `key` = 'installed_at'");
+    if (!inst) { needsInstall = true; live = null; log.warn('Datenbank enthält noch keine Installation – Installer wird angeboten.'); return false; }
+    needsInstall = false;
+    // Session-Geheimnis: aus Konfiguration/Umgebung, sonst dauerhaft in der Datenbank (überlebt jedes Redeploy)
+    if (!cfg.sessionSecret) {
+      const row = await db.one("SELECT value FROM settings WHERE `key` = 'session_secret'");
+      if (row) cfg.sessionSecret = JSON.parse(row.value);
+      else { cfg.sessionSecret = require('crypto').randomBytes(48).toString('hex'); await db.query("INSERT INTO settings (`key`, value) VALUES ('session_secret', ?)", [JSON.stringify(cfg.sessionSecret)]); }
+    }
     live = require('./src/app').createApp(cfg);
     log.info(`Turning Point läuft. Daten-Ordner: ${config.paths.dataDir}`);
     return true;
@@ -63,7 +73,7 @@ installer = createInstallerApp({ onInstalled: boot });
 let lastCheck = 0;
 root.use(async (req, res, next) => {
   try {
-    if (!live && Date.now() - lastCheck > 1500) {
+    if (!live && !needsInstall && Date.now() - lastCheck > 1500) {
       lastCheck = Date.now();
       config.resetResolve();
       if (config.loadConfig()) await boot();

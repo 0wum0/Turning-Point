@@ -65,6 +65,21 @@ Im Admin-Panel unter **System** siehst du jederzeit, welcher Ordner gewählt wur
 | `TP_SESSION_SECRET`, `TP_SITE_URL` | nur zusammen mit den `TP_DB_*`-Variablen relevant |
 | `TP_API_RATE` | API-Anfragen/Minute je Spieler (Standard 180) |
 
+### Redeploy ohne Neuinstallation (wichtig!)
+
+Hinterlege die Datenbank-Zugangsdaten **einmalig als Umgebungsvariablen** in Hostinger (Node.js-App → Environment variables). Sie überleben jedes Redeploy; die App startet dann ohne Installer, auch wenn die Konfigurationsdatei fehlt:
+
+```
+TP_DB_HOST=localhost
+TP_DB_PORT=3306
+TP_DB_NAME=u123456789_turningpoint
+TP_DB_USER=u123456789_tp
+TP_DB_PASS=…
+TP_DATA_DIR=/home/uXXXX/domains/deine-domain.de/turning-point-data   # Bilder/Uploads dauerhaft
+```
+
+Der Installer zeigt dir diese Werte am Ende zum Kopieren an. Das Session-Geheimnis wird dauerhaft in der Datenbank gespeichert. Ist die Datenbank mit diesen Variablen noch leer, bietet die App den Installer an (Zugangsdaten sind vorausgefüllt).
+
 ## 2b. Zahlungen, Werbung, Offerwall (Admin → Einstellungen)
 
 - **Stripe:** Modus `stripe`, Secret Key und Webhook-Secret eintragen. Webhook in Stripe auf `https://DEINE-DOMAIN/webhooks/stripe` mit den Ereignissen `checkout.session.completed`, `invoice.paid`, `customer.subscription.deleted`. Für die Dauerkarte die Preis-ID (`price_…`) eintragen. Gutschriften sind idempotent (Stripe-Session-ID).

@@ -312,6 +312,7 @@ router.get('/system', wrap(async (req, res) => {
       app: APP_VERSION, node: process.version, platform: `${os.type()} ${os.release()}`, uptime: Math.round(process.uptime()), mem: Math.round(process.memoryUsage().rss / 1048576),
       totalMem: Math.round(os.totalmem() / 1048576), db: dbv.v, appRoot: config.APP_ROOT, dataDir: dir.dir, dataWhy: dir.why, volatile: !!dir.volatile, uploadsDir: config.paths.uploadsDir, uploadsKb: Math.round(upl / 1024), configFile: config.paths.configFile,
       maintenance: settings.get('site.maintenance'),
+      envDb: !!config.envDb(), envDir: !!process.env.TP_DATA_DIR,
     },
     sizes, migs, logs: log.tail(120),
   });
