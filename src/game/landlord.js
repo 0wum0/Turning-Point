@@ -1,0 +1,98 @@
+'use strict';
+/**
+ * Vermieten: Eigene Immobilien (die nicht selbst bewohnt werden) können an Mieter vermietet werden.
+ * Die Miete richtet sich nach Wert und Zustand; der Preisregler (mult) bestimmt die Nachfrage.
+ * Tägliche Einnahmen stehen in dailyFlows (inc.rent), Mieterwechsel und Ausfälle laufen hier.
+ */
+const { rngFor } = require('./rng');
+const { scale } = require('./economy');
+const { yearOf } = require('./calendar');
+
+const YIELD = { flat: 0.05, house_small: 0.045, house_large: 0.04, villa: 0.032 };
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const MIN_MULT = 0.5; const MAX_MULT = 2;
+
+/** Marktmiete pro Tag bei Preisindex 1 (Cent). */
+function marketBase(p) {
+  return Math.max(20, Math.round(((p.base || 0) * (YIELD[p.kind] || 0.045)) / 365 * (0.7 + 0.3 * (p.condition == null ? 100 : p.condition) / 100)));
+}
+const isResidence = (state, p) => state.housing && state.housing.type === 'own' && state.housing.propertyId === p.id;
+const active = (state, p) => !!(p.lease && p.lease.on) && !isResidence(state, p);
+
+/** Miete pro Tag (Cent, heutige Preise), wenn ein Mieter einzahlt. */
+function rentPerDay(world, state, p, year) {
+  return scale(Math.round(marketBase(p) * clamp((p.lease && p.lease.mult) || 1, MIN_MULT, MAX_MULT)), world.idx(year));
+}
+const marketPerDay = (world, state, p, year) => scale(marketBase(p), world.idx(year));
+
+/** Einnahmen heute (für dailyFlows). */
+function incomeToday(world, state, year) {
+  let sum = 0;
+  for (const p of state.properties) {
+    if (!active(state, p) || !p.lease.tenant || p.lease.tenant.arrears > 0 || p.closedUntil > state.day) continue;
+    sum += rentPerDay(world, state, p, year);
+  }
+  return sum;
+}
+
+function demand(world, p) {
+  const city = world.city(p.cityId) || { size_tier: 2 };
+  const price = Math.pow(clamp(1.15 / clamp(p.lease.mult || 1, MIN_MULT, MAX_MULT), 0.2, 2.5), 2);
+  const cond = 0.4 + (p.condition / 100) * 0.8;
+  const tier = [0.7, 0.7, 0.85, 1, 1.1, 1.2][city.size_tier] || 1;
+  return 0.03 * price * cond * tier;
+}
+
+function landlordDaily(ctx) {
+  const { world, state } = ctx; if (!state.properties.length) return;
+  const { notice } = require('./core');
+  const { randomFirstName } = require('./content');
+  const year = yearOf(state.day, state.startYear);
+  for (const p of state.properties) {
+    const L = p.lease; if (!L || !L.on) continue;
+    if (isResidence(state, p)) { L.on = false; L.tenant = null; continue; }
+    if (p.closedUntil > state.day) continue; // beschädigt: kein neuer Mieter, keine Miete
+    const r = rngFor('tenant', state.seed, p.id, state.day);
+    const T = L.tenant;
+    if (T) {
+      p.condition = Math.max(5, p.condition - 3 / 365); // Mieter nutzen ab
+      if (T.arrears > 0) {
+        T.arrears--;
+        if (T.arrears === 0) { L.tenant = null; L.vacantSince = state.day; notice(state, { level: 'warn', title: `${p.name}: Mieter ausgezogen`, text: `${T.name} ist ausgezogen – ohne die ausstehende Miete zu zahlen.`, tab: 'housing', info: ['Der Mieter hat monatelang nicht gezahlt und ist dann gegangen.', 'Während dieser Zeit gab es keine Miete, die Kosten für Unterhalt liefen weiter.', 'Ein fairer Preis und ein gepflegter Zustand ziehen zuverlässigere Mieter an.'] }); }
+        continue;
+      }
+      L.total = (L.total || 0) + rentPerDay(world, state, p, year);
+      if (r() < 0.00022) {
+        T.arrears = 45 + Math.floor(r() * 60);
+        notice(state, { level: 'bad', title: `${p.name}: Mieter zahlt nicht`, text: `${T.name} bleibt die Miete schuldig.`, tab: 'housing', info: ['Mietausfall: Ein Mieter zahlt nicht mehr.', 'Du erhältst vorerst keine Miete, der Unterhalt läuft weiter.', 'Das passiert selten. Du kannst den Preis senken und gepflegte Wohnungen anbieten.'] });
+      } else if (state.day >= T.until || (p.condition < 25 && r() < 0.01)) {
+        L.tenant = null; L.vacantSince = state.day;
+        if (state.day - (state.pending.tenantMsg || -99) >= 30) { state.pending.tenantMsg = state.day; notice(state, { level: 'info', title: `${p.name}: Mieter zieht aus`, text: `${T.name} zieht nach ${Math.round((state.day - T.since) / 365 * 10) / 10} Jahren aus. Die Wohnung wird neu angeboten.`, tab: 'housing' }); }
+      }
+    } else if (r() < demand(world, p)) {
+      const female = r() < 0.5;
+      const name = `${randomFirstName(r, year - 25 - Math.floor(r() * 30), female ? 'f' : 'm')} ${require('./content').LAST[Math.floor(r() * require('./content').LAST.length)]}`;
+      L.tenant = { name, since: state.day, until: state.day + 240 + Math.floor(r() * 960), arrears: 0 };
+      if (state.day - (state.pending.tenantMsg || -99) >= 20) { state.pending.tenantMsg = state.day; notice(state, { level: 'good', title: `${p.name}: Neuer Mieter`, text: `${name} hat die Immobilie gemietet – die Miete fließt ab sofort täglich.`, tab: 'housing' }); }
+    }
+  }
+}
+
+/** Ansicht für die Oberfläche. */
+function viewOf(world, state, p, year) {
+  const market = marketPerDay(world, state, p, year);
+  const L = p.lease;
+  const on = active(state, p);
+  const perDay = on ? rentPerDay(world, state, p, year) : market;
+  const T = on ? L.tenant : null;
+  const val = Math.max(1, Math.round(p.base * world.idx(year) * (0.2 + 0.8 * (p.condition / 100))));
+  return {
+    on, mult: L ? clamp(L.mult || 1, MIN_MULT, MAX_MULT) : 1, market, perDay,
+    yieldPct: Math.round(((perDay * 365) / val) * 1000) / 10,
+    tenant: T ? { name: T.name, since: state.day - T.since, until: T.until - state.day, arrears: T.arrears || 0 } : null,
+    vacantDays: on && !T ? state.day - (L.vacantSince == null ? state.day : L.vacantSince) : 0,
+    total: L ? L.total || 0 : 0, canLet: !isResidence(state, p),
+  };
+}
+
+module.exports = { marketBase, marketPerDay, rentPerDay, incomeToday, landlordDaily, viewOf, isResidence, MIN_MULT, MAX_MULT, clamp };

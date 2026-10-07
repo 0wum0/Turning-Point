@@ -49,6 +49,7 @@ export default {
         <hr>
         <dl class="kv small">
           <dt>Einnahmen / Tag</dt><dd class="pos">${money(f.income, cur)}</dd>
+          ${f.inc.rent ? html`<dt class="dim">davon Mieteinnahmen</dt><dd class="pos">${money(f.inc.rent, cur)}</dd>` : ''}
           <dt>Ausgaben / Tag</dt><dd class="neg">${money(f.expense, cur)}</dd>
           <dt>Essen / Tag (~)</dt><dd class="neg">${money(v.food.tiers[1].perDay, cur)}</dd>
           <dt><b>Bilanz / Tag</b></dt><dd class="${f.net - v.food.tiers[1].perDay >= 0 ? 'pos' : 'neg'}">${signed(f.net - v.food.tiers[1].perDay, cur)}</dd>

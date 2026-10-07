@@ -89,6 +89,7 @@ function housingListings(world, state, city, week) {
     const price = Math.round(base * idx * (0.2 + 0.8 * (condition / 100)));
     out.sale.push({
       id: `sale:${city.id}:${week}:${i}`, type: 'sale', kind, name: `${def.name}, ${pick(r, txt(world).paper.streets)} ${int(r, 1, 60)}`, rooms: def.rooms, base, condition, price, rest: def.rest, cityId: city.id,
+      rentPerDay: scale(require('./landlord').marketBase({ base, kind, condition }), idx),
     });
   }
   return out;

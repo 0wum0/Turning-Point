@@ -98,6 +98,7 @@ function present(world, state, user, now) {
       id: p.id, name: p.name, kind: p.kind, cityId: p.cityId, city: (world.city(p.cityId) || {}).name, rooms: p.rooms, condition: round(p.condition),
       value: propertyValue(world, state, p, year), closed: p.closedUntil > state.day ? p.closedUntil - state.day : 0,
       maintainCost: round(propertyValue(world, state, p, year) * ((100 - p.condition) / 100) * 0.08), residence: state.housing.propertyId === p.id,
+      lease: require('./landlord').viewOf(world, state, p, year),
     })),
     companies: (state.companies || []).map((c) => {
       const t = biz.tiersOf(world)[c.tier]; const nt = biz.tiersOf(world)[c.tier + 1]; const f = biz.companyFlows(world, state, c, year); const city = world.city(c.cityId);

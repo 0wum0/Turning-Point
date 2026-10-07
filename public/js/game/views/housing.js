@@ -1,10 +1,32 @@
-import { html, icon, money, infoBtn, bar, on } from '../ui.js';
+import { html, icon, money, infoBtn, bar, on, api, num } from '../ui.js';
 
 const LADDER = [['street', 'Straße', 'tree-pine'], ['workplace', 'Arbeitgeber', 'briefcase'], ['pension', 'Pension', 'hotel'], ['rent', 'Miete', 'house'], ['own', 'Eigentum', 'castle']];
 
+const leaseBox = (p, cur) => {
+  const L = p.lease; if (!L || !L.canLet) return '';
+  if (!L.on) return html`<div class="lease off mt"><div class="small dim">Vermieten: ca. <b>${money(L.market, cur)}</b> / Tag (${L.yieldPct} % Rendite im Jahr)</div><button class="btn sm" data-lease="on" data-id="${p.id}">${icon('key')} Vermieten</button></div>`;
+  return html`<div class="lease on mt"><div class="row nowrap spread"><b>${icon('key')} Vermietet</b><span class="chip ${L.tenant ? (L.tenant.arrears ? 'bad' : 'good') : 'warn'}">${L.tenant ? (L.tenant.arrears ? 'Mieter zahlt nicht' : 'Mieter: ' + L.tenant.name) : 'Mietersuche · ' + L.vacantDays + ' Tage leer'}</span></div>
+    <dl class="kv small mt"><dt>Miete / Tag</dt><dd class="pos">${money(L.perDay, cur)}</dd><dt>Marktmiete</dt><dd>${money(L.market, cur)}</dd><dt>Rendite / Jahr</dt><dd>${L.yieldPct} %</dd>${L.tenant ? html`<dt>Mietdauer</dt><dd>noch ca. ${Math.max(0, Math.round(L.tenant.until / 30))} Mon.</dd>` : ''}<dt>Bisher eingenommen</dt><dd>${money(L.total, cur)}</dd></dl>
+    <label class="small dim" for="lm${p.id}">Mietpreis: <b class="lval">${Math.round(L.mult * 100)} %</b> der Marktmiete</label>
+    <input type="range" id="lm${p.id}" class="lrange" min="50" max="200" step="5" value="${Math.round(L.mult * 100)}" data-lprice="${p.id}">
+    <div class="hint">Günstiger = schneller ein Mieter, teurer = mehr Ertrag, aber längerer Leerstand.</div>
+    <button class="btn sm ghost mt" data-lease="off" data-id="${p.id}">Vermietung beenden</button></div>`;
+};
+const saleSection = (ctx, ed) => {
+  const v = ctx.view; const cur = v.currency;
+  if (!ed || !ed.housing || !ed.housing.sale) return '';
+  return html`<div class="panel-head mt2"><div><h3 style="font-size:1.5rem">Immobilien kaufen</h3><p>Angebote in ${v.city.name}. Du kannst sie bewohnen oder vermieten – und in anderen Städten über die Zeitung kaufen.</p></div></div>
+    <div class="listings">${ed.housing.sale.map((h) => html`<article class="listing"><div class="lic">${icon(h.kind === 'villa' ? 'castle' : 'house', 'lg')}</div>
+      <div class="grow"><div class="row nowrap spread"><h4>${h.name}</h4><span class="chip accent">Kauf</span></div>
+        <div class="dim small">${h.rooms} Zimmer · Zustand ${h.condition} % · Miete möglich: ca. ${money(h.rentPerDay || 0, cur)} / Tag</div>${bar(h.condition, h.condition < 50 ? 'bad' : 'good')}
+        <div class="row small" style="margin-top:.4rem"><b class="mono">${money(h.price, cur)}</b>${v.money < h.price ? html`<span class="chip bad">${money(h.price - v.money, cur)} fehlen</span>` : ''}</div></div>
+      <button class="btn primary sm" data-buy="${h.id}" ${v.money < h.price ? 'disabled' : ''}>Kaufen</button></article>`)}</div>`;
+};
+
 export default {
   id: 'housing', label: 'Wohnen', icon: 'house',
-  render(ctx) {
+  async load(ctx) { try { return (await api('GET', '/api/newspaper')).edition; } catch (_) { return null; } },
+  render(ctx, ed) {
     const v = ctx.view; const cur = v.currency; const h = v.housing;
     const curIdx = LADDER.findIndex((l) => l[0] === h.type);
     const o = v.occupation;
@@ -33,15 +55,23 @@ export default {
       <div class="dim small">${p.city} · ${p.rooms} Zimmer</div>
       <div class="mt small">Zustand ${p.condition} %</div>${bar(p.condition, p.condition < 50 ? 'bad' : 'good')}
       <dl class="kv small mt"><dt>Wert</dt><dd>${money(p.value, cur)}</dd>${p.closed ? html`<dt>Ausfall</dt><dd class="neg">noch ${p.closed} Tage</dd>` : ''}</dl>
+      ${leaseBox(p, cur)}
       <div class="row mt">
         ${p.cityId === v.city.id && !p.residence ? html`<button class="btn sm primary" data-act="moveIn" data-id="${p.id}">Einziehen</button>` : ''}
         ${p.maintainCost > 0 ? html`<button class="btn sm" data-act="maintain" data-id="${p.id}" ${v.money < p.maintainCost ? 'disabled' : ''}>Instand setzen · ${money(p.maintainCost, cur)}</button>` : ''}
         <button class="btn sm danger" data-sell="${p.id}">Verkaufen</button>
       </div></article>`)}</div>`
-    : html`<div class="card flat empty-note">${icon('house')}<span>Du besitzt noch keine Immobilie. Sparen lohnt sich – Eigentum steigt über Jahrzehnte im Wert.</span></div>`}`;
+    : html`<div class="card flat empty-note">${icon('house')}<span>Du besitzt noch keine Immobilie. Sparen lohnt sich – Eigentum steigt über Jahrzehnte im Wert.</span></div>`}
+    ${saleSection(ctx, ed)}`;
   },
   bind(root, ctx) {
     on(root, 'click', '[data-go]', (e, t) => ctx.go(t.dataset.go));
+    on(root, 'click', '[data-buy]', (e, t) => ctx.act('buy', { listingId: t.dataset.buy }));
+    on(root, 'click', '[data-lease]', (e, t) => ctx.act(t.dataset.lease === 'on' ? 'letOn' : 'letOff', { propertyId: t.dataset.id, mult: 1 }));
+    root.querySelectorAll('[data-lprice]').forEach((r) => {
+      r.addEventListener('input', () => { const l = r.parentNode.querySelector('.lval'); if (l) l.textContent = `${r.value} %`; });
+      r.addEventListener('change', () => ctx.act('letPrice', { propertyId: r.dataset.lprice, mult: Number(r.value) / 100 }));
+    });
     on(root, 'click', '[data-act]', (e, t) => ctx.act(t.dataset.act, t.dataset.id ? { propertyId: t.dataset.id } : {}));
     on(root, 'click', '[data-sell]', async (e, t) => { if (await ctx.confirm({ title: 'Immobilie verkaufen?', text: 'Du erhältst 97 % des aktuellen Werts. Wohnst du darin, stehst du danach ohne Zuhause da.', ok: 'Verkaufen', danger: true })) ctx.act('sell', { propertyId: t.dataset.sell }); });
     root.querySelector('#auto').addEventListener('change', (e) => ctx.act('autoMaintain', { on: e.target.checked }, { noRender: true }));

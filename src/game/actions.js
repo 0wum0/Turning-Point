@@ -118,6 +118,8 @@ A.buy = ({ world, state, input }) => {
 A.moveIn = ({ state, input }) => {
   const p = state.properties.find((x) => x.id === Number(input.propertyId));
   if (!p) fail('Immobilie nicht gefunden.');
+  if (p.lease && p.lease.on && p.lease.tenant) fail('Die Immobilie ist vermietet. Beende zuerst die Vermietung.');
+  if (p.lease) p.lease.on = false;
   if (p.cityId !== state.cityId) fail('Diese Immobilie steht in einer anderen Stadt.');
   state.housing = { type: 'own', cityId: p.cityId, propertyId: p.id };
   return { msg: `Du ziehst in ${p.name} ein.` };
@@ -131,6 +133,29 @@ A.sell = ({ world, state, input }) => {
   state.properties = state.properties.filter((x) => x.id !== p.id);
   if (state.housing.type === 'own' && state.housing.propertyId === p.id) state.housing = { type: 'street', cityId: state.cityId };
   return { msg: `${p.name} verkauft.` };
+};
+
+/* ---------------- Vermieten ---------------- */
+const landlord = require('./landlord');
+const propOf = (state, input) => { const p = state.properties.find((x) => x.id === Number(input.propertyId)); if (!p) fail('Immobilie nicht gefunden.'); return p; };
+A.letOn = ({ state, input }) => {
+  const p = propOf(state, input);
+  if (landlord.isResidence(state, p)) fail('Die Immobilie bewohnst du selbst. Ziehe zuerst aus, um sie zu vermieten.');
+  const mult = landlord.clamp(Number(input.mult) || 1, landlord.MIN_MULT, landlord.MAX_MULT);
+  p.lease = { on: true, mult, tenant: null, vacantSince: state.day, total: (p.lease && p.lease.total) || 0 };
+  return { msg: `${p.name} wird vermietet. Mieter melden sich, sobald Preis und Zustand passen.` };
+};
+A.letOff = ({ state, input }) => {
+  const p = propOf(state, input);
+  if (!p.lease || !p.lease.on) fail('Die Immobilie ist nicht vermietet.');
+  p.lease.on = false; p.lease.tenant = null;
+  return { msg: `Vermietung von ${p.name} beendet.` };
+};
+A.letPrice = ({ state, input }) => {
+  const p = propOf(state, input);
+  if (!p.lease || !p.lease.on) fail('Die Immobilie ist nicht vermietet.');
+  p.lease.mult = landlord.clamp(Number(input.mult) || 1, landlord.MIN_MULT, landlord.MAX_MULT);
+  return { msg: `Neuer Mietpreis: ${Math.round(p.lease.mult * 100)} % der Marktmiete.` };
 };
 
 A.maintain = ({ world, state, input }) => {

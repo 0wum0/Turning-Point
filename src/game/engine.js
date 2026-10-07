@@ -164,6 +164,8 @@ function dayStep(ctx) {
     else p.condition = Math.max(5, p.condition - 6 / 365);
   }
 
+  require('./landlord').landlordDaily(ctx);
+
   // Familie, Ereignisse
   familyDaily(ctx, flows);
   businessDaily(ctx);
