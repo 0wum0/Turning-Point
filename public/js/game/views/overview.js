@@ -39,6 +39,7 @@ export default {
       </div>
       ${v.hints.length ? html`<div class="hint-row">${v.hints.map((h) => html`<button class="chip ${h.level}" data-go="${h.target}">${icon(h.level === 'bad' ? 'circle-alert' : 'lightbulb')} ${h.text}</button>`)}</div>` : ''}
     </section>
+    ${ctx.social && ctx.social.rank ? html`<div class="soc-strip mt"><button class="chip accent" data-go="social">${icon('crown')} Platz ${ctx.social.rank.wealth} von ${ctx.social.rank.total} · Vermögen</button><button class="chip" data-go="social">${icon('users')} ${ctx.social.rank.onlineHere} Spieler online in ${v.city.name}</button>${ctx.social.unread ? html`<button class="chip bad" data-go="social">${icon('mail')} ${ctx.social.unread} neue${ctx.social.unread === 1 ? 'r Brief' : ' Briefe'}</button>` : ''}${ctx.social.requests ? html`<button class="chip warn" data-go="social">${icon('users')} ${ctx.social.requests} Freundschaftsanfrage${ctx.social.requests === 1 ? '' : 'n'}</button>` : ''}</div>` : ''}
 
     <div class="grid c3 mt" style="--gap:1rem">
       <section class="card">

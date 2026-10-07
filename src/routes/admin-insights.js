@@ -10,7 +10,7 @@ const { audit } = require('../lib/audit');
 const RULE_LABELS = {
   burst: 'Anfrage-Flut', bot: 'Bot-Takt (zu gleichmäßig)', task_fast: 'Aufgaben zu schnell', ad_fast: 'Werbung zu schnell', ad_burst: 'Werbe-Serie',
   multi_account: 'Mehrfachkonten (gleiche IP)', multi_ip: 'Konto-Sharing (viele IPs)', wealth: 'Unmögliche Einnahmen', time_hack: 'Zeit-/EFS-Manipulation',
-  coin_inflow: 'Auffälliger Coin-Zufluss', integrity: 'Datenintegrität',
+  coin_inflow: 'Auffälliger Coin-Zufluss', integrity: 'Datenintegrität', gift_ring: 'Geschenk-/Besuchs-Ring', chat_spam: 'Chat-/Brief-Spam',
 };
 
 module.exports = function mount(router, H) {

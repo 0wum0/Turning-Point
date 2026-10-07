@@ -58,7 +58,7 @@ async function doBoot() {
       else { cfg.sessionSecret = require('crypto').randomBytes(48).toString('hex'); await db.query("INSERT INTO settings (`key`, value) VALUES ('session_secret', ?)", [JSON.stringify(cfg.sessionSecret)]); }
     }
     live = require('./src/app').createApp(cfg);
-    if (!bgStarted) { bgStarted = true; require('./src/lib/anticheat').start(); require('./src/lib/stats').start(); }
+    if (!bgStarted) { bgStarted = true; require('./src/lib/anticheat').start(); require('./src/lib/stats').start(); require('./src/lib/social').start(); }
     log.info(`Turning Point läuft. Daten-Ordner: ${config.paths.dataDir}`);
     return true;
   } catch (e) {

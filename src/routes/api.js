@@ -14,6 +14,7 @@ const stripe = require('../lib/stripe');
 const places = require('../game/places');
 const config = require('../config');
 const anticheat = require('../lib/anticheat');
+const social = require('../lib/social');
 
 const router = express.Router();
 const wrap = (fn) => (req, res, next) => fn(req, res, next).catch((e) => {
@@ -24,6 +25,7 @@ router.use((req, res, next) => (req.user ? next() : res.status(401).json({ ok: f
 router.use(rateLimit({ windowMs: 60 * 1000, limit: Number(process.env.TP_API_RATE) || 180, standardHeaders: true, legacyHeaders: false, keyGenerator: (req) => `u${req.user ? req.user.id : req.ip}`, validate: { keyGeneratorIpFallback: false }, message: { ok: false, error: 'Zu viele Anfragen – bitte kurz warten.' } }));
 
 router.use(anticheat.middleware);
+router.use('/social', require('./social'));
 
 router.get('/state', wrap(async (req, res) => {
   const r = await service.getView(req.user.id);
@@ -69,7 +71,9 @@ router.get('/newspaper', wrap(async (req, res) => {
   if (!p || !p.state || p.state.status !== 'alive') return res.status(400).json({ ok: false, error: 'Kein lebender Charakter.' });
   const cityId = Number(req.query.cityId) || p.state.cityId;
   if (!p.w.city(cityId)) return res.status(404).json({ ok: false, error: 'Unbekannte Stadt.' });
-  res.json({ ok: true, edition: edition(p.w, p.state, cityId), here: cityId === p.state.cityId });
+  const ed = edition(p.w, p.state, cityId);
+  ed.playerNews = (await social.publicNews(cityId)).filter((n) => n.user_id !== req.user.id).map((n) => ({ id: n.id, section: n.section, title: n.title, text: n.text, at: n.created_at, userId: n.user_id, username: n.username }));
+  res.json({ ok: true, edition: ed, here: cityId === p.state.cityId });
 }));
 
 router.get('/city', wrap(async (req, res) => {
@@ -81,7 +85,7 @@ router.get('/city', wrap(async (req, res) => {
   const here = cityId === p.state.cityId && p.state.status === 'alive';
   const now = Date.now();
   const buildings = places.buildingsFor(p.w, p.state, cityId).map((b) => ({ ...b, tasks: here ? places.tasksOf(p.w, b).map((t) => places.taskStatus(p.w, p.state, b, t, now)) : [] }));
-  res.json({ ok: true, here, city: { id: city.id, name: city.name, state: city.state, tier: city.size_tier, image: city.image, aerial: city.aerial, description: city.description }, buildings, year: yearOf(p.state.day, p.state.startYear) });
+  res.json({ ok: true, here, city: { id: city.id, name: city.name, state: city.state, tier: city.size_tier, image: city.image, aerial: city.aerial, description: city.description }, buildings, playerFirms: await social.firmsInCity(req.user.id, cityId), year: yearOf(p.state.day, p.state.startYear) });
 }));
 
 router.get('/map', wrap(async (req, res) => {

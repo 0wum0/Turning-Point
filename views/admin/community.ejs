@@ -1,0 +1,43 @@
+<%- include('_top', { title: 'Community', subtitle: 'Moderation von Chat, Briefen und Meldungen – plus Rangliste und Spielerwirtschaft.', actions: '<a class="btn sm" href="/admin/settings/social">Regeln &amp; Limits</a>' }) %>
+<% var csrf = '<input type="hidden" name="_csrf" value="' + csrfToken + '">'; const when = (d) => new Date(d).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); const nf = (n) => Number(n || 0).toLocaleString('de-DE'); %>
+<div class="kpis">
+  <div class="kpi <%= k.reports ? 'bad' : 'good' %>"><span class="ico"><%- icon('flag') %></span><label>Offene Meldungen</label><b><%= k.reports %></b><small><span><%= k.muted %> stummgeschaltet</span></small></div>
+  <div class="kpi info"><span class="ico"><%- icon('users') %></span><label>Sichtbare Spieler</label><b><%= k.pub %></b><small><span><%= k.priv %> privat · <%= k.friends %> Freundschaften</span></small></div>
+  <div class="kpi teal"><span class="ico"><%- icon('send') %></span><label>Chat &amp; Briefe (24 h)</label><b><%= k.chat %> / <%= k.letters %></b><small><span>Nachrichten / Briefe</span></small></div>
+  <div class="kpi"><span class="ico"><%- icon('gift') %></span><label>Geschenke &amp; Besuche (7 T)</label><b><%= nf(Math.round(k.gifts / 100)) %></b><small><span>Kaufkraft '45 verschenkt · <%= k.visits %> Besuche</span></small></div>
+</div>
+<div class="tabs mt"><% [['reports', 'Meldungen', 'flag'], ['chat', 'Chat', 'landmark'], ['letters', 'Gemeldete Briefe', 'mail'], ['log', 'Geschenke & Besuche', 'gift'], ['board', 'Rangliste', 'crown']].forEach(function(t){ %><a href="?t=<%= t[0] %>" class="<%= tab === t[0] ? 'on' : '' %>"><%- icon(t[2]) %> <%= t[1] %></a><% }) %></div>
+
+<% if (tab === 'reports') { %>
+<section class="card"><div class="card-title"><%- icon('flag') %> Offene Meldungen</div>
+  <div class="stack" style="--gap:.8rem"><% reports.forEach(function(r){ %>
+    <div class="card flat"><div class="row spread wrap"><div><span class="chip warn"><%= { chat: 'Chat', letter: 'Brief', player: 'Spieler' }[r.kind] %></span> <b><%= r.target_name || 'unbekannt' %></b> <span class="dim small">gemeldet von <%= r.reporter_name %> · <%= when(r.created_at) %></span></div>
+      <div class="row nowrap"><% if (r.target_user) { %><form class="row nowrap" method="post" action="/admin/community/user/<%= r.target_user %>/mute"><%- csrf %><input type="hidden" name="t" value="reports"><select name="minutes" style="width:110px"><option value="60">1 Std.</option><option value="1440">24 Std.</option><option value="10080">7 Tage</option></select><button class="btn sm">Stumm</button></form>
+        <form method="post" action="/admin/anticheat/user/<%= r.target_user %>/ban"><%- csrf %><input type="hidden" name="reason" value="Community-Meldung"><button class="btn sm danger" data-confirm="Spieler sperren?">Sperren</button></form><% } %>
+        <form method="post" action="/admin/community/report/<%= r.id %>/resolve"><%- csrf %><button class="btn sm primary">Erledigt</button></form></div></div>
+      <% if (r.reason) { %><div class="small mt"><b>Grund:</b> <%= r.reason %></div><% } %><% if (r.context) { %><pre class="logbox" style="max-height:140px;margin-top:.6rem"><%= r.context %></pre><% } %>
+      <% if (r.kind === 'chat') { %><form class="mt" method="post" action="/admin/community/chat/<%= r.ref_id %>/delete"><%- csrf %><input type="hidden" name="t" value="reports"><button class="btn sm danger">Nachricht löschen</button></form><% } %>
+      <% if (r.kind === 'letter') { %><form class="mt" method="post" action="/admin/community/letter/<%= r.ref_id %>/delete"><%- csrf %><input type="hidden" name="t" value="reports"><button class="btn sm danger">Brief löschen</button></form><% } %></div>
+  <% }) %><% if (!reports.length) { %><div class="empty">Keine offenen Meldungen. 🎉</div><% } %></div></section>
+<% } else if (tab === 'chat') { %>
+<section class="card"><div class="card-title"><%- icon('megaphone') %> Mitteilung an alle (Posteingang)</div>
+  <form class="row wrap" method="post" action="/admin/community/broadcast-letter"><%- csrf %><input type="text" name="subject" placeholder="Betreff" maxlength="120" style="max-width:260px"><input type="text" name="body" placeholder="Text" maxlength="1500" style="max-width:520px;flex:1"><button class="btn primary sm" data-confirm="An alle Spieler senden?">Senden</button></form></section>
+<div class="table-wrap mt"><table class="table small"><thead><tr><th>Zeit</th><th>Stadt</th><th>Spieler</th><th>Nachricht</th><th></th></tr></thead><tbody>
+  <% chat.forEach(function(c){ %><tr style="<%= c.deleted ? 'opacity:.45' : '' %>"><td class="dim" style="white-space:nowrap"><%= when(c.created_at) %></td><td><%= c.city %></td><td><a href="/admin/users/<%= c.user_id %>"><%= c.username %></a><div class="dim"><%= c.name %></div></td><td><%= c.text %></td>
+    <td class="num"><div class="row nowrap"><% if (!c.deleted) { %><form method="post" action="/admin/community/chat/<%= c.id %>/delete"><%- csrf %><button class="btn sm danger">✕</button></form><% } %><form class="row nowrap" method="post" action="/admin/community/user/<%= c.user_id %>/mute"><%- csrf %><input type="hidden" name="t" value="chat"><input type="hidden" name="minutes" value="<%= Number(c.mute_until) > Date.now() ? 0 : 60 %>"><button class="btn sm"><%= Number(c.mute_until) > Date.now() ? 'Stumm aufheben' : '1 Std. stumm' %></button></form></div></td></tr><% }) %>
+  <% if (!chat.length) { %><tr><td colspan="5" class="dim">Noch keine Chat-Nachrichten.</td></tr><% } %></tbody></table></div>
+<% } else if (tab === 'letters') { %>
+<div class="table-wrap"><table class="table small"><thead><tr><th>Zeit</th><th>Von</th><th>An</th><th>Brief</th><th></th></tr></thead><tbody>
+  <% letters.forEach(function(m){ %><tr><td class="dim"><%= when(m.created_at) %></td><td><%= m.from_name %></td><td><%= m.to_name %></td><td><b><%= m.subject %></b><div class="dim"><%= m.body %></div></td><td class="num"><form method="post" action="/admin/community/letter/<%= m.id %>/delete"><%- csrf %><input type="hidden" name="t" value="letters"><button class="btn sm danger">Löschen</button></form></td></tr><% }) %>
+  <% if (!letters.length) { %><tr><td colspan="5" class="dim">Nur gemeldete Briefe sind für das Team sichtbar – aktuell keine.</td></tr><% } %></tbody></table></div>
+<% } else if (tab === 'log') { %>
+<div class="table-wrap"><table class="table small"><thead><tr><th>Zeit</th><th>Art</th><th>Von</th><th>An</th><th class="num">Wert (Kaufkraft '45)</th><th>Ref.</th></tr></thead><tbody>
+  <% log.forEach(function(l){ %><tr><td class="dim"><%= when(l.created_at) %></td><td><span class="chip <%= l.kind === 'gift' ? 'accent' : 'info' %>"><%= l.kind === 'gift' ? 'Geschenk' : 'Besuch' %></span></td><td><a href="/admin/users/<%= l.from_user %>"><%= l.from_name %></a></td><td><a href="/admin/users/<%= l.to_user %>"><%= l.to_name %></a></td><td class="num"><%= nf(Math.round(l.amount / 100)) %></td><td class="dim"><%= l.ref || '' %></td></tr><% }) %>
+  <% if (!log.length) { %><tr><td colspan="6" class="dim">Noch keine Geschenke oder Besuche.</td></tr><% } %></tbody></table></div>
+<% } else { %>
+<div class="row spread" style="margin-bottom:.8rem"><span class="dim small">Top 100 nach Vermögen (inflationsbereinigt). Ausgeblendete Spieler erscheinen nicht in Rangliste, Profilen, Chat-Anwesenheit und Zeitungsmeldungen.</span><form method="post" action="/admin/community/rebuild"><%- csrf %><button class="btn sm" data-confirm="Alle Ranglisten-Daten neu berechnen?">Neu berechnen</button></form></div>
+<div class="table-wrap"><table class="table small"><thead><tr><th>#</th><th>Spieler</th><th>Charakter</th><th class="num">Vermögen '45</th><th class="num">Betriebe</th><th class="num">Gen.</th><th>Sichtbar</th><th></th></tr></thead><tbody>
+  <% board.forEach(function(p, i){ %><tr><td><%= i + 1 %></td><td><a href="/admin/users/<%= p.user_id %>"><%= p.username %></a> <% if (p.banned) { %><span class="chip bad">gesperrt</span><% } %></td><td><%= p.name %> <span class="dim"><%= p.year %></span></td><td class="num"><%= nf(Math.round(p.wealth / 100)) %></td><td class="num"><%= p.companies %></td><td class="num"><%= p.generation %></td><td><span class="chip <%= p.social_public ? 'good' : '' %>"><%= p.social_public ? 'ja' : 'privat' %></span></td>
+    <td class="num"><form method="post" action="/admin/community/user/<%= p.user_id %>/hide"><%- csrf %><% if (!p.social_public) { %><input type="hidden" name="show" value="1"><% } %><button class="btn sm"><%= p.social_public ? 'Ausblenden' : 'Einblenden' %></button></form></td></tr><% }) %></tbody></table></div>
+<% } %>
+<%- include('_bottom') %>

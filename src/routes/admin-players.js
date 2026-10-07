@@ -65,6 +65,10 @@ module.exports = function mount(router, H) {
       `UPDATE characters SET state = ?, game_day = ?, money = ?, status = ?, name = ?, end_reason = ?, cycle = ?, generation = ?, ended_at = IF(? <> 'alive', COALESCE(ended_at, NOW()), NULL)${extraSql} WHERE id = ?`,
       [JSON.stringify(state), state.day, state.money, state.status, `${state.person.first} ${state.person.last}`, state.death ? (state.death.reason || null) : null, state.cycle || 1, state.generation || 1, state.status, ...extraArgs, row.id],
     );
+    try {
+      const u = await db.one('SELECT id, username, meta, social_public FROM users WHERE id = ?', [row.user_id]);
+      if (u) { u.meta = JSON.parse(u.meta || '{}'); await require('../lib/social').upsertStats(db, u, row, state, await worldSvc.get()); }
+    } catch (_) { /* Statistik ist nachrangig */ }
   }
 
   /* ============================ Spielerliste ============================ */

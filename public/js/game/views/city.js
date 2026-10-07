@@ -22,6 +22,7 @@ export default {
       <aside class="card bl-panel">
         ${own.length ? html`<div class="card-title">${icon('castle')} Dein Besitz &amp; Arbeitsplatz</div><div class="bl-list">${own.map(row)}</div>` : ''}
         <div class="card-title" style="margin-top:${own.length ? '1rem' : '0'}">${icon('landmark')} Öffentliche Orte</div><div class="bl-list">${pub.map(row)}</div>
+        ${(data.playerFirms || []).length ? html`<div class="card-title" style="margin-top:1rem">${icon('users')} Betriebe anderer Spieler</div><div class="bl-list">${data.playerFirms.slice(0, 6).map((f) => html`<button class="bl-item" data-plaza="1"><span class="bl-ic">${icon('store')}</span><span class="grow">${f.name}<small class="dim"> · ${f.owner}</small></span><span class="chip">besuchen</span></button>`)}</div>` : ''}
       </aside>
     </div>`;
   },
@@ -70,5 +71,6 @@ export default {
     on(svg, 'keydown', '.bld', (e, t) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); enter(t.dataset.key); } });
     on(root, 'click', '[data-focus]', (e, t) => { const s = spots[t.dataset.focus]; if (s) centerOn(s.x, s.y, 2.4); enter(t.dataset.focus); });
     on(root, 'click', '[data-go]', (e, t) => ctx.go(t.dataset.go));
+    on(root, 'click', '[data-plaza]', () => { ctx.ui.soc = ctx.ui.soc || {}; ctx.ui.soc.tab = 'plaza'; ctx.go('social'); });
   },
 };

@@ -98,6 +98,10 @@ Der Installer zeigt dir diese Werte am Ende zum Kopieren an. Das Session-Geheimn
 - **Anti-Cheat:** serverseitige Engine (Bot-Takt, Anfrage-Flut, zu schnelle Aufgaben/Werbung, Mehrfachkonten/IP-Sharing, Zeit-/EFS-Manipulation, unmögliche Einnahmen, Coin-Zufluss, Datenintegrität) mit Risiko-Score, Verdachtsliste, IP-Gruppen, Voll-Scan und optionaler automatischer Sperre (Einstellungen → Anti-Cheat).
 - **Finanzen, Werkzeuge, Backup:** Käufe/Erstattungen/Gutschriften, Coins an Gruppen, Meldung an alle Spieler, Aufräumen, Konfig-/Vollsicherung herunterladen und einspielen, Server-Log mit Filter.
 
+## 2c2. Spieler untereinander (Gemeinschaft)
+
+Im Spiel unter **Spieler**: inflationsbereinigte **Ranglisten** (Vermögen, Unternehmer, Politik, Dynastie, Familie, Zeitreise; gesamt, Stadt oder Freunde), öffentliche **Profile**, **Freunde**, **Briefe**, **Stadtplatz-Chat** je Stadt (mit Wortfilter, Tempolimit, Meldefunktion), **Geschenke** (Tageslimits, Gebühr, keine Geschenke zwischen Konten mit gleicher IP) und **Besuche in Spielerbetrieben** (Gast zahlt, Besitzer verdient, beide steigern Wohlbefinden bzw. Umsatz). Ereignisse anderer Spieler erscheinen als „Spielerwelt“ in der Zeitung der Stadt; Übersicht und Menü zeigen Rang, Online-Spieler und neue Briefe. Jeder Spieler kann sich unsichtbar schalten. Im Admin unter **Community**: Meldungen, Chat und Briefe moderieren, stummschalten, Rangliste ausblenden/neu berechnen, Geschenk-/Besuchslog, Mitteilung an alle; alle Limits unter Einstellungen → Community. Anti-Cheat prüft Geschenk-Ringe und Chat-Spam.
+
 ## 2d. Animationen
 
 Startseite, Anmeldung, Spiel und Admin sind durchgehend animiert (`public/js/motion.js`, `public/css/motion.css`): Aurora-Hintergrund mit Partikeln, Wort-für-Wort-Überschrift mit Goldglanz, Scroll-Reveal, hochzählende Zahlen (Geld/EFS/Coins mit Aufleuchten), füllende Meter-Ringe, Spotlight und 3D-Tilt auf Karten, Ripple auf Buttons, Konfetti bei Erfolgen, Seitenblättern im Zeitungs-Leser, gezeichnete Charts im Admin. Im Spiel schaltet der Funken-Knopf in der Kopfzeile alles ab; „Bewegung reduzieren“ des Betriebssystems wird respektiert.

@@ -104,13 +104,19 @@ async function withCharacter(userId, fn, { needAlive = false } = {}) {
     if (!user) throw new actions.ActionError('Nutzer nicht gefunden.');
     const row = await activeRow(conn, userId);
     let state = row ? parseState(row.state) : null;
+    const pressBefore = state ? (state.nextPressId || 0) : 0;
     const sync = syncEfs(user, state, now, w);
     if (state) flush(user, state);
     if (needAlive && (!state || state.status !== 'alive')) throw new actions.ActionError('Dein Charakter lebt nicht mehr.');
     const ctx = { world: w, state, user, row, sync, now, conn };
     const result = (await fn(ctx)) || {};
     state = ctx.state;
-    if (state && row) { flush(user, state); await saveCharacter(conn, row, state); }
+    if (state && row) {
+      flush(user, state); await saveCharacter(conn, row, state);
+      const social = require('../lib/social');
+      await social.upsertStats(conn, user, row, state, w);
+      await social.publishNews(conn, user, state, pressBefore);
+    }
     await saveUser(conn, user);
     return { ...result, sync, view: state ? present(w, state, user, now) : null, coins: user.coins, efsPool: user.efs_pool };
   });
@@ -142,6 +148,7 @@ async function create(userId, input) {
     );
     user.meta.cycles = (user.meta.cycles || 0) + 1;
     await saveUser(conn, user);
+    await require('../lib/social').upsertStats(conn, user, { id: r.insertId }, state, w);
     return { view: present(w, state, user, now), id: r.insertId };
   });
 }
@@ -190,6 +197,8 @@ async function chooseHeir(userId, childId, bequest) {
     );
     await conn.query("UPDATE characters SET status = 'gameover', end_reason = COALESCE(end_reason,'Generationenwechsel') WHERE id = ?", [row.id]);
     await saveUser(conn, user);
+    const newRow = await conn.one('SELECT id FROM characters WHERE user_id = ? ORDER BY id DESC LIMIT 1', [userId]);
+    await require('../lib/social').upsertStats(conn, user, newRow, state, w);
     return { view: present(w, state, user, now) };
   });
 }
@@ -213,4 +222,4 @@ async function peek(userId) {
   return { w, user, row, state: row ? parseState(row.state) : null };
 }
 
-module.exports = { peek, withCharacter, getView, create, doAction, doAdvance, chooseHeir, previewHeir, flush, syncEfs, loadUser, saveUser, parseMeta };
+module.exports = { activeRow, saveCharacter, peek, withCharacter, getView, create, doAction, doAdvance, chooseHeir, previewHeir, flush, syncEfs, loadUser, saveUser, parseMeta };

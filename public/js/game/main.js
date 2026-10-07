@@ -9,12 +9,13 @@ import family from './views/family.js';
 import legacy from './views/legacy.js';
 import business from './views/business.js';
 import society from './views/society.js';
+import socialView from './views/social.js';
 import city from './views/city.js';
 import shop from './views/shop.js';
 import { renderCreate, renderHeir, renderGameOver } from './screens.js';
 import * as audio from './audio.js';
 
-const PAGES = [overview, newspaper, map, city, work, business, society, housing, household, family, legacy, shop];
+const PAGES = [overview, newspaper, map, city, work, business, society, socialView, housing, household, family, legacy, shop];
 const byId = Object.fromEntries(PAGES.map((p) => [p.id, p]));
 const app = document.getElementById('app');
 
@@ -50,7 +51,14 @@ function render() {
     mount(app, html`<div class="shell"><header class="hud" id="hud"></header><nav class="side" id="side" aria-label="Hauptmenü"></nav><main class="page" id="page" tabindex="-1"></main></div>`);
   }
   renderHud(); renderPage(true);
+  startSocialPoll();
 }
+
+let socialTimer = 0;
+async function pollSocial() {
+  try { const r = await api('GET', '/api/social/summary'); const first = !ctx.social; const changed = first || ctx.social.total !== r.total; ctx.social = r; if (changed && shellActive()) { renderHud(); if (first && ctx.route === 'overview') rerender(); } } catch (_) { /* offline o. Ä. */ }
+}
+function startSocialPoll() { if (socialTimer) return; pollSocial(); socialTimer = setInterval(() => { if (!document.hidden && shellActive()) pollSocial(); }, 45000); }
 
 const METER_INFO = {
   fridge: ['Dein Kühlschrank zeigt, wie viel Essen im Haus ist.', 'Er muss unabhängig von deiner Wohnung gefüllt werden. Ist er leer, hast du Hunger – Wohlbefinden und Gesundheit sinken täglich.', 'Kaufe unter „Haushalt“ Lebensmittel. Bessere Qualität hebt Stimmung und Gesundheit.'],
@@ -83,7 +91,7 @@ function renderHud() {
   v.hints.forEach((h) => { if (hintLevel[h.target] !== 'bad') hintLevel[h.target] = h.level; });
   const unseen = v.notices.filter((n) => !n.seen).length;
   const label = (p) => (p.id === 'newspaper' && v.date.medium === 'web' ? 'Web' : p.label);
-  mount(side, html`${PAGES.map((p) => html`<a href="#/${p.id}" class="nav ${ctx.route === p.id ? 'on' : ''} ${hintLevel[p.id] ? 'hint-' + hintLevel[p.id] : ''}" data-nav="${p.id}">${icon(p.icon)}<span>${label(p)}</span>${p.id === 'overview' && unseen ? html`<i class="dot">${unseen}</i>` : hintLevel[p.id] ? html`<i class="dot soft"></i>` : ''}</a>`)}`);
+  mount(side, html`${PAGES.map((p) => html`<a href="#/${p.id}" class="nav ${ctx.route === p.id ? 'on' : ''} ${hintLevel[p.id] ? 'hint-' + hintLevel[p.id] : ''}" data-nav="${p.id}">${icon(p.icon)}<span>${label(p)}</span>${p.id === 'overview' && unseen ? html`<i class="dot">${unseen}</i>` : p.id === 'social' && ctx.social && ctx.social.total ? html`<i class="dot">${ctx.social.total}</i>` : hintLevel[p.id] ? html`<i class="dot soft"></i>` : ''}</a>`)}`);
 }
 
 function showAnnouncement(root) {

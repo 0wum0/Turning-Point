@@ -31,9 +31,10 @@ router.use(async (req, res, next) => {
   try {
     if (!adminBadgeCache || Date.now() - adminBadgeCache.at > 20000) {
       const r = await db.one("SELECT COUNT(*) n FROM cheat_flags WHERE status = 'open'");
-      adminBadgeCache = { at: Date.now(), anticheat: r.n };
+      const rp = await db.one("SELECT COUNT(*) n FROM reports WHERE status = 'open'");
+      adminBadgeCache = { at: Date.now(), anticheat: r.n, community: rp.n };
     }
-    res.locals.adminBadges = { anticheat: adminBadgeCache.anticheat };
+    res.locals.adminBadges = { anticheat: adminBadgeCache.anticheat, community: adminBadgeCache.community };
   } catch (_) { /* Badge ist optional */ }
   next();
 });
@@ -50,6 +51,7 @@ const H = { wrap, flash, back, int, num, clean };
 require('./admin-players')(router, H);
 require('./admin-tools')(router, H);
 require('./admin-insights')(router, H);
+require('./admin-community')(router, H);
 
 router.post('/users/:id/:action', wrap(async (req, res) => {
   const id = int(req.params.id);
@@ -218,6 +220,7 @@ const GROUPS = [
   { id: 'tasks', title: 'Gebäude-Aufgaben', icon: 'hammer', fields: [['economy:tasks', 'Aufgaben je Gebäudetyp (Minispiel, Dauer, Abkühlzeit, Belohnung)', 'econ', 'mini: collect · sequence · hunt (oder leer = ohne Minispiel). reward: efs, rest, wellbeing, health, money, influence, childSat, bizCash.']] },
   { id: 'companies', title: 'Betriebe & Politik', icon: 'store', fields: [['economy:companies,politics,gambling', 'Betriebe (Stufen, Löhne), politische Ämter, Glücksspiel', 'econ']] },
   { id: 'events', title: 'Ereignisse', icon: 'zap', fields: [['economy:events', 'Zufallsereignisse: Stadt (Unwetter, Feuer …), privat, Betriebe', 'econ', 'Wahrscheinlichkeiten 0–1, Kosten in % des Wertes, Beträge in Cent (Preisindex 1).']] },
+  { id: 'social', title: 'Community', icon: 'users', fields: [['social', 'Spielergemeinschaft: Rangliste, Chat (Sperrwörter, Tempo), Briefe, Geschenke (Limits, Gebühr), Besuche, Zeitungsmeldungen', 'json', 'Alle Beträge in Cent bei Preisindex 1 (Kaufkraft 1945). enabled = false schaltet alle Gemeinschaftsfunktionen ab.']] },
   { id: 'anticheat', title: 'Anti-Cheat', icon: 'shield', fields: [['anticheat', 'Anti-Cheat-Regeln: Schwellen, Gewichte, automatische Maßnahmen (autoAction: flag · throttle · ban)', 'json', 'Jede Regel hat ein Gewicht; der Risiko-Score ergibt sich aus den Gewichten offener Verdachtsfälle (verfällt über decayDays).']] },
   { id: 'texts', title: 'Zeitung & Texte', icon: 'newspaper', fields: [['texts', 'Zeitungstexte: Nachrichten-Vorlagen, Straßen, Pensionen, Kontaktanzeigen, Beschriftungen, Ratgeber', 'json', 'Platzhalter in Nachrichten: {city} = Stadtname, {kind} = Unwetterart. Listen (Straßen, Pensionen, Kontakttexte …) lassen sich beliebig erweitern.']] },
   { id: 'newsflash', title: 'Eilmeldungen', icon: 'bell', fields: [['news.custom', 'Eilmeldungen & eigene Nachrichten (erscheinen in der Zeitung)', 'json', 'Felder: active, flash (true = rote EILMELDUNG), title, text, cityId (0 = alle Städte), fromYear, toYear. Schneller geht es unter Admin → Zeitung.']] },
