@@ -143,7 +143,8 @@ A.autoMaintain = ({ state, input }) => { state.flags.autoMaintain = !!input.on; 
 
 /* ---------------- Haushalt ---------------- */
 A.buyFood = ({ world, state, input }) => {
-  const tier = clamp(Number(input.tier), 0, 3);
+  const tier = Math.floor(Number(input.tier));
+  if (!(tier >= 0 && tier <= 3)) fail('Unbekannte Qualitätsstufe.');
   const pct = clamp(100 - state.meters.fridge, 0, 100);
   if (pct < 5) fail('Der Kühlschrank ist schon voll.');
   const cost = Math.round(world.econ.food[tier].perPct * pct * world.idx(yr(state)) * cityFactor(world, state));
