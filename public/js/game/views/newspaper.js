@@ -1,4 +1,37 @@
-import { html, icon, money, infoBtn, bar, on, api, num, yearsText } from '../ui.js';
+import { html, icon, money, infoBtn, bar, on, api, num, yearsText, modal } from '../ui.js';
+import { paginate } from '../paginate.js';
+
+const LONG = 520;
+const teaser = (t) => { const first = String(t).split(/\n{2,}/)[0].trim(); return first.length > 260 ? `${first.slice(0, 260).replace(/\s+\S*$/, '')} …` : `${first} …`; };
+
+/** Leser mit Blätter-Funktion für lange Meldungen. */
+function openReader(n, e) {
+  const pages = paginate(n.text); let i = 0;
+  const kicker = n.type === 'custom' ? (n.flash ? e.kickers.flash : e.kickers.custom) : '';
+  const m = modal(html`<div class="reader paper ${e.medium === 'web' ? 'web' : ''}">
+    <div class="reader-head"><span class="reader-mast">${e.masthead} · ${e.dateLabel}</span><button class="btn ghost sm" data-close="x" aria-label="Schließen">${icon('x')}</button></div>
+    ${kicker ? html`<div class="kicker ${n.flash ? 'flash' : ''}">${kicker}</div>` : ''}
+    <h3>${n.title}</h3>
+    <div class="reader-body" id="rBody" tabindex="0"></div>
+    <div class="reader-nav"><button class="btn" id="rPrev">${icon('chevron-left')} Zurück</button><div class="reader-dots" id="rDots"></div><button class="btn primary" id="rNext">Weiter ${icon('chevron-right')}</button></div>
+  </div>`, { wide: true });
+  const body = m.el.querySelector('#rBody'); const dots = m.el.querySelector('#rDots');
+  const prev = m.el.querySelector('#rPrev'); const next = m.el.querySelector('#rNext');
+  const show = (k) => {
+    i = Math.max(0, Math.min(pages.length - 1, k));
+    body.innerHTML = pages[i].split(/\n{2,}/).map((p) => `<p>${p.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])}</p>`).join('');
+    body.scrollTop = 0;
+    dots.textContent = pages.length > 1 ? `Seite ${i + 1} von ${pages.length}` : '';
+    prev.disabled = i === 0; next.disabled = i === pages.length - 1;
+    prev.style.visibility = pages.length > 1 ? '' : 'hidden'; next.style.visibility = pages.length > 1 ? '' : 'hidden';
+  };
+  prev.onclick = () => show(i - 1); next.onclick = () => show(i + 1);
+  const key = (ev) => { if (ev.key === 'ArrowRight' || ev.key === 'PageDown') show(i + 1); else if (ev.key === 'ArrowLeft' || ev.key === 'PageUp') show(i - 1); };
+  document.addEventListener('keydown', key);
+  const mo = new MutationObserver(() => { if (!document.body.contains(m.el)) { document.removeEventListener('keydown', key); mo.disconnect(); } });
+  mo.observe(document.body, { childList: true });
+  show(0);
+}
 
 const TABS = ['news', 'jobs', 'housing', 'partners', 'biz', 'guide'];
 
@@ -73,7 +106,7 @@ export default {
     const body = {
       news: () => html`<div class="news-grid">${e.news.length ? e.news.map((n, i) => html`<article class="news-item ${n.type === 'forecast' ? 'warn' : ''} ${n.flash ? 'flash' : ''} ${i === 0 ? 'lead' : ''}">
           <div class="kicker">${n.type === 'custom' ? (n.flash ? e.kickers.flash : e.kickers.custom) : n.type === 'forecast' ? 'WARNUNG' : n.ago === 0 ? 'HEUTE' : n.ago === 1 ? 'GESTERN' : 'VOR ' + n.ago + ' TAGEN'}</div>
-          <h3>${n.title}</h3><p>${n.text}</p></article>`) : html`<article class="news-item lead"><div class="kicker">${e.quiet.kicker}</div><h3>${e.quiet.title}</h3><p>${e.quiet.text}</p></article>`}</div>`,
+          <h3>${n.title}</h3>${String(n.text).length > LONG ? html`<p>${teaser(n.text)}</p><button class="btn sm read-more" data-read="${i}">${icon('book-open')} Weiterlesen · ${paginate(n.text).length} Seiten</button>` : html`<p class="pl">${n.text}</p>`}</article>`) : html`<article class="news-item lead"><div class="kicker">${e.quiet.kicker}</div><h3>${e.quiet.title}</h3><p>${e.quiet.text}</p></article>`}</div>`,
       jobs: () => html`<div class="listings">${e.jobs.map((j) => jobCard(j, v, here))}</div>`,
       housing: () => html`<h4 class="sec">Pensionen &amp; Zimmer</h4><div class="listings">${e.housing.pension.map((h) => housingCard(h, v, here))}</div>
         <h4 class="sec">Mietwohnungen</h4><div class="listings">${e.housing.rent.map((h) => housingCard(h, v, here))}</div>
@@ -94,7 +127,8 @@ export default {
       <div class="paper-body">${body}</div>
     </section>`;
   },
-  bind(root, ctx) {
+  bind(root, ctx, data) {
+    on(root, 'click', '[data-read]', (ev, t) => { const n = data.edition.news[Number(t.dataset.read)]; if (n) openReader(n, data.edition); });
     on(root, 'click', '[data-tab]', (e, t) => { ctx.ui.newsTab = t.dataset.tab; ctx.rerender(); });
     root.querySelector('#nCity').addEventListener('change', (e) => { ctx.ui.newsCity = Number(e.target.value); ctx.rerender(); });
     on(root, 'click', '[data-act]', async (e, t) => {

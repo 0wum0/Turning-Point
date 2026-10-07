@@ -213,3 +213,21 @@ body.game { overflow-x: hidden; }
 }
 .news-item.flash { background: color-mix(in srgb, #a2300f 9%, transparent); border-left: 4px solid #a2300f; padding-left: .8rem; border-radius: 6px; }
 .news-item.flash .kicker { color: #fff; background: #a2300f; display: inline-block; padding: .1rem .5rem; border-radius: 4px; }
+.news-item .pl { white-space: pre-line; }
+.read-more { margin-top: .7rem; }
+.modal.wide:has(.reader) { max-width: 760px; padding: 0; overflow: hidden; }
+.reader { padding: 1.4rem 1.6rem 1.2rem; display: flex; flex-direction: column; max-height: min(86vh, 760px); background: #efe6cf; color: #1f1b13; }
+.reader.web { background: var(--surface-solid); color: var(--text); }
+.reader-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; border-bottom: 2px solid #1f1b13; padding-bottom: .5rem; margin-bottom: .9rem; }
+.reader.web .reader-head { border-color: var(--border); }
+.reader-mast { font-family: var(--font-display); font-weight: 700; letter-spacing: .04em; font-size: .9rem; }
+.reader .kicker { font-size: .68rem; letter-spacing: .2em; font-weight: 700; color: #a2300f; } .reader .kicker.flash { color: #fff; background: #a2300f; display: inline-block; padding: .1rem .5rem; border-radius: 4px; }
+.reader h3 { font-family: var(--font-display); font-size: clamp(1.4rem, 3.4vw, 2rem); line-height: 1.15; margin: .3rem 0 .8rem; }
+.reader-body { flex: 1; overflow-y: auto; min-height: 220px; font-family: var(--font-display); font-size: 1.04rem; line-height: 1.7; columns: 1; outline: none; }
+.reader.web .reader-body { font-family: var(--font-ui); }
+.reader-body p { margin: 0 0 1rem; white-space: pre-line; }
+.reader-body p:first-child::first-letter { font-size: 2.6em; font-weight: 700; float: left; line-height: .9; padding: .08em .1em 0 0; color: #a2300f; }
+.reader-nav { display: flex; align-items: center; justify-content: space-between; gap: .8rem; margin-top: .8rem; padding-top: .8rem; border-top: 1px solid #cdbf9d; }
+.reader.web .reader-nav { border-color: var(--border); } .reader-dots { font-size: .8rem; color: #6b6350; font-weight: 600; } .reader.web .reader-dots { color: var(--text-dim); }
+@media (max-width: 560px) { .reader { padding: 1rem; } .reader-body { font-size: .98rem; } }
+.reader .kicker { align-self: flex-start; }

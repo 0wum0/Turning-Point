@@ -138,7 +138,7 @@ module.exports = function mount(router, H) {
   }));
   const saveNews = async (list) => { await settings.set('news.custom', list); };
   router.post('/news/add', wrap(async (req, res) => {
-    const b = req.body; const title = clean(b.title, 120); const text = clean(b.text, 800);
+    const b = req.body; const title = clean(b.title, 120); const text = clean(String(b.text || '').replace(/\r\n?/g, '\n'), 30000);
     if (!title && !text) { flash(req, 'bad', 'Titel oder Text fehlt.'); return res.redirect('/admin/news'); }
     const list = (settings.get('news.custom') || []).slice();
     list.push({ active: true, flash: !!b.flash, title, text, cityId: int(b.cityId), fromYear: int(b.fromYear, 0) || settings.get('game.start_year'), toYear: int(b.toYear, 0) || 9999 });
@@ -149,7 +149,7 @@ module.exports = function mount(router, H) {
   router.post('/news/:i(\\d+)/edit', wrap(async (req, res) => {
     const list = (settings.get('news.custom') || []).slice(); const i = int(req.params.i); const b = req.body;
     if (!list[i]) return res.redirect('/admin/news');
-    list[i] = { ...list[i], title: clean(b.title, 120), text: clean(b.text, 800), flash: !!b.flash, cityId: int(b.cityId), fromYear: int(b.fromYear, 0) || settings.get('game.start_year'), toYear: int(b.toYear, 0) || 9999 };
+    list[i] = { ...list[i], title: clean(b.title, 120), text: clean(String(b.text || '').replace(/\r\n?/g, '\n'), 30000), flash: !!b.flash, cityId: int(b.cityId), fromYear: int(b.fromYear, 0) || settings.get('game.start_year'), toYear: int(b.toYear, 0) || 9999 };
     await saveNews(list); await audit(req, 'news_edit', list[i].title);
     flash(req, 'good', 'Meldung gespeichert.');
     res.redirect('/admin/news');

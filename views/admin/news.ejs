@@ -6,8 +6,8 @@
       <div class="field"><label>Überschrift</label><input type="text" name="title" maxlength="120" required data-pv="title"></div>
       <div class="field"><label>Stadt</label><select name="cityId"><option value="0">Alle Städte</option><% cities.forEach(function(c){ %><option value="<%= c.id %>"><%= c.name %></option><% }) %></select></div>
     </div>
-    <div class="field"><label>Text</label><textarea name="text" maxlength="800" style="min-height:90px" data-pv="text"></textarea></div>
-    <div class="paper-pv"><div class="dim small" style="margin-bottom:.4rem">Vorschau in der Zeitung</div><article class="news-item lead" data-pv-box><div class="kicker" data-pv-kicker>EILMELDUNG</div><h3 data-pv-title>Überschrift</h3><p data-pv-text>Text der Meldung …</p></article></div>
+    <div class="field"><label>Text</label><textarea name="text" maxlength="30000" style="min-height:220px" data-pv="text" placeholder="Beliebig langer Text. Leerzeile = neuer Absatz. Eine Zeile nur mit --- erzwingt einen Seitenwechsel."></textarea><div class="hint"><span data-pv-count>0</span> Zeichen · Lange Texte werden im Spiel automatisch in Seiten geteilt (ca. 950 Zeichen), die der Spieler umblättern kann. Eine Zeile nur mit <code>---</code> beginnt eine neue Seite.</div></div>
+    <div class="paper-pv"><div class="dim small" style="margin-bottom:.4rem">Vorschau in der Zeitung</div><article class="news-item lead" data-pv-box><div class="kicker" data-pv-kicker>EILMELDUNG</div><h3 data-pv-title>Überschrift</h3><p data-pv-text>Text der Meldung …</p></article><div class="row center mt" data-pv-pager style="display:none"><button type="button" class="btn sm" data-pv-prev>← Zurück</button><span class="dim small" data-pv-page></span><button type="button" class="btn sm" data-pv-next>Weiter →</button></div></div>
     <div class="row wrap"><label class="check"><input type="checkbox" name="flash" value="1" checked data-pv="flash"> Rote „EILMELDUNG“ (ganz oben)</label>
       <div class="field"><label>sichtbar ab Jahr</label><input type="number" name="fromYear" value="<%= startYear %>" style="width:110px"></div>
       <div class="field"><label>bis Jahr (leer = offen)</label><input type="number" name="toYear" placeholder="offen" style="width:110px"></div>
@@ -25,7 +25,7 @@
       <form class="stack" style="--gap:.6rem;padding:.4rem 0 .9rem" method="post" action="/admin/news/<%= i %>/edit"><%- csrf %>
         <div class="grid c2"><div class="field"><label>Überschrift</label><input type="text" name="title" value="<%= n.title %>" maxlength="120"></div>
           <div class="field"><label>Stadt</label><select name="cityId"><option value="0">Alle Städte</option><% cities.forEach(function(c2){ %><option value="<%= c2.id %>" <%= Number(n.cityId) === c2.id ? 'selected' : '' %>><%= c2.name %></option><% }) %></select></div></div>
-        <div class="field"><label>Text</label><textarea name="text" maxlength="800" style="min-height:80px"><%= n.text %></textarea></div>
+        <div class="field"><label>Text</label><textarea name="text" maxlength="30000" style="min-height:200px"><%= n.text %></textarea><div class="hint"><%= String(n.text || '').length %> Zeichen · <code>---</code> in einer eigenen Zeile = Seitenwechsel</div></div>
         <div class="row wrap"><label class="check"><input type="checkbox" name="flash" value="1" <%= n.flash ? 'checked' : '' %>> Rote „EILMELDUNG“</label>
           <div class="field"><label>ab Jahr</label><input type="number" name="fromYear" value="<%= n.fromYear || '' %>" style="width:110px"></div><div class="field"><label>bis Jahr</label><input type="number" name="toYear" value="<%= n.toYear >= 9999 ? '' : n.toYear || '' %>" placeholder="offen" style="width:110px"></div>
           <button class="btn primary sm" style="margin-left:auto">Speichern</button></div></form></details></td></tr><% }) %>
