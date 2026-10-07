@@ -44,6 +44,10 @@ export default {
     root.querySelector('#azin').onclick = () => zoomAt(0.7, box.x + box.w / 2, box.y + box.h / 2);
     root.querySelector('#azout').onclick = () => zoomAt(1.4, box.x + box.w / 2, box.y + box.h / 2);
     root.querySelector('#azreset').onclick = () => { const s = own && spots[own.key]; if (s) centerOn(s.x, s.y, 2.1); };
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce && svg.pauseAnimations) svg.pauseAnimations();
+    const vis = () => { if (!svg.isConnected) { document.removeEventListener('visibilitychange', vis); return; } if (svg.pauseAnimations && svg.unpauseAnimations) { if (document.hidden || reduce) svg.pauseAnimations(); else svg.unpauseAnimations(); } };
+    document.addEventListener('visibilitychange', vis);
     const ptrs = new Map(); let dragged = false; let pinch = 0;
     svg.addEventListener('pointerdown', (e) => { svg.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, [e.clientX, e.clientY]); dragged = false; if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = Math.hypot(a[0] - b[0], a[1] - b[1]); } });
     svg.addEventListener('pointermove', (e) => {

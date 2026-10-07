@@ -29,13 +29,16 @@ function nearRiver(pts, x, y, r) { for (const p of pts) { const dx = p[0] - x; c
 /**
  * @returns {{svg:string, spots:Object<string,{x:number,y:number}>}}
  */
-export function buildAerial({ cityId, name, tier, era, buildings, aerial, selected }) {
+export function buildAerial({ cityId, name, tier, era, buildings, aerial, selected, hour = new Date().getHours(), animate = true }) {
   const r = rng(`aerial:${cityId}:${name}`);
   const p = PAL[era] || PAL[1];
   const { w: W, h: H } = WORLD;
   let out = '';
   const defs = `<defs><filter id="grain"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="${cityId}"/><feColorMatrix values="0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 .22 0"/></filter>
   <filter id="soft"><feGaussianBlur stdDeviation="3"/></filter>
+  <pattern id="rt" width="7" height="7" patternUnits="userSpaceOnUse"><path d="M0 3.5h7M3.5 0v3.5" stroke="#000" stroke-opacity=".2" stroke-width=".9"/></pattern>
+  <pattern id="grassP" width="23" height="23" patternUnits="userSpaceOnUse"><circle cx="4" cy="6" r="1.1" fill="#fff" fill-opacity=".1"/><circle cx="15" cy="12" r="1.3" fill="#000" fill-opacity=".1"/><circle cx="9" cy="19" r="1" fill="#fff" fill-opacity=".08"/><circle cx="20" cy="3" r="1.2" fill="#000" fill-opacity=".08"/></pattern>
+  <radialGradient id="lamp"><stop offset="0" stop-color="#ffd58a" stop-opacity=".85"/><stop offset="1" stop-color="#ffd58a" stop-opacity="0"/></radialGradient>
   <linearGradient id="vig" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity=".25"/><stop offset=".25" stop-color="#000" stop-opacity="0"/><stop offset=".8" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".35"/></linearGradient></defs>`;
   // ---- Straßennetz
   const xs = []; const ys = [];
@@ -88,6 +91,7 @@ export function buildAerial({ cityId, name, tier, era, buildings, aerial, select
       out += `<rect x="${b.x0}" y="${b.y0}" width="${b.x1 - b.x0}" height="${b.y1 - b.y0}" fill="${col}" ${outer ? 'opacity=".9"' : ''}/>`;
       b.park = park;
     }
+    out += `<rect width="${W}" height="${H}" fill="url(#grassP)"/>`;
     if (hasRiver) out += `<path d="${riverPath}" fill="none" stroke="${p.water}" stroke-width="74" stroke-linecap="round"/><path d="${riverPath}" fill="none" stroke="#ffffff" stroke-opacity=".12" stroke-width="54"/><path d="${riverPath}" fill="none" stroke="#000" stroke-opacity=".12" stroke-width="80" stroke-dasharray="1 0" transform="translate(0 4)" filter="url(#soft)"/>`;
     // Straßen
     let roads = '';
@@ -122,7 +126,7 @@ export function buildAerial({ cityId, name, tier, era, buildings, aerial, select
         if (ww < 8 || hh < 8) continue;
         const roof = industrial ? p.industrial : p.roofs[Math.floor(r() * p.roofs.length)];
         out += shadow(x, y, ww, hh) + `<rect x="${x}" y="${y}" width="${ww}" height="${hh}" fill="${roof}"/>`;
-        if (gabled && !industrial) out += `<rect x="${x}" y="${y}" width="${ww}" height="${hh / 2}" fill="#fff" opacity=".13"/><line x1="${x}" y1="${y + hh / 2}" x2="${x + ww}" y2="${y + hh / 2}" stroke="#000" stroke-opacity=".3" stroke-width="1.4"/>`;
+        if (gabled && !industrial) out += `<rect x="${x}" y="${y}" width="${ww}" height="${hh}" fill="url(#rt)"/><rect x="${x}" y="${y}" width="${ww}" height="${hh / 2}" fill="#fff" opacity=".13"/><line x1="${x}" y1="${y + hh / 2}" x2="${x + ww}" y2="${y + hh / 2}" stroke="#000" stroke-opacity=".3" stroke-width="1.4"/>`;
         else if (era >= 4 && r() < 0.3) out += `<rect x="${x + ww * 0.12}" y="${y + hh * 0.15}" width="${ww * 0.76}" height="${hh * 0.7}" fill="${era === 5 ? '#183c55' : '#2d4a63'}" opacity=".55"/>`;
         else out += `<rect x="${x + 2}" y="${y + 2}" width="${ww - 4}" height="${hh - 4}" fill="none" stroke="#000" stroke-opacity=".18"/>`;
       }
@@ -162,6 +166,34 @@ export function buildAerial({ cityId, name, tier, era, buildings, aerial, select
     g += '</g>';
     marks += g;
   }
-  const svg = `<svg class="aerial" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice" role="application" aria-label="Luftansicht ${esc(name)}">${defs}<g id="avp">${out}${marks}</g></svg>`;
+  // ---- Leben: Autos, Passanten, Laternen, Tageszeit
+  const night = hour < 6 || hour >= 21; const dusk = !night && (hour < 8 || hour >= 18);
+  let life = '';
+  const carCols = era === 1 ? ['#2a2a2a', '#4a3a2a', '#5a2f2f', '#3a4a5a'] : era === 2 ? ['#b5532f', '#e0b84a', '#3a6a8a', '#d9d4c7'] : era <= 4 ? ['#d9d9d9', '#2a2a30', '#9a2f2f', '#2f5a9a', '#e8e8e8'] : ['#e8f6f4', '#35e0d0', '#cfd8dc', '#7ad8f0'];
+  const cr = rng(`life:${cityId}`);
+  if (!aerial || true) {
+    if (animate) {
+      for (let i = 0; i < 26; i++) {
+        const horiz = cr() < 0.5; const lane = (cr() < 0.5 ? -4 : 4); const dur = 24 + cr() * 36; const col = carCols[Math.floor(cr() * carCols.length)];
+        const road = horiz ? ys[Math.floor(cr() * ys.length)] : xs[Math.floor(cr() * xs.length)];
+        const rev = lane > 0; const from = rev ? (horiz ? W + 30 : H + 30) : -30; const to = rev ? -30 : (horiz ? W + 30 : H + 30);
+        const [x0, y0, x1, y1] = horiz ? [from, road + lane, to, road + lane] : [road + lane, from, road + lane, to];
+        const isTruck = era <= 2 && cr() < 0.15; const len = isTruck ? 20 : 13;
+        life += `<g><animateTransform attributeName="transform" type="translate" values="${x0.toFixed(0)} ${y0.toFixed(0)};${x1.toFixed(0)} ${y1.toFixed(0)}" dur="${dur.toFixed(1)}s" begin="-${(cr() * dur).toFixed(1)}s" repeatCount="indefinite"/><g transform="${horiz ? '' : 'rotate(90)'}"><rect x="${-len / 2 + 1.5}" y="-2.3" width="${len}" height="5" rx="1.5" fill="#000" opacity=".3"/><rect x="${-len / 2}" y="-3" width="${len}" height="5.4" rx="1.6" fill="${col}"/><rect x="${len / 2 - 5}" y="-2.2" width="3.4" height="3.8" fill="#9ad" opacity=".75"/></g></g>`;
+      }
+      for (const b of buildings) {
+        const s = spots[b.key]; if (!s) continue;
+        for (let k = 0; k < 2; k++) { const dx = (cr() - 0.5) * 60; const dy = 42 + cr() * 14; life += `<circle r="2.4" fill="${['#e8c9a0', '#c98a6a', '#3a5a8a', '#8a3a3a'][Math.floor(cr() * 4)]}"><animate attributeName="cx" values="${(s.x + dx).toFixed(0)};${(s.x + dx + 28 + cr() * 24).toFixed(0)};${(s.x + dx).toFixed(0)}" dur="${(7 + cr() * 8).toFixed(1)}s" begin="-${(cr() * 8).toFixed(1)}s" repeatCount="indefinite"/><animate attributeName="cy" values="${(s.y + dy).toFixed(0)};${(s.y + dy + (cr() - 0.5) * 8).toFixed(0)};${(s.y + dy).toFixed(0)}" dur="${(7 + cr() * 8).toFixed(1)}s" repeatCount="indefinite"/></circle>`; }
+      }
+    }
+  }
+  let tint = '';
+  if (night) {
+    tint = `<rect width="${W}" height="${H}" fill="#050a2c" opacity=".55" style="mix-blend-mode:multiply;pointer-events:none"/>`;
+    for (const x of xs) if (mainX.has(x)) for (let y = 60; y < H; y += 140) tint += `<circle cx="${x + 18}" cy="${y}" r="34" fill="url(#lamp)" style="mix-blend-mode:screen;pointer-events:none"/>`;
+    for (const y of ys) if (mainY.has(y)) for (let x = 60; x < W; x += 140) tint += `<circle cx="${x}" cy="${y + 18}" r="34" fill="url(#lamp)" style="mix-blend-mode:screen;pointer-events:none"/>`;
+    for (const b of buildings) { const s = spots[b.key]; if (s) tint += `<circle cx="${s.x}" cy="${s.y}" r="62" fill="url(#lamp)" style="mix-blend-mode:screen;pointer-events:none"/>`; }
+  } else if (dusk) tint = `<rect width="${W}" height="${H}" fill="#ff8a3c" opacity=".16" style="mix-blend-mode:multiply;pointer-events:none"/>`;
+  const svg = `<svg class="aerial" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice" role="application" aria-label="Luftansicht ${esc(name)}">${defs}<g id="avp">${out}<g class="life" style="pointer-events:none">${life}</g>${tint}${marks}</g></svg>`;
   return { svg, spots: Object.fromEntries(Object.entries(spots).map(([k, v]) => [k, { x: v.x, y: v.y }])) };
 }
