@@ -53,11 +53,11 @@ function partnerDaily(ctx, env) {
     });
     p.warnedOnce = true;
   }
-  if ((p.unhappyDays || 0) >= 25) return separate(ctx);
+  if ((p.unhappyDays || 0) >= 25 && !p.linked) return separate(ctx); // Spieler-Partner trennen sich nur bewusst
 
   // Kinderwunsch
   const kids = state.children.length;
-  if (p.cohabit && kids < Math.min(state.plan.target == null ? 3 : state.plan.target, settings.get('game.max_children')) && partnerAge(state) >= 18 && partnerAge(state) <= 42 && !env.hunger) {
+  if (p.cohabit && (!p.linked || p.head) && kids < Math.min(state.plan.target == null ? 3 : state.plan.target, settings.get('game.max_children')) && partnerAge(state) >= 18 && partnerAge(state) <= 42 && !env.hunger) {
     const r = rngFor('birth', state.seed, state.day);
     if (chance(r, 1 / 520)) bornChild(ctx, r);
   }
@@ -78,6 +78,7 @@ function bornChild(ctx, r) {
     id, personId: person.id, name: first, gender, born: state.day, cityId: state.cityId, status: 'home', sat: 75, school: null,
     pendingSchool: false, path: null, pendingPath: false, pkey: null, daysLeft: 0, giftBoost: 0, unhappy: 0, coinsGranted: true,
   };
+  if (state.partner && state.partner.linked) { child.shared = true; child.sid = `${state.seed}-${id}`; }
   state.children.push(child);
   const coins = settings.get('coins.per_child');
   state.fx.coins += coins;
@@ -231,6 +232,12 @@ function eligibleHeirs(state) {
 function endLife(ctx, reason, cause) {
   const { world, state } = ctx;
   state.death = { day: state.day, reason, cause };
+  // Verheiratete Spieler-Partner erben einen Anteil in bar (Rest: Pflichtanteil der Kinder)
+  if (state.partner && state.partner.linked && state.partner.married && state.money > 0) {
+    const pct = (settings.get('social').couples || {}).spouseSharePct || 0;
+    const share = Math.floor(state.money * pct / 100);
+    if (share > 0) { state.money -= share; state.pending.spouseShare = { userId: state.partner.userId, real: share / Math.max(0.0001, world.idx(yearOf(state.day, state.startYear))) }; }
+  }
   const heirs = eligibleHeirs(state);
   const pr = state.tree.persons.find((x) => x.id === state.person.id);
   if (pr) { pr.died = state.day; pr.status = 'dead'; pr.note = reason; }

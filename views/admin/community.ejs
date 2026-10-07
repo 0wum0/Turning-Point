@@ -6,7 +6,7 @@
   <div class="kpi teal"><span class="ico"><%- icon('send') %></span><label>Chat &amp; Briefe (24 h)</label><b><%= k.chat %> / <%= k.letters %></b><small><span>Nachrichten / Briefe</span></small></div>
   <div class="kpi"><span class="ico"><%- icon('gift') %></span><label>Geschenke &amp; Besuche (7 T)</label><b><%= nf(Math.round(k.gifts / 100)) %></b><small><span>Kaufkraft '45 verschenkt · <%= k.visits %> Besuche</span></small></div>
 </div>
-<div class="tabs mt"><% [['reports', 'Meldungen', 'flag'], ['chat', 'Chat', 'landmark'], ['letters', 'Gemeldete Briefe', 'mail'], ['log', 'Geschenke & Besuche', 'gift'], ['board', 'Rangliste', 'crown']].forEach(function(t){ %><a href="?t=<%= t[0] %>" class="<%= tab === t[0] ? 'on' : '' %>"><%- icon(t[2]) %> <%= t[1] %></a><% }) %></div>
+<div class="tabs mt"><% [['reports', 'Meldungen', 'flag'], ['chat', 'Chat', 'landmark'], ['letters', 'Gemeldete Briefe', 'mail'], ['log', 'Geschenke & Besuche', 'gift'], ['bonds', 'Jobs & Ehen', 'heart'], ['board', 'Rangliste', 'crown']].forEach(function(t){ %><a href="?t=<%= t[0] %>" class="<%= tab === t[0] ? 'on' : '' %>"><%- icon(t[2]) %> <%= t[1] %></a><% }) %></div>
 
 <% if (tab === 'reports') { %>
 <section class="card"><div class="card-title"><%- icon('flag') %> Offene Meldungen</div>
@@ -34,6 +34,17 @@
 <div class="table-wrap"><table class="table small"><thead><tr><th>Zeit</th><th>Art</th><th>Von</th><th>An</th><th class="num">Wert (Kaufkraft '45)</th><th>Ref.</th></tr></thead><tbody>
   <% log.forEach(function(l){ %><tr><td class="dim"><%= when(l.created_at) %></td><td><span class="chip <%= l.kind === 'gift' ? 'accent' : 'info' %>"><%= l.kind === 'gift' ? 'Geschenk' : 'Besuch' %></span></td><td><a href="/admin/users/<%= l.from_user %>"><%= l.from_name %></a></td><td><a href="/admin/users/<%= l.to_user %>"><%= l.to_name %></a></td><td class="num"><%= nf(Math.round(l.amount / 100)) %></td><td class="dim"><%= l.ref || '' %></td></tr><% }) %>
   <% if (!log.length) { %><tr><td colspan="6" class="dim">Noch keine Geschenke oder Besuche.</td></tr><% } %></tbody></table></div>
+<% } else if (tab === 'bonds') { %>
+<div class="card-title"><%- icon('briefcase') %> Arbeitsverhältnisse zwischen Spielern</div>
+<div class="table-wrap"><table class="table small"><thead><tr><th>Seit</th><th>Chef</th><th>Mitarbeiter</th><th>Betrieb</th><th>Rolle</th><th class="num">Lohn '45/Tag</th><th>Status</th><th></th></tr></thead><tbody>
+  <% emps.forEach(function(e){ %><tr style="<%= e.status === 'ended' ? 'opacity:.55' : '' %>"><td class="dim"><%= when(e.started_at) %></td><td><a href="/admin/users/<%= e.owner_id %>"><%= e.owner %></a></td><td><a href="/admin/users/<%= e.employee_id %>"><%= e.employee %></a></td><td><%= e.firm || '–' %></td><td><%= e.role === 'manager' ? 'Leitung' : 'Mitarbeiter' %></td><td class="num"><%= (e.wage / 100).toFixed(2) %></td><td><span class="chip <%= e.status === 'active' ? 'good' : '' %>"><%= e.status === 'active' ? 'aktiv' : (e.reason || 'beendet') %></span></td>
+    <td class="num"><% if (e.status === 'active') { %><form method="post" action="/admin/community/employment/<%= e.id %>/end"><%- csrf %><button class="btn sm danger" data-confirm="Arbeitsverhältnis beenden?">Beenden</button></form><% } %></td></tr><% }) %>
+  <% if (!emps.length) { %><tr><td colspan="8" class="dim">Noch keine Spielerjobs.</td></tr><% } %></tbody></table></div>
+<div class="card-title" style="margin-top:1.2rem"><%- icon('heart') %> Beziehungen &amp; Ehen zwischen Spielern</div>
+<div class="table-wrap"><table class="table small"><thead><tr><th>Seit</th><th>Paar</th><th>Status</th><th>Hochzeit</th><th></th></tr></thead><tbody>
+  <% couples.forEach(function(c){ %><tr style="<%= c.status === 'ended' ? 'opacity:.55' : '' %>"><td class="dim"><%= when(c.created_at) %></td><td><a href="/admin/users/<%= c.user_a %>"><%= c.ua %></a> &amp; <a href="/admin/users/<%= c.user_b %>"><%= c.ub %></a></td><td><span class="chip <%= c.status === 'married' ? 'good' : c.status === 'ended' ? '' : 'accent' %>"><%= { dating: 'Paar', engaged: 'Verlobt', married: 'Verheiratet', ended: 'beendet' }[c.status] %></span> <span class="dim"><%= c.end_reason || '' %></span></td><td class="dim"><%= c.married_at ? when(c.married_at) : '–' %></td>
+    <td class="num"><% if (c.status !== 'ended') { %><form method="post" action="/admin/community/couple/<%= c.id %>/end"><%- csrf %><button class="btn sm danger" data-confirm="Beziehung auflösen?">Auflösen</button></form><% } %></td></tr><% }) %>
+  <% if (!couples.length) { %><tr><td colspan="5" class="dim">Noch keine Spielerpaare.</td></tr><% } %></tbody></table></div>
 <% } else { %>
 <div class="row spread" style="margin-bottom:.8rem"><span class="dim small">Top 100 nach Vermögen (inflationsbereinigt). Ausgeblendete Spieler erscheinen nicht in Rangliste, Profilen, Chat-Anwesenheit und Zeitungsmeldungen.</span><form method="post" action="/admin/community/rebuild"><%- csrf %><button class="btn sm" data-confirm="Alle Ranglisten-Daten neu berechnen?">Neu berechnen</button></form></div>
 <div class="table-wrap"><table class="table small"><thead><tr><th>#</th><th>Spieler</th><th>Charakter</th><th class="num">Vermögen '45</th><th class="num">Betriebe</th><th class="num">Gen.</th><th>Sichtbar</th><th></th></tr></thead><tbody>

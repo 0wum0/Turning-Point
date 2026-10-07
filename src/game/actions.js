@@ -298,6 +298,7 @@ A.meet = ({ world, state, input }) => {
 A.marry = ({ world, state }) => {
   const p = state.partner;
   if (!p) fail('Du hast keinen Partner.');
+  if (p.linked) fail('Mit einem Spieler heiratest du über „Spieler → Beziehung“.');
   if (p.married) fail('Ihr seid bereits verheiratet.');
   const cost = scale(world.econ.marriageCost, world.idx(yr(state)));
   if (state.money < cost) fail('Die Hochzeit können wir uns noch nicht leisten.');

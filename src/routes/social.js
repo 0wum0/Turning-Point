@@ -66,4 +66,28 @@ router.get('/firms', wrap(async (req, res) => {
   res.json({ ok: true, firms: await social.firmsInCity(uid(req), cityId) });
 }));
 
+/* ---------- Arbeit (Spieler stellen Spieler ein) ---------- */
+const bonds = require('../lib/bonds');
+const worldSvc = require('../game/world');
+const fresh = async (req, res, extra = {}) => { const v = await service.getView(uid(req)); res.json({ ok: true, view: v.view, ...extra }); };
+router.get('/jobs/market', wrap(async (req, res) => res.json({ ok: true, ...(await bonds.market(await worldSvc.get(), uid(req))) })));
+router.get('/jobs/mine', wrap(async (req, res) => res.json({ ok: true, ...(await bonds.mine(await worldSvc.get(), uid(req))) })));
+router.post('/jobs/offer', wrap(async (req, res) => { const id = await bonds.createOffer(await worldSvc.get(), uid(req), req.body || {}); res.json({ ok: true, id }); }));
+router.post('/jobs/offer/:id/close', wrap(async (req, res) => { await bonds.closeOffer(uid(req), int(req.params.id)); res.json({ ok: true }); }));
+router.post('/jobs/apply', wrap(async (req, res) => { await bonds.apply(await worldSvc.get(), uid(req), int(req.body.offerId), req.body.message); res.json({ ok: true }); }));
+router.post('/jobs/invite', wrap(async (req, res) => { await bonds.invite(await worldSvc.get(), uid(req), int(req.body.offerId), int(req.body.userId)); res.json({ ok: true }); }));
+router.post('/jobs/decide', wrap(async (req, res) => { const r = await bonds.decide(await worldSvc.get(), uid(req), int(req.body.appId), !!req.body.accept); await fresh(req, res, r); }));
+router.post('/jobs/withdraw', wrap(async (req, res) => { await bonds.withdraw(uid(req), int(req.body.appId)); res.json({ ok: true }); }));
+router.post('/jobs/quit', wrap(async (req, res) => { await bonds.quit(uid(req)); await fresh(req, res); }));
+router.post('/jobs/fire', wrap(async (req, res) => { await bonds.fire(uid(req), int(req.body.id)); await fresh(req, res); }));
+
+/* ---------- Beziehung & Hochzeit ---------- */
+router.get('/couple', wrap(async (req, res) => res.json({ ok: true, ...(await bonds.coupleView(await worldSvc.get(), uid(req))) })));
+router.post('/couple/request', wrap(async (req, res) => { await bonds.request(await worldSvc.get(), uid(req), int(req.body.userId)); res.json({ ok: true }); }));
+router.post('/couple/respond', wrap(async (req, res) => { await bonds.respond(await worldSvc.get(), uid(req), int(req.body.id), !!req.body.accept); await fresh(req, res); }));
+router.post('/couple/cancel', wrap(async (req, res) => { await bonds.cancelRequest(uid(req), int(req.body.id)); res.json({ ok: true }); }));
+router.post('/couple/propose', wrap(async (req, res) => { await bonds.propose(uid(req)); res.json({ ok: true }); }));
+router.post('/couple/answer', wrap(async (req, res) => { await bonds.answerProposal(await worldSvc.get(), uid(req), !!req.body.accept); await fresh(req, res); }));
+router.post('/couple/breakup', wrap(async (req, res) => { await bonds.breakup(uid(req)); await fresh(req, res); }));
+
 module.exports = router;

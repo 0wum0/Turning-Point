@@ -108,11 +108,13 @@ async function withCharacter(userId, fn, { needAlive = false } = {}) {
     const sync = syncEfs(user, state, now, w);
     if (state) flush(user, state);
     if (needAlive && (!state || state.status !== 'alive')) throw new actions.ActionError('Dein Charakter lebt nicht mehr.');
+    const bonds = require('../lib/bonds');
+    if (state) { await bonds.reconcile(conn, user, row, state, w); flush(user, state); }
     const ctx = { world: w, state, user, row, sync, now, conn };
     const result = (await fn(ctx)) || {};
     state = ctx.state;
     if (state && row) {
-      flush(user, state); await saveCharacter(conn, row, state);
+      flush(user, state); await bonds.beforeSave(conn, user, state, w); await saveCharacter(conn, row, state);
       const social = require('../lib/social');
       await social.upsertStats(conn, user, row, state, w);
       await social.publishNews(conn, user, state, pressBefore);

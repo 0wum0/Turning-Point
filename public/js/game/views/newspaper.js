@@ -111,7 +111,7 @@ export default {
       news: () => html`<div class="news-grid">${list.length ? list.map((n, i) => html`<article class="news-item ${n.type === 'forecast' ? 'warn' : ''} ${n.type === 'player' ? 'player' : ''} ${n.flash ? 'flash' : ''} ${i === 0 ? 'lead' : ''}">
           <div class="kicker">${n.type === 'player' ? `SPIELERWELT · ${String(n.section || 'Lokales').toUpperCase()} · ${n.ago < 1 ? 'GERADE EBEN' : n.ago < 24 ? 'VOR ' + n.ago + ' STD.' : 'VOR ' + Math.floor(n.ago / 24) + ' TAGEN'}` : n.type === 'press' ? `${String(n.section || 'Lokales').toUpperCase()} · ${n.ago === 0 ? 'HEUTE' : n.ago === 1 ? 'GESTERN' : 'VOR ' + n.ago + ' TAGEN'}` : n.type === 'custom' ? (n.flash ? e.kickers.flash : e.kickers.custom) : n.type === 'forecast' ? 'WARNUNG' : n.ago === 0 ? 'HEUTE' : n.ago === 1 ? 'GESTERN' : 'VOR ' + n.ago + ' TAGEN'}</div>
           <h3>${n.title}</h3>${n.type === 'player' ? html`<p>${n.text}</p><a href="#/newspaper" class="small plink" data-profile="${n.userId}">${icon('user')} Profil von @${n.username}</a>` : String(n.text).length > LONG ? html`<p>${teaser(n.text)}</p><button class="btn sm read-more" data-read="${i}">${icon('book-open')} Weiterlesen · ${paginate(n.text).length} Seiten</button>` : html`<p class="pl">${n.text}</p>`}</article>`) : html`<article class="news-item lead"><div class="kicker">${e.quiet.kicker}</div><h3>${e.quiet.title}</h3><p>${e.quiet.text}</p></article>`}</div>`,
-      jobs: () => html`<div class="listings">${e.jobs.map((j) => jobCard(j, v, here))}</div>`,
+      jobs: () => html`${(e.playerJobs || []).length ? html`<div class="card flat mt-s player-jobs"><div class="card-title">${icon('users')} Gesucht von Spielern <button class="btn sm ghost" data-gosoc="jobs" style="margin-left:auto">alle ansehen</button></div><div class="stack" style="--gap:.4rem">${e.playerJobs.map((o) => html`<div class="row spread small"><span><b>${o.title}</b> · ${o.firm} <span class="dim">(${o.owner})</span></span><span class="chip accent">${money(o.wage, v.currency)}/Tag</span></div>`)}</div></div>` : ''}<div class="listings">${e.jobs.map((j) => jobCard(j, v, here))}</div>`,
       housing: () => html`<h4 class="sec">Pensionen &amp; Zimmer</h4><div class="listings">${e.housing.pension.map((h) => housingCard(h, v, here))}</div>
         <h4 class="sec">Mietwohnungen</h4><div class="listings">${e.housing.rent.map((h) => housingCard(h, v, here))}</div>
         <h4 class="sec">Zu verkaufen</h4><div class="listings">${e.housing.sale.map((h) => housingCard(h, v, here))}</div>`,
@@ -132,6 +132,7 @@ export default {
     </section>`;
   },
   bind(root, ctx, data) {
+    on(root, 'click', '[data-gosoc]', (ev, t) => { ctx.ui.soc = ctx.ui.soc || {}; ctx.ui.soc.tab = t.dataset.gosoc; ctx.go('social'); });
     on(root, 'click', '[data-profile]', (ev, t) => { ev.preventDefault(); openProfile(ctx, Number(t.dataset.profile)); });
     on(root, 'click', '[data-read]', (ev, t) => { const n = data._list[Number(t.dataset.read)]; if (n) openReader(n, data.edition); });
     on(root, 'click', '[data-tab]', (e, t) => { ctx.ui.newsTab = t.dataset.tab; ctx.rerender(); });

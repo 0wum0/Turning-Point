@@ -98,6 +98,8 @@ function dailyFlows(world, state) {
     if (p) {
       if (occ.kind === 'work' && occ.ownCompanyId) {
         inc.wage = 0; // Eigentümer lebt vom Gewinn des Betriebs
+      } else if (occ.kind === 'work' && occ.playerJob) {
+        inc.wage = scale(occ.wage || 0, idx); // vereinbarter Lohn beim Spielerbetrieb
       } else if (occ.kind === 'work') {
         const lv = LEVELS[levelIndex(state, occ.pkey)].mult;
         inc.wage = scale(p.base_wage, idx, (occ.factor || 1) * lv);

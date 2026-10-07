@@ -27,3 +27,28 @@ test('Texte werden bereinigt und gekürzt', () => {
   assert.strictEqual(social.clean('  a\r\nb\u0000c  ', 10), 'a\nbc');
   assert.strictEqual(social.clean('x'.repeat(50), 10).length, 10);
 });
+
+test('Spielerjobs: Lohn des Mitarbeiters und Lohnkosten/Produktivität im Betrieb', () => {
+  const biz = require('../src/game/business');
+  const { dailyFlows } = require('../src/game/core');
+  const s = mk(); s.money = 2e7; s.housing = { type: 'rent', cityId: s.cityId, base: 70, rooms: 4 };
+  s.occupation = { kind: 'work', pkey: 'baecker', employer: 'X · Y', cityId: s.cityId, factor: 1, since: 0, playerJob: true, wage: 900 };
+  const f = dailyFlows(w, s);
+  assert.strictEqual(f.inc.wage, Math.round(900 * w.idx(1945)), 'vereinbarter Lohn');
+  const c = { id: 1, pkey: 'baecker', tier: 0, name: 'T', cityId: s.cityId, rooms: 3, staff: 0, manager: false, cash: 0, base: 1000000, abandoned: null };
+  const base = biz.companyFlows(w, s, c, 1945);
+  c.playerStaff = [{ userId: 9, wage: 900 }]; c.playerManager = { userId: 8, wage: 1200 };
+  const withPlayers = biz.companyFlows(w, s, c, 1945);
+  assert.ok(withPlayers.efficiency > base.efficiency, 'mehr Mitarbeiter = effizienter');
+  assert.ok(withPlayers.wages >= Math.round((900 + 1200) * w.idx(1945)), 'Lohnkosten der Spieler');
+});
+
+test('Ehepartner (Spieler) erbt einen Anteil am Bargeld', () => {
+  const { endLife } = require('../src/game/family');
+  const s = mk(); s.money = 10000;
+  s.partner = { personId: 'p9', name: 'Anna', gender: 'f', born: -8000, married: true, linked: true, userId: 42, coupleId: 1, sat: 70 };
+  endLife({ world: w, state: s }, 'Alter', 'age');
+  const share = s.pending.spouseShare;
+  assert.ok(share && share.userId === 42 && share.real > 0);
+  assert.strictEqual(s.money, 10000 - Math.floor(10000 * 30 / 100));
+});

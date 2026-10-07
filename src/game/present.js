@@ -85,7 +85,7 @@ function present(world, state, user, now) {
       perDay: flows.exp.lodging,
     },
     occupation: occ ? {
-      kind: occ.kind, pkey: occ.pkey, name: occProf ? occProf.name : occ.pkey, employer: occ.employer, lodging: !!occ.lodging, daysLeft: occ.daysLeft || 0,
+      kind: occ.kind, pkey: occ.pkey, name: occProf ? occProf.name : occ.pkey, employer: occ.employer, playerJob: !!occ.playerJob, lodging: !!occ.lodging, daysLeft: occ.daysLeft || 0,
       cityId: occ.cityId, level: occ.kind === 'work' ? LEVELS[levelIndex(state, occ.pkey)].name : null, since: occ.since,
     } : null,
     flows: { income: flows.income, expense: flows.expense, net: flows.net, inc: flows.inc, exp: flows.exp },
@@ -130,7 +130,7 @@ function present(world, state, user, now) {
     autoMaintain: !!state.flags.autoMaintain,
     partner: state.partner ? {
       name: state.partner.name, gender: state.partner.gender, age: ageYears(state.partner.born, state.day), profession: state.partner.profession,
-      sat: round(state.partner.sat), married: state.partner.married, cohabit: state.partner.cohabit, canTogether: state.day - (state.partner.lastTogether || -99) >= 5,
+      sat: round(state.partner.sat), linked: !!state.partner.linked, userId: state.partner.userId || null, married: state.partner.married, cohabit: state.partner.cohabit, canTogether: state.day - (state.partner.lastTogether || -99) >= 5,
     } : null,
     plan: state.plan,
     children: state.children.map((c) => ({

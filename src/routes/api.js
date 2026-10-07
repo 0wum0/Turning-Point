@@ -73,6 +73,7 @@ router.get('/newspaper', wrap(async (req, res) => {
   if (!p.w.city(cityId)) return res.status(404).json({ ok: false, error: 'Unbekannte Stadt.' });
   const ed = edition(p.w, p.state, cityId);
   ed.playerNews = (await social.publicNews(cityId)).filter((n) => n.user_id !== req.user.id).map((n) => ({ id: n.id, section: n.section, title: n.title, text: n.text, at: n.created_at, userId: n.user_id, username: n.username }));
+  ed.playerJobs = cityId === p.state.cityId ? (await require('../lib/bonds').market(p.w, req.user.id)).offers.slice(0, 5) : [];
   res.json({ ok: true, edition: ed, here: cityId === p.state.cityId });
 }));
 

@@ -32,6 +32,8 @@ function statsOf(world, state, user, charRow) {
     companies: (state.companies || []).filter((c) => !c.abandoned).length, properties: state.properties.length,
     children: state.children.length, generation: state.generation || 1, cycle: state.cycle || 1,
     influence: Math.round((user.meta && user.meta.influence) || 0), office: term && offices[term.idx] ? offices[term.idx].name : null,
+    pkey: state.occupation && state.occupation.pkey ? state.occupation.pkey : ((state.skills && state.skills.learned && state.skills.learned[0]) || null),
+    partnered: state.partner ? 1 : 0,
     days: state.day, occupation: occ ? occ.name : (state.occupation && state.occupation.kind === 'study' ? 'Studium' : null),
   };
 }
@@ -40,11 +42,11 @@ async function upsertStats(conn, user, charRow, state, world) {
   try {
     const s = statsOf(world, state, user, charRow);
     await conn.query(
-      `INSERT INTO player_stats (user_id, char_id, username, name, city_id, year, status, wealth, biz_value, companies, properties, children, generation, cycle, influence, office, days, occupation)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      `INSERT INTO player_stats (user_id, char_id, username, name, city_id, year, status, wealth, biz_value, companies, properties, children, generation, cycle, influence, office, days, occupation, pkey, partnered)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
        ON DUPLICATE KEY UPDATE char_id=VALUES(char_id), username=VALUES(username), name=VALUES(name), city_id=VALUES(city_id), year=VALUES(year), status=VALUES(status), wealth=VALUES(wealth), biz_value=VALUES(biz_value),
-         companies=VALUES(companies), properties=VALUES(properties), children=VALUES(children), generation=VALUES(generation), cycle=VALUES(cycle), influence=VALUES(influence), office=VALUES(office), days=VALUES(days), occupation=VALUES(occupation)`,
-      [s.user_id, s.char_id, s.username, s.name, s.city_id, s.year, s.status, s.wealth, s.biz_value, s.companies, s.properties, s.children, s.generation, s.cycle, s.influence, s.office, s.days, s.occupation]);
+         companies=VALUES(companies), properties=VALUES(properties), children=VALUES(children), generation=VALUES(generation), cycle=VALUES(cycle), influence=VALUES(influence), office=VALUES(office), days=VALUES(days), occupation=VALUES(occupation), pkey=VALUES(pkey), partnered=VALUES(partnered)`,
+      [s.user_id, s.char_id, s.username, s.name, s.city_id, s.year, s.status, s.wealth, s.biz_value, s.companies, s.properties, s.children, s.generation, s.cycle, s.influence, s.office, s.days, s.occupation, s.pkey, s.partnered]);
     await conn.query('DELETE FROM player_firms WHERE user_id = ?', [user.id]);
     for (const c of (state.companies || []).filter((x) => !x.abandoned)) {
       await conn.query('INSERT INTO player_firms (user_id, company_id, city_id, name, pkey, tier, rooms) VALUES (?,?,?,?,?,?,?)', [user.id, c.id, c.cityId, c.name, c.pkey, c.tier, c.rooms]);
@@ -389,6 +391,7 @@ function start() {
 }
 
 module.exports = {
+  lockPair, sameIp, accountAgeHours, relation: relation,
   myProfile, search, CATS, statsOf, upsertStats, publishNews, backfillStats, leaderboard, profile, setProfile, listFriends, friendRequest, friendRespond, friendRemove, relation,
   sendLetter, inbox, readLetter, deleteLetter, report, summary, chatList, chatSend, gift, visit, firmsInCity, publicNews, prune, start, mask, clean, sendSystemLetter, friendIds,
 };

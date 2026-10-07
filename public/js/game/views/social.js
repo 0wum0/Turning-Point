@@ -1,6 +1,6 @@
 import { html, raw, icon, api, on, toast, modal, money, num, esc, infoBtn } from '../ui.js';
 
-const TABS = [['rank', 'Rangliste', 'crown'], ['plaza', 'Stadtplatz', 'landmark'], ['letters', 'Briefe', 'mail'], ['friends', 'Freunde', 'users'], ['me', 'Mein Profil', 'user']];
+const TABS = [['rank', 'Rangliste', 'crown'], ['plaza', 'Stadtplatz', 'landmark'], ['jobs', 'Arbeit', 'briefcase'], ['love', 'Beziehung', 'heart'], ['letters', 'Briefe', 'mail'], ['friends', 'Freunde', 'users'], ['me', 'Mein Profil', 'user']];
 const hhmm = (d) => new Date(d).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
 const dt = (d) => new Date(d).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' });
 const cityName = (ctx, id) => { const c = (ctx.world && ctx.world.cities || []).find((x) => x.id === id); return c ? c.name : '–'; };
@@ -30,13 +30,13 @@ export async function openProfile(ctx, userId) {
         <div><small>Betriebe</small><b>${s.companies}</b></div><div><small>Immobilien</small><b>${s.properties}</b></div>
         <div><small>Einfluss</small><b>${s.influence}${s.office ? ' · ' + s.office : ''}</b></div><div><small>Platz Vermögen</small><b>#${p.ranks.wealth}</b></div></div>
       ${p.firms.length ? html`<div class="card-title mt">${icon('store')} Betriebe</div><div class="stack" style="--gap:.4rem">${p.firms.map((f) => html`<div class="row spread small"><span>${icon('store')} ${f.name}</span><span class="dim">${cityName(ctx, f.cityId)}</span></div>`)}</div>` : ''}`}
-    ${me ? '' : html`<div class="row wrap mt" style="gap:.5rem">${rel}<button class="btn sm" data-a="letter">${icon('mail')} Brief schreiben</button>${p.visible && s ? html`<button class="btn sm" data-a="gift">${icon('gift')} Geschenk</button>` : ''}<button class="btn sm ghost" data-a="report" title="Spieler melden">${icon('flag')}</button>${p.relation === 'friend' || p.relation === 'none' ? html`<button class="btn sm ghost" data-a="block" title="Blockieren">${icon('ban')}</button>` : ''}</div>`}
+    ${me ? '' : html`<div class="row wrap mt" style="gap:.5rem">${rel}<button class="btn sm" data-a="letter">${icon('mail')} Brief schreiben</button>${p.visible && s ? html`<button class="btn sm" data-a="couple">${icon('heart')} Beziehung anfragen</button><button class="btn sm" data-a="invite">${icon('briefcase')} Zum Job einladen</button>` : ''}${p.visible && s ? html`<button class="btn sm" data-a="gift">${icon('gift')} Geschenk</button>` : ''}<button class="btn sm ghost" data-a="report" title="Spieler melden">${icon('flag')}</button>${p.relation === 'friend' || p.relation === 'none' ? html`<button class="btn sm ghost" data-a="block" title="Blockieren">${icon('ban')}</button>` : ''}</div>`}
   </div>`, {});
   const act = async (fn) => { try { await fn(); m.close(); } catch (e) { toast(e.message, 'bad'); } };
   m.el.addEventListener('click', (e) => {
     const f = e.target.closest('[data-f]'); const a = e.target.closest('[data-a]');
     if (f) act(async () => { const k = f.dataset.f; if (k === 'request') { const r = await api('POST', '/api/social/friends/request', { userId }); toast(r.state === 'accepted' ? 'Ihr seid jetzt Freunde!' : 'Anfrage gesendet.'); } else if (k === 'accept') { await api('POST', '/api/social/friends/respond', { userId, accept: true }); toast('Ihr seid jetzt Freunde!'); } else if (k === 'remove') { await api('POST', '/api/social/friends/remove', { userId }); toast('Freundschaft beendet.', 'warn'); } ctx.rerender(); });
-    if (a) { const k = a.dataset.a; m.close(); if (k === 'letter') composeLetter(ctx, userId, s ? s.name : p.username); else if (k === 'gift') giftDialog(ctx, userId, s ? s.name : p.username); else if (k === 'report') reportDialog(ctx, 'player', userId); else if (k === 'block') ctx.confirm({ title: 'Blockieren?', text: 'Ihr könnt euch dann keine Briefe oder Geschenke mehr schicken.', ok: 'Blockieren', danger: true }).then(async (ok) => { if (ok) { try { await api('POST', '/api/social/friends/remove', { userId, block: true }); toast('Blockiert.', 'warn'); ctx.rerender(); } catch (e) { toast(e.message, 'bad'); } } }); }
+    if (a) { const k = a.dataset.a; m.close(); if (k === 'letter') composeLetter(ctx, userId, s ? s.name : p.username); else if (k === 'gift') giftDialog(ctx, userId, s ? s.name : p.username); else if (k === 'report') reportDialog(ctx, 'player', userId); else if (k === 'couple') ctx.confirm({ title: 'Beziehung anfragen?', text: `${s ? s.name : p.username} bekommt deine Anfrage. Sagt sie/er ja, seid ihr ein Paar – später kann geheiratet werden, ihr bekommt gemeinsame Kinder und teilt Erbe und Berufe.`, ok: 'Anfrage senden' }).then(async (ok) => { if (ok) { try { await api('POST', '/api/social/couple/request', { userId }); toast('Anfrage gesendet.'); } catch (e) { toast(e.message, 'bad'); } } }); else if (k === 'invite') inviteDialog(ctx, userId, s ? s.name : p.username); else if (k === 'block') ctx.confirm({ title: 'Blockieren?', text: 'Ihr könnt euch dann keine Briefe oder Geschenke mehr schicken.', ok: 'Blockieren', danger: true }).then(async (ok) => { if (ok) { try { await api('POST', '/api/social/friends/remove', { userId, block: true }); toast('Blockiert.', 'warn'); ctx.rerender(); } catch (e) { toast(e.message, 'bad'); } } }); }
   });
 }
 
@@ -67,7 +67,60 @@ function reportDialog(ctx, kind, refId) {
 }
 
 /* ---------- Seiten ---------- */
+const cur = (ctx) => (ctx.view.currency === 'EUR' ? '€' : 'DM');
+const roleChip = (r) => html`<span class="chip ${r === 'manager' ? 'accent' : ''}">${r === 'manager' ? 'Betriebsleitung' : 'Mitarbeiter'}</span>`;
+
+async function inviteDialog(ctx, userId, name) {
+  let mine; try { mine = await api('GET', '/api/social/jobs/mine'); } catch (e) { toast(e.message, 'bad'); return; }
+  if (!mine.offers.length) { toast('Du hast keine offene Stellenanzeige. Lege unter „Arbeit“ zuerst eine an.', 'warn'); return; }
+  const m = modal(html`<h3>${icon('briefcase')} ${name} einladen</h3><p class="dim small">Wähle die Stelle. ${name} bekommt eine Einladung und kann annehmen.</p>
+    <div class="stack" style="--gap:.5rem">${mine.offers.map((o) => html`<button class="linkrow" data-o="${o.id}"><span class="grow"><b>${o.title}</b><div class="dim small">${o.firm} · ${money(o.wage, ctx.view.currency)} pro Tag</div></span>${roleChip(o.role)}</button>`)}</div>`);
+  m.el.addEventListener('click', async (e) => { const b = e.target.closest('[data-o]'); if (!b) return; try { await api('POST', '/api/social/jobs/invite', { offerId: Number(b.dataset.o), userId }); toast('Einladung verschickt.'); m.close(); } catch (err) { toast(err.message, 'bad'); } });
+}
+
 const views = {
+  jobs(ctx, d) {
+    const { market: mk, mine: mi } = d; const c = ctx.view.currency;
+    return html`<div class="grid c2" style="--gap:1rem">
+      <div class="stack" style="--gap:1rem">
+        ${mi.employment ? html`<section class="card glow"><div class="card-title">${icon('briefcase')} Dein Spielerjob</div><h3 class="serif" style="margin:0">${mi.employment.firm}</h3><div class="dim">bei <a href="#/social" data-profile="${mi.employment.ownerId}">${mi.employment.owner}</a> · ${mi.employment.roleName}</div>
+          <div class="row spread mt"><div><small class="dim">Tageslohn</small><div><b class="serif" style="font-size:1.4rem">${money(mi.employment.wage, c)}</b></div></div><button class="btn danger sm" id="jquit">Kündigen</button></div>
+          <p class="dim small mt">Du arbeitest, sammelst Berufserfahrung und der Betrieb wird produktiver. Der Lohn kommt täglich automatisch.</p></section>` : ''}
+        <section class="card"><div class="card-title">${icon('newspaper')} Stellen in ${cityName(ctx, ctx.view.city.id)} ${infoBtn(['Andere Spieler suchen Verstärkung für ihre Betriebe – echte Menschen als Chef und als Kollegen.', 'Du verdienst den vereinbarten Lohn jeden Spieltag und sammelst Erfahrung im Beruf des Betriebs. Der Chef zahlt den Lohn aus seiner Firmenkasse.', 'Du kannst jederzeit kündigen; ein Umzug beendet das Arbeitsverhältnis.'], 'Spielerjobs')}</div>
+          <div class="stack" style="--gap:.6rem">${mk.offers.map((o) => html`<div class="firm" style="align-items:flex-start"><div class="grow"><b>${o.title}</b> ${roleChip(o.role)}<div class="dim small">${o.firm} · <a href="#/social" data-profile="${o.ownerId}">${o.owner}</a> · ${o.slotsLeft} frei</div>${o.text ? html`<div class="small mt-s">${o.text}</div>` : ''}</div>
+            <div class="right"><b>${money(o.wage, c)}</b><div class="dim small">pro Tag</div>${o.myStatus === 'pending' ? (o.myKind === 'invite' ? html`<button class="btn sm primary" data-accept-app="${o.myApp}">Einladung annehmen</button>` : html`<span class="chip">beworben</span>`) : mi.employment ? '' : html`<button class="btn sm primary" data-apply="${o.id}">Bewerben</button>`}</div></div>`)}
+            ${mk.offers.length ? '' : html`<div class="dim small">Zurzeit sucht kein Spieler in deiner Stadt Personal. Schau später wieder vorbei – oder eröffne selbst einen Betrieb und stelle andere Spieler ein.</div>`}</div>
+          ${mi.applications.length ? html`<div class="card-title mt">Meine Bewerbungen</div><div class="stack" style="--gap:.3rem">${mi.applications.map((a) => html`<div class="row spread small"><span>${a.title} · ${a.firm}</span>${a.kind === 'invite' ? html`<span class="row nowrap"><button class="btn sm primary" data-accept-app="${a.id}">Annehmen</button><button class="btn sm ghost" data-reject-app="${a.id}">Ablehnen</button></span>` : html`<button class="btn sm ghost" data-withdraw="${a.id}">zurückziehen</button>`}</div>`)}</div>` : ''}</section></div>
+      <div class="stack" style="--gap:1rem">
+        <section class="card"><div class="card-title">${icon('store')} Als Chef: Spieler einstellen</div>
+          ${mi.firms.length ? html`<div class="field"><label>Betrieb</label><select id="ofirm">${mi.firms.map((f) => html`<option value="${f.id}">${f.name}</option>`)}</select></div>
+          <div class="row"><div class="field grow"><label>Rolle</label><select id="orole"><option value="staff">Mitarbeiter</option><option value="manager">Betriebsleitung</option></select></div><div class="field grow"><label>Tageslohn (${cur(ctx)})</label><input id="owage" type="number" min="${(mi.limits.min / 100).toFixed(0)}" max="${(mi.limits.max / 100).toFixed(0)}" step="0.5" value="${Math.round(mi.limits.min / 100 * 2)}"><div class="hint">${money(mi.limits.min, c)} – ${money(mi.limits.max, c)}</div></div><div class="field" style="width:90px"><label>Stellen</label><input id="oslots" type="number" min="1" max="${mi.limits.maxSlots}" value="1"></div></div>
+          <div class="field"><label>Titel (optional)</label><input id="otitle" type="text" maxlength="80" placeholder="z. B. Bäcker-Geselle gesucht"></div><div class="field"><label>Beschreibung</label><textarea id="otext" maxlength="300" style="min-height:70px"></textarea></div>
+          <div class="row end"><button class="btn primary" id="oadd">${icon('plus')} Stelle ausschreiben</button></div>` : html`<div class="dim">Du besitzt noch keinen aktiven Betrieb. Kaufe einen unter „Zeitung → Gewerbe“ – dann kannst du hier andere Spieler einstellen.</div>`}
+          <p class="dim small mt">Der Lohn wird täglich aus deiner Firmenkasse bezahlt. Mehr Mitarbeiter steigern den Umsatz; eine Spieler-Betriebsleitung ersetzt den Manager.</p></section>
+        ${mi.offers.map((o) => html`<section class="card"><div class="row spread"><div><b>${o.title}</b> ${roleChip(o.role)}<div class="dim small">${o.firm} · ${money(o.wage, c)} pro Tag · ${o.slots} Stelle(n)</div></div><button class="btn sm danger" data-close-offer="${o.id}">schließen</button></div>
+          ${o.apps.length ? html`<div class="stack mt" style="--gap:.5rem">${o.apps.map((a) => html`<div class="firm"><div class="grow"><a href="#/social" data-profile="${a.userId}"><b>${a.name}</b></a> <span class="dim small">${a.kind === 'invite' ? '(eingeladen)' : ''} ${a.occupation || ''}</span>${a.message ? html`<div class="small dim">„${a.message}“</div>` : ''}</div>${a.kind === 'apply' ? html`<button class="btn sm primary" data-accept-app="${a.id}">Einstellen</button><button class="btn sm ghost" data-reject-app="${a.id}">Ablehnen</button>` : html`<span class="chip">wartet</span>`}</div>`)}</div>` : html`<div class="dim small mt">Noch keine Bewerbungen. Tipp: Lade Spieler über ihr Profil ein.</div>`}</section>`)}
+        ${mi.staff.length ? html`<section class="card"><div class="card-title">${icon('users')} Deine Spieler-Mitarbeiter</div><div class="stack" style="--gap:.5rem">${mi.staff.map((p) => html`<div class="firm"><div class="grow"><a href="#/social" data-profile="${p.userId}"><b>${p.name}</b></a><div class="dim small">${p.firm} · ${p.roleName} · ${money(p.wage, c)}/Tag</div></div><button class="btn sm danger" data-fire="${p.id}">Entlassen</button></div>`)}</div></section>` : ''}
+      </div></div>`;
+  },
+  love(ctx, d) {
+    const cp = d.couple; const o = cp && cp.other; const R = d.rules;
+    const person = (p) => html`<button class="linkrow" data-profile="${p.userId}"><span class="grow"><b>${p.name}</b> <span class="dim small">@${p.username}</span><div class="dim small">${p.occupation || ''}${p.year ? ' · ' + p.year : ''}</div></span></button>`;
+    return html`<div class="grid c2" style="--gap:1rem">
+      <section class="card ${cp ? 'glow' : ''}"><div class="card-title">${icon('heart')} Deine Beziehung ${infoBtn(['Hier verbindest du dein Leben mit dem eines anderen Spielers – echte Partnerschaft statt Computer-Partner.', 'Beide müssen zustimmen: erst eine Beziehung, dann ein Heiratsantrag, den der andere annehmen muss. Die Hochzeitskosten teilt ihr euch.', 'Gemeinsame Kinder erscheinen bei beiden. Der Beruf des Partners qualifiziert für Betriebe. Stirbt ein Ehepartner, erbt der andere einen Anteil am Bargeld; bei einer Scheidung zahlt, wer sie beendet, eine Abfindung.'], 'Beziehung')}</div>
+        ${!cp ? html`<p class="dim">Du bist Single. Wähle rechts jemanden aus deiner Stadt${R.sameCity ? '' : ''} oder öffne ein Profil und sende eine Anfrage. Mindestalter: ${R.minAge} Jahre.</p>`
+          : html`<div class="row spread"><div><span class="chip ${cp.status === 'married' ? 'good' : 'accent'}">${{ dating: 'Paar', engaged: 'Verlobt', married: 'Verheiratet' }[cp.status]}</span><h3 class="serif" style="margin:.4rem 0 0">${o.name}</h3><div class="dim small">@${o.username} · ${o.occupation || ''}</div></div><button class="btn sm" data-profile="${o.userId}">Profil</button></div>
+            <div class="row wrap mt" style="gap:.5rem">
+              ${cp.status === 'dating' ? html`<button class="btn primary" id="lpropose">${icon('heart')} Heiratsantrag machen</button>` : ''}
+              ${cp.status === 'engaged' && !cp.engagedByMe ? html`<button class="btn primary" id="lyes">Antrag annehmen &amp; heiraten</button><button class="btn" id="lno">Noch nicht</button>` : ''}
+              ${cp.status === 'engaged' && cp.engagedByMe ? html`<span class="chip">Antrag gesendet – ${o.name} überlegt noch</span>` : ''}
+              <button class="btn danger" id="lend">${cp.status === 'married' ? 'Scheidung einreichen' : 'Beziehung beenden'}</button></div>
+            <p class="dim small mt">${cp.status === 'married' ? `Bei einer Scheidung zahlt, wer sie einreicht, ${R.divorce} % seines Bargelds als Abfindung. Stirbt ein Ehepartner, erbt der andere ${R.spouseShare} % des Bargelds.` : 'Die Hochzeit kostet beide je die Hälfte der üblichen Hochzeitskosten.'}</p>`}
+        ${d.incoming.length ? html`<div class="card-title mt">${icon('bell')} Anfragen an dich</div><div class="stack" style="--gap:.5rem">${d.incoming.map((r) => html`<div class="firm"><div class="grow">${person(r.other)}</div><button class="btn sm primary" data-cr="${r.id}:1">Ja</button><button class="btn sm ghost" data-cr="${r.id}:0">Nein</button></div>`)}</div>` : ''}
+        ${d.outgoing.length ? html`<div class="card-title mt">Deine offenen Anfragen</div><div class="stack" style="--gap:.4rem">${d.outgoing.map((r) => html`<div class="row spread small"><span>${r.other.name}</span><button class="btn sm ghost" data-ccancel="${r.id}">zurückziehen</button></div>`)}</div>` : ''}</section>
+      <section class="card"><div class="card-title">${icon('users')} Singles in ${cityName(ctx, d.me && d.me.cityId)}</div>
+        ${cp ? html`<div class="dim small">Du bist vergeben – andere Singles siehst du hier erst wieder, wenn du allein bist.</div>` : html`<div class="stack" style="--gap:.3rem">${d.singles.map((p) => html`<div class="friend">${person(p)}<button class="btn sm" data-cask="${p.userId}">${icon('heart')} Kennenlernen</button></div>`)}${d.singles.length ? '' : html`<div class="dim small">Gerade sind keine anderen Singles in deiner Stadt sichtbar.</div>`}</div>`}</section></div>`;
+  },
   rank(ctx, d) {
     const me = d.me;
     return html`
@@ -133,6 +186,8 @@ export default {
     if (tab === 'plaza') return { tab, ...(await api('GET', '/api/social/chat')) };
     if (tab === 'letters') return { tab, ...(await api('GET', `/api/social/inbox?box=${s.box}&page=${s.page}`)) };
     if (tab === 'friends') return { tab, ...(await api('GET', '/api/social/friends')) };
+    if (tab === 'jobs') { const [market, mine] = await Promise.all([api('GET', '/api/social/jobs/market'), api('GET', '/api/social/jobs/mine')]); return { tab, market, mine }; }
+    if (tab === 'love') return { tab, ...(await api('GET', '/api/social/couple')) };
     return { tab: 'me', ...(await api('GET', '/api/social/me')) };
   },
   render(ctx, d) {
@@ -167,6 +222,25 @@ export default {
       } catch (err) { toast(err.message, 'bad'); }
     });
     on(root, 'click', '[data-letterto]', (e, t) => { const [id, name] = t.dataset.letterto.split('|'); composeLetter(ctx, Number(id), name); });
+    // Arbeit
+    const sync = async (r) => { if (r && r.view) { ctx.setView(r.view); ctx.hud(); } };
+    const q = (sel, fn) => on(root, 'click', sel, fn);
+    q('[data-apply]', (e, t) => { const m = modal(html`<h3>${icon('briefcase')} Bewerbung</h3><div class="field"><label>Nachricht an den Chef (optional)</label><textarea id="amsg" maxlength="300" style="min-height:90px" autofocus placeholder="Ich bin Bäcker-Geselle und suche eine neue Herausforderung …"></textarea></div><div class="row end"><button class="btn ghost" data-close="x">Abbrechen</button><button class="btn primary" id="asend">Bewerben</button></div>`); m.el.querySelector('#asend').onclick = async () => { try { await api('POST', '/api/social/jobs/apply', { offerId: Number(t.dataset.apply), message: m.el.querySelector('#amsg').value }); toast('Bewerbung verschickt.'); m.close(); go(); } catch (err) { toast(err.message, 'bad'); } }; });
+    const decide = async (id, accept) => { try { const r = await api('POST', '/api/social/jobs/decide', { appId: id, accept }); await sync(r); toast(accept ? 'Abgemacht – das Arbeitsverhältnis beginnt!' : 'Abgelehnt.', accept ? 'good' : 'warn'); if (accept && window.TPMotion) window.TPMotion.confetti(); go(); } catch (err) { toast(err.message, 'bad'); } };
+    q('[data-accept-app]', (e, t) => decide(Number(t.dataset.acceptApp), true)); q('[data-reject-app]', (e, t) => decide(Number(t.dataset.rejectApp), false));
+    q('[data-withdraw]', async (e, t) => { try { await api('POST', '/api/social/jobs/withdraw', { appId: Number(t.dataset.withdraw) }); go(); } catch (err) { toast(err.message, 'bad'); } });
+    q('[data-close-offer]', async (e, t) => { try { await api('POST', `/api/social/jobs/offer/${t.dataset.closeOffer}/close`, {}); toast('Stelle geschlossen.', 'warn'); go(); } catch (err) { toast(err.message, 'bad'); } });
+    q('[data-fire]', async (e, t) => { if (!(await ctx.confirm({ title: 'Entlassen?', text: 'Der Spieler verliert seine Stelle sofort.', ok: 'Entlassen', danger: true }))) return; try { await sync(await api('POST', '/api/social/jobs/fire', { id: Number(t.dataset.fire) })); toast('Entlassen.', 'warn'); go(); } catch (err) { toast(err.message, 'bad'); } });
+    const jq = root.querySelector('#jquit'); if (jq) jq.onclick = async () => { if (!(await ctx.confirm({ title: 'Kündigen?', text: 'Du verlierst Stelle und Lohn.', ok: 'Kündigen', danger: true }))) return; try { await sync(await api('POST', '/api/social/jobs/quit', {})); toast('Gekündigt.', 'warn'); go(); } catch (err) { toast(err.message, 'bad'); } };
+    const oa = root.querySelector('#oadd'); if (oa) oa.onclick = async () => { try { await api('POST', '/api/social/jobs/offer', { companyId: root.querySelector('#ofirm').value, role: root.querySelector('#orole').value, wage: root.querySelector('#owage').value, slots: root.querySelector('#oslots').value, title: root.querySelector('#otitle').value, text: root.querySelector('#otext').value }); toast('Stelle ausgeschrieben – sie erscheint in der Stadt.'); go(); } catch (err) { toast(err.message, 'bad'); } };
+    // Beziehung
+    const lp = root.querySelector('#lpropose'); if (lp) lp.onclick = async () => { if (!(await ctx.confirm({ title: 'Heiratsantrag?', text: 'Dein Partner muss zustimmen. Die Hochzeitskosten teilt ihr euch.', ok: 'Antrag machen' }))) return; try { await api('POST', '/api/social/couple/propose', {}); toast('Der Antrag ist unterwegs!'); go(); } catch (err) { toast(err.message, 'bad'); } };
+    const ans = async (accept) => { try { await sync(await api('POST', '/api/social/couple/answer', { accept })); toast(accept ? 'Ihr seid verheiratet! 💍' : 'Antrag abgelehnt.', accept ? 'good' : 'warn'); if (accept && window.TPMotion) { window.TPMotion.confetti(); setTimeout(() => window.TPMotion.confetti(), 500); } go(); } catch (err) { toast(err.message, 'bad'); } };
+    const ly = root.querySelector('#lyes'); if (ly) ly.onclick = () => ans(true); const ln = root.querySelector('#lno'); if (ln) ln.onclick = () => ans(false);
+    const le = root.querySelector('#lend'); if (le) le.onclick = async () => { if (!(await ctx.confirm({ title: 'Wirklich beenden?', text: 'Das lässt sich nicht rückgängig machen – bei einer Scheidung zahlst du eine Abfindung.', ok: 'Beenden', danger: true }))) return; try { await sync(await api('POST', '/api/social/couple/breakup', {})); toast('Die Beziehung ist beendet.', 'warn'); go(); } catch (err) { toast(err.message, 'bad'); } };
+    q('[data-cr]', async (e, t) => { const [id, a] = t.dataset.cr.split(':'); try { await sync(await api('POST', '/api/social/couple/respond', { id: Number(id), accept: a === '1' })); toast(a === '1' ? 'Ihr seid jetzt ein Paar! 💞' : 'Abgelehnt.', a === '1' ? 'good' : 'warn'); if (a === '1' && window.TPMotion) window.TPMotion.confetti(); go(); } catch (err) { toast(err.message, 'bad'); } });
+    q('[data-ccancel]', async (e, t) => { try { await api('POST', '/api/social/couple/cancel', { id: Number(t.dataset.ccancel) }); go(); } catch (err) { toast(err.message, 'bad'); } });
+    q('[data-cask]', async (e, t) => { try { await api('POST', '/api/social/couple/request', { userId: Number(t.dataset.cask) }); toast('Anfrage gesendet.'); go(); } catch (err) { toast(err.message, 'bad'); } });
     // Freunde
     on(root, 'click', '[data-fr]', async (e, t) => { const [id, a] = t.dataset.fr.split(':'); try { await api('POST', '/api/social/friends/respond', { userId: Number(id), accept: a === '1' }); toast(a === '1' ? 'Ihr seid jetzt Freunde!' : 'Anfrage abgelehnt.', a === '1' ? 'good' : 'warn'); refreshBadge(ctx); go(); } catch (err) { toast(err.message, 'bad'); } });
     const ps = root.querySelector('#psearch');

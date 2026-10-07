@@ -44,7 +44,9 @@ const DEFAULTS = {
     friends: { max: 100 },
     gifts: { enabled: true, minAccountHours: 24, minGameDays: 30, dailyCapCents: 5000, dailyReceiveCents: 15000, maxPctOfWealth: 20, feePct: 5, blockSameIp: true },
     visit: { enabled: true, price: [250, 700, 1800], wellbeing: [4, 6, 8], ownerSharePct: 80, cooldownMin: 30, minWellbeing: 0 },
-    news: { publicEvents: true, keepDays: 5, types: ['business_open', 'business_expand', 'marriage', 'birth', 'elected', 'lotto', 'death', 'heir', 'study_done'] },
+    jobs: { enabled: true, minWage: 150, maxWage: 1500, minAccountHours: 12, minGameDays: 30, blockSameIp: true, maxOffersPerCompany: 3, maxSlots: 5, applicationsPerDay: 10, maxEmployeesPerOwner: 20 },
+    couples: { enabled: true, minAge: 18, minAccountHours: 12, requireSameCity: true, weddingSharePct: 50, spouseSharePct: 30, divorceSettlementPct: 20, blockSameIp: false },
+    news: { publicEvents: true, keepDays: 5, types: ['business_open', 'business_expand', 'couple', 'marriage', 'birth', 'elected', 'lotto', 'death', 'heir', 'study_done'] },
   },
   landing: {
     eyebrow: 'Eine Lebenssimulation über Generationen',

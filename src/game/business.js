@@ -56,10 +56,11 @@ function companyFlows(world, state, c, year) {
   if (c.abandoned) return { income: 0, wages: 0, upkeep: 0, profit: 0, efficiency: 0, needed: 0 };
   const needed = staffNeeded(world, c);
   const ownerHere = state.occupation && state.occupation.ownCompanyId === c.id ? 1 : 0;
-  const eff = Math.max(0.2, Math.min(1, (c.staff + ownerHere) / needed)) * (c.manager || ownerHere ? 1 : 0.6);
+  const ps = c.playerStaff || [];
+  const eff = Math.max(0.2, Math.min(1, (c.staff + ps.length + ownerHere) / needed)) * (c.manager || c.playerManager || ownerHere ? 1 : 0.6);
   const strike = c.strikeUntil && state.day < c.strikeUntil ? 0 : 1;
   const income = Math.round(c.rooms * t.incomePerRoom * idx * cityMult(world.city(c.cityId)) * eff * marketPhase(year).factor * strike);
-  const wages = Math.round(c.staff * econ.staffWage * idx + (c.manager ? econ.managerWage * idx : 0));
+  const wages = Math.round(c.staff * econ.staffWage * idx + (c.manager ? econ.managerWage * idx : 0) + ps.reduce((s, x) => s + x.wage * idx, 0) + (c.playerManager ? c.playerManager.wage * idx : 0));
   const upkeep = Math.round((companyValue(world, state, c, year) * econ.upkeepYearPct) / 100 / 365);
   return { income, wages, upkeep, profit: income - wages - upkeep, efficiency: eff, needed };
 }
