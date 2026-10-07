@@ -90,7 +90,7 @@ function dailyFlows(world, state) {
   const year = yearOf(state.day, state.startYear);
   const idx = world.idx(year);
   const econ = world.econ;
-  const inc = { wage: 0, kindergeld: 0 };
+  const inc = { wage: 0, kindergeld: 0, office: 0 };
   const exp = { lodging: 0, insurance: 0, upkeep: 0, children: 0, support: 0, butler: 0, tuition: 0 };
   const occ = state.occupation;
   if (occ) {
@@ -108,6 +108,9 @@ function dailyFlows(world, state) {
       }
     }
   }
+  const oe = require('./society').officeEffects(world, state, year);
+  inc.wage = Math.round(inc.wage * oe.wageMult);
+  inc.office = oe.income;
   const h = state.housing;
   if (h.type === 'workplace') exp.lodging = scale(econ.lodging.workplace, idx);
   else if (h.type === 'pension' || h.type === 'rent') exp.lodging = scale(h.base, idx);

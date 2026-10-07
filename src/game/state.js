@@ -55,7 +55,7 @@ function createCharacter(world, input, user, { cycle = 1 } = {}) {
     housing: { type: 'street', cityId: v.cityId },
     occupation: null,
     skills: { learned: [], days: {} },
-    properties: [], nextPropId: 1, companies: [], nextCompanyId: 1,
+    properties: [], nextPropId: 1, companies: [], nextCompanyId: 1, politics: { term: null, completed: {} },
     insurance: { hausrat: false, gebaeude: false, gesundheit: false },
     cards: { health: 0 }, butler: null,
     partner: null, plan: { target: 3 }, children: [], nextChildId: 1,
@@ -69,7 +69,7 @@ function createCharacter(world, input, user, { cycle = 1 } = {}) {
     stats: { earned: 0, spent: 0, peakWorth: 0, daysWorked: 0 },
     discounts: {}, collected: {}, flags: { tutorial: true, autoMaintain: false, foodTier: 1 },
     pending: {}, mods: {},
-    fx: { coins: 0, efs: 0 },
+    fx: { coins: 0, efs: 0, influence: 0 },
   };
   // Familie im Hintergrund (im Krieg umgekommen)
   const father = addPerson(state, { name: `${v.parents.fatherName} ${v.last}`, gender: 'm', born: state.person.birthDay - 26 * 365, role: 'parent', jobs: [v.parents.fatherJob], died: -1, note: 'im Krieg umgekommen', status: 'dead' });

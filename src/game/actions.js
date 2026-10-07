@@ -487,6 +487,8 @@ A.bizReactivate = ({ world, state, input }) => {
   return { msg: `${c.name} ist wieder in Betrieb.` };
 };
 
+require('./society').install(A, fail, { yr, pay });
+
 /* ---------------- Meldungen ---------------- */
 A.readNotices = ({ state, input }) => {
   const ids = Array.isArray(input.ids) ? input.ids.map(Number) : null;

@@ -85,6 +85,18 @@ const DEFAULTS = {
       gebaeude: { name: 'Gebäudeversicherung', yearPctOfValue: 0.3, covers: ['fire', 'storm'] },
       gesundheit: { name: 'Krankenzusatz', perDay: 20, covers: ['illness'] },
     },
+    politics: {
+      minAge: 25, termDays: 1460,
+      offices: [
+        { name: 'Ortsbeirat', campaign: 50000, income: 0, termBonus: 100, rest: 6, health: 0.2 },
+        { name: 'Stadtrat', campaign: 200000, income: 300, termBonus: 150, rest: 8, health: 0.3 },
+        { name: 'Bürgermeister', campaign: 800000, income: 900, termBonus: 250, rest: 10, health: 0.4 },
+        { name: 'Landtagsabgeordneter', campaign: 2500000, income: 1800, termBonus: 350, rest: 12, health: 0.5 },
+        { name: 'Bundestagsabgeordneter', campaign: 6000000, income: 3000, termBonus: 500, rest: 14, health: 0.6 },
+        { name: 'Bundeskanzler', campaign: 15000000, income: 6000, termBonus: 800, rest: 18, health: 0.9 },
+      ],
+    },
+    gambling: { ticket: 200, casinoMinAge: 21, casinoFromYear: 1950 },
     companies: {
       maxCompanies: 30,
       staffWage: 500,          // Cent/Tag je Mitarbeiter (Index 1)

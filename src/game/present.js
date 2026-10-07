@@ -11,6 +11,7 @@ const { estateShare, eligibleHeirs, ageOfChild } = require('./family');
 const { lifespanDays } = require('./engine');
 const { mediumFor } = require('./newspaper');
 const biz = require('./business');
+const society = require('./society');
 
 const round = (n) => Math.round(n);
 
@@ -110,6 +111,15 @@ function present(world, state, user, now) {
         reactivateCost: Math.round(c.base * idx * (econ.companies.reactivatePct / 100)),
       };
     }),
+    politics: (() => {
+      const pc = econ.politics; const infl = (user.meta.influence || 0) + (state.fx.influence || 0); const t = state.politics.term;
+      return {
+        influence: infl, minAge: pc.minAge, termDays: pc.termDays, ageOk: age >= pc.minAge,
+        term: t ? { name: pc.offices[t.idx].name, idx: t.idx, daysLeft: Math.max(0, t.endDay - state.day), income: society.officeEffects(world, state, year).income } : null,
+        offices: pc.offices.map((o, i) => ({ idx: i, name: o.name, campaign: scale(o.campaign, idx), income: scale(o.income + o.termBonus * society.completed(state, i), idx), done: society.completed(state, i), unlocked: i === 0 || society.completed(state, i - 1) > 0, chance: Math.round(society.winChance(world, state, infl, i) * 100), rest: o.rest })),
+      };
+    })(),
+    gambling: { ticket: scale(econ.gambling.ticket, idx), casino: year >= econ.gambling.casinoFromYear && age >= econ.gambling.casinoMinAge, casinoFrom: econ.gambling.casinoFromYear, minAge: econ.gambling.casinoMinAge, lost: state.stats.gambled || 0 },
     insurance: Object.entries(econ.insurance).map(([k, v]) => ({
       key: k, name: v.name, on: !!state.insurance[k], covers: v.covers,
       perDay: v.perDay ? scale(v.perDay, idx) : round((state.properties.reduce((s, p) => s + propertyValue(world, state, p, year), 0) * v.yearPctOfValue) / 100 / 365),

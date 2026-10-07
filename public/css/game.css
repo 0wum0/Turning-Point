@@ -175,3 +175,5 @@ body.game { overflow-x: hidden; }
 /* ---------- Unternehmen ---------- */
 .biz { overflow: hidden; } .biz h3 { margin: 0; font-size: 1.15rem; } .biz.loss { border-color: color-mix(in srgb, var(--bad) 40%, transparent); }
 .biz.lost { filter: saturate(.4); border-style: dashed; } .biz.lost .boards { position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(-35deg, transparent 0 46px, rgba(120, 80, 30, .16) 46px 62px); }
+
+.office { display: flex; gap: .8rem; align-items: center; padding: .7rem .9rem; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); } .office.locked { opacity: .5; }

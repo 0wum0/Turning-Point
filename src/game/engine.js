@@ -11,6 +11,7 @@ const { LEVELS, ILLNESSES } = require('./content');
 const { applyTownEvents, rollPrivateEvent } = require('./events');
 const { familyDaily, endLife, ageOfChild } = require('./family');
 const { businessDaily } = require('./business');
+const society = require('./society');
 
 /** Lebenserwartung (Tage). Medizin wird ab ~1955 besser, gesunder Lebensstil gibt Jahre. */
 function lifespanDays(state, year) {
@@ -50,6 +51,7 @@ function dayStep(ctx) {
   const occ = state.occupation;
   if (occ) occupationDaily(ctx, flows, year);
 
+  if (flows.inc.office) { state.money += flows.inc.office; state.stats.earned += flows.inc.office; }
   // Kindergeld
   if (flows.inc.kindergeld) { state.money += flows.inc.kindergeld; state.stats.earned += flows.inc.kindergeld; }
 
@@ -113,6 +115,7 @@ function dayStep(ctx) {
   let restDelta = eh.rest;
   if (state.housing.type === 'own' && state.partner && state.partner.cohabit) restDelta += 5;
   if (occKind === 'work') restDelta -= 18; else if (occKind === 'training') restDelta -= 16; else if (occKind === 'study') restDelta -= 10;
+  { const oe = society.officeEffects(world, state, year); restDelta -= oe.rest; state.mods.officeHealth = oe.health; }
   restDelta -= kidsAtHome(state).filter((c) => ageOfChild(state, c) < 18).length * 1.2;
   m.rest = clamp(m.rest + restDelta, 0, 100);
   if (m.rest === 0) state.restZero++; else state.restZero = 0;
@@ -143,6 +146,7 @@ function dayStep(ctx) {
   }
   if (state.hunger > 0) m.health -= ctx.offline ? 2 : 6;
   if (state.restZero > 0) m.health -= 3;
+  if (state.mods.officeHealth) m.health -= state.mods.officeHealth;
   if (state.life.illness) m.health -= 1.5;
   m.health = clamp(m.health, ctx.offline ? 15 : -5, 100);
   if (ctx.offline && m.health < 15) m.health = 15;
@@ -162,6 +166,7 @@ function dayStep(ctx) {
   // Familie, Ereignisse
   familyDaily(ctx, flows);
   businessDaily(ctx);
+  society.politicsDaily(ctx);
   applyTownEvents(ctx);
   rollPrivateEvent(ctx, flows);
 

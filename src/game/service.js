@@ -16,7 +16,8 @@ const parseMeta = (s) => { try { return s ? JSON.parse(s) : {}; } catch (_) { re
 function flush(user, state) {
   user.coins = Math.max(0, user.coins + (state.fx.coins || 0));
   user.efs_pool = Math.max(0, user.efs_pool + (state.fx.efs || 0));
-  state.fx = { coins: 0, efs: 0 };
+  if (state.fx.influence) user.meta.influence = (user.meta.influence || 0) + state.fx.influence;
+  state.fx = { coins: 0, efs: 0, influence: 0 };
   if (state.death && state.death.completed && !state.death.counted) { state.death.counted = true; user.meta.completedCycles = (user.meta.completedCycles || 0) + 1; }
   if (state.pending.degrees && state.pending.degrees.length) {
     const set = new Set(user.meta.degrees || []);

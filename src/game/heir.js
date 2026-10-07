@@ -46,6 +46,7 @@ function createHeirState(world, old, childId, bequestIds) {
     occupation: null,
     skills: { learned: [], days: {} },
     properties: plan.properties.map((p) => ({ ...p, closedUntil: p.closedUntil })), nextPropId: old.nextPropId,
+    politics: { term: null, completed: {} },
     companies: plan.companies.map((c) => ({ ...c, staff: c.abandoned ? 0 : c.staff })), nextCompanyId: old.nextCompanyId,
     insurance: { ...old.insurance }, cards: { health: old.cards.health }, butler: null,
     partner: null, plan: { target: 3 }, children: [], nextChildId: 1,
@@ -56,7 +57,7 @@ function createHeirState(world, old, childId, bequestIds) {
     stats: { earned: 0, spent: 0, peakWorth: plan.cash, daysWorked: 0 },
     discounts: {}, collected: {}, flags: { tutorial: false, autoMaintain: old.flags.autoMaintain, foodTier: 1 },
     pending: {}, mods: {},
-    fx: { coins: 0, efs: 0 },
+    fx: { coins: 0, efs: 0, influence: 0 },
   };
   for (const k of c.skills || []) learn(state, k);
   const me = state.tree.persons.find((x) => x.id === c.personId);

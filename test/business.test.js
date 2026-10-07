@@ -70,3 +70,27 @@ test('Erbe: Betrieb geht in den Pflichtanteil; ohne Qualifikation wird er Lost P
   run(h, 2);
   assert.ok(h.companies[0].abandoned);
 });
+
+test('Politik: Stufen nacheinander, Amtszeit gibt Einfluss und Einkommen', () => {
+  const s = setup(); s.person.birthDay = s.day - 30 * 365;
+  assert.throws(() => act(s, 'runOffice', { idx: 1 }), /Zuerst/);
+  let won = false;
+  for (let i = 0; i < 40 && !won; i++) { s.day += 1; s.money = 20000000; act(s, 'runOffice', { idx: 0 }); won = !!s.politics.term; }
+  assert.ok(won, 'irgendwann gewählt');
+  const before = s.fx.influence;
+  run(s, 1500);
+  assert.strictEqual(s.politics.term, null);
+  assert.ok(s.fx.influence > before);
+  assert.strictEqual(s.politics.completed[0], 1);
+  assert.doesNotThrow(() => act(s, 'runOffice', { idx: 1 }));
+});
+
+test('Lotto & Casino buchen Geld korrekt', () => {
+  const s = setup(); s.person.birthDay = s.day - 30 * 365; s.day = 10 * 365;
+  const m = s.money;
+  const r = act(s, 'lotto', { tickets: 5 });
+  assert.strictEqual(s.money, m - r.lottoStake + r.lottoWin);
+  const m2 = s.money; act(s, 'casino', { bet: 1000 });
+  assert.ok(s.money === m2 + 1000 || s.money === m2 - 1000);
+  assert.throws(() => act(s, 'casino', { bet: -5 }), /Einsatz/);
+});
