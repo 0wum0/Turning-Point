@@ -85,6 +85,7 @@ function renderHud() {
     </div>
     <button class="btn ghost sm" data-motion-toggle aria-label="Animationen an/aus" title="Animationen an/aus">${icon('sparkles')}</button>
     <button class="btn ghost sm" data-sound aria-label="Ton an/aus" title="Musik & Töne">${icon(audio.isOn() ? 'volume-2' : 'volume-x')}</button>
+    <a class="btn ghost sm" data-i18n-skip href="/lang/${document.documentElement.lang === 'en' ? 'de' : 'en'}?next=/play" title="Deutsch / English" aria-label="Language">${document.documentElement.lang === 'en' ? 'DE' : 'EN'}</a>
     <button class="btn ghost sm" data-theme-toggle aria-label="Farbschema wechseln">${icon('sun-medium')}</button>
     <form method="post" action="/logout" class="logout"><input type="hidden" name="_csrf" value="${document.querySelector('meta[name=csrf-token]').content}"><button class="btn ghost sm" aria-label="Abmelden" title="Abmelden">${icon('log-out')}</button></form>`);
   const hintLevel = {};
@@ -92,6 +93,7 @@ function renderHud() {
   const unseen = v.notices.filter((n) => !n.seen).length;
   const label = (p) => (p.id === 'newspaper' && v.date.medium === 'web' ? 'Web' : p.label);
   mount(side, html`${PAGES.map((p) => html`<a href="#/${p.id}" class="nav ${ctx.route === p.id ? 'on' : ''} ${hintLevel[p.id] ? 'hint-' + hintLevel[p.id] : ''}" data-nav="${p.id}">${icon(p.icon)}<span>${label(p)}</span>${p.id === 'overview' && unseen ? html`<i class="dot">${unseen}</i>` : p.id === 'social' && ctx.social && ctx.social.total ? html`<i class="dot">${ctx.social.total}</i>` : hintLevel[p.id] ? html`<i class="dot soft"></i>` : ''}</a>`)}`);
+  const on = side.querySelector('.nav.on'); if (on && on.scrollIntoView) { try { on.scrollIntoView({ inline: 'center', block: 'nearest' }); } catch (_) { /* ältere Browser */ } }
 }
 
 function showAnnouncement(root) {

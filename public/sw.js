@@ -1,7 +1,7 @@
 'use strict';
 // Service Worker: Statische Dateien (JS/CSS/Schriften/Bilder) kommen aus dem Cache und werden
 // im Hintergrund erneuert. Seiten, API und Uploads gehen IMMER ans Netz (nie veraltete Spielstände).
-const CACHE = 'tp-static-v1';
+const CACHE = 'tp-static-v2';
 const OFFLINE = '/offline.html';
 
 self.addEventListener('install', (e) => {
@@ -21,8 +21,7 @@ self.addEventListener('fetch', (e) => {
   }
   if (!/^\/(js|css|fonts|img|vendor)\//.test(url.pathname)) return;
   e.respondWith(caches.open(CACHE).then(async (c) => {
-    const hit = await c.match(req);
-    const net = fetch(req).then((r) => { if (r.ok) c.put(req, r.clone()); return r; }).catch(() => hit);
-    return hit || net;
+    // Netz zuerst (immer aktuelle Version nach einem Update), Cache nur als Offline-Rückfall
+    try { const r = await fetch(req); if (r.ok) c.put(req, r.clone()); return r; } catch (err) { const hit = await c.match(req); if (hit) return hit; throw err; }
   }));
 });

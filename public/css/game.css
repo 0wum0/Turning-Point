@@ -146,7 +146,8 @@ body.game { overflow-x: hidden; }
 .map-panel { position: sticky; top: 84px; }
 
 /* ---------- Stammbaum ---------- */
-.tree-scroll { overflow: auto; padding: 1rem .5rem 1.5rem; }
+.tree-scroll { overflow-x: auto; padding: 1rem .5rem 1.5rem; -webkit-overflow-scrolling: touch; }
+.tree-scroll > .tree { width: max-content; min-width: 100%; margin: 0 auto; }
 .tree, .tree ul { list-style: none; margin: 0; padding: 0; display: flex; justify-content: center; position: relative; }
 .tree ul { padding-top: 26px; } .tree li { padding: 26px .6rem 0; position: relative; display: flex; flex-direction: column; align-items: center; }
 .tree > li { padding-top: 0; }
@@ -260,3 +261,14 @@ body.game { overflow-x: hidden; }
 .seg a { padding: .32rem .8rem; border-radius: 8px; font-size: .82rem; font-weight: 600; color: var(--text-dim); text-decoration: none !important; } .seg a.on { background: var(--surface-2); color: var(--text); box-shadow: 0 0 0 1px var(--border-strong); }
 .soc-strip { display: flex; gap: .5rem; flex-wrap: wrap; } .soc-strip .chip { cursor: pointer; border: 0; font-weight: 650; }
 .soc-tabs .dot { position: static; font-style: normal; display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 99px; background: var(--bad); color: #fff; font-size: .68rem; font-weight: 700; }
+
+/* Stammbaum auf dem Handy: kompakte Karten, damit möglichst viel auf einen Blick passt */
+@media (max-width: 640px) {
+  .tree-scroll { padding: .6rem .2rem 1rem; }
+  .tcard { min-width: 0; width: 118px; padding: .4rem .5rem; gap: .35rem; border-radius: 11px; align-items: flex-start; }
+  .tcard .avatar { display: none; }
+  .tcard b { font-size: .78rem; line-height: 1.15; display: block; overflow-wrap: anywhere; }
+  .tcard .small, .tcard .faint { font-size: .66rem; line-height: 1.25; overflow-wrap: anywhere; }
+  .tree li { padding: 22px .22rem 0; } .tree ul { padding-top: 22px; }
+  .tree .couple { gap: .1rem; } .tree .heart .i { width: .8rem; height: .8rem; }
+}

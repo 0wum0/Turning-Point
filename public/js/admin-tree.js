@@ -111,6 +111,7 @@
     }
 
     function node(holder, key, label, depth, parent, idx) {
+      if (typeof key === 'string' && label === key && window.TP_LABELS && window.TP_LABELS[key]) label = window.TP_LABELS[key];
       var t = typeOf(holder[key]);
       if (t === 'object' || t === 'array') return container(holder, key, label, depth, parent, idx);
       var row = primitive(holder, key, label);

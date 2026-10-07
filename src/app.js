@@ -60,6 +60,10 @@ function createApp(cfg) {
   app.use((req, res, next) => (req.path.startsWith('/admin') ? formAdmin : formSmall)(req, res, next));
   app.use(express.json({ limit: '300kb' }));
 
+  const i18n = require('./i18n');
+  app.use(i18n.middleware);
+  app.get('/lang/:code', i18n.setLang);
+  app.get('/i18n/en.js', i18n.dictScript);
   app.use(session({
     name: 'tp.sid', secret: cfg.sessionSecret, resave: false, saveUninitialized: false, rolling: true, store: new MySQLStore(),
     cookie: { httpOnly: true, sameSite: 'lax', secure: 'auto', maxAge: 1000 * 60 * 60 * 24 * 30 },

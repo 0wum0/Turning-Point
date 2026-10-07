@@ -1,0 +1,37 @@
+'use strict';
+/** Verständliche deutsche Namen für technische Schlüssel (Einstellungen und JSON-Editor). */
+const SETTINGS = {
+  'site.name': 'Name des Spiels', 'site.tagline': 'Slogan', 'site.registration_open': 'Registrierung geöffnet', 'site.maintenance': 'Wartungsmodus',
+  'site.maintenance_message': 'Wartungs-Nachricht', 'site.require_email_verification': 'E-Mail-Bestätigung erforderlich', 'site.announcement': 'Ankündigungs-Banner',
+  'site.contact_email': 'Kontakt-E-Mail', 'site.legal_name': 'Name des Betreibers', 'site.legal_address': 'Anschrift des Betreibers',
+  texts: 'Spieltexte (Zeitung, Meldungen, Hilfen)', 'news.custom': 'Eigene Zeitungsmeldungen', anticheat: 'Anti-Cheat-Einstellungen', social: 'Mehrspieler-Einstellungen',
+  landing: 'Startseiten-Texte (Deutsch)', landing_en: 'Startseiten-Texte (Englisch)', packages: 'Coin-Pakete (Shop)', subscription: 'Dauerkarte', economy: 'Wirtschaftsdaten (gesamt)',
+  'efs.daily_auto': 'EFS pro Tag (automatisch)', 'efs.login_bonus': 'EFS Login-Bonus', 'efs.active_daily_cap': 'EFS-Tageslimit (aktiv spielen)', 'efs.awards': 'EFS-Belohnungen',
+  'game.start_year': 'Startjahr', 'game.start_age': 'Startalter', 'game.start_money_cents': 'Startgeld (in Cent)', 'game.max_children': 'Maximale Kinderzahl',
+  'game.offline_protection': 'Offline-Schutz aktiv', 'game.offline_after_minutes': 'Offline-Schutz nach (Minuten)', 'game.street_survival_days': 'Überlebenstage auf der Straße', 'game.legacy_year': 'Zieljahr (Vermächtnis)',
+  'coins.start': 'Start-Coins', 'coins.per_child': 'Coins pro Kind', 'coins.legacy_bonus': 'Coins-Bonus bei Vermächtnis', 'coins.ad_base': 'Coins pro Werbung (Basis)', 'coins.ad_video': 'Coins pro Video-Werbung', 'coins.move_per_100km': 'Umzug: Coins pro 100 km',
+  'ads.enabled': 'Werbung aktiv', 'ads.provider': 'Werbeanbieter', 'ads.custom_url': 'Eigene Werbe-URL', 'ads.min_seconds': 'Mindest-Ansehzeit (Sekunden)', 'ads.daily_cap': 'Werbungen pro Tag (max.)', 'ads.efs_reward': 'EFS pro Werbung',
+  'offerwall.url': 'Offerwall-URL', 'offerwall.secret': 'Offerwall-Geheimnis',
+  'legal.impressum': 'Impressum', 'legal.datenschutz': 'Datenschutzerklärung', 'legal.agb': 'Nutzungsbedingungen (AGB)', 'legal.widerruf': 'Widerrufsbelehrung',
+  'payments.mode': 'Zahlungsmodus', 'payments.stripe_secret': 'Stripe Secret Key', 'payments.stripe_webhook_secret': 'Stripe Webhook-Secret', 'payments.stripe_sub_price': 'Stripe Preis-ID Dauerkarte', 'payments.currency': 'Währung',
+  'mail.smtp': 'E-Mail-Versand (SMTP)',
+};
+// Schlüssel im JSON-Editor (gelten in jeder Ebene)
+const TREE = {
+  press: 'Zeitungsartikel (Ereignisse)', paper: 'Zeitung (Kopf, Rubriken)', news: 'Meldungen', guide: 'Spiel-Hilfen',
+  business_open: 'Betrieb eröffnet', business_expand: 'Betrieb erweitert', business_revive: 'Betrieb wiedereröffnet', business_closed: 'Betrieb geschlossen', property_buy: 'Immobilie gekauft', move: 'Umzug',
+  job_new: 'Neuer Job', training_start: 'Ausbildung begonnen', study_start: 'Studium begonnen', education_done: 'Ausbildung abgeschlossen', study_done: 'Studium abgeschlossen', couple: 'Paar', marriage: 'Heirat', birth: 'Geburt',
+  child_edu: 'Kind: Bildung', separation: 'Trennung', child_runaway: 'Kind ausgerissen', child_found: 'Kind gefunden', death: 'Todesfall', heir: 'Erbe', elected: 'Wahl', term_end: 'Amtszeit zu Ende', lotto: 'Lotto', fire: 'Brand', storm: 'Sturm', burglary: 'Einbruch', insolvency: 'Insolvenz', euro: 'Euro-Einführung', legacy: 'Vermächtnis', epoch: 'Epochenwechsel',
+  section: 'Rubrik', big: 'Große Schlagzeile', title: 'Überschrift', texts: 'Textvarianten', text: 'Text', icon: 'Symbol', name: 'Name', id: 'Kennung', enabled: 'Aktiv', weight: 'Gewicht (Punkte)', perMinute: 'pro Minute', perHour: 'pro Stunde',
+  autoAction: 'Automatische Aktion', throttleAt: 'Drosseln ab Punkten', banAt: 'Sperren ab Punkten', decayDays: 'Abklingzeit (Tage)', rules: 'Regeln', samples: 'Stichproben', maxJitterMs: 'Max. Schwankung (ms)', maxMeanMs: 'Max. Mittelwert (ms)',
+  accountsPerIp: 'Konten pro IP', windowHours: 'Zeitfenster (Stunden)', windowMinutes: 'Zeitfenster (Minuten)', ips: 'Anzahl IPs', leaderboardSize: 'Plätze in der Rangliste', onlineMinutes: 'Online-Dauer (Minuten)',
+  chat: 'Stadtplatz-Chat', messages: 'Briefe', friends: 'Freunde', gifts: 'Geschenke', visit: 'Besuche', jobs: 'Spielerjobs', couples: 'Paare', cooldownSec: 'Wartezeit (Sekunden)', maxLen: 'Maximale Länge', keep: 'Aufbewahren (Anzahl)',
+  minAccountHours: 'Mindest-Kontoalter (Std.)', minGameDays: 'Mindest-Spieltage', blocked: 'Gesperrte Wörter', perDay: 'pro Tag', keepDays: 'Aufbewahrung (Tage)', max: 'Maximum', dailyCapCents: 'Tageslimit senden (Cent)',
+  dailyReceiveCents: 'Tageslimit empfangen (Cent)', maxPctOfWealth: 'Max. % vom Vermögen', feePct: 'Gebühr %', blockSameIp: 'Gleiche IP sperren', price: 'Preis', wellbeing: 'Wohlbefinden', ownerSharePct: 'Anteil für Besitzer %',
+  cooldownMin: 'Wartezeit (Minuten)', minWellbeing: 'Mindest-Wohlbefinden', minWage: 'Mindestlohn', maxWage: 'Höchstlohn', maxOffersPerCompany: 'Max. Angebote pro Firma', maxSlots: 'Max. Plätze', applicationsPerDay: 'Bewerbungen pro Tag', maxEmployeesPerOwner: 'Max. Angestellte pro Besitzer', minAge: 'Mindestalter',
+  eyebrow: 'Kleiner Vortitel', lead: 'Einleitung', ctaStart: 'Button: Start', ctaPlay: 'Button: Spielen', timeline: 'Zeitleiste', stats: 'Kennzahlen', featuresTitle: 'Überschrift Funktionen', featuresSub: 'Unterzeile Funktionen', features: 'Funktionen', quote: 'Zitat', ctaBottom: 'Button unten', ctaBottomPlay: 'Button unten (Spielen)',
+  price_cents: 'Preis (Cent)', daily_coins: 'Coins pro Tag', daily_health_cards: 'Gesundheitskarten pro Tag', coins: 'Coins', label: 'Bezeichnung', description: 'Beschreibung', desc: 'Beschreibung', key: 'Schlüssel', pkey: 'Schlüssel',
+  priceIndex: 'Preisindex', euroYear: 'Euro-Jahr', food: 'Lebensmittel', lodging: 'Wohnen', rentPerRoom: 'Miete pro Zimmer', property: 'Immobilien', upkeepYearPct: 'Unterhalt pro Jahr %', events: 'Ereignisse', insurance: 'Versicherungen', politics: 'Politik', tasks: 'Aufgaben', gambling: 'Glücksspiel', companies: 'Firmen',
+  moveBaseCost: 'Umzug: Grundkosten', moveCostPerKm: 'Umzug: Kosten pro km', childCostPerDay: 'Kinderkosten pro Tag', kindergeldPct: 'Kindergeld %', jugendhilfePerDay: 'Jugendhilfe pro Tag', marriageCost: 'Kosten der Heirat', giftCost: 'Kosten Geschenk',
+};
+module.exports = { SETTINGS, TREE };

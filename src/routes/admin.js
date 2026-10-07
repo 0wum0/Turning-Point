@@ -195,6 +195,8 @@ router.post('/media/:id/delete', wrap(async (req, res) => {
 }));
 
 /* ---------- Einstellungen ---------- */
+const LABELS = require('../admin-labels');
+router.get('/labels.js', (req, res) => res.type('application/javascript').send('window.TP_LABELS=' + JSON.stringify(LABELS.TREE) + ';'));
 const GROUPS = [
   { id: 'site', title: 'Allgemein', icon: 'settings', fields: [
     ['site.name', 'Name des Spiels', 'text'], ['site.tagline', 'Slogan', 'text'], ['site.registration_open', 'Registrierung geöffnet', 'bool'],
@@ -224,7 +226,7 @@ const GROUPS = [
   { id: 'anticheat', title: 'Anti-Cheat', icon: 'shield', fields: [['anticheat', 'Anti-Cheat-Regeln: Schwellen, Gewichte, automatische Maßnahmen (autoAction: flag · throttle · ban)', 'json', 'Jede Regel hat ein Gewicht; der Risiko-Score ergibt sich aus den Gewichten offener Verdachtsfälle (verfällt über decayDays).']] },
   { id: 'texts', title: 'Zeitung & Texte', icon: 'newspaper', fields: [['texts', 'Zeitungstexte: Nachrichten-Vorlagen, Straßen, Pensionen, Kontaktanzeigen, Beschriftungen, Ratgeber', 'json', 'Platzhalter in Nachrichten: {city} = Stadtname, {kind} = Unwetterart. Listen (Straßen, Pensionen, Kontakttexte …) lassen sich beliebig erweitern.']] },
   { id: 'newsflash', title: 'Eilmeldungen', icon: 'bell', fields: [['news.custom', 'Eilmeldungen & eigene Nachrichten (erscheinen in der Zeitung)', 'json', 'Felder: active, flash (true = rote EILMELDUNG), title, text, cityId (0 = alle Städte), fromYear, toYear. Schneller geht es unter Admin → Zeitung.']] },
-  { id: 'landing', title: 'Startseite', icon: 'globe', fields: [['landing', 'Texte der Startseite (Titel, Features, Statistik, Zitat). Titel: \\n = Zeilenumbruch', 'json']] },
+  { id: 'landing', title: 'Startseite', icon: 'globe', fields: [['landing', 'Texte der Startseite – Deutsch (Titel, Features, Statistik, Zitat). Titel: \\n = Zeilenumbruch', 'json'], ['landing_en', 'Texte der Startseite – Englisch', 'json']] },
   { id: 'announce', title: 'Ankündigung', icon: 'bell', fields: [['site.announcement', 'Ankündigung an alle Spieler (JSON)', 'json', 'active: true/false · level: info/good/warn/bad · title · text · id (Zahl erhöhen, damit sie erneut erscheint)']] },
   { id: 'payments', title: 'Zahlungen', icon: 'credit-card', fields: [
     ['payments.mode', 'Zahlungsmodus', 'select', 'off = Shop gesperrt · test = Gutschrift ohne Zahlung (nur Test!) · stripe = Stripe Checkout', ['off', 'test', 'stripe']],
@@ -265,9 +267,9 @@ function expertGroup() {
   const fields = Object.keys(settings.DEFAULTS).filter((k) => !SECRET_KEYS.has(k) && k !== 'economy').map((k) => {
     const d = settings.DEFAULTS[k];
     const t = typeof d === 'boolean' ? 'bool' : typeof d === 'number' ? 'num' : (d && typeof d === 'object') ? 'json' : (typeof d === 'string' && d.length > 80) ? 'textarea' : 'text';
-    return [k, k, t];
+    return [k, LABELS.SETTINGS[k] || k, t];
   });
-  fields.push(['economy', 'economy (gesamte Wirtschaftsdaten)', 'json']);
+  fields.push(['economy', LABELS.SETTINGS.economy, 'json']);
   return { id: 'expert', title: 'Experten (alle Werte)', icon: 'wrench', fields };
 }
 const allGroups = () => [...GROUPS, expertGroup()];

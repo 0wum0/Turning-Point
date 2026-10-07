@@ -80,6 +80,10 @@ export default {
     </div>
 
     <section class="card mt">
+      <div class="row spread wrap"><div class="card-title" style="margin:0">${icon('users')} Mitspieler</div>
+        <div class="row wrap"><a class="btn sm" href="#/social" data-social="rank">${icon('crown')} Rangliste</a><a class="btn sm" href="#/social" data-social="plaza">${icon('landmark')} Stadtplatz-Chat</a><a class="btn sm ghost" href="#/social" data-social="friends">${icon('users')} Freunde</a></div></div>
+    </section>
+    <section class="card mt">
       <div class="panel-head" style="margin-bottom:.6rem"><div class="card-title" style="margin:0">${icon('bell')} Postfach ${unseen ? html`<span class="badge">${unseen}</span>` : ''}</div>
         ${unseen ? html`<button class="btn sm ghost" id="readAll">Alle gelesen</button>` : ''}</div>
       ${v.notices.length ? html`<ul class="notices">${v.notices.slice(0, 12).map((n) => noticeRow(n, cur))}</ul>` : html`<div class="dim">Keine Meldungen.</div>`}
@@ -91,6 +95,7 @@ export default {
     </section>`;
   },
   bind(root, ctx) {
+    root.querySelectorAll('[data-social]').forEach((a) => a.addEventListener('click', () => { const so = ctx.ui.soc = ctx.ui.soc || { cat: 'wealth', scope: 'all', box: 'in', page: 1 }; so.tab = a.dataset.social; }));
     on(root, 'click', '[data-go]', (e, t) => { e.preventDefault(); ctx.go(t.dataset.go); });
     on(root, 'click', '[data-advance]', (e, t) => ctx.advance(t.dataset.advance === 'max' ? 'max' : Number(t.dataset.advance), t));
     const ra = root.querySelector('#readAll'); if (ra) ra.addEventListener('click', () => ctx.act('readNotices', {}, { silent: true }));
