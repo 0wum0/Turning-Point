@@ -49,7 +49,7 @@
       if (s.type === 'bar') {
         s.data.forEach(function (v, i) {
           if (v == null) return; var x0 = stack ? X(i) - bw / 2 : X(i) - bw * nb.length / 2 + bi * bw; var y0 = stack ? Y(acc[i] + v) : Y(v); var hh = stack ? Y(acc[i]) - Y(acc[i] + v) : Y(0) - Y(v);
-          el('rect', { x: x0 + (stack ? 0 : 1), y: y0, width: Math.max(1, bw - (stack ? 0 : 2)), height: Math.max(0, hh), rx: Math.min(4, bw / 3), fill: s.color, 'fill-opacity': 0.9 }, svg);
+          el('rect', { x: x0 + (stack ? 0 : 1), y: y0, width: Math.max(1, bw - (stack ? 0 : 2)), height: Math.max(0, hh), rx: Math.min(4, bw / 3), fill: s.color, 'fill-opacity': 0.9, 'class': 'ch-bar', style: '--k:' + i }, svg);
           if (stack) acc[i] += v;
         });
         bi++;
@@ -59,8 +59,9 @@
         var d = 'M' + pts[0][0] + ',' + pts[0][1];
         for (var p = 1; p < pts.length; p++) { var mx = (pts[p - 1][0] + pts[p][0]) / 2; d += ' Q' + pts[p - 1][0] + ',' + pts[p - 1][1] + ' ' + mx + ',' + (pts[p - 1][1] + pts[p][1]) / 2; }
         d += ' T' + pts[pts.length - 1][0] + ',' + pts[pts.length - 1][1];
-        if (s.type === 'area') el('path', { d: d + ' L' + pts[pts.length - 1][0] + ',' + Y(0) + ' L' + pts[0][0] + ',' + Y(0) + ' Z', fill: 'url(#g' + host._uid + k + ')' }, svg);
-        el('path', { d: d, fill: 'none', stroke: s.color, 'stroke-width': 2.2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, svg);
+        if (s.type === 'area') el('path', { d: d + ' L' + pts[pts.length - 1][0] + ',' + Y(0) + ' L' + pts[0][0] + ',' + Y(0) + ' Z', fill: 'url(#g' + host._uid + k + ')', 'class': 'ch-area' }, svg);
+        var ln = el('path', { d: d, fill: 'none', stroke: s.color, 'stroke-width': 2.2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'class': 'ch-line' }, svg);
+        try { ln.style.setProperty('--len', Math.ceil(ln.getTotalLength()) + 2); } catch (e) { /* egal */ }
       }
     });
     var guide = el('line', { y1: m.t, y2: m.t + ih, 'class': 'ch-guide', visibility: 'hidden' }, svg);
@@ -90,7 +91,7 @@
     var off = 0; var segs = [];
     data.forEach(function (v, i) {
       if (!v || !total) return; var len = v / total * C;
-      var c = el('circle', { cx: size / 2, cy: size / 2, r: r, fill: 'none', stroke: COLORS[i % COLORS.length], 'stroke-width': 18, 'stroke-dasharray': Math.max(0, len - 1.5) + ' ' + (C - len + 1.5), 'stroke-dashoffset': -off, transform: 'rotate(-90 ' + size / 2 + ' ' + size / 2 + ')', 'class': 'ch-seg' }, svg);
+      var c = el('circle', { cx: size / 2, cy: size / 2, r: r, fill: 'none', stroke: COLORS[i % COLORS.length], 'stroke-width': 18, 'stroke-dasharray': Math.max(0, len - 1.5) + ' ' + (C - len + 1.5), 'stroke-dashoffset': -off, transform: 'rotate(-90 ' + size / 2 + ' ' + size / 2 + ')', 'class': 'ch-seg', style: '--k:' + i }, svg);
       segs.push(c); off += len;
     });
     var ctr = el('text', { x: size / 2, y: size / 2 + 2, 'text-anchor': 'middle', 'class': 'ch-big' }, svg); ctr.textContent = FMT.int(total);
@@ -107,7 +108,7 @@
     var box = h('div', 'ch-hbar');
     data.forEach(function (v, i) {
       var row = h('div', 'ch-hrow'); row.appendChild(h('span', 'ch-hl', cfg.labels[i]));
-      var bar = h('div', 'ch-htrack'); var fill = h('i'); fill.style.width = Math.max(2, v / max * 100) + '%'; fill.style.background = cfg.series[0].color || COLORS[0]; bar.appendChild(fill); row.appendChild(bar);
+      var bar = h('div', 'ch-htrack'); var fill = h('i'); fill.style.setProperty('--k', i); fill.style.width = Math.max(2, v / max * 100) + '%'; fill.style.background = cfg.series[0].color || COLORS[0]; bar.appendChild(fill); row.appendChild(bar);
       row.appendChild(h('b', 'ch-hv', fmt(v))); box.appendChild(row);
     });
     if (!data.length) box.appendChild(h('div', 'dim small', 'Keine Daten.'));

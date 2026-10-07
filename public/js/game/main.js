@@ -75,6 +75,7 @@ function renderHud() {
     <div class="hud-meters">
       ${[['fridge', 'Kühlschrank', 'refrigerator'], ['wellbeing', 'Wohlbefinden', 'smile'], ['rest', 'Erholung', 'moon'], ['health', 'Gesundheit', 'heart-pulse']].map((x) => html`<button class="meter" data-meter="${x[0]}" aria-label="${x[1]}: ${m[x[0]]} %">${ring(m[x[0]], x[1], x[2], { size: 44 })}<span class="mlabel">${x[1]}</span></button>`)}
     </div>
+    <button class="btn ghost sm" data-motion-toggle aria-label="Animationen an/aus" title="Animationen an/aus">${icon('sparkles')}</button>
     <button class="btn ghost sm" data-sound aria-label="Ton an/aus" title="Musik & Töne">${icon(audio.isOn() ? 'volume-2' : 'volume-x')}</button>
     <button class="btn ghost sm" data-theme-toggle aria-label="Farbschema wechseln">${icon('sun-medium')}</button>
     <form method="post" action="/logout" class="logout"><input type="hidden" name="_csrf" value="${document.querySelector('meta[name=csrf-token]').content}"><button class="btn ghost sm" aria-label="Abmelden" title="Abmelden">${icon('log-out')}</button></form>`);
@@ -121,11 +122,13 @@ async function renderPage(animate) {
 function rerender() { renderHud(); return renderPage(false); }
 
 /* ---------- Aktionen ---------- */
+const CELEBRATE = new Set(['buyBiz', 'buy', 'marry', 'runOffice', 'bizExpand', 'bizRevive']);
 async function act(name, input = {}, opts = {}) {
   try {
     const r = await api('POST', `/api/action/${name}`, input);
     setView(r.view);
     if (!opts.silent && r.message) toast(r.message, r.level);
+    if (CELEBRATE.has(name) && r.level !== 'warn' && r.level !== 'bad' && window.TPMotion) window.TPMotion.confetti();
     if (r.view.status !== 'alive') { render(); return r; }
     if (opts.noRender) renderHud(); else await rerender();
     return r;
@@ -142,6 +145,7 @@ async function advance(days, btn) {
     if (r.view.status !== 'alive') { render(); if (r.view.status === 'dead') toast('Dein Charakter ist gestorben.', 'bad'); return; }
     await rerender();
     const delta = r.moneyDelta;
+    if (window.TPMotion && (r.yearFrom !== r.yearTo || fresh.some((n) => n.level === 'good' && /geboren|abgeschlossen|Lotto|Erbe|Gewinn/.test(n.title || '')))) setTimeout(() => window.TPMotion.confetti(), 250);
     const title = r.stopped === 'interrupt' ? 'Das Leben ruft dich' : 'Zeit vergeht';
     if (r.advanced > 0 && (r.stopped === 'interrupt' || important.length || r.yearFrom !== r.yearTo)) {
       const list = (r.stopped === 'interrupt' ? fresh : important).slice(0, 8).reverse();

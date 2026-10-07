@@ -1,0 +1,145 @@
+/* =====================================================================
+   TURNING POINT · Motion
+   Alles hier ist Zugabe: html[data-motion="off"] (Knopf / reduzierte Bewegung) schaltet es komplett ab.
+   ===================================================================== */
+@property --v { syntax: '<number>'; inherits: true; initial-value: 0; }
+:root { --spring: cubic-bezier(.34, 1.56, .64, 1); --out: cubic-bezier(.16, 1, .3, 1); }
+
+/* ---------- Scroll-Reveal ---------- */
+html.js:not([data-motion=off]) .rv { opacity: 0; transform: translateY(26px) scale(.975); filter: blur(5px); }
+html.js:not([data-motion=off]) .rv.in { opacity: 1; transform: none; filter: none; transition: opacity .75s var(--out), transform .85s var(--out), filter .75s var(--out); transition-delay: calc(var(--i, 0) * 65ms); }
+
+/* ---------- Spotlight (folgt dem Mauszeiger) ---------- */
+.spot { position: relative; }
+.spot::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity .3s; z-index: 1;
+  background: radial-gradient(280px circle at var(--mx, 50%) var(--my, 50%), color-mix(in srgb, var(--accent) 17%, transparent), transparent 62%); }
+.spot:hover::after { opacity: 1; }
+.card.glow.spot::after { box-shadow: none; }
+.feature, .stat, .tilt { transition: transform .25s var(--out), box-shadow .3s, border-color .3s; will-change: transform; }
+
+/* ---------- Buttons ---------- */
+.ripple { position: absolute; border-radius: 50%; pointer-events: none; background: radial-gradient(circle, rgba(255, 255, 255, .45), transparent 65%); transform: scale(0); animation: ripple .62s var(--out) forwards; mix-blend-mode: soft-light; }
+@keyframes ripple { to { transform: scale(1); opacity: 0; } }
+html:not([data-motion=off]) .btn { transition: transform .22s var(--spring), box-shadow .25s, background .2s, border-color .2s, opacity .2s; }
+html:not([data-motion=off]) .btn:hover { transform: translateY(-2px) scale(1.015); }
+html:not([data-motion=off]) .btn:active { transform: translateY(0) scale(.96); transition-duration: .08s; }
+html:not([data-motion=off]) .btn.primary { background-size: 220% 100%; background-image: linear-gradient(100deg, var(--accent-2) 0%, var(--accent) 38%, var(--accent-2) 62%, var(--accent) 100%); animation: sheen 6s linear infinite; }
+@keyframes sheen { to { background-position: -220% 0; } }
+body.admin .btn:hover { transform: none !important; }
+html:not([data-motion=off]) body.admin .btn.primary { animation: none; background-image: linear-gradient(180deg, var(--accent-2), var(--accent)); }
+
+/* ---------- Seiten-Eingang (Spiel) ---------- */
+html:not([data-motion=off]) .page.enter > * { animation: stagger .62s var(--out) both; }
+html:not([data-motion=off]) .page.enter > *:nth-child(1) { animation-delay: .00s; } html:not([data-motion=off]) .page.enter > *:nth-child(2) { animation-delay: .06s; }
+html:not([data-motion=off]) .page.enter > *:nth-child(3) { animation-delay: .12s; } html:not([data-motion=off]) .page.enter > *:nth-child(4) { animation-delay: .18s; }
+html:not([data-motion=off]) .page.enter > *:nth-child(5) { animation-delay: .24s; } html:not([data-motion=off]) .page.enter > *:nth-child(n+6) { animation-delay: .30s; }
+@keyframes stagger { from { opacity: 0; transform: translateY(22px) scale(.985); filter: blur(4px); } }
+
+/* ---------- Hintergrund: Aurora + Partikel ---------- */
+.aurora { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: -1; }
+.aurora i { position: absolute; width: 46vmax; height: 46vmax; border-radius: 50%; filter: blur(70px); opacity: .5; will-change: transform; }
+.aurora i:nth-child(1) { left: -12vmax; top: -16vmax; background: radial-gradient(circle, var(--accent-glow), transparent 68%); animation: orb1 22s ease-in-out infinite alternate; }
+.aurora i:nth-child(2) { right: -14vmax; top: 6vmax; background: radial-gradient(circle, color-mix(in srgb, var(--info) 26%, transparent), transparent 68%); animation: orb2 28s ease-in-out infinite alternate; opacity: .38; }
+.aurora i:nth-child(3) { left: 24%; bottom: -26vmax; background: radial-gradient(circle, color-mix(in srgb, var(--good) 18%, transparent), transparent 68%); animation: orb3 32s ease-in-out infinite alternate; opacity: .3; }
+@keyframes orb1 { to { transform: translate(14vmax, 10vmax) scale(1.18); } } @keyframes orb2 { to { transform: translate(-16vmax, 12vmax) scale(.9); } } @keyframes orb3 { to { transform: translate(10vmax, -12vmax) scale(1.25); } }
+.fx-particles { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: -1; }
+.hero, .auth-wrap { position: relative; isolation: isolate; }
+.fx-bg { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; opacity: .9; }
+.fx-bg .aurora { z-index: 0; } .fx-bg .fx-particles { z-index: 0; opacity: .55; }
+.hero .aurora { inset: -60px -50vw; }
+html, body { overflow-x: clip; } .hero { transform: translateY(calc(var(--sy, 0) * -28px)); }
+.hero .aurora i { transform: translateY(calc(var(--sy, 0) * 60px)); }
+
+/* ---------- Landing ---------- */
+h1[data-split] .w { display: inline-block; opacity: 0; transform: translateY(.6em) rotateX(-50deg); filter: blur(8px); animation: word .9s var(--out) forwards; animation-delay: calc(.15s + var(--w, 0) * .11s); transform-origin: 50% 100%; }
+@keyframes word { to { opacity: 1; transform: none; filter: none; } }
+.hero h1 em { background: linear-gradient(100deg, var(--accent) 20%, var(--accent-2) 45%, #fff6dc 50%, var(--accent-2) 55%, var(--accent) 80%); background-size: 250% 100%; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; animation: gold 5s ease-in-out infinite; }
+.hero h1.split { background: none; -webkit-text-fill-color: initial; color: var(--text); }
+.hero h1.split .w { background: linear-gradient(180deg, var(--text) 30%, color-mix(in srgb, var(--text) 45%, transparent)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; padding-bottom: .08em; }
+.hero h1.split em { background: none; -webkit-text-fill-color: initial; animation: none; }
+.hero h1.split em .w { background: linear-gradient(100deg, var(--accent) 20%, var(--accent-2) 45%, #fff6dc 50%, var(--accent-2) 55%, var(--accent) 80%); background-size: 250% 100%; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; animation: word .9s var(--out) forwards, gold 5s ease-in-out 1.2s infinite; animation-delay: calc(.15s + var(--w, 0) * .11s), 1.2s; }
+@keyframes gold { 0%, 20% { background-position: 100% 50%; } 80%, 100% { background-position: 0 50%; } }
+html:not([data-motion=off]) .hero .eyebrow { animation: stagger .9s var(--out) both; }
+html:not([data-motion=off]) .hero .lead { animation: stagger 1s .55s var(--out) both; }
+html:not([data-motion=off]) .hero .row.center { animation: stagger 1s .8s var(--out) both; }
+html:not([data-motion=off]) .timeline-strip .chip { animation: chipfloat 6s ease-in-out infinite; animation-delay: calc(var(--i, 0) * -1.1s); }
+@keyframes chipfloat { 50% { transform: translateY(-5px); } }
+html:not([data-motion=off]) .hero .btn.primary.lg { animation: sheen 6s linear infinite, glowpulse 3.4s ease-in-out infinite; }
+@keyframes glowpulse { 0%, 100% { box-shadow: 0 10px 28px -10px var(--accent-glow), 0 0 0 0 var(--accent-glow); } 50% { box-shadow: 0 14px 40px -8px var(--accent-glow), 0 0 0 12px transparent; } }
+.feature .ic { transition: transform .5s var(--spring), background .3s; } .feature:hover .ic { transform: scale(1.18) rotate(-8deg); }
+html:not([data-motion=off]) .quote { background: linear-gradient(100deg, var(--text-dim) 30%, var(--accent-2) 50%, var(--text-dim) 70%); background-size: 250% 100%; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; animation: gold 9s ease-in-out infinite; }
+#tp-progress { position: fixed; z-index: 300; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transform: scaleX(0); transform-origin: 0 50%; box-shadow: 0 0 12px var(--accent-glow); pointer-events: none; }
+
+/* ---------- Marke: Sanduhr ---------- */
+html:not([data-motion=off]) .brand .mark { animation: markglow 4s ease-in-out infinite; }
+@keyframes markglow { 50% { box-shadow: 0 0 0 7px transparent, 0 8px 26px -4px var(--accent-glow); } }
+
+/* ---------- Spiel: HUD, Ringe, Navigation ---------- */
+html:not([data-motion=off]) .ring { animation: ringfill 1.3s var(--out) both; transition: --v .8s var(--out); }
+html:not([data-motion=off]) .ring.bad { animation: ringfill 1.3s var(--out) both, ringpulse 1.6s 1.3s ease-in-out infinite; }
+@keyframes ringfill { from { --v: 0; } }
+html:not([data-motion=off]) .hud { animation: hudin .7s var(--out) both; } @keyframes hudin { from { opacity: 0; transform: translateY(-14px); } }
+html:not([data-motion=off]) .hud .meter { animation: stagger .7s var(--out) both; } .hud .meter:nth-child(2) { animation-delay: .08s !important; } .hud .meter:nth-child(3) { animation-delay: .16s !important; } .hud .meter:nth-child(4) { animation-delay: .24s !important; }
+.res.flash-up b { animation: flashup 1s ease-out; } .res.flash-down b { animation: flashdown 1s ease-out; }
+@keyframes flashup { 0% { color: var(--good); text-shadow: 0 0 18px var(--good); transform: scale(1.14); } 100% { transform: none; } }
+@keyframes flashdown { 0% { color: var(--bad); text-shadow: 0 0 18px var(--bad); transform: scale(.92); } 100% { transform: none; } }
+html:not([data-motion=off]) .side .nav { transition: transform .25s var(--spring), background .2s, color .2s; }
+html:not([data-motion=off]) .side .nav:hover { transform: translateY(-3px); }
+html:not([data-motion=off]) .side .nav.on .i { animation: navbounce .6s var(--spring); }
+@keyframes navbounce { 0% { transform: scale(.6) rotate(-14deg); } 100% { transform: none; } }
+html:not([data-motion=off]) .side .nav .badge, html:not([data-motion=off]) .side .nav .dot { animation: badgepop .5s var(--spring) both, badgepulse 2.2s 1s ease-in-out infinite; }
+@keyframes badgepop { from { transform: scale(0); } } @keyframes badgepulse { 50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--bad) 25%, transparent); } }
+[data-motion-toggle].on, [data-motion-toggle][aria-pressed=true] { color: var(--accent); }
+html:not([data-motion=off]) [data-motion-toggle] .i { animation: twinkle 3s ease-in-out infinite; } @keyframes twinkle { 50% { transform: scale(1.2) rotate(12deg); } }
+
+/* ---------- Modal, Toast, Banner ---------- */
+html:not([data-motion=off]) .modal-backdrop { animation: fade .3s ease both; backdrop-filter: blur(0); animation-name: fade, blurin; animation-duration: .3s, .5s; animation-fill-mode: both; }
+@keyframes blurin { from { backdrop-filter: blur(0); } to { backdrop-filter: blur(6px); } }
+html:not([data-motion=off]) .modal { animation: modalpop .5s var(--spring) both; }
+@keyframes modalpop { from { opacity: 0; transform: translateY(30px) scale(.9) rotateX(8deg); } }
+html:not([data-motion=off]) .toast { animation: toastslide .55s var(--spring) both; position: relative; overflow: hidden; }
+.toast::after { content: ''; position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: currentColor; opacity: .35; transform-origin: 0 50%; animation: toastbar 3.8s linear forwards; }
+.toast.good { color: var(--good); } .toast.bad { color: var(--bad); } .toast.warn { color: var(--warn); } .toast > div { color: var(--text); }
+@keyframes toastslide { from { opacity: 0; transform: translateX(60px) scale(.9); } } @keyframes toastbar { to { transform: scaleX(0); } }
+html:not([data-motion=off]) .alert.ann { animation: dropin .7s var(--spring) both; } @keyframes dropin { from { opacity: 0; transform: translateY(-24px) scale(.96); } }
+
+/* ---------- Zeitung ---------- */
+html:not([data-motion=off]) .paper .news-item.lead h3 { background: linear-gradient(100deg, currentColor 40%, var(--accent) 50%, currentColor 60%); background-size: 260% 100%; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; animation: gold 7s ease-in-out infinite; }
+html:not([data-motion=off]) .news-item.flash { animation: flashbar 2.4s ease-in-out infinite; } @keyframes flashbar { 50% { box-shadow: -4px 0 0 0 #a2300f, 0 0 24px -8px #a2300f; } }
+html:not([data-motion=off]) .reader-body.turn { animation: pageturn .55s var(--out); transform-origin: 0 50%; }
+@keyframes pageturn { from { opacity: 0; transform: perspective(900px) rotateY(-14deg) translateX(26px); } }
+html:not([data-motion=off]) .reader-body.turn.back { animation-name: pageturnback; } @keyframes pageturnback { from { opacity: 0; transform: perspective(900px) rotateY(14deg) translateX(-26px); } }
+html:not([data-motion=off]) .tabs a, html:not([data-motion=off]) .tab { transition: background .25s, color .25s, transform .25s var(--spring); }
+
+/* ---------- Karte & Stadt ---------- */
+html:not([data-motion=off]) .pulse-ring { animation: maprings 2.4s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes maprings { 0% { transform: scale(.55); opacity: .9; } 100% { transform: scale(1.7); opacity: 0; } }
+
+/* ---------- Skeleton ---------- */
+.skel { position: relative; overflow: hidden; } html:not([data-motion=off]) .skel::after { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 20%, color-mix(in srgb, var(--text) 9%, transparent) 50%, transparent 80%); transform: translateX(-100%); animation: skelwave 1.4s infinite; }
+@keyframes skelwave { to { transform: translateX(100%); } }
+
+/* ---------- Konfetti ---------- */
+.fx-confetti { position: fixed; inset: 0; z-index: 400; pointer-events: none; }
+
+/* ---------- Admin: Charts & Tabellen ---------- */
+html:not([data-motion=off]) body.admin .adm-main > * { animation: stagger .6s var(--out) both; }
+html:not([data-motion=off]) body.admin .adm-main > *:nth-child(2) { animation-delay: .05s; } html:not([data-motion=off]) body.admin .adm-main > *:nth-child(3) { animation-delay: .1s; } html:not([data-motion=off]) body.admin .adm-main > *:nth-child(n+4) { animation-delay: .15s; }
+html:not([data-motion=off]) body.admin .adm-side nav a { transition: background .15s, color .15s, padding .2s var(--out); } html:not([data-motion=off]) body.admin .adm-side nav a:hover { padding-left: .95rem; }
+html:not([data-motion=off]) body.admin .table tbody tr { animation: rowin .5s var(--out) both; } html:not([data-motion=off]) body.admin .table tbody tr:nth-child(2) { animation-delay: .03s; } html:not([data-motion=off]) body.admin .table tbody tr:nth-child(3) { animation-delay: .06s; } html:not([data-motion=off]) body.admin .table tbody tr:nth-child(4) { animation-delay: .09s; } html:not([data-motion=off]) body.admin .table tbody tr:nth-child(n+5) { animation-delay: .12s; }
+@keyframes rowin { from { opacity: 0; transform: translateX(-12px); } }
+html:not([data-motion=off]) .ch-bar { transform-box: fill-box; transform-origin: 50% 100%; animation: growbar .9s var(--out) both; animation-delay: calc(var(--k, 0) * 18ms); }
+@keyframes growbar { from { transform: scaleY(0); } }
+html:not([data-motion=off]) .ch-line { stroke-dasharray: var(--len, 2000); stroke-dashoffset: var(--len, 2000); animation: drawline 1.5s var(--out) .15s forwards; }
+@keyframes drawline { to { stroke-dashoffset: 0; } }
+html:not([data-motion=off]) .ch-area { animation: fade 1.4s ease .3s both; }
+html:not([data-motion=off]) .ch-seg { animation: sweep 1.2s var(--out) both; animation-delay: calc(var(--k, 0) * 90ms); } @keyframes sweep { from { stroke-dasharray: 0 999; opacity: 0; } }
+html:not([data-motion=off]) .ch-htrack i { transform-origin: 0 50%; animation: growx 1s var(--out) both; animation-delay: calc(var(--k, 0) * 60ms); } @keyframes growx { from { transform: scaleX(0); } }
+html:not([data-motion=off]) .kpi .ico { animation: icopop .8s var(--spring) both; } @keyframes icopop { from { transform: scale(.4) rotate(-20deg); opacity: 0; } }
+
+/* ---------- Aus-Schalter ---------- */
+html[data-motion=off] *, html[data-motion=off] *::before, html[data-motion=off] *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+html[data-motion=off] .rv { opacity: 1 !important; transform: none !important; filter: none !important; }
+html[data-motion=off] .aurora, html[data-motion=off] .fx-particles, html[data-motion=off] .fx-confetti, html[data-motion=off] #tp-progress { display: none !important; }
+html[data-motion=off] h1[data-split] .w { opacity: 1; transform: none; filter: none; }
+@media (prefers-reduced-motion: reduce) { html:not([data-motion=on]) .aurora i, html:not([data-motion=on]) .fx-particles { display: none; } }

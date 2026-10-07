@@ -18,7 +18,8 @@ function openReader(n, e) {
   const body = m.el.querySelector('#rBody'); const dots = m.el.querySelector('#rDots');
   const prev = m.el.querySelector('#rPrev'); const next = m.el.querySelector('#rNext');
   const show = (k) => {
-    i = Math.max(0, Math.min(pages.length - 1, k));
+    const back = k < i; i = Math.max(0, Math.min(pages.length - 1, k));
+    body.classList.remove('turn', 'back'); void body.offsetWidth; body.classList.add('turn'); if (back) body.classList.add('back');
     body.innerHTML = pages[i].split(/\n{2,}/).map((p) => `<p>${p.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])}</p>`).join('');
     body.scrollTop = 0;
     dots.textContent = pages.length > 1 ? `Seite ${i + 1} von ${pages.length}` : '';

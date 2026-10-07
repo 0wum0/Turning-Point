@@ -16,10 +16,11 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <script src="/js/theme.js"></script>
 <script src="/js/pwa.js" defer></script>
+<script src="/js/motion.js?v=<%= assetV %>" defer></script>
 <link rel="preload" href="/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/fraunces-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/css/app.css?v=<%= assetV %>">
 <% (typeof css !== 'undefined' ? css : []).forEach(function(c){ %><link rel="stylesheet" href="/css/<%= c %>.css?v=<%= assetV %>">
-<% }) %>
+<% }) %><link rel="stylesheet" href="/css/motion.css?v=<%= assetV %>">
 </head>
 <body class="<%= typeof bodyClass !== 'undefined' ? bodyClass : '' %>">

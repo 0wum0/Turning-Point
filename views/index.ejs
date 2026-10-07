@@ -3,7 +3,7 @@
 <main>
   <section class="hero container">
     <span class="eyebrow"><%- icon('hourglass') %> <%= landing.eyebrow %></span>
-    <h1><% landing.title.split('\n').forEach(function(l, i){ %><% if (i) { %><br><em><%= l %></em><% } else { %><%= l %><% } %><% }) %></h1>
+    <h1 data-split><% landing.title.split('\n').forEach(function(l, i){ %><% if (i) { %><br><em><%= l %></em><% } else { %><%= l %><% } %><% }) %></h1>
     <p class="lead"><%= landing.lead %></p>
     <div class="row center">
       <% if (user) { %><a class="btn primary lg" href="/play"><%- icon('play') %> <%= landing.ctaPlay %></a>
