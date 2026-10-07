@@ -49,6 +49,7 @@ export async function api(method, url, body) {
   return data;
 }
 
+import { ping } from './audio.js';
 /* ---------- Toasts ---------- */
 let toastBox;
 export function toast(msg, level = 'good') {
@@ -57,7 +58,7 @@ export function toast(msg, level = 'good') {
   const t = document.createElement('div'); t.className = `toast ${level}`;
   const ic = level === 'bad' ? 'circle-alert' : level === 'warn' ? 'triangle-alert' : 'circle-check';
   t.innerHTML = `${toStr(icon(ic))}<div>${esc(msg)}</div>`;
-  toastBox.appendChild(t);
+  toastBox.appendChild(t); ping(level === 'good' ? 'good' : level);
   setTimeout(() => { t.style.transition = 'opacity .3s, transform .3s'; t.style.opacity = '0'; t.style.transform = 'translateY(8px)'; setTimeout(() => t.remove(), 320); }, level === 'bad' ? 6000 : 3800);
 }
 

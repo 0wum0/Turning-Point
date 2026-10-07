@@ -65,6 +65,13 @@ Im Admin-Panel unter **System** siehst du jederzeit, welcher Ordner gewählt wur
 | `TP_SESSION_SECRET`, `TP_SITE_URL` | nur zusammen mit den `TP_DB_*`-Variablen relevant |
 | `TP_API_RATE` | API-Anfragen/Minute je Spieler (Standard 180) |
 
+## 2b. Zahlungen, Werbung, Offerwall (Admin → Einstellungen)
+
+- **Stripe:** Modus `stripe`, Secret Key und Webhook-Secret eintragen. Webhook in Stripe auf `https://DEINE-DOMAIN/webhooks/stripe` mit den Ereignissen `checkout.session.completed`, `invoice.paid`, `customer.subscription.deleted`. Für die Dauerkarte die Preis-ID (`price_…`) eintragen. Gutschriften sind idempotent (Stripe-Session-ID).
+- **Belohnungswerbung:** Anbieter `simulated` (Platzhalter) oder `custom`: URL einer Anzeigen-Seite deines Netzwerks, die per iframe lädt und nach Abschluss `window.parent.postMessage({type:"tp-ad-complete"}, "*")` sendet. Der Server prüft zusätzlich Mindestdauer, Einmaligkeit und Tageslimit. Die Herkunft der URL wird automatisch in der CSP (`frame-src`) freigegeben.
+- **Offerwall:** iframe-URL (`{uid}` = Spieler-ID) und Postback `GET /webhooks/offerwall?uid=&coins=&txid=&sig=` mit `sig = HMAC-SHA256(Geheimnis, "uid|coins|txid")`.
+- Im Modus `test` werden Käufe ohne Zahlung gutgeschrieben – nur zum Testen, vor dem Livegang auf `stripe` oder `off` stellen.
+
 ## 3. Lokale Entwicklung
 
 ```bash

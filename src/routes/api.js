@@ -10,6 +10,8 @@ const actions = require('../game/actions');
 const { edition } = require('../game/newspaper');
 const { yearOf } = require('../game/calendar');
 const { audit } = require('../lib/audit');
+const stripe = require('../lib/stripe');
+const config = require('../config');
 
 const router = express.Router();
 const wrap = (fn) => (req, res, next) => fn(req, res, next).catch((e) => {
@@ -106,7 +108,8 @@ router.post('/ads/start', wrap(async (req, res) => {
   if (n >= settings.get('ads.daily_cap')) throw new actions.ActionError('Du hast heute genug Werbung gesehen. Morgen geht es weiter.');
   const token = crypto.randomBytes(16).toString('hex');
   await db.query('INSERT INTO ad_claims (user_id, token, purpose, started_at) VALUES (?,?,?,?)', [req.user.id, token, purpose, Date.now()]);
-  res.json({ ok: true, token, seconds: settings.get('ads.min_seconds'), provider: settings.get('ads.provider') });
+  const provider = settings.get('ads.provider'); const url = settings.get('ads.custom_url');
+  res.json({ ok: true, token, seconds: settings.get('ads.min_seconds'), provider, url: provider === 'custom' && url ? `${url}${String(url).includes('?') ? '&' : '?'}tp_token=${token}` : null });
 }));
 
 router.post('/ads/claim', wrap(async (req, res) => {
@@ -143,6 +146,27 @@ router.post('/ads/claim', wrap(async (req, res) => {
 router.get('/shop', wrap(async (req, res) => {
   res.json({ ok: true, mode: settings.get('payments.mode'), packages: settings.get('packages'), subscription: settings.get('subscription') });
 }));
+router.post('/shop/checkout', wrap(async (req, res) => {
+  if (settings.get('payments.mode') !== 'stripe') throw new actions.ActionError('Online-Zahlungen sind nicht aktiv.');
+  const secret = settings.get('payments.stripe_secret');
+  if (!secret) throw new actions.ActionError('Zahlungsanbieter ist nicht konfiguriert.');
+  const origin = (config.loadConfig() || {}).siteUrl || `${req.protocol}://${req.get('host')}`;
+  const metadata = { user_id: String(req.user.id) };
+  const urls = { successUrl: `${origin}/play#/shop`, cancelUrl: `${origin}/play#/shop`, email: req.user.email };
+  let session;
+  if (req.body.id === 'subscription') {
+    const sub = settings.get('subscription'); const price = settings.get('payments.stripe_sub_price');
+    if (!sub.enabled || !price) throw new actions.ActionError('Die Dauerkarte ist nicht verfügbar.');
+    session = await stripe.createCheckout(secret, { ...urls, metadata: { ...metadata, package_id: 'subscription' }, subscriptionPriceId: price });
+  } else {
+    const pkg = (settings.get('packages') || []).find((p) => p.id === req.body.id);
+    if (!pkg) throw new actions.ActionError('Paket nicht gefunden.');
+    session = await stripe.createCheckout(secret, { ...urls, metadata: { ...metadata, package_id: pkg.id }, name: pkg.name, amountCents: pkg.price_cents, currency: settings.get('payments.currency') });
+  }
+  await audit(req, 'checkout_start', req.body.id);
+  res.json({ ok: true, url: session.url });
+}));
+
 router.post('/shop/buy', wrap(async (req, res) => {
   if (settings.get('payments.mode') !== 'test') throw new actions.ActionError('Käufe sind noch nicht freigeschaltet – ein Zahlungsanbieter muss erst im Admin-Bereich verbunden werden.');
   const pkg = (settings.get('packages') || []).find((p) => p.id === req.body.id);

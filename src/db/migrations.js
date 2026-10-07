@@ -148,6 +148,21 @@ const MIGRATIONS = [
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     ],
   },
+  {
+    id: '002_payments',
+    up: [
+      'ALTER TABLE users ADD COLUMN sub_until BIGINT NULL, ADD COLUMN stripe_sub VARCHAR(80) NULL, ADD COLUMN stripe_customer VARCHAR(80) NULL',
+      'ALTER TABLE purchases ADD COLUMN provider_ref VARCHAR(120) NULL, ADD UNIQUE KEY uq_purchases_ref (provider_ref)',
+      `CREATE TABLE IF NOT EXISTS offer_events (
+        id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        txid VARCHAR(120) NOT NULL,
+        user_id INT UNSIGNED NOT NULL,
+        coins INT NOT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_offer_txid (txid)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    ],
+  },
 ];
 
 async function ensureTable(db) {

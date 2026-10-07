@@ -222,12 +222,16 @@ const GROUPS = [
   ] },
   { id: 'coins', title: 'Coins & Werbung', icon: 'coins', fields: [
     ['coins.start', 'Start-Coins neuer Spieler', 'int'], ['coins.per_child', 'Coins je Kind (einmalig)', 'int'], ['coins.legacy_bonus', 'Coin-Bonus bei Vollendung des Zyklus (22. Jh.)', 'int'], ['coins.ad_video', 'Coins je Belohnungsvideo', 'int'], ['coins.ad_base', 'Coins Grundbelohnung', 'int'],
-    ['coins.move_per_100km', 'Coin-Preis Umzug je 100 km', 'int'], ['ads.enabled', 'Belohnungswerbung aktiv', 'bool'], ['ads.provider', 'Werbe-Anbieter', 'select', 'simulated = Platzhalter ohne echte Werbung', ['simulated']],
+    ['coins.move_per_100km', 'Coin-Preis Umzug je 100 km', 'int'], ['ads.enabled', 'Belohnungswerbung aktiv', 'bool'], ['ads.provider', 'Werbe-Anbieter', 'select', 'simulated = Platzhalter · custom = eigene Anzeigen-Seite (iframe) deines Werbenetzwerks', ['simulated', 'custom']],
+    ['ads.custom_url', 'Anzeigen-URL (iframe, nur bei „custom“)', 'text', 'Die Seite muss nach Abschluss window.parent.postMessage({type:"tp-ad-complete"}, "*") senden. Der Parameter tp_token wird angehängt.'],
+    ['offerwall.url', 'Offerwall-URL (iframe, {uid} = Spieler-ID)', 'text'], ['offerwall.secret', 'Offerwall-Postback-Geheimnis', 'secret', 'Postback: GET /webhooks/offerwall?uid=&coins=&txid=&sig= · sig = HMAC-SHA256(Geheimnis, "uid|coins|txid")'],
     ['ads.min_seconds', 'Mindest-Anzeigedauer (Sekunden)', 'int'], ['ads.daily_cap', 'Max. Videos je Spieler / 24 h', 'int'], ['ads.efs_reward', 'EFS je Video (Zeit-Bonus)', 'int'],
   ] },
   { id: 'economy', title: 'Wirtschaft', icon: 'trending-up', fields: [['economy', 'Wirtschaftsdaten (JSON): Preisindex, Essen, Unterkunft, Immobilien, Versicherungen …', 'json']] },
   { id: 'payments', title: 'Zahlungen', icon: 'credit-card', fields: [
-    ['payments.mode', 'Zahlungsmodus', 'select', 'off = Shop gesperrt · test = Käufe werden ohne Zahlung gutgeschrieben (nur zum Testen!)', ['off', 'test']],
+    ['payments.mode', 'Zahlungsmodus', 'select', 'off = Shop gesperrt · test = Gutschrift ohne Zahlung (nur Test!) · stripe = Stripe Checkout', ['off', 'test', 'stripe']],
+    ['payments.stripe_secret', 'Stripe Secret Key (sk_live_… / sk_test_…)', 'secret'], ['payments.stripe_webhook_secret', 'Stripe Webhook-Signing-Secret (whsec_…)', 'secret', 'Webhook-URL in Stripe: https://DEINE-DOMAIN/webhooks/stripe · Ereignisse: checkout.session.completed, invoice.paid, customer.subscription.deleted'],
+    ['payments.stripe_sub_price', 'Stripe Preis-ID der Dauerkarte (price_…)', 'text'], ['payments.currency', 'Währung (ISO, z. B. eur)', 'text'],
     ['packages', 'Pakete (JSON)', 'json'], ['subscription', 'Dauerkarte (JSON)', 'json'],
   ] },
   { id: 'mail', title: 'E-Mail (SMTP)', icon: 'mail', fields: [['mail.smtp', 'SMTP', 'smtp']] },
@@ -274,6 +278,7 @@ router.post('/settings/:group', wrap(async (req, res) => {
       else if (type === 'smtp') {
         const old = settings.get('mail.smtp');
         val = { host: clean(req.body['smtp_host'], 200), port: int(req.body['smtp_port'], 587), secure: req.body['smtp_secure'] === '1', user: clean(req.body['smtp_user'], 200), pass: req.body['smtp_pass'] ? String(req.body['smtp_pass']).slice(0, 200) : (old.pass || ''), from: clean(req.body['smtp_from'], 200) };
+      } else if (type === 'secret') { val = raw ? String(raw).slice(0, 300) : (settings.get(key) || '');
       } else if (type === 'select') { val = String(raw); if (!(f[4] || []).includes(val)) throw new Error(`${f[1]}: ungültiger Wert.`); }
       else val = String(raw == null ? '' : raw).slice(0, 20000);
       pending.push([key, val]);
@@ -317,7 +322,7 @@ router.post('/system/:action', wrap(async (req, res) => {
 router.get('/export', wrap(async (req, res) => {
   const data = {
     exportedAt: new Date().toISOString(), version: APP_VERSION,
-    settings: settings.all(), cities: await db.query('SELECT slug, name, state, lat, lon, size_tier, price_factor, description, active FROM cities'),
+    settings: (() => { const a = settings.all(); for (const k of ['payments.stripe_secret', 'payments.stripe_webhook_secret', 'offerwall.secret']) delete a[k]; if (a['mail.smtp']) a['mail.smtp'] = { ...a['mail.smtp'], pass: '' }; return a; })(), cities: await db.query('SELECT slug, name, state, lat, lon, size_tier, price_factor, description, active FROM cities'),
     professions: await db.query('SELECT * FROM professions'),
   };
   res.setHeader('Content-Disposition', 'attachment; filename="turning-point-config.json"');

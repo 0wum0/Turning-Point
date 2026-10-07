@@ -40,14 +40,21 @@ const DEFAULTS = {
   'coins.ad_video': 5,
   'coins.move_per_100km': 1,
   'ads.enabled': true,
-  'ads.provider': 'simulated',
+  'ads.provider': 'simulated',     // simulated | custom (iframe-URL des Werbenetzwerks)
+  'ads.custom_url': '',
+  'offerwall.url': '',               // iframe-URL, {uid} wird ersetzt
+  'offerwall.secret': '',            // Postback-Signatur (HMAC-SHA256)
   'ads.min_seconds': 8,
   'ads.daily_cap': 50,
   'ads.efs_reward': 20,
   'legal.impressum': '',
   'legal.datenschutz': '',
 
-  'payments.mode': 'off',            // off | test (Testkäufe schreiben direkt gut)
+  'payments.mode': 'off',            // off | test (Testkäufe schreiben direkt gut) | stripe
+  'payments.stripe_secret': '',
+  'payments.stripe_webhook_secret': '',
+  'payments.stripe_sub_price': '',   // Preis-ID (price_…) der Dauerkarte
+  'payments.currency': 'eur',
   'packages': [
     { id: 'coins_s', name: '60 Coins', price_cents: 199, coins: 60, efs: 0, money: 0 },
     { id: 'coins_m', name: '160 Coins', price_cents: 399, coins: 160, efs: 0, money: 0 },

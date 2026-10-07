@@ -11,6 +11,7 @@ import business from './views/business.js';
 import society from './views/society.js';
 import shop from './views/shop.js';
 import { renderCreate, renderHeir, renderGameOver } from './screens.js';
+import * as audio from './audio.js';
 
 const PAGES = [overview, newspaper, map, work, business, society, housing, household, family, legacy, shop];
 const byId = Object.fromEntries(PAGES.map((p) => [p.id, p]));
@@ -25,7 +26,7 @@ function setView(view) {
   ctx.view = view;
   if (view) {
     ctx.coins = view.coins; ctx.efsPool = view.efs.pool;
-    document.documentElement.dataset.era = String(view.date.eraKey);
+    document.documentElement.dataset.era = String(view.date.eraKey); audio.setEra(view.date.eraKey);
   }
 }
 
@@ -73,6 +74,7 @@ function renderHud() {
     <div class="hud-meters">
       ${[['fridge', 'Kühlschrank', 'refrigerator'], ['wellbeing', 'Wohlbefinden', 'smile'], ['rest', 'Erholung', 'moon'], ['health', 'Gesundheit', 'heart-pulse']].map((x) => html`<button class="meter" data-meter="${x[0]}" aria-label="${x[1]}: ${m[x[0]]} %">${ring(m[x[0]], x[1], x[2], { size: 44 })}<span class="mlabel">${x[1]}</span></button>`)}
     </div>
+    <button class="btn ghost sm" data-sound aria-label="Ton an/aus" title="Musik & Töne">${icon(audio.isOn() ? 'volume-2' : 'volume-x')}</button>
     <button class="btn ghost sm" data-theme-toggle aria-label="Farbschema wechseln">${icon('sun-medium')}</button>
     <form method="post" action="/logout" class="logout"><input type="hidden" name="_csrf" value="${document.querySelector('meta[name=csrf-token]').content}"><button class="btn ghost sm" aria-label="Abmelden" title="Abmelden">${icon('log-out')}</button></form>`);
   const hintLevel = {};
@@ -149,13 +151,21 @@ async function watchAd(purpose) {
   try { started = await api('POST', '/api/ads/start', { purpose }); } catch (e) { toast(e.message, 'bad'); return false; }
   const secs = started.seconds;
   return new Promise((resolve) => {
-    let left = secs; let done = false;
+    let left = secs; let done = false; const cleanup = { fn: null };
     const m = modal(html`<h3>${icon('video')} Anzeige</h3>
-      <div class="ad-box"><div class="ad-fake"><b>Hier läuft später die Belohnungsanzeige deines Werbenetzwerks.</b><span class="dim small">Platzhalter · Anbieter: ${started.provider}</span></div>
+      <div class="ad-box">${started.url ? html`<iframe class="ad-frame" src="${started.url}" title="Anzeige" sandbox="allow-scripts allow-same-origin allow-popups"></iframe>` : html`<div class="ad-fake"><b>Hier läuft später die Belohnungsanzeige deines Werbenetzwerks.</b><span class="dim small">Platzhalter (simuliert)</span></div>`}
       <div class="ad-count" id="adCount">${left}</div></div>
-      <div class="row spread mt"><button class="btn ghost" data-close="cancel">Abbrechen</button><button class="btn primary" id="adClaim" disabled>Belohnung abholen</button></div>`, { dismissable: false, onClose: () => { clearInterval(t); if (!done) resolve(false); } });
+      <div class="row spread mt"><button class="btn ghost" data-close="cancel">Abbrechen</button><button class="btn primary" id="adClaim" disabled>Belohnung abholen</button></div>`, { dismissable: false, onClose: () => { clearInterval(t); if (cleanup.fn) cleanup.fn(); if (!done) resolve(false); } });
     const cnt = m.el.querySelector('#adCount'); const btn = m.el.querySelector('#adClaim');
-    const t = setInterval(() => { left--; cnt.textContent = Math.max(0, left); if (left <= 0) { clearInterval(t); btn.disabled = false; cnt.textContent = '✓'; } }, 1000);
+    let adDone = !started.url; let timeUp = false;
+    const ready = () => { if (adDone && timeUp) { btn.disabled = false; cnt.textContent = '✓'; } };
+    const t = setInterval(() => { left--; cnt.textContent = Math.max(0, left); if (left <= 0) { clearInterval(t); timeUp = true; ready(); } }, 1000);
+    if (started.url) {
+      const origin = new URL(started.url).origin;
+      const onMsg = (ev) => { if (ev.origin === origin && ev.data && ev.data.type === 'tp-ad-complete') { adDone = true; ready(); } };
+      window.addEventListener('message', onMsg);
+      cleanup.fn = () => window.removeEventListener('message', onMsg);
+    }
     btn.onclick = async () => {
       btn.disabled = true;
       try { const r = await api('POST', '/api/ads/claim', { token: started.token }); done = true; setView(r.view); toast(r.message); m.close(); resolve(true); renderHud(); }
@@ -169,6 +179,7 @@ document.addEventListener('click', (e) => {
   const g = e.target.closest('[data-go]'); if (g && g.closest('#hud')) { e.preventDefault(); go(g.dataset.go); }
   const mt = e.target.closest('[data-meter]');
   if (mt) { const k = mt.dataset.meter; const lab = { fridge: 'Kühlschrank', wellbeing: 'Wohlbefinden', rest: 'Erholung', health: 'Gesundheit' }[k]; modal(html`<h3>${icon('info')} ${lab}: ${ctx.view.meters[k]} %</h3><ol class="info-steps">${['Was ist das?', 'Warum ist das wichtig?', 'Was kann ich tun?'].map((t, i) => html`<li><div><b>${t}</b>${METER_INFO[k][i]}</div></li>`)}</ol><div class="row end mt"><button class="btn primary" data-close="1">Verstanden</button></div>`); }
+  if (e.target.closest('#hud [data-sound]')) { audio.toggle(); renderHud(); }
   const th = e.target.closest('#hud [data-theme-toggle]');
   if (th) { const c = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light'; document.documentElement.setAttribute('data-theme', c); try { localStorage.setItem('tp-theme', c); } catch (_) {} }
 });
@@ -208,6 +219,7 @@ setInterval(async () => {
 }, 120000);
 
 /* ---------- Start ---------- */
+audio.resumeOnGesture();
 (async function boot() {
   try {
     const [world, st] = await Promise.all([api('GET', '/api/world'), api('GET', '/api/state')]);

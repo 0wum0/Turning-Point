@@ -13,6 +13,15 @@ const { csrf, escapeHtml } = require('./lib/security');
 
 const APP_VERSION = require('../package.json').version;
 
+/** Erlaubte iframe-Herkunft für Werbe-/Offerwall-Anbieter (aus den Admin-Einstellungen). */
+function frameOrigins() {
+  const out = [];
+  for (const k of ['ads.custom_url', 'offerwall.url']) {
+    try { const v = settings.get(k); if (v) out.push(new URL(String(v).replace('{uid}', '0')).origin); } catch (_) { /* ungültig */ }
+  }
+  return out.length ? out.join(' ') : "'self'";
+}
+
 function createApp(cfg) {
   const app = express();
   app.disable('x-powered-by');
@@ -28,7 +37,7 @@ function createApp(cfg) {
       useDefaults: false,
       directives: {
         defaultSrc: ["'self'"], scriptSrc: ["'self'"], styleSrc: ["'self'", "'unsafe-inline'"], imgSrc: ["'self'", 'data:', 'blob:'],
-        fontSrc: ["'self'"], connectSrc: ["'self'"], mediaSrc: ["'self'"], objectSrc: ["'none'"], frameAncestors: ["'none'"], baseUri: ["'self'"], formAction: ["'self'"],
+        fontSrc: ["'self'"], connectSrc: ["'self'"], mediaSrc: ["'self'"], frameSrc: ["'self'", (req, res) => frameOrigins()], objectSrc: ["'none'"], frameAncestors: ["'none'"], baseUri: ["'self'"], formAction: ["'self'"],
       },
     },
     crossOriginEmbedderPolicy: false, crossOriginResourcePolicy: { policy: 'same-site' },
@@ -45,6 +54,7 @@ function createApp(cfg) {
     try { await db.query('SELECT 1'); res.json({ ok: true, version: APP_VERSION }); } catch (e) { res.status(503).json({ ok: false }); }
   });
 
+  app.use('/webhooks', require('./routes/webhooks')); // Roh-Body & Signatur, vor Parsern/CSRF
   app.use(express.urlencoded({ extended: false, limit: '100kb' }));
   app.use(express.json({ limit: '300kb' }));
 

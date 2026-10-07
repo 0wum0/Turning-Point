@@ -14,10 +14,10 @@ Stand: Phase 2/3 des Konzepts (technischer Prototyp → Web-Version). Die Kernsc
 | 11 Wohnen | ✅ | Straße (Tod nach ~3 Tagen) → Arbeitgeber → Pension → Miete → Eigentum → Villa |
 | 12–14 Berufe, Stufen, Studium | ✅ | Ausbildung kostenlos, 10 Jahre Erfahrung = erlernt, 5 Stufen, 3 kostenpflichtige Studien |
 | Berufswandel alle ~20 Jahre | ✅ | Nachfolge-Berufe (Schmied → Maschinenbauer → Mechatroniker …), Stellen entfallen |
-| 15, 17, 18 Unternehmen, Räume, Mitarbeiter, Manager | ⏳ | Qualifikation → `unlocks` ist vorbereitet (Berufstabelle), Betriebs-Modul folgt |
-| 16 Partner-Beruf eröffnet Betriebe | ⏳ | Partner-Beruf wird gespeichert, Betriebs-Effekt folgt mit dem Betriebs-Modul |
+| 15, 17, 18 Unternehmen, Räume, Mitarbeiter, Manager | ✅ | Betriebe in der Zeitung (Gewerbe), 3 Stufen je Beruf (z. B. Wirtshaus → Restaurant → Hotel), Räume gegen Geld + Coins, Mitarbeiter, Manager, Firmenkasse, bis zu 30 Betriebe |
+| 16 Partner-Beruf eröffnet Betriebe | ✅ | Beruf des zusammenlebenden Partners qualifiziert für Einstiegsbetriebe; verlässt er die Familie, kann der Betrieb zum Lost Place werden |
 | 19 Butler | ✅ | füllt Kühlschrank automatisch (ab großem Haus) |
-| 20 Politische Ämter | ⏳ | Phase 5 |
+| 20 Politische Ämter | ✅ | 6 Stufen (Ortsbeirat … Bundeskanzler), Wahlkampfkosten, Kraft/Gesundheit, Einkommen wächst, Einfluss bleibt über alle Leben |
 | 21 Versicherungen | ✅ | Hausrat, Gebäude, Kranken-Zusatz; ersetzt Schaden, nicht die Ausfallzeit |
 | 22–25 EFS (Zeit/Erfahrung) | ✅ | 365 EFS = 1 Jahr, 50/Tag + 50 Login, Karten-Funde, Fortschritts-Boni, Offline-Fortschritt |
 | 26–29 Coins | ✅ | Werbung (Platzhalter), 100 Coins je Kind, Preisleiter 50→25→13→7→4→2→1, bleiben über alle Leben |
@@ -29,14 +29,14 @@ Stand: Phase 2/3 des Konzepts (technischer Prototyp → Web-Version). Die Kernsc
 | 42–45 Zeitung → Internet (2002) | ✅ | Stellen, Wohnungen, Kontakte, Unwetter-Warnungen, Ratgeber; ab 2002 „Das Netz“ |
 | 46–48 ⓘ-Hilfen, visuelle Hinweise | ✅ | Problem → Bedeutung → Lösung, leuchtende Hinweise, kein Pflicht-Tutorial |
 | 49 Adaptives Glück | ✅ | still, erhöht positive Zufälle bei Not |
-| 50 Lotto/Casino | ⏳ | Phase 5 |
-| 51–53 Immobilien, Zustand, Lost Places | 🟡 | Wert & Zustand ✅; „Lost Place“ erst mit Betrieben |
+| 50 Lotto/Casino | ✅ | freiwillig; Lotto (Verlustgeschäft), Roulette ab 1950/21 Jahren |
+| 51–53 Immobilien, Zustand, Lost Places | ✅ | Wert & Zustand; geerbte Betriebe ohne Qualifikation verfallen über ~10 Jahre, wiederbelebbar |
 | 54 DM → Euro | ✅ | 2002, Beträge werden halbiert |
 | 55–58 Zyklus, 22. Jahrhundert, Neustart | ✅ / ⏳ | Zyklus endet 2100 mit Coin-Bonus, Neustart 1945 mit Meta-Fortschritt; weitere Jahrhunderte = Zieljahr im Admin + neue Berufe |
-| 60–68 Monetarisierung | 🟡 | Rewarded-Ads-Ablauf (Platzhalter-Anzeige, serverseitige Prüfung, Tageslimit), Paketshop im Testmodus. **Offen:** echtes Werbenetzwerk, Zahlungsanbieter (Stripe/PayPal), Abo, Offerwall |
+| 60–68 Monetarisierung | ✅ / 🟡 | Rewarded Ads (simuliert **oder** eigene Anzeigen-Seite per iframe + postMessage, serverseitige Prüfung, Tageslimit), Stripe Checkout + signierter Webhook (idempotent), Dauerkarte (Stripe-Abo, tägliche Vorteile), Offerwall-Postback (HMAC). **Ungetestet gegen echte Konten:** Stripe/Werbenetzwerk/Offerwall – bitte mit Testschlüsseln prüfen. PayPal nicht enthalten |
 | 69–71 Web-First, Registrierung, Cloud-Spielstand | ✅ | E-Mail-Bestätigung & Passwort-Reset (mit SMTP) |
 | 72 Android/iOS | ⏳ | Web-Version ist bewusst PWA-fähig vorbereitet (API-first) |
-| 75–76 Grafik/Audio | 🟡 | generative Stadtansichten + Admin-Upload eigener Bilder; Audio folgt |
+| 75–76 Grafik/Audio | ✅ | generative Stadtansichten + Admin-Upload eigener Bilder; Hintergrundmusik und Töne werden im Browser erzeugt (WebAudio, abschaltbar, epochenabhängig) |
 
 ✅ umgesetzt · 🟡 teilweise · ⏳ geplant
 
@@ -51,9 +51,8 @@ Stand: Phase 2/3 des Konzepts (technischer Prototyp → Web-Version). Die Kernsc
 
 ## Nächste Schritte (Vorschlag)
 
-1. Betriebs-Modul (Wirtshaus → Restaurant → Hotel, Räume, Mitarbeiter, Manager, Lost Places)
-2. Politische Ämter, Lotto/Casino
-3. Echte Werbe- und Zahlungsanbieter, Abo
-4. Bilder-Set je Epoche/Stadt (Admin-Upload ist fertig), Audio
-5. PWA/Capacitor-Hülle für Android/iOS
-6. Balancing mit echten Spielerdaten (Admin-Dashboard liefert die Basis)
+1. Echte Bilder je Epoche/Stadt (Admin-Upload ist fertig), eigene Musikstücke statt generierter Klänge
+2. PayPal als zweiter Zahlungsanbieter, rechtliche Texte (AGB/Widerruf) für den Shop
+3. PWA/Capacitor-Hülle für Android/iOS
+4. Balancing mit echten Spielerdaten (Admin-Dashboard liefert die Basis), weitere Jahrhunderte/Berufe ab 2025
+5. Mehr Zufallsereignisse für Betriebe (Inspektion, Streik, Wirtschaftskrise)

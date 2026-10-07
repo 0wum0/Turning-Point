@@ -3,7 +3,7 @@ const db = require('../db');
 const settings = require('../settings');
 const world = require('./world');
 const { advance } = require('./engine');
-const { createCharacter, validateCreation } = require('./state');
+const { createCharacter, validateCreation, parseState } = require('./state');
 const { createHeirState, planInheritance } = require('./heir');
 const { present } = require('./present');
 const actions = require('./actions');
@@ -54,13 +54,20 @@ function syncEfs(user, state, now, w) {
     user.efs_pool += whole;
   }
   const today = actions.berlinDay(now);
-  let bonus = 0;
+  let bonus = 0; let perks = null;
   if (user.login_bonus_date !== today) {
     bonus = settings.get('efs.login_bonus');
     user.efs_pool += bonus;
     user.login_bonus_date = today;
+    const sub = settings.get('subscription');
+    if (sub && sub.enabled && user.sub_until && Number(user.sub_until) > now) {
+      user.coins += sub.daily_coins || 0;
+      if (state && state.status === 'alive' && sub.daily_health_cards) state.cards.health += sub.daily_health_cards;
+      perks = { coins: sub.daily_coins || 0, cards: sub.daily_health_cards || 0 };
+    }
   }
-  return { offline, bonus };
+  if (state && state.status === 'alive' && user.meta.pendingMoney) { state.money += user.meta.pendingMoney; user.meta.pendingMoney = 0; }
+  return { offline, bonus, perks };
 }
 
 async function loadUser(conn, userId) {
@@ -96,7 +103,7 @@ async function withCharacter(userId, fn, { needAlive = false } = {}) {
     const user = await loadUser(conn, userId);
     if (!user) throw new actions.ActionError('Nutzer nicht gefunden.');
     const row = await activeRow(conn, userId);
-    let state = row ? JSON.parse(row.state) : null;
+    let state = row ? parseState(row.state) : null;
     const sync = syncEfs(user, state, now, w);
     if (state) flush(user, state);
     if (needAlive && (!state || state.status !== 'alive')) throw new actions.ActionError('Dein Charakter lebt nicht mehr.');
@@ -174,7 +181,7 @@ async function chooseHeir(userId, childId, bequest) {
     const user = await loadUser(conn, userId);
     const row = await activeRow(conn, userId);
     if (!row || row.status !== 'dead') throw new actions.ActionError('Es steht kein Erbe an.');
-    const old = JSON.parse(row.state);
+    const old = parseState(row.state);
     const { state } = createHeirState(w, old, childId, Array.isArray(bequest) ? bequest : []);
     flush(user, state);
     await conn.query(
@@ -191,7 +198,7 @@ async function previewHeir(userId, childId, bequest) {
   const w = await world.get();
   const row = await db.one("SELECT * FROM characters WHERE user_id = ? AND status = 'dead' ORDER BY id DESC LIMIT 1", [userId]);
   if (!row) throw new actions.ActionError('Es steht kein Erbe an.');
-  const state = JSON.parse(row.state);
+  const state = parseState(row.state);
   const plan = planInheritance(w, state, childId, Array.isArray(bequest) ? bequest : []);
   return { n: plan.est.n, share: plan.est.share, cash: plan.cash, properties: plan.properties.concat(plan.companies).map((p) => p.name) };
 }
@@ -203,7 +210,7 @@ async function peek(userId) {
   if (!user) return null;
   user.meta = parseMeta(user.meta);
   const row = await db.one("SELECT * FROM characters WHERE user_id = ? ORDER BY (status = 'gameover'), id DESC LIMIT 1", [userId]);
-  return { w, user, row, state: row ? JSON.parse(row.state) : null };
+  return { w, user, row, state: row ? parseState(row.state) : null };
 }
 
 module.exports = { peek, withCharacter, getView, create, doAction, doAdvance, chooseHeir, previewHeir, flush, syncEfs, loadUser, saveUser, parseMeta };

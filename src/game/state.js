@@ -90,4 +90,19 @@ function createCharacter(world, input, user, { cycle = 1 } = {}) {
   return state;
 }
 
-module.exports = { createCharacter, validateCreation, addPerson, newTree, TEXT };
+/** Ältere Spielstände auf das aktuelle Format heben (neue Felder mit Standardwerten). */
+function upgradeState(s) {
+  if (!s) return s;
+  if (!s.companies) { s.companies = []; s.nextCompanyId = 1; }
+  if (!s.politics) s.politics = { term: null, completed: {} };
+  if (!s.fx) s.fx = { coins: 0, efs: 0, influence: 0 };
+  if (s.fx.influence == null) s.fx.influence = 0;
+  if (!s.plan) s.plan = { target: 3 };
+  if (s.plan.target == null) s.plan.target = 3;
+  if (!s.mods) s.mods = {};
+  if (!s.pending) s.pending = {};
+  return s;
+}
+const parseState = (json) => upgradeState(JSON.parse(json));
+
+module.exports = { upgradeState, parseState, createCharacter, validateCreation, addPerson, newTree, TEXT };
