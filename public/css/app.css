@@ -238,3 +238,13 @@ input[type=checkbox], input[type=radio] { accent-color: var(--accent); width: 1.
 @keyframes shimmer { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
 
 @media (prefers-reduced-motion: reduce) { * { animation-duration: .001ms !important; transition-duration: .001ms !important; scroll-behavior: auto !important; } }
+/* ---- Mobile: Kopfzeile darf nie überlaufen ---- */
+@media (max-width: 560px) {
+  .topbar .container { gap: .5rem; padding-inline: 14px; }
+  .brand { font-size: .95rem; gap: .5rem; white-space: nowrap; min-width: 0; }
+  .brand small { display: none; }
+  .brand .mark { width: 30px; height: 30px; flex: none; }
+  .topbar .btn.sm { padding-inline: .7rem; white-space: nowrap; }
+  .hide-sm { display: none !important; }
+}
+@media (max-width: 380px) { .hide-xs { display: none !important; } }

@@ -11,6 +11,8 @@ const log = require('../lib/log');
 const { parseState } = require('../game/state');
 const { notice } = require('../game/core');
 const { audit } = require('../lib/audit');
+const { townEventsForWeek, describeTownEvent } = require('../game/events');
+const { formatDate } = require('../game/calendar');
 const APP_VERSION = require('../../package.json').version;
 
 const SECRETS = ['payments.stripe_secret', 'payments.stripe_webhook_secret', 'offerwall.secret'];
@@ -127,6 +129,49 @@ module.exports = function mount(router, H) {
     await audit(req, `admin_cleanup_${what}`, { days });
     flash(req, 'good', msg);
     res.redirect('/admin/tools');
+  }));
+
+  /* ============================ Zeitung & Eilmeldungen ============================ */
+  router.get('/news', wrap(async (req, res) => {
+    const w = await worldSvc.get();
+    const cities = await db.query('SELECT id, name FROM cities ORDER BY name');
+    const startYear = settings.get('game.start_year');
+    const cityId = int(req.query.cityId, cities.length ? cities[0].id : 0);
+    const year = Math.max(startYear, Math.min(startYear + 400, int(req.query.year, startYear)));
+    const city = w.city(cityId) || cities.map((c) => ({ id: c.id, name: c.name, size_tier: 2 })).find((c) => c.id === cityId);
+    const T = settings.get('texts');
+    const events = [];
+    if (city) {
+      const first = (year - startYear) * 52;
+      for (let wk = first; wk < first + 52; wk++) {
+        for (const ev of townEventsForWeek(city, wk, startYear, w.econ.events)) {
+          const day = wk * 7 + ev.offset;
+          const d = describeTownEvent(ev, city, 'past', T.news);
+          const f = ev.type === 'storm' ? describeTownEvent(ev, city, 'future', T.news) : null;
+          events.push({ week: wk, day, date: formatDate(day, startYear), type: ev.type, title: d.title, text: d.text, forecast: f ? f.text : null });
+        }
+      }
+    }
+    res.render('admin/news', { title: 'Zeitung & Eilmeldungen', active: 'news', cities, cityId, year, startYear, events, custom: settings.get('news.custom') || [] });
+  }));
+  const saveNews = async (list) => { await settings.set('news.custom', list); };
+  router.post('/news/add', wrap(async (req, res) => {
+    const b = req.body; const title = clean(b.title, 120); const text = clean(b.text, 800);
+    if (!title && !text) { flash(req, 'bad', 'Titel oder Text fehlt.'); return res.redirect('/admin/news'); }
+    const list = (settings.get('news.custom') || []).slice();
+    list.push({ active: true, flash: !!b.flash, title, text, cityId: int(b.cityId), fromYear: int(b.fromYear, 0) || settings.get('game.start_year'), toYear: int(b.toYear, 0) || 9999 });
+    await saveNews(list); await audit(req, 'news_add', title);
+    flash(req, 'good', b.flash ? 'Eilmeldung veröffentlicht – Spieler sehen sie in der Zeitung.' : 'Nachricht veröffentlicht.');
+    res.redirect('/admin/news');
+  }));
+  router.post('/news/:i(\\d+)/:act(toggle|delete|flash)', wrap(async (req, res) => {
+    const list = (settings.get('news.custom') || []).slice(); const i = int(req.params.i);
+    if (!list[i]) return res.redirect('/admin/news');
+    if (req.params.act === 'delete') list.splice(i, 1);
+    else if (req.params.act === 'toggle') list[i] = { ...list[i], active: list[i].active === false };
+    else list[i] = { ...list[i], flash: !list[i].flash };
+    await saveNews(list); await audit(req, `news_${req.params.act}`, String(i));
+    res.redirect('/admin/news');
   }));
 
   /* ============================ Backup / Import ============================ */

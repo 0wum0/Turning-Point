@@ -207,3 +207,9 @@ body.game { overflow-x: hidden; }
 .int-tip { position: fixed; z-index: 160; pointer-events: none; padding: .3rem .7rem; border-radius: 9px; background: rgba(8, 10, 15, .9); border: 1px solid var(--border-strong); color: #fff; font: 600 .82rem var(--font-ui); max-width: 260px; }
 .int-mini { position: absolute; top: 4.4rem; left: 50%; transform: translateX(-50%); padding: .6rem 1rem; border-radius: 14px; background: rgba(8, 10, 15, .88); border: 1px solid var(--accent); color: #fff; display: flex; gap: .8rem; align-items: center; }
 .imp-bar { position: fixed; z-index: 200; left: 50%; bottom: 12px; transform: translateX(-50%); display: flex; gap: .8rem; align-items: center; padding: .5rem .5rem .5rem 1rem; border-radius: 99px; background: #7a1f1f; color: #fff; box-shadow: 0 8px 30px rgba(0,0,0,.45); font-size: .85rem; }
+@media (max-width: 560px) {
+  .office { flex-wrap: wrap; } .office > .grow, .office > div:nth-child(2) { flex: 1 1 calc(100% - 60px); min-width: 0; }
+  .office > .row { flex: 1 1 100%; justify-content: space-between; }
+}
+.news-item.flash { background: color-mix(in srgb, #a2300f 9%, transparent); border-left: 4px solid #a2300f; padding-left: .8rem; border-radius: 6px; }
+.news-item.flash .kicker { color: #fff; background: #a2300f; display: inline-block; padding: .1rem .5rem; border-radius: 4px; }

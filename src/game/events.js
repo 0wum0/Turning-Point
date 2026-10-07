@@ -29,27 +29,27 @@ function townEventsOn(city, day, startYear, cfg = null) {
   return townEventsForWeek(city, week, startYear, cfg).filter((e) => week * 7 + e.offset === day);
 }
 
-const STORM_KINDS = ['Hagelunwetter', 'Blitzeinschlag', 'schwerer Sturm'];
-function describeTownEvent(ev, city, tense = 'past') {
+const TD = require('./text-defaults');
+const fmt = (t, v) => String(t).replace(/\{(\w+)\}/g, (m, k) => (v[k] != null ? v[k] : m));
+function describeTownEvent(ev, city, tense = 'past', texts = null) {
   const r = rngFor('desc', ev.key);
+  const N = { ...TD.news, ...(texts || {}) };
   const c = city.name;
   switch (ev.type) {
     case 'storm': {
-      const kind = pick(r, STORM_KINDS);
+      const S = N.storm; const k = pick(r, S.kinds);
       return tense === 'future'
-        ? { title: `Unwetterwarnung für ${c}`, text: `Der Wetterdienst erwartet in den nächsten Tagen ${kind === 'schwerer Sturm' ? 'einen schweren Sturm' : 'ein ' + kind} über ${c}. Hausbesitzer sollten ihre Gebäude versichern.`, hint: 'storm' }
-        : { title: `${kind} über ${c}`, text: `${kind === 'Blitzeinschlag' ? 'Ein Blitz schlug' : 'Ein ' + kind + ' richtete'} in ${c} Schäden an Dächern und Häusern an.`, hint: 'storm' };
+        ? { title: fmt(S.futureTitle, { city: c, kind: k.name }), text: fmt(k.future, { city: c, kind: k.name }), hint: 'storm' }
+        : { title: fmt(S.title, { city: c, kind: k.name }), text: fmt(k.past, { city: c, kind: k.name }), hint: 'storm' };
     }
-    case 'fire':
-      return { title: `Feuer in ${c}`, text: `In ${c} brannte es in der Nacht in einem Wohnhaus. Die Feuerwehr war stundenlang im Einsatz.`, hint: 'fire' };
-    case 'burglary':
-      return { title: `Einbruchserie in ${c}`, text: `Die Polizei in ${c} warnt: In mehreren Wohnungen wurde eingebrochen. Eine Hausratversicherung schützt vor dem Schaden.`, hint: 'burglary' };
-    case 'festival':
-      return { title: `Stadtfest in ${c}`, text: `${c} feiert! Musik, Tanz und gute Laune auf dem Marktplatz – die Stimmung in der Stadt ist prächtig.`, hint: 'festival' };
-    case 'lotto':
-      return { title: `Lotto: Glückspilz in ${c}`, text: `Ein Tipper aus ${c} hat einen hohen Gewinn gemacht. „Ich muss mich erst einmal setzen“, sagte er.`, hint: 'lotto' };
-    default:
-      return { title: `Markt in ${c}`, text: `Auf dem Wochenmarkt in ${c} sind Lebensmittel diese Woche ${r() < 0.5 ? 'etwas teurer' : 'erfreulich günstig'}.`, hint: 'market' };
+    case 'market': {
+      const M = N.market;
+      return { title: fmt(M.title, { city: c }), text: fmt(r() < 0.5 ? M.expensive : M.cheap, { city: c }), hint: 'market' };
+    }
+    default: {
+      const t = N[ev.type] || N.market;
+      return { title: fmt(t.title || '', { city: c }), text: fmt(t.text || '', { city: c }), hint: ev.type };
+    }
   }
 }
 

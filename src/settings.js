@@ -13,6 +13,8 @@ const DEFAULTS = {
   'site.maintenance': false,
   'site.maintenance_message': 'Turning Point wird gerade gewartet. Bitte versuche es gleich noch einmal.',
   'site.require_email_verification': false,
+  texts: require('./game/text-defaults'),
+  'news.custom': [],
   landing: {
     eyebrow: 'Eine Lebenssimulation über Generationen',
     title: 'Ein Leben.\nEin Vermächtnis.',
@@ -185,13 +187,13 @@ async function load() {
 
 const isObj = (x) => x && typeof x === 'object' && !Array.isArray(x);
 /** Tiefes Zusammenführen: neue Standardwerte (auch neue Aufgaben je Gebäude) erscheinen trotz gespeicherter Einstellungen. */
-function deepMerge(d, v) {
+function deepMerge(d, v, byId = false) {
   if (isObj(d) && isObj(v)) {
     const out = { ...d };
-    for (const k of Object.keys(v)) out[k] = k in d ? deepMerge(d[k], v[k]) : v[k];
+    for (const k of Object.keys(v)) out[k] = k in d ? deepMerge(d[k], v[k], byId) : v[k];
     return out;
   }
-  if (Array.isArray(d) && Array.isArray(v) && d.every((x) => isObj(x) && x.id) && v.every((x) => isObj(x) && x.id)) {
+  if (byId && Array.isArray(d) && Array.isArray(v) && d.every((x) => isObj(x) && x.id) && v.every((x) => isObj(x) && x.id)) {
     const ids = new Set(v.map((x) => x.id));
     return [...v, ...d.filter((x) => !ids.has(x.id))];
   }
@@ -202,7 +204,7 @@ function get(key) {
   const v = cache && Object.prototype.hasOwnProperty.call(cache, key) ? cache[key] : undefined;
   if (v === undefined) return DEFAULTS[key];
   const d = DEFAULTS[key];
-  if (isObj(d) && isObj(v)) return deepMerge(d, v);
+  if (isObj(d) && isObj(v)) return deepMerge(d, v, key === 'economy');
   return v;
 }
 

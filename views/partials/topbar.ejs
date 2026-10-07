@@ -5,12 +5,12 @@
       <span>TURNING POINT<small>Life · Work · Legacy</small></span>
     </a>
     <span class="grow"></span>
-    <button class="btn ghost sm" data-theme-toggle aria-label="Farbschema wechseln" title="Farbschema wechseln"><%- icon('sun-medium') %></button>
+    <button class="btn ghost sm hide-xs" data-theme-toggle aria-label="Farbschema wechseln" title="Farbschema wechseln"><%- icon('sun-medium') %></button>
     <% if (typeof user !== 'undefined' && user) { %>
       <% if (user.role === 'admin') { %><a class="btn ghost sm" href="/admin"><%- icon('shield') %> Admin</a><% } %>
       <a class="btn primary sm" href="/play"><%- icon('play') %> Weiterspielen</a>
     <% } else { %>
-      <a class="btn ghost sm" href="/login">Anmelden</a>
+      <a class="btn ghost sm hide-sm" href="/login">Anmelden</a>
       <a class="btn primary sm" href="/register">Kostenlos spielen</a>
     <% } %>
   </div>

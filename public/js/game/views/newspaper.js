@@ -71,9 +71,9 @@ export default {
     const L = e.labels;
     const tabs = [['news', L.news, 'newspaper'], ['jobs', L.jobs, 'briefcase'], ['housing', L.housing, 'house'], ['partners', L.partners, 'heart'], ['biz', L.biz, 'store'], ['guide', 'Ratgeber', 'lightbulb']];
     const body = {
-      news: () => html`<div class="news-grid">${e.news.length ? e.news.map((n, i) => html`<article class="news-item ${n.type === 'forecast' ? 'warn' : ''} ${i === 0 ? 'lead' : ''}">
-          <div class="kicker">${n.type === 'forecast' ? 'WARNUNG' : n.ago === 0 ? 'HEUTE' : n.ago === 1 ? 'GESTERN' : 'VOR ' + n.ago + ' TAGEN'}</div>
-          <h3>${n.title}</h3><p>${n.text}</p></article>`) : html`<article class="news-item lead"><div class="kicker">RUHIGE WOCHE</div><h3>Nichts Besonderes in ${e.city.name}</h3><p>Die Menschen gehen ihrer Arbeit nach, der Markt ist ruhig. Wer die Zeitung aufmerksam liest, erfährt früh von Unwettern, Festen und Einbruchserien.</p></article>`}</div>`,
+      news: () => html`<div class="news-grid">${e.news.length ? e.news.map((n, i) => html`<article class="news-item ${n.type === 'forecast' ? 'warn' : ''} ${n.flash ? 'flash' : ''} ${i === 0 ? 'lead' : ''}">
+          <div class="kicker">${n.type === 'custom' ? (n.flash ? e.kickers.flash : e.kickers.custom) : n.type === 'forecast' ? 'WARNUNG' : n.ago === 0 ? 'HEUTE' : n.ago === 1 ? 'GESTERN' : 'VOR ' + n.ago + ' TAGEN'}</div>
+          <h3>${n.title}</h3><p>${n.text}</p></article>`) : html`<article class="news-item lead"><div class="kicker">${e.quiet.kicker}</div><h3>${e.quiet.title}</h3><p>${e.quiet.text}</p></article>`}</div>`,
       jobs: () => html`<div class="listings">${e.jobs.map((j) => jobCard(j, v, here))}</div>`,
       housing: () => html`<h4 class="sec">Pensionen &amp; Zimmer</h4><div class="listings">${e.housing.pension.map((h) => housingCard(h, v, here))}</div>
         <h4 class="sec">Mietwohnungen</h4><div class="listings">${e.housing.rent.map((h) => housingCard(h, v, here))}</div>

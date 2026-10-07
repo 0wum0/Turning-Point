@@ -93,6 +93,7 @@ Der Installer zeigt dir diese Werte am Ende zum Kopieren an. Das Session-Geheimn
 - **Charaktere:** jeder Spielstand editierbar – Felder (Geld, Meter, Datum, Status, Wohnort …), alle Bereiche (Immobilien, Betriebe, Kinder, Partner, Beruf, Stammbaum …) im Baum-Editor, Schnellaktionen (heilen, wiederbeleben, Tage vorspulen, Geld buchen, Beruf erlernt, Tod auslösen, Meldung senden) und Roh-JSON.
 - **Einstellungen:** jede Zahl, jeder Text und jede Liste (Preise, Löhne, Aufgaben, Betriebe, Ämter, Ereignis-Wahrscheinlichkeiten, Startseite, Ankündigungs-Banner) per Formular; „Standard“ setzt zurück; „Experten“ zeigt wirklich alle Werte.
 - **Städte/Berufe:** Tabellen direkt editierbar, Duplizieren, Löschen (geschützt, wenn in Spielständen verwendet), Lohn-Faktor für alle Berufe.
+- **Zeitung & Eilmeldungen:** Eilmeldungen/Nachrichten veröffentlichen (Stadt, Zeitraum), alle automatisch erzeugten Stadtnachrichten je Jahr einsehen, sämtliche Zeitungstexte (Nachrichten-Vorlagen, Straßen, Pensionen, Kontakttexte, Beschriftungen, Ratgeber) unter Einstellungen → „Zeitung & Texte“ ändern.
 - **Finanzen, Werkzeuge, Backup:** Käufe/Erstattungen/Gutschriften, Coins an Gruppen, Meldung an alle Spieler, Aufräumen, Konfig-/Vollsicherung herunterladen und einspielen, Server-Log mit Filter.
 
 ## 3. Lokale Entwicklung
