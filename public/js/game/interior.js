@@ -86,6 +86,9 @@ export async function openInterior(ctx, b, data) {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = T.PCFShadowMap; renderer.outputColorSpace = T.SRGBColorSpace;
   const { scene, hotspots, dims } = room;
+  const markers = [];
+  const numTex = (txt, bg = '#ffd54a', fg = '#2a1a00') => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'); g.fillStyle = bg; g.beginPath(); g.arc(64, 64, 58, 0, Math.PI * 2); g.fill(); g.lineWidth = 8; g.strokeStyle = '#fff6d0'; g.stroke(); g.fillStyle = fg; g.font = '800 78px Inter, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(txt, 64, 68); const t = new T.CanvasTexture(c); t.colorSpace = T.SRGBColorSpace; return t; };
+  const sprite = (tex, size) => { const s = new T.Sprite(new T.SpriteMaterial({ map: tex, depthTest: false, transparent: true })); s.scale.set(size, size, 1); s.renderOrder = 10; return s; };
   const camera = new T.PerspectiveCamera(42, 1, 0.1, 100);
   const cam = { az: 0.42, el: 0.78, dist: Math.max(dims.w, dims.d) * 1.35, target: new T.Vector3(0, 1.1, 0.4) };
   const minD = 5; const maxD = Math.max(dims.w, dims.d) * 2;
@@ -110,7 +113,17 @@ export async function openInterior(ctx, b, data) {
   const setEmissive = (h, on) => { h.obj.traverse((m) => { if (m.isMesh && m.material && m.material.emissive) { if (on) { m.userData._e = m.material.emissive.getHex(); m.material.emissive.setHex(0x553a10); } else if (m.userData._e != null) m.material.emissive.setHex(m.userData._e); } }); };
   // Gegenstände mit Aufgabe leuchten sanft, damit man sie findet
   hotspots.forEach((h) => { if (h.actions().some((a) => a.kind === 'task' && a.task.ready) && here) setEmissive(h, true); });
-  const markReady = () => hotspots.forEach((h) => { setEmissive(h, false); if (here && h.actions().some((a) => a.kind === 'task' && a.task.ready)) { setEmissive(h, true); } });
+  const markReady = () => {
+    markers.splice(0).forEach((m) => scene.remove(m));
+    hotspots.forEach((h) => {
+      setEmissive(h, false);
+      if (here && h.actions().some((a) => a.kind === 'task' && a.task.ready)) {
+        setEmissive(h, true);
+        const m = sprite(numTex('!', '#5fd6a4', '#06281c'), 0.8); m.position.set(h.obj.position.x, 3.1, h.obj.position.z); scene.add(m); markers.push(m);
+      }
+    });
+  };
+  markReady();
 
   let drag = null;
   canvas.addEventListener('pointerdown', (e) => { canvas.setPointerCapture(e.pointerId); drag = { x: e.clientX, y: e.clientY, moved: 0, az: cam.az, el: cam.el, pts: new Map([[e.pointerId, [e.clientX, e.clientY]]]), pinch: 0 }; });
@@ -136,7 +149,7 @@ export async function openInterior(ctx, b, data) {
 
   function clickAt(e) {
     const hits = pickAt(e);
-    if (minigame) { const t = hits.find((i) => tokens.some((k) => k.mesh === i.object)); if (t) collectToken(tokens.find((k) => k.mesh === t.object)); return; }
+    if (minigame) { const t = hits.find((i) => tokens.some((k) => k.mesh === i.object || k.mesh === i.object.parent)); if (t) collectToken(tokens.find((k) => k.mesh === t.object || k.mesh === t.object.parent)); return; }
     const hit = hits.find((i) => hotOf(i.object));
     if (hit) { const h = hotOf(hit.object); showActions(h); const acts = resolveActions(h); if (acts.length === 1 && !acts[0].disabled && h.autorun) acts[0].run(api2); } else showActions(null);
   }
@@ -147,7 +160,7 @@ export async function openInterior(ctx, b, data) {
     try {
       if (t.minSeconds) await api('POST', '/api/action/taskStart', { building: b.key, task: t.id }).then((r) => ctx.setView(r.view));
     } catch (e) { toast(e.message, 'bad'); return; }
-    if (t.mini === 'collect' && t.minSeconds) return startMini(t);
+    if ((t.mini === 'collect' || t.mini === 'sequence') && t.minSeconds) return startMini(t);
     await finishTask(t);
   }
   async function finishTask(t) {
@@ -157,13 +170,20 @@ export async function openInterior(ctx, b, data) {
   function startMini(t) {
     const n = Math.max(4, Math.ceil(t.minSeconds / 1.3)); const started = performance.now();
     const spots = tokenSpots(dims, n, Date.now() % 1000);
-    spots.forEach((p) => { const m = new T.Mesh(new T.SphereGeometry(0.28, 16, 12), new T.MeshBasicMaterial({ color: 0xffd54a })); m.position.set(p[0], p[1], p[2]); scene.add(m); const ring = new T.Mesh(new T.TorusGeometry(0.42, 0.04, 8, 24), new T.MeshBasicMaterial({ color: 0xfff2b0 })); ring.rotation.x = Math.PI / 2; m.add(ring); tokens.push({ mesh: m, y0: p[1] }); });
-    minigame = { t, total: n, got: 0, started };
-    mini.classList.remove('hide'); mini.innerHTML = `<b>${esc(t.name)}</b> – Sammle alle goldenen Marken: <span id="mc">0 / ${n}</span> <button class="btn sm ghost" id="mx">Abbrechen</button>`;
+    const seq = t.mini === 'sequence';
+    spots.forEach((p, idx) => {
+      const m = new T.Mesh(new T.SphereGeometry(seq ? 0.34 : 0.28, 16, 12), new T.MeshBasicMaterial({ color: 0xffd54a })); m.position.set(p[0], p[1], p[2]); scene.add(m);
+      const ring = new T.Mesh(new T.TorusGeometry(0.42, 0.04, 8, 24), new T.MeshBasicMaterial({ color: 0xfff2b0 })); ring.rotation.x = Math.PI / 2; m.add(ring);
+      if (seq) { const sp = sprite(numTex(String(idx + 1)), 0.9); sp.position.set(0, 0.85, 0); m.add(sp); }
+      tokens.push({ mesh: m, y0: p[1], num: idx + 1 });
+    });
+    minigame = { t, total: n, got: 0, started, seq, wrong: 0 };
+    mini.classList.remove('hide'); mini.innerHTML = `<b>${esc(t.name)}</b> – ${seq ? 'Klicke die Zahlen der Reihe nach (1, 2, 3 …)' : 'Sammle alle goldenen Marken'}: <span id="mc">0 / ${n}</span> <button class="btn sm ghost" id="mx">Abbrechen</button>`;
     mini.querySelector('#mx').onclick = stopMini; invalidate();
   }
   function stopMini() { tokens.splice(0).forEach((k) => scene.remove(k.mesh)); minigame = null; mini.classList.add('hide'); invalidate(); }
   async function collectToken(k) {
+    if (minigame.seq && k.num !== minigame.got + 1) { minigame.wrong++; toast(`Falsche Reihenfolge – als Nächstes die ${minigame.got + 1}!`, 'warn'); return; }
     scene.remove(k.mesh); tokens.splice(tokens.indexOf(k), 1); minigame.got++;
     const mc = mini.querySelector('#mc'); if (mc) mc.textContent = `${minigame.got} / ${minigame.total}`; invalidate();
     if (minigame.got >= minigame.total) {
@@ -172,7 +192,7 @@ export async function openInterior(ctx, b, data) {
     }
   }
   // Testhilfe: Bildschirmpositionen der Marken (für automatisierte Tests)
-  root._tokenScreen = () => { const r = canvas.getBoundingClientRect(); return tokens.map((k) => { const p = k.mesh.position.clone().project(camera); return [r.left + ((p.x + 1) / 2) * r.width, r.top + ((1 - p.y) / 2) * r.height]; }); };
+  root._tokenScreen = () => { const r = canvas.getBoundingClientRect(); return tokens.slice().sort((a, b) => a.num - b.num).map((k) => { const p = k.mesh.position.clone().project(camera); return [r.left + ((p.x + 1) / 2) * r.width, r.top + ((1 - p.y) / 2) * r.height]; }); };
   invalidate();
   // Zeit sparen: Akku-schonend – gerendert wird nur bei Bewegung/Minispiel
 }

@@ -36,17 +36,19 @@ export function buildRoom(T, b, ctx) {
   const floor = new T.Mesh(new T.BoxGeometry(w, 0.3, d), new T.MeshStandardMaterial({ map: tex, roughness: 0.75 })); floor.position.set(0, -0.15, 0); floor.receiveShadow = true; scene.add(floor);
   box(w + 0.4, ht, 0.3, pal.wall, 0, 0, -d / 2 - 0.15, scene); box(0.3, ht, d + 0.4, pal.wall, -w / 2 - 0.15, 0, 0, scene);
   box(w, 0.35, 0.12, pal.trim, 0, 0, -d / 2 + 0.06, scene, { noShadow: true }); box(0.12, 0.35, d, pal.trim, -w / 2 + 0.06, 0, 0, scene, { noShadow: true });
-  const glowMat = new T.MeshBasicMaterial({ color: pal.light });
+  const hour = new Date().getHours(); const night = hour < 6 || hour >= 20; const dusk = !night && (hour < 8 || hour >= 18);
+  const glowMat = new T.MeshBasicMaterial({ color: night ? 0x22345f : dusk ? 0xffb070 : pal.light });
+  if (night) scene.background = new T.Color(0x05070d);
   const windowAt = (x, y, wall = 'back') => { const m = new T.Mesh(new T.BoxGeometry(1.8, 1.5, 0.1), glowMat); if (wall === 'back') m.position.set(x, y, -d / 2 + 0.08); else { m.position.set(-w / 2 + 0.08, y, x); m.rotation.y = Math.PI / 2; } scene.add(m); const fr = new T.Mesh(new T.BoxGeometry(2.0, 1.7, 0.08), mat(pal.trim)); fr.position.copy(m.position); fr.rotation.copy(m.rotation); fr.position.z += wall === 'back' ? -0.03 : 0; scene.add(fr); };
   for (let i = -1; i <= 1; i += 2) windowAt((w / 4) * i, 1.9);
   windowAt(0, 1.9, 'left');
   if (era === 5) { const strip = new T.Mesh(new T.BoxGeometry(w, 0.08, 0.08), new T.MeshBasicMaterial({ color: pal.accent })); strip.position.set(0, ht - 0.2, -d / 2 + 0.1); scene.add(strip); }
 
   // ---- Licht
-  scene.add(new T.HemisphereLight(0xffffff, 0x554433, 0.75));
-  const sun = new T.DirectionalLight(pal.light, 1.15); sun.position.set(w * 0.4, 9, d * 0.6); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
+  scene.add(new T.HemisphereLight(0xffffff, 0x554433, night ? 0.32 : 0.75));
+  const sun = new T.DirectionalLight(night ? 0x8fa8ff : pal.light, night ? 0.35 : dusk ? 0.8 : 1.15); sun.position.set(w * 0.4, 9, d * 0.6); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
   const sc = sun.shadow.camera; sc.left = -w; sc.right = w; sc.top = d; sc.bottom = -d; sc.near = 1; sc.far = 30; scene.add(sun);
-  const lamp = new T.PointLight(pal.light, 18, 18); lamp.position.set(0, ht - 0.5, 0); scene.add(lamp);
+  const lamp = new T.PointLight(pal.light, night ? 34 : 18, 18); lamp.position.set(0, ht - 0.5, 0); scene.add(lamp);
 
   // ---- Hotspot-Registrierung
   const spot = (obj, id, label, actions, hint) => { hot.push({ obj, id, label, hint: hint || '', actions }); return obj; };
@@ -82,7 +84,7 @@ export function buildRoom(T, b, ctx) {
     wardrobe(w / 2 - 4.2, -d / 2 + 0.6); plant(w / 2 - 0.8, d / 2 - 1);
     if (big) {
       const fr = fridge(-w / 2 + 0.9, -d / 2 + 0.9); spot(fr, 'fridge', 'Kühlschrank', () => [{ kind: 'food' }], 'Lebensmittel');
-      box(1.4, 1.0, 0.9, 0x555555, -w / 2 + 2.3, 0, -d / 2 + 0.8); table(-1.0, 0.5, 2.6, 1.5, 4);
+      const st = group(-w / 2 + 2.3, -d / 2 + 0.8); box(1.4, 1.0, 0.9, 0x555555, 0, 0, 0, st); cyl(0.2, 0.2, 0.05, 0x222222, -0.3, 1.0, 0, st, { noShadow: true }); cyl(0.2, 0.2, 0.05, 0x222222, 0.3, 1.0, 0, st, { noShadow: true }); spot(st, 'stove', 'Herd – Kochen', taskAct('cook'), 'Aufgabe: Kochen'); table(-1.0, 0.5, 2.6, 1.5, 4);
       sofa(w / 4, d / 2 - 1.5, Math.PI, pal.accent);
       const sh = shelf(0.5, -d / 2 + 0.4); spot(sh, 'shelf', 'Bücherregal – Familienchronik', goAct('Familienchronik öffnen', 'legacy', 'Stammbaum, Chronik und frühere Leben'));
       const ds = desk(-w / 2 + 1.6, d / 4, Math.PI / 2); spot(ds, 'desk', 'Schreibtisch – Finanzen', goAct('Finanzen ansehen', 'overview', 'Einnahmen, Ausgaben und Vermögen'));
@@ -92,6 +94,13 @@ export function buildRoom(T, b, ctx) {
       for (let i = 0; i < kids; i++) bed(-w / 2 + 1.6 + (i % 3) * 1.8, -d / 2 + 3.6 + Math.floor(i / 3) * 2.2, Math.PI / 2, true, 0x4a7a9a + i * 3000);
       if (v.partner && v.partner.cohabit) { person(0.2, 0.2, 0xb04a6a, 0.4); const ph = frame(-w / 4, 2.1, 0, 'back'); spot(ph, 'family', 'Familienfoto', goAct('Familie ansehen', 'family', 'Partner und Kinder')); }
       else { const ph = frame(-w / 4, 2.1, 0, 'back', 0x888888); spot(ph, 'family', 'Leerer Bilderrahmen', goAct('Familie ansehen', 'family', 'Partner und Kinder')); }
+      const ep = group(w / 2 - 1.6, d / 4 + 0.5, -Math.PI / 2);
+      if (era === 1) { box(1.6, 0.9, 0.7, 0x6a4526, 0, 0, 0, ep); box(0.9, 0.55, 0.45, 0x4a3320, 0, 0.9, 0, ep); cyl(0.17, 0.17, 0.05, 0xd8c070, -0.2, 1.15, 0.24, ep, { rot: [Math.PI / 2, 0, 0], noShadow: true }); cyl(0.07, 0.07, 0.05, 0xd8c070, 0.25, 1.15, 0.24, ep, { rot: [Math.PI / 2, 0, 0], noShadow: true }); }
+      else if (era === 2) { box(1.6, 0.8, 0.8, 0x6a4526, 0, 0, 0, ep); box(1.1, 0.8, 0.7, 0x3a2d22, 0, 0.8, 0, ep); box(0.8, 0.6, 0.05, 0x7aa0a8, 0, 0.9, 0.36, ep, { noShadow: true }); cyl(0.02, 0.02, 0.8, 0x999999, 0.3, 1.6, 0, ep, { rot: [0, 0, 0.5] }); }
+      else if (era === 3) { box(1.6, 0.8, 0.8, 0x555555, 0, 0, 0, ep); box(0.9, 0.8, 0.8, 0xd8d0b8, -0.3, 0.8, 0, ep); box(0.7, 0.55, 0.05, 0x223344, -0.3, 0.9, 0.42, ep, { noShadow: true }); box(0.9, 0.08, 0.35, 0xd8d0b8, -0.3, 0.75, 0.65, ep); }
+      else if (era === 4) { box(2.0, 0.6, 0.7, 0x333333, 0, 0, 0, ep); box(1.5, 0.85, 0.06, 0x111111, 0, 0.9, 0, ep); box(1.4, 0.75, 0.02, 0x2a6aa8, 0, 0.95, 0.04, ep, { m: new T.MeshBasicMaterial({ color: 0x2a6aa8 }), noShadow: true }); }
+      else { box(2.0, 0.5, 0.7, 0x2a3a44, 0, 0, 0, ep); box(1.6, 0.9, 0.02, 0x35e0d0, 0, 1.0, 0.05, ep, { m: new T.MeshBasicMaterial({ color: 0x35e0d0, transparent: true, opacity: 0.45 }), noShadow: true }); sph(0.25, 0xcfd8dc, 1.2, 1.5, 0.4, ep, { noShadow: true }); }
+      spot(ep, 'leisure', era === 1 ? 'Radio' : era >= 4 ? 'Bildschirm' : 'Fernseher', taskAct('leisure'), 'Entspannen');
       if (b.villa || rooms >= 12) { chandelier(0, 0); sofa(-w / 4, d / 2 - 1.5, Math.PI, 0x3a4a6a); plant(-w / 2 + 0.8, d / 2 - 1); }
       if (v.butler) person(w / 2 - 3, d / 4, 0x222222, -0.6);
     } else {
@@ -100,7 +109,7 @@ export function buildRoom(T, b, ctx) {
     }
   } else if (t === 'rathaus') {
     box(w - 3, 0.2, 5.5, 0x8a2a2a, 0, 0, -d / 4 + 0.6, props, { noShadow: true });
-    const c1 = counter(-w / 4, -d / 4, 5.2, 0, 0x6a5a4a, 0xe8e0cc); spot(c1, 'amt', 'Bürgeramt', taskAct('forms'), 'Aufgabe: Akten sortieren');
+    const c1 = counter(-w / 4, -d / 4, 5.2, 0, 0x6a5a4a, 0xe8e0cc); spot(c1, 'amt', 'Bürgeramt', () => taskAct('forms')().concat(taskAct('queue')()), 'Aufgaben: Akten & Besucher');
     person(-w / 4 - 1.2, -d / 4 - 1.0, 0x555a6a); person(-w / 4 + 1.0, -d / 4 - 1.0, 0x6a5555);
     const pod = group(w / 4, -d / 4 + 0.4); box(1.2, 1.3, 0.8, 0x6a4526, 0, 0, 0, pod); box(1.4, 0.1, 1.0, 0xa2300f, 0, 1.3, 0, pod); spot(pod, 'wahl', 'Rednerpult – Wahlbüro', goAct('Zum Wahlbüro (Ämter & Wahlen)', 'society', 'Kandidieren und Einfluss'));
     for (let i = -1; i <= 1; i++) { const f = group(w / 4 + i * 1.4, -d / 2 + 0.7); cyl(0.04, 0.04, 2.8, 0x888888, 0, 0, 0, f); box(0.9, 0.55, 0.04, [0x111111, 0xcc2222, 0xe6b800][i + 1], 0.45, 2.1, 0, f, { noShadow: true }); }
@@ -116,7 +125,7 @@ export function buildRoom(T, b, ctx) {
     for (let i = 0; i < 3; i++) box(1.8, 0.45, 0.6, 0x7a5a35, -2 + i * 2.6, 0, 0.2); plant(w / 2 - 0.9, -d / 2 + 1);
   } else if (t === 'markt') {
     const stalls = [[-4.2, -2.6, 0xc43a2a, 'Obst & Gemüse'], [-0.4, -2.6, 0x3a7a4a, 'Gemüse'], [3.4, -2.6, 0xe6b800, 'Brot & Käse'], [-2.4, 1.4, 0x2f5f8a, 'Fleisch & Fisch']];
-    stalls.forEach(([x, z, col, label], i) => { const g = group(x, z); box(2.8, 1.0, 1.1, 0x7a5535, 0, 0, 0, g); for (let k = 0; k < 6; k++) sph(0.2, [0xe0402a, 0x6ab04a, 0xe6b800][k % 3], -1 + k * 0.4, 1.2, 0.0, g, { noShadow: true }); box(3.0, 0.1, 1.6, col, 0, 2.6, 0.15, g, { rot: [0.25, 0, 0] }); [-1.3, 1.3].forEach((px) => box(0.08, 2.6, 0.08, 0x555555, px, 0, 0.6, g)); person(0, -0.9, [0x8a3a3a, 0x3a7a5a, 0x3a5a8a, 0x7a5a2a][i], Math.PI); if (i < 3) spot(g, `stall${i}`, label, () => [{ kind: 'food' }], 'Lebensmittel kaufen'); else spot(g, 'sort', 'Marktmeister', taskAct('sort'), 'Aufgabe: Waren sortieren'); });
+    stalls.forEach(([x, z, col, label], i) => { const g = group(x, z); box(2.8, 1.0, 1.1, 0x7a5535, 0, 0, 0, g); for (let k = 0; k < 6; k++) sph(0.2, [0xe0402a, 0x6ab04a, 0xe6b800][k % 3], -1 + k * 0.4, 1.2, 0.0, g, { noShadow: true }); box(3.0, 0.1, 1.6, col, 0, 2.6, 0.15, g, { rot: [0.25, 0, 0] }); [-1.3, 1.3].forEach((px) => box(0.08, 2.6, 0.08, 0x555555, px, 0, 0.6, g)); person(0, -0.9, [0x8a3a3a, 0x3a7a5a, 0x3a5a8a, 0x7a5a2a][i], Math.PI); if (i < 3) spot(g, `stall${i}`, label, () => [{ kind: 'food' }].concat(i === 0 ? taskAct('sell')() : []), i === 0 ? 'Einkaufen & verkaufen' : 'Lebensmittel kaufen'); else spot(g, 'sort', 'Marktmeister', taskAct('sort'), 'Aufgabe: Waren sortieren'); });
     for (let i = 0; i < 6; i++) crate(w / 2 - 1.5 + (i % 2) * 0.1, d / 2 - 1.2 - i * 0.9); barrel(-w / 2 + 1, d / 2 - 1.2); barrel(-w / 2 + 2, d / 2 - 1);
   } else if (t === 'arzt') {
     const ex = group(w / 4, -d / 4); box(2.4, 0.6, 1.1, 0xe8edf0, 0, 0, 0, ex); box(2.4, 0.15, 1.1, 0x4a8a9a, 0, 0.6, 0, ex); person(0.8, 0.9, 0xffffff, Math.PI, 0xe0b896); spot(ex, 'exam', 'Untersuchungsliege', taskAct('check'), 'Vorsorge-Untersuchung');
@@ -143,7 +152,7 @@ export function buildRoom(T, b, ctx) {
     const live = () => v.companies.find((x) => x.id === b.ref); const c = live(); const chain = b.pkey;
     const accent = { wirt: 0x8a3a2a, baecker: 0xc9944a, tischler: 0x8a6a3a, schmied: 0x4a4a52, landwirt: 0x5a7a3a }[chain] || pal.accent;
     const cashAct = () => { const c = live(); return (c ? [{ label: 'Firmenkasse leeren', sub: `${(c.cash / 100).toFixed(2).replace('.', ',')} ${v.currency === 'EUR' ? '€' : 'DM'} liegen bereit`, disabled: c.cash <= 0, run: ({ act }) => act('bizCollect', { id: c.id }) }] : []); };
-    const cnt = counter(-w / 4, -d / 2 + 1.6, 4.4, 0, accent); spot(cnt, 'cash', 'Theke & Kasse', () => cashAct().concat(taskAct('serve')()), 'Kasse und Betreuung');
+    const cnt = counter(-w / 4, -d / 2 + 1.6, 4.4, 0, accent); spot(cnt, 'cash', 'Theke & Kasse', () => cashAct().concat(taskAct('serve')(), taskAct('orders')()), 'Kasse, Betreuung, Aufträge');
     if (chain === 'wirt') { for (let i = 0; i < 3; i++) cyl(0.07, 0.07, 0.5, 0xc9c9c9, -w / 4 - 1 + i * 0.7, 1.2, -d / 2 + 1.6, props, { noShadow: true }); for (let i = 0; i < 6; i++) cyl(0.12, 0.1, 0.3, 0xe6b800, -w / 4 - 1.6 + i * 0.6, 1.2, -d / 2 + 1.9, props, { noShadow: true }); }
     else if (chain === 'baecker') { box(2.2, 1.6, 1.2, 0x8a4a3a, w / 4, 0, -d / 2 + 1.0); box(1.2, 0.6, 0.1, 0x222222, w / 4, 0.4, -d / 2 + 1.62, props, { noShadow: true }); for (let i = 0; i < 4; i++) { box(2.4, 0.08, 0.6, 0x7a5535, -w / 2 + 1.5, 0.5 + i * 0.6, -d / 2 + 0.5); for (let k = 0; k < 4; k++) sph(0.2, 0xd8a050, -w / 2 + 0.8 + k * 0.5, 0.7 + i * 0.6, -d / 2 + 0.5, props, { noShadow: true }); } }
     else if (chain === 'tischler') { box(3.2, 0.9, 1.2, 0x9a7a4a, w / 4, 0, -d / 2 + 1.2); for (let i = 0; i < 5; i++) box(0.12, 0.1, 2.6, 0xc9a56a, -w / 2 + 1 + i * 0.2, 0.1 + i * 0.12, -d / 2 + 2); }
@@ -159,7 +168,7 @@ export function buildRoom(T, b, ctx) {
     if (b.abandoned) { box(w, 0.4, 0.1, 0x6b5a3a, 0, 1.0, d / 2 - 0.5, props, { rot: [0, 0, 0.1] }); }
   } else if (t === 'work') {
     const bench = counter(w / 4 - 1, -d / 4, 3.6, 0, 0x6a5a4a, 0x9a8a70); const bc = (b.pkey && ctx.world.professions.find((p) => p.key === b.pkey)) || {};
-    spot(bench, 'bench', 'Werkbank – Zusatzschicht', taskAct('shift'), 'Aufgabe: Zusatzschicht');
+    spot(bench, 'bench', 'Werkbank – Aufgaben', () => taskAct('shift')().concat(taskAct('tools')()), 'Zusatzschicht & Werkzeug');
     person(w / 4 - 1, -d / 4 - 1.0, 0x4a6a8a); box(1.4, 1.6, 1.0, 0x666c74, -w / 4, 0, -d / 2 + 1.0); box(0.9, 0.9, 0.9, 0xb58a4f, -w / 4 + 2.0, 0, -d / 2 + 1.0); crate(-w / 2 + 1.2, 1.4); crate(-w / 2 + 1.2, 2.4);
     const bo = desk(w / 2 - 1.6, d / 2 - 1.6, Math.PI * 0.8); spot(bo, 'boss', 'Büro des Arbeitgebers – Beruf', goAct('Beruf & Bildung ansehen', 'work', 'Stufe, Lohn, Ausbildung')); person(w / 2 - 2.6, d / 2 - 2.6, 0x2a2a3a, -2.2);
     if (b.lodging) { const bd3 = bed(-w / 2 + 2, d / 2 - 1.8, Math.PI / 2, true, 0x6a6a7a); spot(bd3, 'cot', 'Schlafstelle', () => [{ label: 'Hier schlafen (Schlafplatz beim Arbeitgeber)', disabled: v.housing.type === 'workplace', run: ({ act }) => act('sleepAtWork', {}) }], 'Notunterkunft'); }
