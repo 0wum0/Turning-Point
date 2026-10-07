@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="de" data-era="<%= typeof era !== 'undefined' ? era : 1 %>">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title><%= typeof title !== 'undefined' && title ? title + ' · ' : '' %><%= (typeof site !== 'undefined' && site.name) || 'Turning Point' %></title>
+<meta name="description" content="Turning Point – Life. Work. Legacy. Eine Lebens-, Wirtschafts- und Familiensimulation über Generationen: von 1945 bis ins 22. Jahrhundert.">
+<meta name="theme-color" content="#0b0d12">
+<% if (typeof noindex !== 'undefined' && noindex) { %><meta name="robots" content="noindex, nofollow"><% } %>
+<% if (typeof csrfToken !== 'undefined') { %><meta name="csrf-token" content="<%= csrfToken %>"><% } %>
+<link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
+<script src="/js/theme.js"></script>
+<link rel="preload" href="/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/fraunces-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/css/app.css?v=<%= assetV %>">
+<% (typeof css !== 'undefined' ? css : []).forEach(function(c){ %><link rel="stylesheet" href="/css/<%= c %>.css?v=<%= assetV %>">
+<% }) %>
+</head>
+<body class="<%= typeof bodyClass !== 'undefined' ? bodyClass : '' %>">

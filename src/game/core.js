@@ -1,0 +1,148 @@
+'use strict';
+const settings = require('../settings');
+const { LEVELS, HOUSING } = require('./content');
+const { scale } = require('./economy');
+const { yearOf } = require('./calendar');
+
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+/** Meldung ins Postfach (Problem → Bedeutung → Lösung für das ⓘ). */
+function notice(state, n) {
+  const id = state.nextNoticeId++;
+  const item = {
+    id, day: state.day, level: n.level || 'info', title: n.title, text: n.text || '',
+    info: n.info || null, interrupt: !!n.interrupt, seen: false, tab: n.tab || null,
+  };
+  state.notices.unshift(item);
+  if (state.notices.length > 60) state.notices.length = 60;
+  if (n.interrupt) state.interrupts.push(id);
+  return item;
+}
+
+function chronicle(state, text, type = 'life') {
+  state.tree.events.push({ day: state.day, type, text });
+  if (state.tree.events.length > 500) state.tree.events.splice(0, state.tree.events.length - 500);
+}
+
+/** Belohnung (EFS-Pool / Coins) – wird vom Server in den User-Datensatz übernommen. */
+function award(state, kind) {
+  const amount = (settings.get('efs.awards') || {})[kind] || 0;
+  if (amount) state.fx.efs += amount;
+  return amount;
+}
+
+const isLearned = (state, key) => key === 'helfer' || state.skills.learned.includes(key);
+function learn(state, key) {
+  if (!state.skills.learned.includes(key)) state.skills.learned.push(key);
+}
+function levelIndex(state, key) {
+  const d = state.skills.days[key] || 0;
+  let lv = 0;
+  LEVELS.forEach((l, i) => { if (d >= l.days) lv = i; });
+  return lv;
+}
+
+function propertyValue(world, state, p, year) {
+  const idx = world.idx(year);
+  return Math.round(p.base * idx * (0.2 + 0.8 * (p.condition / 100)));
+}
+function netWorth(world, state) {
+  const year = yearOf(state.day, state.startYear);
+  return state.money + state.properties.reduce((s, p) => s + propertyValue(world, state, p, year), 0);
+}
+
+const kidsAtHome = (state) => state.children.filter((c) => c.status === 'home');
+const minors = (state) => kidsAtHome(state).filter((c) => (state.day - c.born) / 365 < 18);
+
+function residenceProperty(state) {
+  return state.housing.type === 'own' ? state.properties.find((p) => p.id === state.housing.propertyId) : null;
+}
+/** Effektive Wohnform (beschädigtes Haus zählt schlechter). */
+function effectiveHousing(state) {
+  const p = residenceProperty(state);
+  if (p && p.closedUntil > state.day) return HOUSING.damaged;
+  return HOUSING[state.housing.type];
+}
+function roomsAvailable(state) {
+  const h = state.housing;
+  if (h.type === 'own') { const p = residenceProperty(state); return p ? p.rooms : 0; }
+  if (h.type === 'rent') return h.rooms || 1;
+  if (h.type === 'pension' || h.type === 'workplace') return 1;
+  return 0;
+}
+const roomsNeeded = (state) => 1 + kidsAtHome(state).length;
+
+function foodMods(world, state) {
+  const tiers = world.econ.food;
+  const q = clamp(state.meters.fridgeQ, 1, tiers.length) - 1;
+  const lo = Math.floor(q);
+  const hi = Math.min(tiers.length - 1, lo + 1);
+  const f = q - lo;
+  const mix = (k) => tiers[lo][k] + (tiers[hi][k] - tiers[lo][k]) * f;
+  return { wellbeing: mix('wellbeing'), health: mix('health') };
+}
+
+const SCHOOL_COST = { haupt: 0, real: 15, gym: 30 };
+
+/** Tages-Cashflow in Cent. Die UI zeigt exakt diese Zahlen, die Engine bucht sie. */
+function dailyFlows(world, state) {
+  const year = yearOf(state.day, state.startYear);
+  const idx = world.idx(year);
+  const econ = world.econ;
+  const inc = { wage: 0, kindergeld: 0 };
+  const exp = { lodging: 0, insurance: 0, upkeep: 0, children: 0, support: 0, butler: 0, tuition: 0 };
+  const occ = state.occupation;
+  if (occ) {
+    const p = world.prof(occ.pkey);
+    if (p) {
+      if (occ.kind === 'work') {
+        const lv = LEVELS[levelIndex(state, occ.pkey)].mult;
+        inc.wage = scale(p.base_wage, idx, (occ.factor || 1) * lv);
+      } else if (occ.kind === 'training') {
+        inc.wage = scale(p.base_wage, idx, 0.4 * (occ.factor || 1));
+      } else if (occ.kind === 'study') {
+        exp.tuition = scale(p.tuition_day, idx);
+      }
+    }
+  }
+  const h = state.housing;
+  if (h.type === 'workplace') exp.lodging = scale(econ.lodging.workplace, idx);
+  else if (h.type === 'pension' || h.type === 'rent') exp.lodging = scale(h.base, idx);
+  const home = minors(state);
+  const childCost = scale(econ.childCostPerDay, idx);
+  exp.children = home.length * childCost;
+  for (const c of home) exp.children += scale(SCHOOL_COST[c.school] || 0, idx);
+  inc.kindergeld = Math.round(home.length * childCost * (econ.kindergeldPct / 100));
+  exp.support = state.children.filter((c) => c.status === 'care').length * scale(econ.jugendhilfePerDay, idx);
+  for (const [k, on] of Object.entries(state.insurance)) {
+    if (!on || !econ.insurance[k]) continue;
+    const ins = econ.insurance[k];
+    if (ins.perDay) exp.insurance += scale(ins.perDay, idx);
+    else if (ins.yearPctOfValue) {
+      const total = state.properties.reduce((s, p) => s + propertyValue(world, state, p, year), 0);
+      exp.insurance += Math.round((total * ins.yearPctOfValue) / 100 / 365);
+    }
+  }
+  for (const p of state.properties) {
+    const v = propertyValue(world, state, p, year);
+    exp.upkeep += Math.round((v * (econ.upkeepYearPct + (state.flags.autoMaintain ? 1 : 0))) / 100 / 365);
+  }
+  if (state.butler) exp.butler = scale(state.butler.perDay, idx);
+  const income = Object.values(inc).reduce((a, b) => a + b, 0);
+  const expense = Object.values(exp).reduce((a, b) => a + b, 0);
+  return { inc, exp, income, expense, net: income - expense };
+}
+
+function consumption(state) {
+  return 8 + (state.partner && state.partner.cohabit ? 4 : 0) + 3 * minors(state).length;
+}
+/** Kosten (Cent) des täglichen Essens in einer Qualitätsstufe. */
+function foodCostPerDay(world, state, tierIdx = 1) {
+  const year = yearOf(state.day, state.startYear);
+  return Math.round(world.econ.food[tierIdx].perPct * consumption(state) * world.idx(year));
+}
+
+module.exports = {
+  clamp, notice, chronicle, award, isLearned, learn, levelIndex, propertyValue, netWorth, kidsAtHome, minors,
+  residenceProperty, effectiveHousing, roomsAvailable, roomsNeeded, foodMods, dailyFlows, foodCostPerDay, consumption, SCHOOL_COST,
+};

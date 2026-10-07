@@ -1,0 +1,9 @@
+.installer { max-width: 780px; padding: 2.5rem 0 4rem; }
+.pane h2 { font-size: 1.8rem; }
+.checks { display: grid; gap: .6rem; margin-top: 1rem; }
+.check-row { display: grid; grid-template-columns: 1.6rem 1fr; gap: .8rem; padding: .8rem 1rem; border: 1px solid var(--border); border-radius: 13px; background: var(--surface); align-items: start; }
+.check-row b { display: block; font-size: .92rem; } .check-row span { color: var(--text-dim); font-size: .82rem; word-break: break-all; }
+.check-row.ok .i { color: var(--good); } .check-row.warn .i { color: var(--warn); } .check-row.bad .i { color: var(--bad); }
+.log { list-style: none; padding: 0; margin: 1rem 0; display: grid; gap: .45rem; font-size: .9rem; }
+.log li { display: flex; gap: .6rem; align-items: center; animation: toastin .3s var(--ease); } .log li .i { color: var(--good); }
+code { font-family: ui-monospace, Menlo, monospace; font-size: .85em; background: var(--surface-2); padding: .1rem .35rem; border-radius: 6px; }

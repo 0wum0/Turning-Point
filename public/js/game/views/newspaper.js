@@ -1,0 +1,98 @@
+import { html, icon, money, infoBtn, bar, on, api, num, yearsText } from '../ui.js';
+
+const TABS = ['news', 'jobs', 'housing', 'partners', 'guide'];
+
+function jobCard(j, v, here) {
+  const cur = v.currency;
+  const isCurrent = v.occupation && v.occupation.pkey === j.pkey && v.occupation.employer === j.employer;
+  return html`<article class="listing">
+    <div class="lic">${icon(j.icon || 'briefcase', 'lg')}</div>
+    <div class="grow">
+      <div class="row nowrap spread"><h4>${j.profession}</h4><span class="chip ${j.kind === 'training' ? 'info' : 'good'}">${j.kind === 'training' ? 'Lehrstelle' : 'Stelle'}</span></div>
+      <div class="dim small">${j.employer}</div>
+      <div class="row small" style="margin-top:.4rem">
+        <b class="mono">${money(j.wage, cur)} / Tag</b>
+        ${j.kind === 'training' ? html`<span class="chip">${icon('graduation-cap')} ${yearsText(j.trainingDays)} · kostenlos</span>` : ''}
+        ${j.lodging ? html`<span class="chip accent">${icon('bed')} Schlafplatz</span>` : ''}
+      </div>
+    </div>
+    <button class="btn ${isCurrent ? '' : 'primary'} sm" data-act="apply" data-id="${j.id}" ${(!here || isCurrent) ? 'disabled' : ''}>${isCurrent ? 'Aktuell' : j.kind === 'training' ? 'Ausbildung starten' : 'Bewerben'}</button>
+  </article>`;
+}
+
+function housingCard(h, v, here) {
+  const cur = v.currency;
+  if (h.type === 'sale') {
+    const afford = v.money >= h.price;
+    return html`<article class="listing">
+      <div class="lic">${icon(h.kind === 'villa' ? 'castle' : 'house', 'lg')}</div>
+      <div class="grow"><div class="row nowrap spread"><h4>${h.name}</h4><span class="chip accent">Kauf</span></div>
+        <div class="dim small">${h.rooms} Zimmer · Zustand ${h.condition} %</div>${bar(h.condition, h.condition < 50 ? 'bad' : 'good')}
+        <div class="row small" style="margin-top:.4rem"><b class="mono">${money(h.price, cur)}</b>${!afford ? html`<span class="chip bad">${money(h.price - v.money, cur)} fehlen</span>` : ''}</div></div>
+      <button class="btn primary sm" data-act="buy" data-id="${h.id}" ${(!here || !afford) ? 'disabled' : ''}>Kaufen</button></article>`;
+  }
+  const cur2 = v.housing.name === h.name && v.housing.type === h.type;
+  return html`<article class="listing">
+    <div class="lic">${icon(h.type === 'pension' ? 'hotel' : 'house', 'lg')}</div>
+    <div class="grow"><div class="row nowrap spread"><h4>${h.name}</h4><span class="chip">${h.type === 'pension' ? 'Pension' : 'Miete'}</span></div>
+      <div class="dim small">${h.type === 'pension' ? '1 Zimmer · täglich' : h.rooms + ' Zimmer'}</div>
+      <div class="row small" style="margin-top:.4rem"><b class="mono">${money(h.perDay, cur)} / Tag</b><span class="dim">≈ ${money(h.perDay * 30, cur)} / Monat</span></div></div>
+    <button class="btn ${cur2 ? '' : 'primary'} sm" data-act="rent" data-id="${h.id}" ${(!here || cur2) ? 'disabled' : ''}>${cur2 ? 'Du wohnst hier' : 'Beziehen'}</button></article>`;
+}
+
+function partnerCard(p, v, here) {
+  return html`<article class="listing">
+    <div class="lic">${icon('heart', 'lg')}</div>
+    <div class="grow"><div class="row nowrap spread"><h4>${p.name}, ${p.age}</h4><span class="chip">${p.profession}</span></div>
+      <div class="dim small">„…${p.blurb}“</div></div>
+    <button class="btn primary sm" data-act="meet" data-id="${p.id}" ${!here ? 'disabled' : ''}>Treffen</button></article>`;
+}
+
+export default {
+  id: 'newspaper', label: 'Zeitung', icon: 'newspaper',
+  async load(ctx) {
+    const cityId = ctx.ui.newsCity || ctx.view.city.id;
+    const r = await api('GET', `/api/newspaper?cityId=${cityId}`);
+    return r;
+  },
+  render(ctx, data) {
+    const v = ctx.view; const e = data.edition; const here = data.here;
+    const tab = TABS.includes(ctx.ui.newsTab) ? ctx.ui.newsTab : 'news';
+    const web = e.medium === 'web';
+    const L = e.labels;
+    const tabs = [['news', L.news, 'newspaper'], ['jobs', L.jobs, 'briefcase'], ['housing', L.housing, 'house'], ['partners', L.partners, 'heart'], ['guide', 'Ratgeber', 'lightbulb']];
+    const body = {
+      news: () => html`<div class="news-grid">${e.news.length ? e.news.map((n, i) => html`<article class="news-item ${n.type === 'forecast' ? 'warn' : ''} ${i === 0 ? 'lead' : ''}">
+          <div class="kicker">${n.type === 'forecast' ? 'WARNUNG' : n.ago === 0 ? 'HEUTE' : n.ago === 1 ? 'GESTERN' : 'VOR ' + n.ago + ' TAGEN'}</div>
+          <h3>${n.title}</h3><p>${n.text}</p></article>`) : html`<article class="news-item lead"><div class="kicker">RUHIGE WOCHE</div><h3>Nichts Besonderes in ${e.city.name}</h3><p>Die Menschen gehen ihrer Arbeit nach, der Markt ist ruhig. Wer die Zeitung aufmerksam liest, erfährt früh von Unwettern, Festen und Einbruchserien.</p></article>`}</div>`,
+      jobs: () => html`<div class="listings">${e.jobs.map((j) => jobCard(j, v, here))}</div>`,
+      housing: () => html`<h4 class="sec">Pensionen &amp; Zimmer</h4><div class="listings">${e.housing.pension.map((h) => housingCard(h, v, here))}</div>
+        <h4 class="sec">Mietwohnungen</h4><div class="listings">${e.housing.rent.map((h) => housingCard(h, v, here))}</div>
+        <h4 class="sec">Zu verkaufen</h4><div class="listings">${e.housing.sale.map((h) => housingCard(h, v, here))}</div>`,
+      partners: () => v.partner ? html`<div class="empty-note">${icon('heart')}<span>Du bist mit ${v.partner.name} zusammen.</span></div>` : html`<p class="dim">Ein Treffen kostet eine kleine Aufmerksamkeit. Ob es funkt, hängt von deiner Stimmung, deiner Lage und etwas Glück ab.</p><div class="listings">${e.partners.map((p) => partnerCard(p, v, here))}</div>`,
+      guide: () => html`<div class="grid c2">${e.tutorial.length ? e.tutorial.map((t) => html`<article class="card flat"><h4>${t.title} ${infoBtn(t.info, t.title)}</h4><p class="dim small mb0">${t.text}</p></article>`) : html`<div class="dim">Der Ratgeber ist ausgeblendet.</div>`}</div>
+        <div class="row mt"><button class="btn sm ghost" data-act="tutorial" data-on="${e.tutorial.length ? '0' : '1'}">${e.tutorial.length ? 'Ratgeber ausblenden' : 'Ratgeber wieder einblenden'}</button></div>`,
+    }[tab]();
+    return html`
+    <div class="panel-head"><div><h2>${web ? 'Das Netz' : 'Die Zeitung'}</h2><p>${web ? 'Jobs, Immobilien, Kontakte und Nachrichten – seit 2002 online.' : 'Stellen, Wohnungen, Kontakte und Neuigkeiten aus deiner Stadt.'}</p></div>
+      <div class="field mb0"><label class="sr" for="nCity">Stadt</label><select id="nCity">${ctx.world.cities.map((c) => html`<option value="${c.id}" ${c.id === e.city.id ? 'selected' : ''}>${c.name}${c.id === v.city.id ? ' (dein Wohnort)' : ''}</option>`)}</select></div></div>
+    ${!here ? html`<div class="alert info">${icon('info')}<div>Du liest die Ausgabe aus <b>${e.city.name}</b>. Um dort zu arbeiten oder zu wohnen, musst du erst umziehen (Karte).</div></div>` : ''}
+    <section class="paper ${web ? 'web' : ''}">
+      ${web ? html`<div class="browser-bar"><i></i><i></i><i></i><span>www.${e.city.name.toLowerCase().replace(/[^a-zäöüß]+/g, '-')}-netz.de</span></div>` : ''}
+      <header class="masthead"><div class="mast-small">${e.dateLabel} · ${e.edition}</div><h1>${e.masthead}</h1><div class="mast-small">${e.city.name}, ${e.city.state}</div></header>
+      <nav class="paper-tabs">${tabs.map((t) => html`<button class="${t[0] === tab ? 'on' : ''}" data-tab="${t[0]}">${icon(t[2])} ${t[1]}</button>`)}</nav>
+      <div class="paper-body">${body}</div>
+    </section>`;
+  },
+  bind(root, ctx) {
+    on(root, 'click', '[data-tab]', (e, t) => { ctx.ui.newsTab = t.dataset.tab; ctx.rerender(); });
+    root.querySelector('#nCity').addEventListener('change', (e) => { ctx.ui.newsCity = Number(e.target.value); ctx.rerender(); });
+    on(root, 'click', '[data-act]', async (e, t) => {
+      const name = t.dataset.act;
+      const input = name === 'tutorial' ? { on: t.dataset.on === '1' } : { listingId: t.dataset.id };
+      if (name === 'buy') { const ok = await ctx.confirm({ title: 'Immobilie kaufen?', text: 'Der Kaufpreis wird sofort vom Konto abgebucht. Ein Kauf gibt EFS-Bonus und gehört zu deinem vererbbaren Vermögen.', ok: 'Kaufen' }); if (!ok) return; }
+      if (name === 'apply' && ctx.view.occupation && ctx.view.occupation.kind !== 'work') { const ok = await ctx.confirm({ title: 'Ausbildung/Studium abbrechen?', text: 'Du hast aktuell eine Ausbildung oder ein Studium. Ein Wechsel beendet es – Fortschritt geht verloren.', ok: 'Wechseln', danger: true }); if (!ok) return; }
+      await ctx.act(name, input);
+    });
+  },
+};

@@ -1,0 +1,27 @@
+{
+  "name": "turning-point",
+  "version": "0.1.0",
+  "description": "TURNING POINT – Life. Work. Legacy. Generationen-Lebenssimulation (Node.js + MySQL)",
+  "main": "server.js",
+  "private": true,
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "compression": "^1.8.2",
+    "ejs": "^7.0.1",
+    "express": "^4.22.3",
+    "express-rate-limit": "^8.7.1",
+    "express-session": "^1.19.0",
+    "helmet": "^8.3.0",
+    "multer": "^2.4.0",
+    "mysql2": "^3.24.5",
+    "nodemailer": "^10.0.15"
+  }
+}

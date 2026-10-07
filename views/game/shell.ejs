@@ -1,0 +1,6 @@
+<%- include('../partials/head', { title: 'Spiel', era: 1, css: ['game'], noindex: true, bodyClass: 'game' }) %>
+<div id="app"><div class="boot"><div class="boot-mark"><%- icon('hourglass', 'xl') %></div><div class="dim">Turning Point lädt …</div></div></div>
+<noscript><div class="card" style="margin:2rem auto;max-width:480px">Turning Point benötigt JavaScript.</div></noscript>
+<script type="module" src="/js/game/main.js?v=<%= assetV %>"></script>
+</body>
+</html>

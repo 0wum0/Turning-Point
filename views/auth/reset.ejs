@@ -1,0 +1,12 @@
+<%- include('../partials/head', { title: 'Neues Passwort', era: 1, noindex: true }) %>
+<%- include('../partials/topbar') %>
+<main class="auth-wrap">
+  <form class="card auth-card stack" method="post" action="/reset/<%= token %>">
+    <div><h1>Neues Passwort</h1></div>
+    <% if (error) { %><div class="alert bad"><%- icon('circle-alert') %><div><%= error %></div></div><% } %>
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div class="field"><label for="password">Neues Passwort</label><input id="password" name="password" type="password" minlength="8" required autofocus></div>
+    <button class="btn primary block" type="submit">Speichern</button>
+  </form>
+</main>
+<%- include('../partials/foot') %>

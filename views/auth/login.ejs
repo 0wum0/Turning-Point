@@ -1,0 +1,16 @@
+<%- include('../partials/head', { title: 'Anmelden', era: 1, noindex: true }) %>
+<%- include('../partials/topbar') %>
+<main class="auth-wrap">
+  <form class="card auth-card stack" method="post" action="/login" novalidate>
+    <div><h1>Willkommen zurück</h1><p class="dim">Dein Lebenswerk wartet.</p></div>
+    <% if (error) { %><div class="alert bad"><%- icon('circle-alert') %><div><%= error %></div></div><% } %>
+    <% if (notice) { %><div class="alert good"><%- icon('circle-check') %><div><%= notice %></div></div><% } %>
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <input type="hidden" name="next" value="<%= next %>">
+    <div class="field"><label for="login">E-Mail oder Benutzername</label><input id="login" name="login" type="text" autocomplete="username" required autofocus value="<%= values.login || '' %>"></div>
+    <div class="field"><label for="password">Passwort</label><input id="password" name="password" type="password" autocomplete="current-password" required></div>
+    <button class="btn primary block lg" type="submit">Anmelden</button>
+    <div class="row spread small"><a href="/forgot">Passwort vergessen?</a><span class="dim">Neu hier? <a href="/register">Registrieren</a></span></div>
+  </form>
+</main>
+<%- include('../partials/foot') %>

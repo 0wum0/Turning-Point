@@ -1,0 +1,11 @@
+<%- include('partials/head', { title: title, era: 1 }) %>
+<%- include('partials/topbar') %>
+<main class="auth-wrap">
+  <div class="card auth-card center stack">
+    <div class="serif" style="font-size:4.5rem;line-height:1;color:var(--accent-2)"><%= code %></div>
+    <h1 style="font-size:1.8rem"><%= title %></h1>
+    <p class="dim"><%= message %></p>
+    <a class="btn primary" href="/">Zur Startseite</a>
+  </div>
+</main>
+<%- include('partials/foot') %>

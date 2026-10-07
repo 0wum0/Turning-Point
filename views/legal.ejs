@@ -1,0 +1,7 @@
+<%- include('partials/head', { title: title, era: 1 }) %>
+<%- include('partials/topbar') %>
+<main class="container" style="max-width:760px;padding-top:2.5rem">
+  <h1 style="font-size:2.4rem"><%= title %></h1>
+  <div class="card" style="white-space:pre-wrap;line-height:1.7"><%= body || 'Dieser Text wurde noch nicht hinterlegt. Der Betreiber kann ihn im Admin-Panel unter Einstellungen → Rechtliches pflegen.' %></div>
+</main>
+<%- include('partials/foot') %>

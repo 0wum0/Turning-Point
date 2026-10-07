@@ -1,0 +1,73 @@
+<%- include('../partials/head', { title: 'Installation', era: 1, css: ['install'], noindex: true }) %>
+<header class="topbar"><div class="container">
+  <a class="brand" href="/install"><span class="mark"><%- icon('hourglass') %></span><span>TURNING POINT<small>Installation</small></span></a>
+  <span class="grow"></span><button class="btn ghost sm" data-theme-toggle aria-label="Farbschema"><%- icon('sun-medium') %></button>
+</div></header>
+
+<main class="container installer">
+  <ol class="steps" id="steps">
+    <li data-step="1" class="on"><span>1</span> System</li>
+    <li data-step="2"><span>2</span> Datenbank</li>
+    <li data-step="3"><span>3</span> Seite &amp; Admin</li>
+    <li data-step="4"><span>4</span> Installation</li>
+  </ol>
+
+  <!-- Schritt 1 -->
+  <section class="card pane" data-pane="1">
+    <h2>Willkommen bei Turning Point</h2>
+    <p class="dim">Dieser Assistent richtet Datenbank, Konfiguration und Administrator ein. Er prüft zuerst, ob dein Server bereit ist.</p>
+    <div id="checks" class="checks"><div class="skel" style="height:56px"></div><div class="skel" style="height:56px"></div></div>
+    <% if (needsKey) { %>
+    <div class="field mt"><label for="installKey">Installationsschlüssel</label><input id="installKey" type="password" autocomplete="off" placeholder="Wert deiner Umgebungsvariable TP_INSTALL_KEY"></div>
+    <% } %>
+    <div class="row end mt"><button class="btn primary" id="to2" disabled>Weiter <%- icon('chevron-right') %></button></div>
+  </section>
+
+  <!-- Schritt 2 -->
+  <section class="card pane hide" data-pane="2">
+    <h2>Datenbank (MySQL)</h2>
+    <p class="dim">Lege die Datenbank zuerst im Hostinger-Panel an (<em>Websites → Datenbanken → MySQL-Datenbanken</em>) und trage die Zugangsdaten hier ein.</p>
+    <div class="grid c2">
+      <div class="field"><label for="db_host">Host</label><input id="db_host" type="text" value="localhost"><div class="hint">Bei Hostinger meist <code>localhost</code> oder <code>127.0.0.1</code>.</div></div>
+      <div class="field"><label for="db_port">Port</label><input id="db_port" type="number" value="3306"></div>
+      <div class="field"><label for="db_name">Datenbankname</label><input id="db_name" type="text" placeholder="u123456789_turningpoint" autocomplete="off"></div>
+      <div class="field"><label for="db_user">Benutzer</label><input id="db_user" type="text" placeholder="u123456789_tp" autocomplete="off"></div>
+    </div>
+    <div class="field"><label for="db_pass">Passwort</label><input id="db_pass" type="password" autocomplete="new-password"></div>
+    <div id="dbResult"></div>
+    <div class="row spread mt"><button class="btn ghost" data-back="1"><%- icon('chevron-left') %> Zurück</button><div class="row"><button class="btn" id="dbTest">Verbindung testen</button><button class="btn primary" id="to3" disabled>Weiter <%- icon('chevron-right') %></button></div></div>
+  </section>
+
+  <!-- Schritt 3 -->
+  <section class="card pane hide" data-pane="3">
+    <h2>Seite &amp; Administrator</h2>
+    <div class="grid c2">
+      <div class="field"><label for="site_name">Name des Spiels</label><input id="site_name" type="text" value="Turning Point"></div>
+      <div class="field"><label for="site_url">Öffentliche Adresse</label><input id="site_url" type="url" value="<%= origin %>"><div class="hint">Wird in E-Mail-Links verwendet.</div></div>
+    </div>
+    <div id="adminBox">
+      <hr>
+      <h3><%- icon('shield') %> Administrator-Konto</h3>
+      <div class="grid c2">
+        <div class="field"><label for="a_user">Benutzername</label><input id="a_user" type="text" autocomplete="off" placeholder="admin"></div>
+        <div class="field"><label for="a_mail">E-Mail</label><input id="a_mail" type="email" autocomplete="off"></div>
+      </div>
+      <div class="field"><label for="a_pass">Passwort</label><input id="a_pass" type="password" autocomplete="new-password"><div class="hint">Mindestens 10 Zeichen. Verwende einen Passwortmanager.</div></div>
+    </div>
+    <div id="existingBox" class="alert info hide"><%- icon('info') %><div>In dieser Datenbank wurde bereits eine Turning-Point-Installation gefunden. Es werden <b>keine Daten verändert</b> – nur die Konfigurationsdatei wird neu angelegt (z. B. nach einem Redeploy).</div></div>
+    <div class="row spread mt"><button class="btn ghost" data-back="2"><%- icon('chevron-left') %> Zurück</button><button class="btn primary" id="install"><%- icon('sparkles') %> Jetzt installieren</button></div>
+  </section>
+
+  <!-- Schritt 4 -->
+  <section class="card pane hide" data-pane="4">
+    <h2 id="doneTitle">Installation läuft …</h2>
+    <ul class="log" id="log"></ul>
+    <div id="doneBox" class="hide">
+      <div class="alert good"><%- icon('circle-check') %><div><b>Fertig!</b> Turning Point ist installiert. Konfiguration und Uploads liegen außerhalb des App-Ordners und überstehen jeden Redeploy.</div></div>
+      <div class="row mt"><a class="btn primary lg" href="/login">Zur Anmeldung</a><a class="btn lg" href="/admin">Zum Admin-Panel</a></div>
+    </div>
+    <div id="errBox" class="hide"><div class="alert bad"><%- icon('circle-alert') %><div id="errText"></div></div><button class="btn mt" id="retry">Zurück zu den Einstellungen</button></div>
+  </section>
+</main>
+<script src="/js/installer.js?v=<%= assetV %>"></script>
+</body></html>
