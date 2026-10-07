@@ -69,6 +69,7 @@ function present(world, state, user, now) {
     person: { id: state.person.id, name: `${state.person.first} ${state.person.last}`, first: state.person.first, last: state.person.last, gender: state.person.gender, age, birthCity: (world.city(state.person.birthCityId) || {}).name },
     date: { label: formatDate(state.day, state.startYear), year, doy: date.doy, day: state.day, era: eraName(year), eraKey: eraKey(year), medium: mediumFor(year) },
     currency: world.currency(year),
+    announcement: (() => { const a = world.settings.get('site.announcement'); return a && a.active && (a.text || a.title) ? { id: a.id, level: a.level || 'info', title: a.title || '', text: a.text || '' } : null; })(),
     idx,
     city: city ? { id: city.id, name: city.name, state: city.state, image: city.image } : null,
     money: state.money,

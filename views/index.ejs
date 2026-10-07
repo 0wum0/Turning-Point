@@ -2,41 +2,31 @@
 <%- include('partials/topbar') %>
 <main>
   <section class="hero container">
-    <span class="eyebrow"><%- icon('hourglass') %> Eine Lebenssimulation über Generationen</span>
-    <h1>Ein Leben.<br><em>Ein Vermächtnis.</em></h1>
-    <p class="lead">1945. Zwanzig Jahre alt. Vierzig D-Mark in der Tasche, ein erlernter Beruf und eine zerstörte Welt. Was du daraus machst, entscheidet nicht nur über dein Leben, sondern über das deiner Kinder, Enkel und Urenkel.</p>
+    <span class="eyebrow"><%- icon('hourglass') %> <%= landing.eyebrow %></span>
+    <h1><% landing.title.split('\n').forEach(function(l, i){ %><% if (i) { %><br><em><%= l %></em><% } else { %><%= l %><% } %><% }) %></h1>
+    <p class="lead"><%= landing.lead %></p>
     <div class="row center">
-      <% if (user) { %><a class="btn primary lg" href="/play"><%- icon('play') %> Weiterspielen</a>
-      <% } else { %><a class="btn primary lg" href="/register"><%- icon('sparkles') %> Kostenlos beginnen</a><a class="btn lg" href="/login">Anmelden</a><% } %>
+      <% if (user) { %><a class="btn primary lg" href="/play"><%- icon('play') %> <%= landing.ctaPlay %></a>
+      <% } else { %><a class="btn primary lg" href="/register"><%- icon('sparkles') %> <%= landing.ctaStart %></a><a class="btn lg" href="/login">Anmelden</a><% } %>
     </div>
-    <div class="timeline-strip">
-      <span class="chip accent">1945 · Nachkriegszeit</span><span class="chip">1960 · Wirtschaftswunder</span><span class="chip">1990 · Wendezeit</span><span class="chip">2002 · Euro &amp; Internet</span><span class="chip">2050 · Zukunft</span><span class="chip accent">2100 · 22. Jahrhundert</span>
-    </div>
+    <div class="timeline-strip"><% landing.timeline.forEach(function(t, i){ %><span class="chip <%= i === 0 || i === landing.timeline.length - 1 ? 'accent' : '' %>"><%= t %></span><% }) %></div>
   </section>
 
-  <section class="container stats-band">
-    <div class="card flat stat"><b>40 DM</b><span>Startkapital</span></div>
-    <div class="card flat stat"><b>365 EFS</b><span>sind ein Spieljahr</span></div>
-    <div class="card flat stat"><b>13</b><span>Kinder sind möglich</span></div>
-    <div class="card flat stat"><b>155 Jahre</b><span>bis ins 22. Jahrhundert</span></div>
+  <section class="container stats-band"><% landing.stats.forEach(function(s){ %>
+    <div class="card flat stat"><b><%= s.value %></b><span><%= s.label %></span></div><% }) %>
   </section>
 
   <section class="container mt2">
-    <div class="panel-head"><div><h2>Einfach aussehen. Tief spielen.</h2><p>Keine Grafikschlacht – die Tiefe steckt in der Simulation.</p></div></div>
-    <div class="grid auto" style="--gap:1.1rem">
-      <article class="card feature"><div class="ic"><%- icon('newspaper', 'lg') %></div><h3>Die Zeitung ist dein Fenster</h3><p>Stellen, Wohnungen, Unwetterwarnungen, Kontaktanzeigen. Wer aufmerksam liest, ist im Vorteil – ab 2002 wird sie zum Internet.</p></article>
-      <article class="card feature"><div class="ic"><%- icon('briefcase', 'lg') %></div><h3>Vom Gesellen zum Unternehmer</h3><p>Ausbildung ist kostenlos, Erfahrung zählt. Berufe wandeln sich alle zwanzig Jahre – vom Schmied zum Mechatroniker.</p></article>
-      <article class="card feature"><div class="ic"><%- icon('house', 'lg') %></div><h3>Von der Straße zur Villa</h3><p>Pension, Miete, Haus, Villa. Gut gepflegte Immobilien steigen im Wert, vernachlässigte verfallen.</p></article>
-      <article class="card feature"><div class="ic"><%- icon('users', 'lg') %></div><h3>Familie &amp; Erbe</h3><p>Partner, bis zu 13 Kinder, Schule, Pflichtanteil und Generationenwechsel. Ohne Erben endet die Linie.</p></article>
-      <article class="card feature"><div class="ic"><%- icon('zap', 'lg') %></div><h3>EFS: Zeit als Währung</h3><p>50 EFS jeden Tag, 50 fürs Einloggen. Das Leben läuft auch weiter, wenn du nicht da bist.</p></article>
-      <article class="card feature"><div class="ic"><%- icon('coins', 'lg') %></div><h3>Fair &amp; freiwillig</h3><p>Komplett kostenlos spielbar. Werbung nur, wenn du sie willst. Coins bleiben über alle Leben erhalten.</p></article>
+    <div class="panel-head"><div><h2><%= landing.featuresTitle %></h2><p><%= landing.featuresSub %></p></div></div>
+    <div class="grid auto" style="--gap:1.1rem"><% landing.features.forEach(function(f){ %>
+      <article class="card feature"><div class="ic"><%- icon(f.icon, 'lg') %></div><h3><%= f.title %></h3><p><%= f.text %></p></article><% }) %>
     </div>
   </section>
 
-  <p class="quote">„Ein kleines Ereignis kann ein großes Leben verändern.“</p>
+  <p class="quote"><%= landing.quote %></p>
 
   <section class="container center" style="margin-bottom:2rem">
-    <% if (!user) { %><a class="btn primary lg" href="/register">Dein erstes Leben beginnen</a><% } else { %><a class="btn primary lg" href="/play">Zurück ins Spiel</a><% } %>
+    <% if (!user) { %><a class="btn primary lg" href="/register"><%= landing.ctaBottom %></a><% } else { %><a class="btn primary lg" href="/play"><%= landing.ctaBottomPlay %></a><% } %>
   </section>
 </main>
 <%- include('partials/foot') %>

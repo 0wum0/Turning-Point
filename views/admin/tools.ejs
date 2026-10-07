@@ -1,0 +1,22 @@
+<%- include('_top', { actions: '' }) %>
+<% var csrf = '<input type="hidden" name="_csrf" value="' + csrfToken + '">'; %>
+<div class="grid c2" style="--gap:1rem">
+  <section class="card"><div class="card-title">Coins &amp; EFS an Gruppe verteilen</div>
+    <form class="stack" style="--gap:.6rem" method="post" action="/admin/tools/grant"><%- csrf %>
+      <div class="field"><label>Empfänger</label><select name="target"><option value="all">Alle (<%= counts.users %>)</option><option value="players">Nur Spieler</option><option value="active7">Aktiv in den letzten 7 Tagen (<%= counts.active %>)</option><option value="subs">Nur Dauerkarten-Inhaber</option></select></div>
+      <div class="row"><div class="field"><label>Coins (±)</label><input type="number" name="coins" value="0"></div><div class="field"><label>EFS (±)</label><input type="number" name="efs" value="0"></div></div>
+      <button class="btn primary" data-confirm="Diese Buchung bei der gesamten Gruppe durchführen?">Verteilen</button></form></section>
+  <section class="card"><div class="card-title">Meldung an alle lebenden Charaktere (<%= counts.alive %>)</div>
+    <form class="stack" style="--gap:.6rem" method="post" action="/admin/tools/broadcast"><%- csrf %>
+      <div class="row"><select name="level" style="max-width:120px"><option>info</option><option>good</option><option>warn</option><option>bad</option></select><input type="text" name="title" placeholder="Titel" maxlength="80"></div>
+      <textarea name="text" placeholder="Text der Meldung" maxlength="500" style="min-height:90px"></textarea>
+      <label class="check"><input type="checkbox" name="interrupt" value="1"> als Pop-up anzeigen</label>
+      <button class="btn primary" data-confirm="Meldung an alle lebenden Charaktere senden?">Senden</button></form>
+    <div class="hint mt">Für ein dauerhaftes Banner nutze <a href="/admin/settings/announce">Einstellungen → Ankündigung</a>.</div></section>
+</div>
+<section class="card mt"><div class="card-title">Aufräumen</div>
+  <div class="grid c3" style="--gap:.8rem">
+    <% [['sessions', 'Abgelaufene Sitzungen löschen', false, 0], ['audit', 'Protokoll älter als … Tage löschen', true, counts.audit], ['ads', 'Werbe-Einträge älter als … Tage löschen', true, counts.ads], ['unverified', 'Unbestätigte Konten ohne Charakter älter als … Tage löschen', true, 0], ['inactive', 'Inaktive Konten (0 Coins, keine Dauerkarte) seit … Tagen löschen', true, 0]].forEach(function(c){ %>
+      <form class="row nowrap" method="post" action="/admin/tools/cleanup"><%- csrf %><input type="hidden" name="what" value="<%= c[0] %>"><div class="grow small"><%= c[1] %><% if (c[3]) { %> <span class="dim">(<%= c[3] %>)</span><% } %></div><% if (c[2]) { %><input type="number" name="days" value="90" min="1" style="width:80px"><% } %><button class="btn sm danger" data-confirm="Wirklich aufräumen? Das kann nicht rückgängig gemacht werden.">Ausführen</button></form>
+    <% }) %></div></section>
+<%- include('_bottom') %>

@@ -3,7 +3,7 @@
   <aside class="adm-side">
     <a class="brand" href="/admin"><span class="mark"><%- icon('hourglass') %></span><span>TURNING POINT<small>Admin</small></span></a>
     <nav>
-      <% [['dashboard','Dashboard','layout-dashboard','/admin'],['users','Spieler','users','/admin/users'],['characters','Charaktere','user','/admin/characters'],['cities','Städte','map-pin','/admin/cities'],['professions','Berufe','briefcase','/admin/professions'],['media','Medien','image','/admin/media'],['settings','Einstellungen','settings','/admin/settings'],['system','System','server','/admin/system'],['audit','Protokoll','scroll','/admin/audit']].forEach(function(n){ %>
+      <% [['dashboard','Dashboard','layout-dashboard','/admin'],['users','Spieler','users','/admin/users'],['characters','Charaktere','user','/admin/characters'],['cities','Städte','map-pin','/admin/cities'],['professions','Berufe','briefcase','/admin/professions'],['finance','Finanzen','credit-card','/admin/finance'],['media','Medien','image','/admin/media'],['settings','Einstellungen','settings','/admin/settings'],['tools','Werkzeuge','wrench','/admin/tools'],['backup','Backup & Import','database','/admin/backup'],['system','System','server','/admin/system'],['audit','Protokoll','scroll','/admin/audit']].forEach(function(n){ %>
         <a href="<%= n[3] %>" class="<%= active === n[0] ? 'on' : '' %>"><%- icon(n[2]) %><span><%= n[1] %></span></a>
       <% }) %>
     </nav>

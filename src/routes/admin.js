@@ -33,21 +33,10 @@ const int = (v, d = 0) => { const n = parseInt(v, 10); return Number.isFinite(n)
 const num = (v, d = 0) => { const n = parseFloat(String(v).replace(',', '.')); return Number.isFinite(n) ? n : d; };
 const clean = (v, max) => String(v == null ? '' : v).trim().slice(0, max);
 
-/* ---------- Dashboard ---------- */
-router.get('/', wrap(async (req, res) => {
-  const [u] = await db.query("SELECT COUNT(*) total, SUM(created_at > NOW() - INTERVAL 7 DAY) week, SUM(last_seen_at > NOW() - INTERVAL 1 DAY) active, COALESCE(SUM(coins),0) coins, COALESCE(SUM(efs_pool),0) efs, SUM(banned) banned FROM users");
-  const [c] = await db.query("SELECT SUM(status='alive') alive, SUM(status='dead') dead, SUM(status='gameover') ended, COUNT(*) total, MAX(generation) maxgen FROM characters");
-  const [a] = await db.query('SELECT COUNT(*) n, COALESCE(SUM(reward),0) coins FROM ad_claims WHERE claimed_at > ?', [Date.now() - 86400000]);
-  const [p] = await db.query("SELECT COUNT(*) n, COALESCE(SUM(price_cents),0) cents FROM purchases WHERE status='completed'");
-  const regs = await db.query("SELECT DATE(created_at) d, COUNT(*) n FROM users WHERE created_at > NOW() - INTERVAL 14 DAY GROUP BY DATE(created_at) ORDER BY d");
-  const recent = await db.query('SELECT id, username, role, created_at, last_seen_at FROM users ORDER BY id DESC LIMIT 6');
-  const alive = await db.query("SELECT c.id, c.name, c.game_day, c.money, c.generation, u.username FROM characters c JOIN users u ON u.id = c.user_id WHERE c.status='alive' ORDER BY c.updated_at DESC LIMIT 6");
-  const startYear = settings.get('game.start_year');
-  res.render('admin/dashboard', { title: 'Dashboard', active: 'dashboard', u, c, a, p, regs, recent, alive: alive.map((x) => ({ ...x, year: startYear + Math.floor(x.game_day / 365) })) });
-}));
-
 /* ---------- Spieler & Charaktere (admin-players.js) ---------- */
-require('./admin-players')(router, { wrap, flash, back, int, num, clean });
+const H = { wrap, flash, back, int, num, clean };
+require('./admin-players')(router, H);
+require('./admin-tools')(router, H);
 
 router.post('/users/:id/:action', wrap(async (req, res) => {
   const id = int(req.params.id);
@@ -145,10 +134,6 @@ router.post('/cities/:id', (req, res, next) => upload.fields([{ name: 'image', m
 }));
 
 /* ---------- Berufe ---------- */
-router.get('/professions', wrap(async (req, res) => {
-  const rows = await db.query('SELECT * FROM professions ORDER BY academic, era_from, name');
-  res.render('admin/professions', { title: 'Berufe', active: 'professions', rows });
-}));
 const blankProf = { id: 0, pkey: '', name: '', category: 'handwerk', icon: 'hammer', era_from: 1945, era_to: 2999, base_wage: 600, training_days: 730, tuition_day: 0, academic: 0, replaces: '', lodging: 0, unlocks: '', description: '', active: 1 };
 router.get('/professions/new', (req, res) => res.render('admin/profession', { title: 'Neuer Beruf', active: 'professions', p: blankProf, others: [] }));
 router.get('/professions/:id', wrap(async (req, res) => {
@@ -220,6 +205,7 @@ const GROUPS = [
   { id: 'tasks', title: 'Gebäude-Aufgaben', icon: 'hammer', fields: [['economy:tasks', 'Aufgaben je Gebäudetyp (Minispiel, Dauer, Abkühlzeit, Belohnung)', 'econ', 'mini: collect · sequence · hunt (oder leer = ohne Minispiel). reward: efs, rest, wellbeing, health, money, influence, childSat, bizCash.']] },
   { id: 'companies', title: 'Betriebe & Politik', icon: 'store', fields: [['economy:companies,politics,gambling', 'Betriebe (Stufen, Löhne), politische Ämter, Glücksspiel', 'econ']] },
   { id: 'events', title: 'Ereignisse', icon: 'zap', fields: [['economy:events', 'Zufallsereignisse: Stadt (Unwetter, Feuer …), privat, Betriebe', 'econ', 'Wahrscheinlichkeiten 0–1, Kosten in % des Wertes, Beträge in Cent (Preisindex 1).']] },
+  { id: 'landing', title: 'Startseite', icon: 'globe', fields: [['landing', 'Texte der Startseite (Titel, Features, Statistik, Zitat). Titel: \\n = Zeilenumbruch', 'json']] },
   { id: 'announce', title: 'Ankündigung', icon: 'bell', fields: [['site.announcement', 'Ankündigung an alle Spieler (JSON)', 'json', 'active: true/false · level: info/good/warn/bad · title · text · id (Zahl erhöhen, damit sie erneut erscheint)']] },
   { id: 'payments', title: 'Zahlungen', icon: 'credit-card', fields: [
     ['payments.mode', 'Zahlungsmodus', 'select', 'off = Shop gesperrt · test = Gutschrift ohne Zahlung (nur Test!) · stripe = Stripe Checkout', ['off', 'test', 'stripe']],

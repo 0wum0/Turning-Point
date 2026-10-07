@@ -1,8 +1,16 @@
 <%- include('_top', { actions: '<a class="btn primary sm" href="/admin/cities/new">+ Neue Stadt</a>' }) %>
-<p class="dim">Städte mit Bild: Das hochgeladene Bild ersetzt die generierte Stadtansicht im Spiel. Bilder liegen außerhalb des App-Ordners und überstehen jeden Redeploy.</p>
-<div class="table-wrap"><table class="table"><thead><tr><th></th><th>Stadt</th><th>Bundesland</th><th class="num">Größe</th><th class="num">Preisfaktor</th><th>Status</th><th></th></tr></thead>
-<tbody><% rows.forEach(function(c){ %><tr>
-  <td style="width:76px"><% if (c.image) { %><img class="thumb" src="/media/<%= c.image %>" alt=""><% } else { %><span class="thumb ph"><%- icon('image') %></span><% } %></td>
-  <td><a href="/admin/cities/<%= c.id %>"><b><%= c.name %></b></a><div class="dim small"><%= c.slug %></div></td><td class="dim"><%= c.state %></td><td class="num"><%= c.size_tier %></td><td class="num"><%= c.price_factor %></td>
-  <td><span class="chip <%= c.active ? 'good' : '' %>"><%= c.active ? 'aktiv' : 'inaktiv' %></span></td><td class="num"><a class="btn sm" href="/admin/cities/<%= c.id %>">Bearbeiten</a></td></tr><% }) %></tbody></table></div>
+<% var csrf = '<input type="hidden" name="_csrf" value="' + csrfToken + '">'; %>
+<p class="dim">Städte mit Bild: Das hochgeladene Bild ersetzt die generierte Ansicht im Spiel. Größe, Preisfaktor und Status lassen sich direkt in der Tabelle ändern; Name, Lage und Bilder in der Detailansicht.</p>
+<form method="post" action="/admin/cities/bulk">
+  <%- csrf %>
+  <div class="table-wrap"><table class="table"><thead><tr><th></th><th>Stadt</th><th>Bundesland</th><th class="num">Größe (1–5)</th><th class="num">Preisfaktor</th><th>Status</th><th></th></tr></thead>
+  <tbody><% rows.forEach(function(c){ %><tr>
+    <td style="width:76px"><% if (c.image) { %><img class="thumb" src="/media/<%= c.image %>" alt=""><% } else { %><span class="thumb ph"><%- icon('image') %></span><% } %></td>
+    <td><a href="/admin/cities/<%= c.id %>"><b><%= c.name %></b></a><div class="dim small"><%= c.slug %></div></td><td class="dim"><%= c.state %></td>
+    <td class="num"><input type="number" min="1" max="5" name="c[<%= c.id %>][size_tier]" value="<%= c.size_tier %>" style="width:70px"></td>
+    <td class="num"><input type="text" name="c[<%= c.id %>][price_factor]" value="<%= c.price_factor %>" style="width:80px"></td>
+    <td><select name="c[<%= c.id %>][active]" style="width:100px"><option value="1" <%= c.active ? 'selected' : '' %>>aktiv</option><option value="0" <%= c.active ? '' : 'selected' %>>inaktiv</option></select></td>
+    <td class="num"><a class="btn sm" href="/admin/cities/<%= c.id %>">Bearbeiten</a> <button class="btn sm ghost" formaction="/admin/cities/<%= c.id %>/delete" formnovalidate data-confirm="Stadt „<%= c.name %>“ löschen?" title="Löschen">✕</button></td></tr><% }) %></tbody></table></div>
+  <div class="sticky-save row end"><button class="btn primary"><%- icon('check') %> Alle speichern</button></div>
+</form>
 <%- include('_bottom') %>

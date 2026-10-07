@@ -1,0 +1,20 @@
+<%- include('_top', { actions: '' }) %>
+<div class="grid c2" style="--gap:1rem">
+  <section class="card"><div class="card-title"><%- icon('download') %> Sicherung herunterladen</div>
+    <p class="dim small">Konfiguration = alle Einstellungen, Städte und Berufe. Vollsicherung enthält zusätzlich Konten, Charaktere und Käufe (inkl. Passwort-Hashes – sicher aufbewahren!).</p>
+    <div class="stack" style="--gap:.5rem">
+      <a class="btn" href="/admin/backup/download?scope=config">Konfiguration (ohne Geheimnisse)</a>
+      <a class="btn" href="/admin/backup/download?scope=config&secrets=1" data-confirm="Die Datei enthält Stripe-Schlüssel und SMTP-Passwort im Klartext. Weiter?">Konfiguration (mit Geheimnissen)</a>
+      <a class="btn" href="/admin/backup/download?scope=full" data-confirm="Die Vollsicherung enthält alle Spielerdaten und Passwort-Hashes. Weiter?">Vollsicherung (alle Spielerdaten)</a>
+    </div>
+    <div class="hint mt">Die Datenbank selbst sicherst du zusätzlich im hPanel (Datenbanken → Backups). Hochgeladene Bilder liegen im Daten-Ordner (siehe System).</div></section>
+  <section class="card"><div class="card-title"><%- icon('upload') %> Sicherung einspielen</div>
+    <form class="stack" style="--gap:.6rem" method="post" action="/admin/backup/import?_csrf=<%= csrfToken %>" enctype="multipart/form-data">
+      <input type="file" name="file" accept="application/json,.json" required>
+      <label class="check"><input type="checkbox" name="settings" value="1" checked> Einstellungen</label>
+      <label class="check"><input type="checkbox" name="cities" value="1" checked> Städte (nach Kurzname, Bilder bleiben)</label>
+      <label class="check"><input type="checkbox" name="professions" value="1" checked> Berufe (nach Schlüssel)</label>
+      <label class="check"><input type="checkbox" name="users" value="1"> Neue Konten &amp; Charaktere aus einer Vollsicherung (bestehende Konten bleiben unverändert)</label>
+      <button class="btn primary" data-confirm="Sicherung einspielen? Bestehende Werte gleichen Namens werden überschrieben.">Einspielen</button></form></section>
+</div>
+<%- include('_bottom') %>

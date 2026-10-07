@@ -1,21 +1,26 @@
 <%- include('_top') %>
+<% const eur = function(c){ return (c / 100).toFixed(2).replace('.', ',') + ' €'; }; const spark = function(rows, key, fmt){ const max = Math.max(1, ...rows.map(r => Number(r[key]))); return rows.map(function(r){ return '<div title="' + new Date(r.d).toLocaleDateString('de-DE') + ': ' + fmt(Number(r[key])) + '"><i style="height:' + Math.round(Number(r[key]) / max * 100) + '%"></i><small>' + (key === 'n' ? r[key] : '') + '</small></div>'; }).join(''); }; %>
 <div class="grid c4" style="--gap:1rem">
-  <div class="card tile"><div class="card-title"><%- icon('users') %> Spieler</div><b><%= u.total %></b><span class="dim small">+<%= u.week || 0 %> in 7 Tagen · <%= u.active || 0 %> aktiv (24 h)</span></div>
-  <div class="card tile"><div class="card-title"><%- icon('user') %> Lebende Charaktere</div><b><%= c.alive || 0 %></b><span class="dim small"><%= c.ended || 0 %> beendete Leben · max. Gen. <%= c.maxgen || 0 %></span></div>
-  <div class="card tile"><div class="card-title"><%- icon('coins') %> Coins im Umlauf</div><b><%= u.coins %></b><span class="dim small"><%= u.efs %> EFS im Vorrat</span></div>
+  <div class="card tile"><div class="card-title"><%- icon('users') %> Spieler</div><b><%= u.total %></b><span class="dim small">+<%= u.week || 0 %> in 7 Tagen · <%= u.active || 0 %> aktiv (24 h) · <%= u.online || 0 %> online</span></div>
+  <div class="card tile"><div class="card-title"><%- icon('user') %> Lebende Charaktere</div><b><%= c.alive || 0 %></b><span class="dim small"><%= c.dead || 0 %> Erbe offen · <%= c.ended || 0 %> beendet · max. Gen. <%= c.maxgen || 0 %></span></div>
+  <div class="card tile"><div class="card-title"><%- icon('coins') %> Coins im Umlauf</div><b><%= u.coins %></b><span class="dim small"><%= u.efs %> EFS im Vorrat · <%= u.subs || 0 %> Dauerkarten</span></div>
   <div class="card tile"><div class="card-title"><%- icon('video') %> Werbung (24 h)</div><b><%= a.n %></b><span class="dim small"><%= a.coins %> Coins ausgeschüttet</span></div>
 </div>
-<div class="grid c2 mt" style="--gap:1rem">
+<div class="grid c3 mt" style="--gap:1rem">
   <section class="card"><div class="card-title"><%- icon('trending-up') %> Neue Spieler (14 Tage)</div>
-    <% const max = Math.max(1, ...regs.map(r => r.n)); %>
-    <div class="spark"><% if (!regs.length) { %><span class="dim small">Noch keine Registrierungen.</span><% } %><% regs.forEach(function(r){ %><div title="<%= new Date(r.d).toLocaleDateString('de-DE') %>: <%= r.n %>"><i style="height:<%= Math.round(r.n / max * 100) %>%"></i><small><%= r.n %></small></div><% }) %></div>
-  </section>
-  <section class="card"><div class="card-title"><%- icon('wallet') %> Umsatz (Testmodus eingeschlossen)</div><b class="serif" style="font-size:2rem"><%= (p.cents / 100).toFixed(2).replace('.', ',') %> €</b><div class="dim small"><%= p.n %> Käufe</div></section>
+    <div class="spark"><% if (!regs.length) { %><span class="dim small">Noch keine Registrierungen.</span><% } %><%- spark(regs, 'n', String) %></div></section>
+  <section class="card"><div class="card-title"><%- icon('wallet') %> Umsatz (14 Tage)</div>
+    <div class="spark"><% if (!revenue.length) { %><span class="dim small">Noch kein Umsatz.</span><% } %><%- spark(revenue, 'cents', eur) %></div>
+    <div class="dim small mt">30 Tage: <b><%= eur(p30.cents) %></b> (<%= p30.n %> Käufe) · gesamt <b><%= eur(p.cents) %></b> (<%= p.n %>)</div></section>
+  <section class="card"><div class="card-title"><%- icon('calendar') %> Verteilung der Spieljahre</div>
+    <div class="table-wrap"><table class="table small"><tbody><% years.forEach(function(y){ %><tr><td><%= y.year %></td><td class="num"><%= y.n %> Charakter(e)</td></tr><% }) %><% if (!years.length) { %><tr><td class="dim">Keine lebenden Charaktere.</td></tr><% } %></tbody></table></div></section>
 </div>
-<div class="grid c2 mt" style="--gap:1rem">
+<div class="grid c3 mt" style="--gap:1rem">
   <section class="card"><div class="card-title"><%- icon('user') %> Neueste Spieler</div>
-    <table class="table"><tbody><% recent.forEach(function(r){ %><tr><td><a href="/admin/users/<%= r.id %>"><%= r.username %></a> <% if (r.role === 'admin') { %><span class="chip accent">Admin</span><% } %></td><td class="num dim small"><%= new Date(r.created_at).toLocaleString('de-DE') %></td></tr><% }) %></tbody></table></section>
-  <section class="card"><div class="card-title"><%- icon('activity') %> Aktive Leben</div>
-    <table class="table"><tbody><% alive.forEach(function(r){ %><tr><td><%= r.name %> <span class="dim small">(<%= r.username %>)</span></td><td class="num small">Gen. <%= r.generation %> · <%= r.year %></td></tr><% }) %><% if (!alive.length) { %><tr><td class="dim">Keine aktiven Charaktere.</td></tr><% } %></tbody></table></section>
+    <table class="table"><tbody><% recent.forEach(function(r){ %><tr><td><a href="/admin/users/<%= r.id %>"><%= r.username %></a> <% if (r.role === 'admin') { %><span class="chip accent">Admin</span><% } %></td><td class="num dim small"><%= new Date(r.created_at).toLocaleDateString('de-DE') %></td></tr><% }) %></tbody></table></section>
+  <section class="card"><div class="card-title"><%- icon('activity') %> Zuletzt gespielt</div>
+    <table class="table"><tbody><% alive.forEach(function(r){ %><tr><td><a href="/admin/characters/<%= r.id %>"><%= r.name %></a> <span class="dim small">(<%= r.username %>)</span></td><td class="num small">Gen. <%= r.generation %> · <%= r.year %></td></tr><% }) %></tbody></table></section>
+  <section class="card"><div class="card-title"><%- icon('crown') %> Reichste lebende Charaktere</div>
+    <table class="table"><tbody><% rich.forEach(function(r){ %><tr><td><a href="/admin/characters/<%= r.id %>"><%= r.name %></a> <span class="dim small">(<%= r.username %>)</span></td><td class="num small"><%= Math.round(r.money / 100).toLocaleString('de-DE') %></td></tr><% }) %></tbody></table></section>
 </div>
 <%- include('_bottom') %>

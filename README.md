@@ -9,7 +9,7 @@ Enthalten sind:
 |---|---|
 | **Installer** | Web-Assistent unter `/install` (System-Check, DB-Test, Schema, Startdaten, Admin-Konto) |
 | **Spiel** | Charaktererstellung, EFS-Zeitsystem, Meter, Wohnen, Beruf/Ausbildung/Studium, Zeitung/Web, Karte, Umzug, Familie, Erbe, Generationen, Coins |
-| **Admin-Panel** | Dashboard, Spieler, Städte (mit Bild-Upload), Berufe, Medien, Einstellungen, System, Protokoll |
+| **Admin-Panel** | Dashboard, Spieler- & Charakter-Editor (alles änderbar), Städte, Berufe (Schnell-Editor), Finanzen, Medien, Einstellungen (Baum-Editor für alle Werte inkl. Aufgaben/Ereignisse/Startseite), Werkzeuge, Backup/Import, Logs, Protokoll |
 | **Design** | Eigenes Design-System „Nachtdruck“ (dunkel/hell, Epochen-Akzente), lokal gehostete Schriften & Icons |
 
 ---
@@ -86,6 +86,14 @@ Der Installer zeigt dir diese Werte am Ende zum Kopieren an. Das Session-Geheimn
 - **Belohnungswerbung:** Anbieter `simulated` (Platzhalter) oder `custom`: URL einer Anzeigen-Seite deines Netzwerks, die per iframe lädt und nach Abschluss `window.parent.postMessage({type:"tp-ad-complete"}, "*")` sendet. Der Server prüft zusätzlich Mindestdauer, Einmaligkeit und Tageslimit. Die Herkunft der URL wird automatisch in der CSP (`frame-src`) freigegeben.
 - **Offerwall:** iframe-URL (`{uid}` = Spieler-ID) und Postback `GET /webhooks/offerwall?uid=&coins=&txid=&sig=` mit `sig = HMAC-SHA256(Geheimnis, "uid|coins|txid")`.
 - Im Modus `test` werden Käufe ohne Zahlung gutgeschrieben – nur zum Testen, vor dem Livegang auf `stripe` oder `off` stellen.
+
+## 2c. Admin-Panel im Überblick
+
+- **Spieler:** Liste mit Filtern/Sortierung/Sammelaktionen; je Spieler Konto komplett editierbar (Name, E-Mail, Rolle, Coins, EFS, Dauerkarte, Meta-Daten, Passwort), „Als Spieler einloggen“ (Admin-Ansicht mit Rückweg), Sitzungen beenden, Käufe/Werbung/Protokoll.
+- **Charaktere:** jeder Spielstand editierbar – Felder (Geld, Meter, Datum, Status, Wohnort …), alle Bereiche (Immobilien, Betriebe, Kinder, Partner, Beruf, Stammbaum …) im Baum-Editor, Schnellaktionen (heilen, wiederbeleben, Tage vorspulen, Geld buchen, Beruf erlernt, Tod auslösen, Meldung senden) und Roh-JSON.
+- **Einstellungen:** jede Zahl, jeder Text und jede Liste (Preise, Löhne, Aufgaben, Betriebe, Ämter, Ereignis-Wahrscheinlichkeiten, Startseite, Ankündigungs-Banner) per Formular; „Standard“ setzt zurück; „Experten“ zeigt wirklich alle Werte.
+- **Städte/Berufe:** Tabellen direkt editierbar, Duplizieren, Löschen (geschützt, wenn in Spielständen verwendet), Lohn-Faktor für alle Berufe.
+- **Finanzen, Werkzeuge, Backup:** Käufe/Erstattungen/Gutschriften, Coins an Gruppen, Meldung an alle Spieler, Aufräumen, Konfig-/Vollsicherung herunterladen und einspielen, Server-Log mit Filter.
 
 ## 3. Lokale Entwicklung
 

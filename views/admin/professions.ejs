@@ -1,5 +1,18 @@
 <%- include('_top', { actions: '<a class="btn primary sm" href="/admin/professions/new">+ Neuer Beruf</a>' }) %>
-<p class="dim">Berufe sind epochenabhängig (von/bis Jahr). „Ersetzt“ verknüpft einen Beruf mit seinem Vorgänger (z. B. Schmied → Maschinenbauer), damit sich Berufe alle ~20 Jahre wandeln.</p>
-<div class="table-wrap"><table class="table"><thead><tr><th>Beruf</th><th>Schlüssel</th><th>Kategorie</th><th>Zeitraum</th><th class="num">Lohn/Tag (Cent)</th><th class="num">Ausbildung (Tage)</th><th>Ersetzt</th><th>Status</th><th></th></tr></thead>
-<tbody><% rows.forEach(function(p){ %><tr><td><a href="/admin/professions/<%= p.id %>"><b><%= p.name %></b></a> <% if (p.academic) { %><span class="chip accent">Studium</span><% } %></td><td class="dim small"><%= p.pkey %></td><td class="dim"><%= p.category %></td><td class="small"><%= p.era_from %>–<%= p.era_to >= 2999 ? 'offen' : p.era_to %></td><td class="num"><%= p.base_wage %></td><td class="num"><%= p.training_days %></td><td class="dim small"><%= p.replaces || '–' %></td><td><span class="chip <%= p.active ? 'good' : '' %>"><%= p.active ? 'aktiv' : 'aus' %></span></td><td class="num"><a class="btn sm" href="/admin/professions/<%= p.id %>">Bearbeiten</a></td></tr><% }) %></tbody></table></div>
+<% var csrf = '<input type="hidden" name="_csrf" value="' + csrfToken + '">'; %>
+<p class="dim">Berufe sind epochenabhängig (von/bis Jahr). „Ersetzt“ verknüpft einen Beruf mit seinem Vorgänger (z. B. Schmied → Maschinenbauer). Die Werte in der Tabelle lassen sich direkt ändern – ein Klick auf den Namen öffnet alle Felder.</p>
+<form method="post" action="/admin/professions/bulk">
+  <%- csrf %>
+  <div class="table-wrap"><table class="table"><thead><tr><th>Beruf</th><th>Von</th><th>Bis</th><th class="num">Lohn/Tag (Cent)</th><th class="num">Ausbildung (Tage)</th><th class="num">Studium/Tag (Cent)</th><th>Status</th><th></th></tr></thead>
+  <tbody><% rows.forEach(function(p){ %><tr>
+    <td><a href="/admin/professions/<%= p.id %>"><b><%= p.name %></b></a> <% if (p.academic) { %><span class="chip accent">Studium</span><% } %><div class="dim small"><%= p.pkey %> · <%= p.category %><% if (p.replaces) { %> · ersetzt <%= p.replaces %><% } %></div></td>
+    <td><input type="number" name="p[<%= p.id %>][era_from]" value="<%= p.era_from %>" style="width:84px"></td>
+    <td><input type="number" name="p[<%= p.id %>][era_to]" value="<%= p.era_to %>" style="width:84px"></td>
+    <td class="num"><input type="number" name="p[<%= p.id %>][base_wage]" value="<%= p.base_wage %>" style="width:96px"></td>
+    <td class="num"><input type="number" name="p[<%= p.id %>][training_days]" value="<%= p.training_days %>" style="width:96px"></td>
+    <td class="num"><input type="number" name="p[<%= p.id %>][tuition_day]" value="<%= p.tuition_day %>" style="width:96px"></td>
+    <td><select name="p[<%= p.id %>][active]" style="width:100px"><option value="1" <%= p.active ? 'selected' : '' %>>aktiv</option><option value="0" <%= p.active ? '' : 'selected' %>>inaktiv</option></select></td>
+    <td class="num"><button class="btn sm ghost" formaction="/admin/professions/<%= p.id %>/duplicate" formnovalidate title="Duplizieren">⧉</button><button class="btn sm ghost" formaction="/admin/professions/<%= p.id %>/delete" formnovalidate data-confirm="Beruf „<%= p.name %>“ löschen?" title="Löschen">✕</button></td></tr><% }) %></tbody></table></div>
+  <div class="sticky-save row wrap end"><span class="dim small">Alle Löhne ×</span><input type="text" name="factor" value="1" style="width:70px" title="Faktor auf alle Tageslöhne, 1 = unverändert"><button class="btn primary"><%- icon('check') %> Alle speichern</button></div>
+</form>
 <%- include('_bottom') %>

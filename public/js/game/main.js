@@ -85,6 +85,15 @@ function renderHud() {
   mount(side, html`${PAGES.map((p) => html`<a href="#/${p.id}" class="nav ${ctx.route === p.id ? 'on' : ''} ${hintLevel[p.id] ? 'hint-' + hintLevel[p.id] : ''}" data-nav="${p.id}">${icon(p.icon)}<span>${label(p)}</span>${p.id === 'overview' && unseen ? html`<i class="dot">${unseen}</i>` : hintLevel[p.id] ? html`<i class="dot soft"></i>` : ''}</a>`)}`);
 }
 
+function showAnnouncement(root) {
+  const a = ctx.view && ctx.view.announcement; if (!a) return;
+  const key = `tp-ann-${a.id}`;
+  try { if (localStorage.getItem(key)) return; } catch (_) { /* ohne Speicher: immer anzeigen */ }
+  const lvl = ['good', 'warn', 'bad'].includes(a.level) ? a.level : 'info';
+  root.insertAdjacentHTML('afterbegin', html`<div class="alert ${lvl} ann">${icon('bell')}<div>${a.title ? html`<b>${a.title}</b> ` : ''}${a.text}</div><button class="btn sm ghost" aria-label="Schließen">${icon('x')}</button></div>`.__raw);
+  root.querySelector('.ann button').onclick = (e) => { e.currentTarget.closest('.ann').remove(); try { localStorage.setItem(key, '1'); } catch (_) { /* egal */ } };
+}
+
 let pageSeq = 0;
 async function renderPage(animate) {
   let root = document.getElementById('page'); if (!root) return;
@@ -101,6 +110,7 @@ async function renderPage(animate) {
   mount(root, page.render(ctx, data));
   root.classList.remove('enter'); void root.offsetWidth; if (animate) root.classList.add('enter');
   page.bind(root, ctx, data);
+  showAnnouncement(root);
   window.scrollTo(0, scroll);
   if (ctx.route === 'legacy' && ctx.view.status === 'gameover') {
     root.insertAdjacentHTML('afterbegin', '<div class="alert warn"><div>Dieses Leben ist beendet. <button class="btn sm" id="backGO">Zurück</button></div></div>');

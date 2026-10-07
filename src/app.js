@@ -55,7 +55,9 @@ function createApp(cfg) {
   });
 
   app.use('/webhooks', require('./routes/webhooks')); // Roh-Body & Signatur, vor Parsern/CSRF
-  app.use(express.urlencoded({ extended: false, limit: '100kb' }));
+  const formSmall = express.urlencoded({ extended: false, limit: '100kb' });
+  const formAdmin = express.urlencoded({ extended: true, limit: '12mb', parameterLimit: 50000 });
+  app.use((req, res, next) => (req.path.startsWith('/admin') ? formAdmin : formSmall)(req, res, next));
   app.use(express.json({ limit: '300kb' }));
 
   app.use(session({

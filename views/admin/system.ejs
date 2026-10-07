@@ -16,6 +16,6 @@
 <div class="grid c2 mt" style="--gap:1rem">
   <section class="card"><div class="card-title"><%- icon('layers') %> Datenbank-Tabellen</div><table class="table"><thead><tr><th>Tabelle</th><th class="num">Zeilen ca.</th><th class="num">KB</th></tr></thead><tbody><% sizes.forEach(function(s){ %><tr><td><%= s.name %></td><td class="num"><%= s.rows_ %></td><td class="num"><%= s.kb %></td></tr><% }) %></tbody></table>
     <div class="card-title mt"><%- icon('check') %> Migrationen</div><% migs.forEach(function(m){ %><div class="small dim"><%= m.id %> · <%= new Date(m.applied_at).toLocaleString('de-DE') %></div><% }) %></section>
-  <section class="card"><div class="card-title"><%- icon('scroll') %> Protokoll (app.log)</div><pre class="logbox"><%= logs || 'Noch keine Einträge.' %></pre></section>
+  <section class="card"><div class="card-title"><%- icon('scroll') %> Protokoll (app.log) <a class="btn sm" style="margin-left:auto" href="/admin/logs">Vollansicht</a></div><pre class="logbox"><%= logs || 'Noch keine Einträge.' %></pre></section>
 </div>
 <%- include('_bottom') %>

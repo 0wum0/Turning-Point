@@ -1,0 +1,25 @@
+<%- include('_top', { actions: '' }) %>
+<% var csrf = '<input type="hidden" name="_csrf" value="' + csrfToken + '">'; var eur = function(c){ return (c / 100).toFixed(2).replace('.', ',') + ' €'; }; %>
+<div class="grid c3" style="--gap:1rem">
+  <div class="card tile"><div class="card-title">Bezahlt</div><b><%= eur(sum.paid) %></b><span class="dim small"><%= sum.n %> Buchungen insgesamt</span></div>
+  <div class="card tile"><div class="card-title">Erstattet</div><b><%= eur(sum.refunded) %></b></div>
+  <div class="card tile"><div class="card-title">Aktive Dauerkarten</div><b><%= subs.length %></b></div>
+</div>
+<section class="card mt"><div class="card-title">Gutschrift buchen</div>
+  <form class="row wrap" method="post" action="/admin/finance/grant"><%- csrf %>
+    <input type="text" name="user" placeholder="Spielername, E-Mail oder ID" required style="max-width:240px">
+    <input type="number" name="coins" value="0" style="width:110px" title="Coins"><span class="dim small">Coins</span>
+    <input type="number" name="efs" value="0" style="width:110px" title="EFS"><span class="dim small">EFS</span>
+    <input type="text" name="money" value="0" style="width:110px" title="Spielgeld (DM/€)"><span class="dim small">Spielgeld</span>
+    <input type="text" name="note" placeholder="Notiz (z. B. Entschädigung)" style="max-width:240px" maxlength="40">
+    <button class="btn primary">Buchen</button></form></section>
+<form class="row wrap mt" method="get"><input type="search" name="q" value="<%= q %>" placeholder="Spieler, Paket, Referenz …" style="max-width:260px"><select name="st" style="max-width:160px"><% [['', 'Alle Status'], ['completed', 'abgeschlossen'], ['refunded', 'erstattet'], ['pending', 'offen']].forEach(function(o){ %><option value="<%= o[0] %>" <%= st === o[0] ? 'selected' : '' %>><%= o[1] %></option><% }) %></select><button class="btn"><%- icon('search') %> Filtern</button></form>
+<div class="table-wrap mt"><table class="table"><thead><tr><th>#</th><th>Spieler</th><th>Paket</th><th class="num">Coins</th><th class="num">EFS</th><th class="num">Preis</th><th>Anbieter</th><th>Status</th><th>Datum</th><th></th></tr></thead>
+<tbody><% rows.forEach(function(r){ %><tr><td><%= r.id %></td><td><a href="/admin/users/<%= r.user_id %>"><%= r.username || r.user_id %></a></td><td><%= r.package_id %></td><td class="num"><%= r.coins %></td><td class="num"><%= r.efs %></td><td class="num"><%= eur(r.price_cents) %></td><td class="dim small"><%= r.provider %><% if (r.provider_ref) { %><br><span title="<%= r.provider_ref %>"><%= String(r.provider_ref).slice(0, 18) %>…</span><% } %></td><td><span class="chip <%= r.status === 'completed' ? 'good' : r.status === 'refunded' ? 'bad' : 'warn' %>"><%= r.status %></span></td><td class="dim small"><%= new Date(r.created_at).toLocaleString('de-DE') %></td>
+  <td class="num"><% if (r.status === 'completed') { %><form class="row nowrap" method="post" action="/admin/finance/<%= r.id %>/refund"><%- csrf %><label class="check small"><input type="checkbox" name="claw" value="1"> Coins abziehen</label><button class="btn sm danger" data-confirm="Als erstattet markieren?">Erstatten</button></form><% } else { %><form method="post" action="/admin/finance/<%= r.id %>/complete"><%- csrf %><button class="btn sm">Abschließen</button></form><% } %></td></tr><% }) %>
+<% if (!rows.length) { %><tr><td colspan="10" class="dim">Keine Käufe.</td></tr><% } %></tbody></table></div>
+<div class="grid c2 mt" style="--gap:1rem">
+  <section class="card"><div class="card-title">Dauerkarten (aktiv)</div><table class="table small"><tbody><% subs.forEach(function(s){ %><tr><td><a href="/admin/users/<%= s.id %>"><%= s.username %></a></td><td class="dim">bis <%= new Date(Number(s.sub_until)).toLocaleDateString('de-DE') %></td><td class="dim small"><%= s.stripe_sub || 'manuell' %></td></tr><% }) %><% if (!subs.length) { %><tr><td class="dim">Keine.</td></tr><% } %></tbody></table></section>
+  <section class="card"><div class="card-title">Offerwall-Gutschriften</div><table class="table small"><tbody><% offers.forEach(function(o){ %><tr><td><%= o.username || o.user_id %></td><td class="num"><%= o.coins %> C</td><td class="dim small"><%= o.txid %></td><td class="dim small"><%= new Date(o.created_at).toLocaleString('de-DE') %></td></tr><% }) %><% if (!offers.length) { %><tr><td class="dim">Keine.</td></tr><% } %></tbody></table></section>
+</div>
+<%- include('_bottom') %>
