@@ -74,7 +74,7 @@ router.post('/register', authLimiter, async (req, res, next) => {
     if (!NAME_RE.test(username)) return bad('Der Spielername muss 3–24 Zeichen lang sein (Buchstaben, Zahlen, _ . -).');
     if (!EMAIL_RE.test(email) || email.length > 190) return bad('Bitte eine gültige E-Mail-Adresse angeben.');
     if (pw.length < 8) return bad('Das Passwort braucht mindestens 8 Zeichen.');
-    if (!req.body.terms) return bad('Bitte bestätige die Datenschutzerklärung.');
+    if (!req.body.terms) return bad('Bitte bestätige Alter (16+), Nutzungsbedingungen und Datenschutzerklärung.');
     if (await db.one('SELECT id FROM users WHERE email = ? OR username = ?', [email, username])) return bad('Diese E-Mail oder dieser Name ist bereits vergeben.');
     const needVerify = settings.get('site.require_email_verification') && mailer.smtpConfigured();
     const token = needVerify ? randomToken(32) : null;

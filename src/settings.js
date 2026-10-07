@@ -6,6 +6,7 @@ const db = require('./db');
  * liegen als JSON in der Tabelle `settings`. Fehlende Schlüssel fallen auf die Defaults zurück.
  */
 const EVENT_DEFAULTS = require('./game/event-defaults');
+const LEGAL = require('./legal-texts');
 const DEFAULTS = {
   'site.name': 'Turning Point',
   'site.tagline': 'Life. Work. Legacy.',
@@ -67,9 +68,9 @@ const DEFAULTS = {
     quote: '„Ein kleines Ereignis kann ein großes Leben verändern.“', ctaBottom: 'Dein erstes Leben beginnen', ctaBottomPlay: 'Zurück ins Spiel',
   },
   'site.announcement': { active: false, id: 1, level: 'info', title: '', text: '' },
-  'site.contact_email': '',
-  'site.legal_name': '',
-  'site.legal_address': '',
+  'site.contact_email': LEGAL.EMAIL,
+  'site.legal_name': LEGAL.BETREIBER,
+  'site.legal_address': LEGAL.ANSCHRIFT,
 
   'efs.daily_auto': 50,          // automatisch pro realem Tag
   'efs.login_bonus': 50,         // zusätzlich beim ersten Login des Tages
@@ -102,8 +103,10 @@ const DEFAULTS = {
   'ads.min_seconds': 8,
   'ads.daily_cap': 50,
   'ads.efs_reward': 20,
-  'legal.impressum': '',
-  'legal.datenschutz': '',
+  'legal.impressum': LEGAL.impressum,
+  'legal.datenschutz': LEGAL.datenschutz,
+  'legal.agb': LEGAL.agb,
+  'legal.widerruf': LEGAL.widerruf,
 
   'payments.mode': 'off',            // off | test (Testkäufe schreiben direkt gut) | stripe
   'payments.stripe_secret': '',
@@ -236,6 +239,7 @@ function deepMerge(d, v, byId = false) {
 function get(key) {
   const v = cache && Object.prototype.hasOwnProperty.call(cache, key) ? cache[key] : undefined;
   if (v === undefined) return DEFAULTS[key];
+  if (v === '' && key.startsWith('legal.')) return DEFAULTS[key]; // leer gespeicherte Rechtstexte → Vorlage
   const d = DEFAULTS[key];
   if (isObj(d) && isObj(v)) return deepMerge(d, v, key === 'economy');
   return v;
