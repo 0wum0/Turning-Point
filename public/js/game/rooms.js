@@ -6,6 +6,7 @@ const PAL = {
   4: { wall: 0xf0efe9, trim: 0xb8b4aa, floor: 0xb9a58a, floor2: 0xa8957a, accent: 0x3f74e0, light: 0xffffff, bg: 0x11151d, kind: 'planks' },
   5: { wall: 0xdfeaef, trim: 0x9fb4be, floor: 0xcfd8dc, floor2: 0xbec9ce, accent: 0x35e0d0, light: 0xe6fbff, bg: 0x0a141b, kind: 'tiles' },
 };
+import { makeTextures } from './textures.js';
 const hex = (n) => `#${n.toString(16).padStart(6, '0')}`;
 
 export function buildRoom(T, b, ctx) {
@@ -20,21 +21,29 @@ export function buildRoom(T, b, ctx) {
   if (b.type === 'lotto') { w = 7; d = 6; }
   const ht = 3.4;
 
-  const mat = (c, o = {}) => new T.MeshStandardMaterial({ color: c, roughness: 0.82, metalness: 0.04, ...o });
-  const part = (geo, c, x, y, z, parent, o = {}) => { const m = new T.Mesh(geo, o.m || mat(c, o.mat)); m.position.set(x, y, z); m.castShadow = !o.noShadow; m.receiveShadow = true; if (o.rot) m.rotation.set(o.rot[0] || 0, o.rot[1] || 0, o.rot[2] || 0); parent.add(m); return m; };
+  const TX = makeTextures(T);
+  const mat = (c, o = {}) => {
+    const kind = o.tex === undefined ? TX.kindFor(c) : o.tex;
+    const m = new T.MeshStandardMaterial({ color: c, roughness: kind === 'metal' ? 0.45 : kind === 'marble' ? 0.3 : 0.82, metalness: kind === 'metal' ? 0.55 : 0.04, ...o.mat });
+    if (kind) { const t = TX.get(kind); m.map = t.map; m.bumpMap = t.bump; m.bumpScale = t.bumpScale * 0.6; }
+    return m;
+  };
+  const part = (geo, c, x, y, z, parent, o = {}) => { const m = new T.Mesh(geo, o.m || mat(c, o)); m.position.set(x, y, z); m.castShadow = !o.noShadow; m.receiveShadow = true; if (o.rot) m.rotation.set(o.rot[0] || 0, o.rot[1] || 0, o.rot[2] || 0); parent.add(m); return m; };
   const box = (bw, bh, bd, c, x, y, z, parent = props, o = {}) => part(new T.BoxGeometry(bw, bh, bd), c, x, y + bh / 2, z, parent, o);
   const cyl = (rt, rb, bh, c, x, y, z, parent = props, o = {}) => part(new T.CylinderGeometry(rt, rb, bh, 20), c, x, y + bh / 2, z, parent, o);
   const sph = (r, c, x, y, z, parent = props, o = {}) => part(new T.SphereGeometry(r, 18, 14), c, x, y, z, parent, o);
   const group = (x, z, rot = 0) => { const g = new T.Group(); g.position.set(x, 0, z); g.rotation.y = rot; props.add(g); return g; };
 
   // ---- Boden & Wände (Puppenhaus-Schnitt)
-  const cv = document.createElement('canvas'); cv.width = cv.height = 256; const g2 = cv.getContext('2d');
-  g2.fillStyle = hex(pal.floor); g2.fillRect(0, 0, 256, 256);
-  if (pal.kind === 'planks') { for (let i = 0; i < 8; i++) { g2.fillStyle = i % 2 ? hex(pal.floor2) : hex(pal.floor); g2.fillRect(0, i * 32, 256, 30); g2.fillStyle = 'rgba(0,0,0,.18)'; g2.fillRect(0, i * 32 + 30, 256, 2); g2.fillRect((i * 83) % 256, i * 32, 2, 30); } }
-  else { for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { g2.fillStyle = (i + j) % 2 ? hex(pal.floor2) : hex(pal.floor); g2.fillRect(i * 64, j * 64, 62, 62); } }
-  const tex = new T.CanvasTexture(cv); tex.wrapS = tex.wrapT = T.RepeatWrapping; tex.repeat.set(w / 3, d / 3); tex.colorSpace = T.SRGBColorSpace;
-  const floor = new T.Mesh(new T.BoxGeometry(w, 0.3, d), new T.MeshStandardMaterial({ map: tex, roughness: 0.75 })); floor.position.set(0, -0.15, 0); floor.receiveShadow = true; scene.add(floor);
-  box(w + 0.4, ht, 0.3, pal.wall, 0, 0, -d / 2 - 0.15, scene); box(0.3, ht, d + 0.4, pal.wall, -w / 2 - 0.15, 0, 0, scene);
+  const floorKind = { markt: 'tile', bahnhof: 'tile', arzt: 'tile', rathaus: 'marble', spielbank: 'carpet' }[b.type] || (pal.kind === 'tiles' ? 'tile' : 'wood');
+  const floorTint = floorKind === 'carpet' ? 0x7a1f2a : floorKind === 'marble' ? 0xe6e1d6 : floorKind === 'tile' ? (b.type === 'arzt' ? 0xdfe9ec : pal.floor) : pal.floor;
+  const ft = TX.get(floorKind, [w / 3, d / 3]);
+  const floorMat = new T.MeshStandardMaterial({ color: floorTint, map: ft.map, bumpMap: ft.bump, bumpScale: ft.bumpScale * 0.5, roughness: floorKind === 'marble' ? 0.28 : 0.72, metalness: 0.03 });
+  const floor = new T.Mesh(new T.BoxGeometry(w, 0.3, d), floorMat); floor.position.set(0, -0.15, 0); floor.receiveShadow = true; scene.add(floor);
+  const wallKind = (b.type === 'markt' || (b.type === 'biz' && b.pkey === 'schmied')) ? 'brick' : 'plaster';
+  const wallMat = (len) => { const t = TX.get(wallKind, [len / 3, 1]); return new T.MeshStandardMaterial({ color: wallKind === 'brick' ? 0xb86a4a : pal.wall, map: t.map, bumpMap: t.bump, bumpScale: t.bumpScale * 0.7, roughness: 0.9 }); };
+  const wallBack = new T.Mesh(new T.BoxGeometry(w + 0.4, ht, 0.3), wallMat(w)); wallBack.position.set(0, ht / 2, -d / 2 - 0.15); wallBack.receiveShadow = true; scene.add(wallBack);
+  const wallLeft = new T.Mesh(new T.BoxGeometry(0.3, ht, d + 0.4), wallMat(d)); wallLeft.position.set(-w / 2 - 0.15, ht / 2, 0); wallLeft.receiveShadow = true; scene.add(wallLeft);
   box(w, 0.35, 0.12, pal.trim, 0, 0, -d / 2 + 0.06, scene, { noShadow: true }); box(0.12, 0.35, d, pal.trim, -w / 2 + 0.06, 0, 0, scene, { noShadow: true });
   const hour = new Date().getHours(); const night = hour < 6 || hour >= 20; const dusk = !night && (hour < 8 || hour >= 18);
   const glowMat = new T.MeshBasicMaterial({ color: night ? 0x22345f : dusk ? 0xffb070 : pal.light });

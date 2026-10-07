@@ -147,7 +147,7 @@ function createInstallerApp({ onInstalled }) {
   });
   app.get('/', (req, res) => res.redirect('/install'));
   app.use((req, res) => {
-    if (req.path.startsWith('/api/') || req.path.startsWith('/install/api')) return res.status(503).json({ ok: false, error: 'Nicht installiert.' });
+    if (req.path.startsWith('/api/') || req.path.startsWith('/install/api')) return res.status(503).json({ ok: false, retry: true, error: 'Der Server startet gerade neu oder wurde noch nicht eingerichtet. Bitte lade die Seite in einigen Sekunden neu. Falls das bleibt, öffne /install.' });
     res.redirect('/install');
   });
   return app;

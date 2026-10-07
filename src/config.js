@@ -68,6 +68,8 @@ function resolveDataDir() {
   return resolved;
 }
 
+function resetResolve() { resolved = null; }
+
 const paths = {
   get appRoot() { return APP_ROOT; },
   get dataDir() { return resolveDataDir().dir; },
@@ -104,11 +106,24 @@ function loadConfig() {
   }
 }
 
-function saveConfig(cfg) {
-  ensureDirs();
-  const tmp = paths.configFile + '.tmp';
+function writeAtomic(file, cfg) {
+  const tmp = `${file}.tmp`;
   fs.writeFileSync(tmp, JSON.stringify(cfg, null, 2), { mode: 0o600 });
-  fs.renameSync(tmp, paths.configFile);
+  fs.renameSync(tmp, file);
 }
 
-module.exports = { paths, resolveDataDir, ensureDirs, loadConfig, saveConfig, isWritableDir, candidates, APP_ROOT };
+/**
+ * Speichert die Konfiguration im Daten-Ordner UND – als Sicherheitsnetz – als Kopie in jedem weiteren
+ * beschreibbaren, nicht flüchtigen Kandidaten-Ordner. So findet die App ihre Konfiguration auch dann
+ * wieder, wenn ein Ordner (z. B. nach einem Redeploy) verschwindet.
+ */
+function saveConfig(cfg) {
+  ensureDirs();
+  writeAtomic(paths.configFile, cfg);
+  for (const c of candidates()) {
+    if (c.volatile || path.resolve(c.dir) === path.resolve(paths.dataDir)) continue;
+    try { if (isWritableDir(c.dir)) writeAtomic(path.join(c.dir, 'config.json'), cfg); } catch (_) { /* Kopie ist optional */ }
+  }
+}
+
+module.exports = { resetResolve, paths, resolveDataDir, ensureDirs, loadConfig, saveConfig, isWritableDir, candidates, APP_ROOT };

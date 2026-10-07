@@ -27,7 +27,13 @@ function stateApp(code, title, message) {
   return app;
 }
 
-async function boot() {
+let bootPromise = null;
+function boot() {
+  if (!bootPromise) bootPromise = doBoot().finally(() => { bootPromise = null; });
+  return bootPromise;
+}
+
+async function doBoot() {
   clearTimeout(retryTimer);
   const cfg = config.loadConfig();
   if (!cfg) { live = null; return false; }
@@ -52,7 +58,19 @@ async function boot() {
 }
 
 installer = createInstallerApp({ onInstalled: boot });
-root.use((req, res, next) => (live ? live(req, res, next) : installer(req, res, next)));
+// Selbstheilung: Ist im Installer-Modus plötzlich eine Konfiguration da (z. B. von einem anderen Prozess
+// installiert oder nach einem Neustart wieder auffindbar), wird sofort in die Live-App gewechselt.
+let lastCheck = 0;
+root.use(async (req, res, next) => {
+  try {
+    if (!live && Date.now() - lastCheck > 1500) {
+      lastCheck = Date.now();
+      config.resetResolve();
+      if (config.loadConfig()) await boot();
+    } else if (!live && bootPromise) await bootPromise;
+  } catch (e) { log.error('Selbstheilung fehlgeschlagen', e); }
+  return live ? live(req, res, next) : installer(req, res, next);
+});
 
 process.on('unhandledRejection', (e) => log.error('unhandledRejection', e));
 process.on('uncaughtException', (e) => log.error('uncaughtException', e));

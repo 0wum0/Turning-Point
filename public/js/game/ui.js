@@ -44,6 +44,7 @@ export async function api(method, url, body) {
   } catch (e) { throw new Error('Keine Verbindung zum Server.'); }
   let data = null;
   try { data = await res.json(); } catch (_) { /* leer */ }
+  if (res.status === 503 && data && data.retry && !api._retried) { api._retried = true; await new Promise((r) => setTimeout(r, 2500)); try { return await api(method, url, body); } finally { api._retried = false; } }
   if (res.status === 401) { location.href = '/login?next=/play'; throw new Error('Bitte anmelden.'); }
   if (!res.ok || !data || data.ok === false) throw new Error((data && data.error) || `Fehler ${res.status}`);
   return data;
