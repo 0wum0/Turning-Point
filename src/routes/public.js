@@ -7,7 +7,7 @@ const router = express.Router();
 let LEGAL_EN = {};
 try { LEGAL_EN = require('../legal-texts-en'); } catch (_) { /* Übersetzung optional */ }
 
-router.get('/', (req, res) => res.render('index', { landing: settings.get(req.lang === 'en' ? 'landing_en' : 'landing') }));
+router.get('/', (req, res) => res.render('index', { landing: settings.get(req.lang === 'en' ? 'landing_en' : 'landing'), deleted: !!req.query.deleted }));
 
 /** Englische Fassung nur, solange der Admin den deutschen Text nicht selbst geändert hat. */
 function legal(key, titleDe, titleEn) {

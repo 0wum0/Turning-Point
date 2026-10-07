@@ -97,6 +97,7 @@ function renderHud() {
     <div class="hud-meters">
       ${[['fridge', 'Kühlschrank', 'refrigerator'], ['wellbeing', 'Wohlbefinden', 'smile'], ['rest', 'Erholung', 'moon'], ['health', 'Gesundheit', 'heart-pulse']].map((x) => html`<button class="meter" data-meter="${x[0]}" aria-label="${x[1]}: ${m[x[0]]} %">${ring(m[x[0]], x[1], x[2], { size: 44 })}<span class="mlabel">${x[1]}</span></button>`)}
     </div>
+    <a class="btn ghost sm" href="/account" aria-label="Mein Konto" title="Mein Konto">${icon('user')}</a>
     <button class="btn ghost sm hud-bell" data-chat aria-label="Stadtplatz-Chat" title="Stadtplatz-Chat">${icon('message-circle')}${chatUnread(ctx.social) ? html`<i class="bdot"></i>` : ''}</button>
     <button class="btn ghost sm hud-bell" data-bell aria-label="Benachrichtigungen" title="Benachrichtigungen">${icon('bell')}${ctx.social && ctx.social.total ? html`<i class="bcount">${ctx.social.total > 9 ? '9+' : ctx.social.total}</i>` : ''}</button>
     <button class="btn ghost sm" data-motion-toggle aria-label="Animationen an/aus" title="Animationen an/aus">${icon('sparkles')}</button>

@@ -1,6 +1,7 @@
 <%- include('partials/head', { title: '', era: 1, css: ['landing'] }) %>
 <%- include('partials/topbar') %>
 <main>
+  <% if (typeof deleted !== 'undefined' && deleted) { %><div class="container"><div class="alert good" style="margin-top:1rem"><%- icon('circle-check') %><div>Dein Konto wurde gelöscht. Danke fürs Mitspielen!</div></div></div><% } %>
   <section class="hero container">
     <span class="eyebrow"><%- icon('hourglass') %> <%= landing.eyebrow %></span>
     <h1 data-split><% landing.title.split('\n').forEach(function(l, i){ %><% if (i) { %><br><em><%= l %></em><% } else { %><%= l %><% } %><% }) %></h1>

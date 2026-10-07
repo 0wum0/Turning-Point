@@ -80,7 +80,7 @@ We store account data and game states for as long as your account exists. After 
 Recipients are only the service providers named (hosting, email, if applicable payment provider), to the extent necessary for the respective function. Data is transferred to countries outside the EU/EEA only if the respective provider offers appropriate safeguards pursuant to Art. 44 et seq. GDPR.
 
 13. Your rights
-You have the right of access (Art. 15), rectification (Art. 16), erasure (Art. 17), restriction of processing (Art. 18), data portability (Art. 20) and to object to processing based on legitimate interests (Art. 21 GDPR). To exercise them, an email to ${EMAIL} is sufficient; on request we will delete your account together with your game states.
+You have the right of access (Art. 15), rectification (Art. 16), erasure (Art. 17), restriction of processing (Art. 18), data portability (Art. 20) and to object to processing based on legitimate interests (Art. 21 GDPR). Access and data export (JSON file) as well as permanent deletion of your account are available directly in the game under “My account”. Alternatively, an email to ${EMAIL} is sufficient.
 
 14. Right to lodge a complaint
 You can lodge a complaint with a data protection supervisory authority, for example with the competent State Commissioner for Data Protection of Lower Saxony (Landesbeauftragte für den Datenschutz Niedersachsen), Prinzenstraße 5, 30159 Hannover.
@@ -125,7 +125,7 @@ You remain the author of your contributions, but grant us the non-exclusive righ
 We are liable without limitation in cases of intent and gross negligence, for injury to life, body and health, and under the Product Liability Act. In cases of slightly negligent breach of essential contractual obligations, liability is limited to the typically foreseeable damage; otherwise, liability for slight negligence is excluded. For the loss of game states and in-game money due to technical faults, we are liable within the scope of these rules; we recommend not attaching any importance to the game beyond the enjoyment of playing.
 
 10. Termination and deletion
-You can stop playing at any time. You can request deletion of your account by email to ${EMAIL}. We may terminate the contractual relationship with reasonable notice, and without notice for good cause.
+You can stop playing at any time. You can delete your account yourself at any time under “My account” or request deletion by email to ${EMAIL}. We may terminate the contractual relationship with reasonable notice, and without notice for good cause.
 
 11. Changes to these terms
 We may change these terms with effect for the future if this is objectively necessary (e.g. new features or changes in the law). We will inform you of material changes in the game or by email; if you do not object within four weeks and continue to play, the new terms apply.

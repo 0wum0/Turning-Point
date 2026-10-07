@@ -1,0 +1,55 @@
+<%- include('partials/head', { title: title, era: 1, noindex: true }) %>
+<%- include('partials/topbar') %>
+<main class="container" style="max-width:760px;padding:2rem 0 3rem">
+  <h1 style="font-size:2.2rem">Mein Konto</h1>
+  <p class="dim">Hier verwaltest du deine Zugangsdaten und deine Daten – Auskunft, Export und Löschung nach DSGVO.</p>
+  <% if (error) { %><div class="alert bad"><%- icon('circle-alert') %><div><%= error %></div></div><% } %>
+  <% if (notice) { %><div class="alert good"><%- icon('circle-check') %><div><%= notice %></div></div><% } %>
+
+  <section class="card stack">
+    <div class="card-title"><%- icon('user') %> Profil</div>
+    <dl class="kv"><dt>Spielername</dt><dd><%= u.username %></dd><dt>E-Mail</dt><dd><%= u.email %> <% if (!u.email_verified) { %><span class="chip warn">nicht bestätigt</span><% } %></dd><dt>Registriert</dt><dd><%= new Date(u.created_at).toLocaleDateString('de-DE') %></dd><dt>Charaktere</dt><dd><%= characters %></dd></dl>
+    <div class="row"><a class="btn" href="/play"><%- icon('play') %> Zum Spiel</a><a class="btn ghost" href="/play#/social">Sichtbarkeit &amp; Profiltext (Spieler → Mein Profil)</a></div>
+  </section>
+
+  <section class="card stack mt">
+    <div class="card-title"><%- icon('key') %> Passwort ändern</div>
+    <form method="post" action="/account/password" class="stack" style="--gap:.8rem">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="field"><label for="cur1">Aktuelles Passwort</label><input id="cur1" name="current" type="password" autocomplete="current-password" required></div>
+      <div class="grid c2"><div class="field"><label for="pw">Neues Passwort</label><input id="pw" name="pw" type="password" autocomplete="new-password" minlength="8" required><div class="hint">Mindestens 8 Zeichen.</div></div>
+      <div class="field"><label for="pw2">Wiederholen</label><input id="pw2" name="pw2" type="password" autocomplete="new-password" minlength="8" required></div></div>
+      <div class="row end"><button class="btn primary">Passwort speichern</button></div>
+    </form>
+  </section>
+
+  <section class="card stack mt">
+    <div class="card-title"><%- icon('mail') %> E-Mail-Adresse ändern</div>
+    <form method="post" action="/account/email" class="stack" style="--gap:.8rem">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="grid c2"><div class="field"><label for="em">Neue E-Mail</label><input id="em" name="email" type="email" autocomplete="email" required></div>
+      <div class="field"><label for="cur2">Aktuelles Passwort</label><input id="cur2" name="current" type="password" autocomplete="current-password" required></div></div>
+      <div class="row end"><button class="btn primary">E-Mail speichern</button></div>
+    </form>
+  </section>
+
+  <section class="card stack mt">
+    <div class="card-title"><%- icon('database') %> Meine Daten (Auskunft &amp; Export)</div>
+    <p class="dim small mb0">Du erhältst alle zu deinem Konto gespeicherten Daten als JSON-Datei: Kontodaten, Charaktere und Spielstände, Rangliste, Freunde, Briefe, Chat-Beiträge, Beziehungen, Jobs, IP-Adressen, Käufe und Meldungen. Passwort-Hash und Sicherheits-Token sind nicht enthalten.</p>
+    <div class="row"><a class="btn" href="/account/export" download><%- icon('download') %> Daten herunterladen (JSON)</a></div>
+  </section>
+
+  <section class="card stack mt" style="border-color:color-mix(in srgb, var(--bad) 45%, var(--border))">
+    <div class="card-title" style="color:var(--bad)"><%- icon('triangle-alert') %> Konto löschen</div>
+    <p class="dim small mb0">Das Konto wird <b>endgültig</b> gelöscht: Charaktere, Spielstände, Coins, EFS, Dauerkarte, Freunde, Briefe an dich, Chat-Beiträge und Betriebe. Beziehungen und Arbeitsverhältnisse mit anderen Spielern enden. Briefe, die du anderen geschickt hast, bleiben ohne Absender erhalten. Käufe bleiben anonymisiert gespeichert, weil das Gesetz eine Aufbewahrung vorschreibt. <b>Das lässt sich nicht rückgängig machen.</b></p>
+    <details <%= typeof openDelete !== 'undefined' && openDelete ? 'open' : '' %>><summary class="btn ghost danger">Ich möchte mein Konto löschen …</summary>
+      <form method="post" action="/account/delete" class="stack mt" style="--gap:.8rem">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <div class="field"><label for="cur3">Passwort</label><input id="cur3" name="current" type="password" autocomplete="current-password" required></div>
+        <div class="field"><label for="cf">Tippe LÖSCHEN ein</label><input id="cf" name="confirm" type="text" autocomplete="off" required placeholder="LÖSCHEN"></div>
+        <div class="row end"><button class="btn danger" <%= impersonating ? 'disabled' : '' %>>Konto endgültig löschen</button></div>
+      </form>
+    </details>
+  </section>
+</main>
+<%- include('partials/foot') %>

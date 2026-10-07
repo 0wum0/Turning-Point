@@ -82,7 +82,7 @@ Kontodaten und Spielstände speichern wir, solange dein Konto besteht. Nach Lös
 Empfänger sind nur die genannten Dienstleister (Hosting, E-Mail, ggf. Zahlungsanbieter), soweit für die jeweilige Funktion nötig. Eine Übermittlung in Länder außerhalb der EU/des EWR findet nur statt, wenn der jeweilige Anbieter geeignete Garantien nach Art. 44 ff. DSGVO bietet.
 
 13. Deine Rechte
-Du hast das Recht auf Auskunft (Art. 15), Berichtigung (Art. 16), Löschung (Art. 17), Einschränkung der Verarbeitung (Art. 18), Datenübertragbarkeit (Art. 20) und Widerspruch gegen Verarbeitungen auf Grundlage berechtigter Interessen (Art. 21 DSGVO). Zur Ausübung genügt eine E-Mail an ${EMAIL}; auf Wunsch löschen wir dein Konto samt Spielständen.
+Du hast das Recht auf Auskunft (Art. 15), Berichtigung (Art. 16), Löschung (Art. 17), Einschränkung der Verarbeitung (Art. 18), Datenübertragbarkeit (Art. 20) und Widerspruch gegen Verarbeitungen auf Grundlage berechtigter Interessen (Art. 21 DSGVO). Auskunft und Datenexport (JSON-Datei) sowie die endgültige Löschung deines Kontos findest du direkt im Spiel unter „Mein Konto“. Alternativ genügt eine E-Mail an ${EMAIL}.
 
 14. Beschwerderecht
 Du kannst dich bei einer Datenschutz-Aufsichtsbehörde beschweren, zum Beispiel bei der zuständigen Landesbeauftragten für den Datenschutz Niedersachsen, Prinzenstraße 5, 30159 Hannover.
@@ -127,7 +127,7 @@ Du bleibst Urheber deiner Beiträge, räumst uns aber das einfache Recht ein, si
 Wir haften unbeschränkt bei Vorsatz und grober Fahrlässigkeit, bei Verletzung von Leben, Körper und Gesundheit sowie nach dem Produkthaftungsgesetz. Bei leicht fahrlässiger Verletzung wesentlicher Vertragspflichten ist die Haftung auf den typischerweise vorhersehbaren Schaden begrenzt; im Übrigen ist sie bei leichter Fahrlässigkeit ausgeschlossen. Für den Verlust von Spielständen und Spielgeld durch technische Störungen haften wir im Rahmen dieser Regeln; wir empfehlen, dem Spiel keine Bedeutung über den Spielspaß hinaus beizumessen.
 
 10. Kündigung und Löschung
-Du kannst jederzeit aufhören zu spielen. Die Löschung deines Kontos kannst du per E-Mail an ${EMAIL} verlangen. Wir können das Nutzungsverhältnis mit angemessener Frist kündigen, aus wichtigem Grund fristlos.
+Du kannst jederzeit aufhören zu spielen. Du kannst dein Konto jederzeit selbst unter „Mein Konto“ löschen oder die Löschung per E-Mail an ${EMAIL} verlangen. Wir können das Nutzungsverhältnis mit angemessener Frist kündigen, aus wichtigem Grund fristlos.
 
 11. Änderungen dieser Bedingungen
 Wir können diese Bedingungen mit Wirkung für die Zukunft ändern, wenn dies sachlich geboten ist (z. B. neue Funktionen oder Rechtslage). Über wesentliche Änderungen informieren wir im Spiel oder per E-Mail; widersprichst du nicht innerhalb von vier Wochen und spielst weiter, gelten die neuen Bedingungen.

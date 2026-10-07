@@ -220,7 +220,7 @@ async function inbox(userId, box = 'in', page = 1) {
      FROM messages m LEFT JOIN users u ON u.id = ${out ? 'm.to_user' : 'm.from_user'} LEFT JOIN player_stats ps ON ps.user_id = u.id
      WHERE ${out ? 'm.from_user = ? AND m.del_from = 0' : 'm.to_user = ? AND m.del_to = 0'} ORDER BY m.id DESC LIMIT ? OFFSET ?`, [userId, per, (page - 1) * per]);
   const total = (await db.one(`SELECT COUNT(*) n FROM messages WHERE ${out ? 'from_user = ? AND del_from = 0' : 'to_user = ? AND del_to = 0'}`, [userId])).n;
-  return { box, page, pages: Math.max(1, Math.ceil(total / per)), total, items: rows.map((r) => ({ id: r.id, kind: r.kind, subject: r.subject, preview: r.preview, at: r.created_at, unread: !out && !r.read_at, reported: !!r.reported, otherId: out ? r.to_user : r.from_user, other: r.kind === 'system' && !out ? 'Das Postamt' : (r.other_char ? `${r.other_char}` : r.other_name || 'Unbekannt'), otherUser: r.other_name })) };
+  return { box, page, pages: Math.max(1, Math.ceil(total / per)), total, items: rows.map((r) => ({ id: r.id, kind: r.kind, subject: r.subject, preview: r.preview, at: r.created_at, unread: !out && !r.read_at, reported: !!r.reported, otherId: out ? r.to_user : r.from_user, other: r.kind === 'system' && !out ? 'Das Postamt' : (r.other_char ? `${r.other_char}` : r.other_name || 'Gelöschtes Konto'), otherUser: r.other_name })) };
 }
 async function readLetter(userId, id) {
   const m = await db.one('SELECT m.*, f.username from_name, fp.name from_char, t.username to_name, tp.name to_char FROM messages m LEFT JOIN users f ON f.id = m.from_user LEFT JOIN player_stats fp ON fp.user_id = f.id LEFT JOIN users t ON t.id = m.to_user LEFT JOIN player_stats tp ON tp.user_id = t.id WHERE m.id = ?', [id]);

@@ -108,6 +108,7 @@ function createApp(cfg) {
 
   app.use(require('./routes/public'));
   app.use(require('./routes/auth'));
+  app.use('/account', require('./routes/account'));
   app.use('/api', require('./i18n-game').apiMiddleware);
   app.use('/api', require('./routes/api'));
   app.use('/play', require('./routes/play'));
