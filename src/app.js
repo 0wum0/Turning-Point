@@ -80,8 +80,12 @@ function createApp(cfg) {
     try {
       req.user = null;
       if (req.session.userId) {
-        const u = await db.one('SELECT id, email, username, role, banned, ban_reason, email_verified, coins FROM users WHERE id = ?', [req.session.userId]);
-        if (!u || u.banned) { req.session.destroy(() => {}); } else req.user = u;
+        const u = await db.one('SELECT id, email, username, role, banned, ban_reason, email_verified, coins, lang FROM users WHERE id = ?', [req.session.userId]);
+        if (!u || u.banned) { req.session.destroy(() => {}); } else {
+          req.user = u;
+          // gewählte Sprache am Konto merken (für E-Mails)
+          if (/(?:^|;\s*)tp_lang=/.test(req.headers.cookie || '') && u.lang !== req.lang) { u.lang = req.lang; db.query('UPDATE users SET lang = ? WHERE id = ?', [req.lang, u.id]).catch(() => {}); }
+        }
       }
       res.locals.user = req.user;
       res.locals.impersonating = req.user && req.session.impersonator ? req.user.username : null;

@@ -310,7 +310,7 @@ router.get('/settings/:group', (req, res, next) => {
   res.render('admin/settings', { title: `Einstellungen · ${g.title}`, active: 'settings', groups: allGroups(), g, values, smtpOk: mailer.smtpConfigured() });
 });
 router.post('/settings/mail/test', wrap(async (req, res) => {
-  try { await mailer.send({ to: req.user.email, subject: 'Turning Point – Testmail', text: 'Der E-Mail-Versand funktioniert.' }); flash(req, 'good', `Testmail an ${req.user.email} gesendet.`); } catch (e) { flash(req, 'bad', `Versand fehlgeschlagen: ${e.message}`); }
+  try { await mailer.send({ to: req.user.email, ...require('../lib/mail-templates').build('test', req.lang) }); flash(req, 'good', `Testmail an ${req.user.email} gesendet.`); } catch (e) { flash(req, 'bad', `Versand fehlgeschlagen: ${e.message}`); }
   res.redirect('/admin/settings/mail');
 }));
 router.post('/settings/:group/reset', wrap(async (req, res) => {

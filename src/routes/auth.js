@@ -80,14 +80,14 @@ router.post('/register', authLimiter, async (req, res, next) => {
     const token = needVerify ? randomToken(32) : null;
     const hash = await bcrypt.hash(pw, 11);
     const r = await db.query(
-      'INSERT INTO users (email, username, password_hash, role, email_verified, verify_token, coins, efs_accrued_at, meta) VALUES (?,?,?,?,?,?,?,?,?)',
-      [email, username, hash, 'player', needVerify ? 0 : 1, token, settings.get('coins.start'), Date.now(), JSON.stringify({})],
+      'INSERT INTO users (email, username, password_hash, role, email_verified, verify_token, coins, efs_accrued_at, meta, lang) VALUES (?,?,?,?,?,?,?,?,?,?)',
+      [email, username, hash, 'player', needVerify ? 0 : 1, token, settings.get('coins.start'), Date.now(), JSON.stringify({}), req.lang === 'en' ? 'en' : 'de'],
     );
     await audit(req, 'register', username);
     anticheat.trackIp(req, r.insertId);
     if (needVerify) {
       const link = `${baseUrl(req)}/verify/${token}`;
-      mailer.send({ to: email, subject: 'Bestätige deine E-Mail – Turning Point', text: `Willkommen bei Turning Point, ${username}!\n\nBitte bestätige deine E-Mail-Adresse:\n${link}\n`, html: `<p>Willkommen bei <b>Turning Point</b>, ${username}!</p><p><a href="${link}">E-Mail bestätigen</a></p>` }).catch(() => {});
+      mailer.send({ to: email, ...require('../lib/mail-templates').build('verify', req.lang, username, link) }).catch(() => {});
       return res.redirect('/login?registered=1');
     }
     login(req, { id: r.insertId }, (err) => (err ? next(err) : res.redirect('/play')));
@@ -110,12 +110,12 @@ router.post('/forgot', authLimiter, async (req, res, next) => {
   try {
     const email = String(req.body.email || '').trim().toLowerCase();
     if (mailer.smtpConfigured()) {
-      const u = await db.one('SELECT id, username FROM users WHERE email = ?', [email]);
+      const u = await db.one('SELECT id, username, lang FROM users WHERE email = ?', [email]);
       if (u) {
         const token = randomToken(32);
         await db.query('UPDATE users SET reset_token = ?, reset_expires = DATE_ADD(NOW(), INTERVAL 1 HOUR) WHERE id = ?', [token, u.id]);
         const link = `${baseUrl(req)}/reset/${token}`;
-        mailer.send({ to: email, subject: 'Passwort zurücksetzen – Turning Point', text: `Hallo ${u.username},\n\nHier kannst du dein Passwort zurücksetzen (1 Stunde gültig):\n${link}\n`, html: `<p>Hallo ${u.username},</p><p><a href="${link}">Passwort zurücksetzen</a> (1 Stunde gültig)</p>` }).catch(() => {});
+        mailer.send({ to: email, ...require('../lib/mail-templates').build('reset', u.lang || req.lang, u.username, link) }).catch(() => {});
       }
     }
     res.render('auth/forgot', { message: 'Falls ein Konto mit dieser Adresse existiert, ist ein Link unterwegs.' });
