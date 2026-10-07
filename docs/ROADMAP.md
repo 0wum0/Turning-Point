@@ -35,7 +35,7 @@ Stand: Phase 2/3 des Konzepts (technischer Prototyp → Web-Version). Die Kernsc
 | 55–58 Zyklus, 22. Jahrhundert, Neustart | ✅ / ⏳ | Zyklus endet 2100 mit Coin-Bonus, Neustart 1945 mit Meta-Fortschritt; weitere Jahrhunderte = Zieljahr im Admin + neue Berufe |
 | 60–68 Monetarisierung | ✅ / 🟡 | Rewarded Ads (simuliert **oder** eigene Anzeigen-Seite per iframe + postMessage, serverseitige Prüfung, Tageslimit), Stripe Checkout + signierter Webhook (idempotent), Dauerkarte (Stripe-Abo, tägliche Vorteile), Offerwall-Postback (HMAC). **Ungetestet gegen echte Konten:** Stripe/Werbenetzwerk/Offerwall – bitte mit Testschlüsseln prüfen. PayPal nicht enthalten |
 | 69–71 Web-First, Registrierung, Cloud-Spielstand | ✅ | E-Mail-Bestätigung & Passwort-Reset (mit SMTP) |
-| 72 Android/iOS | ⏳ | Web-Version ist bewusst PWA-fähig vorbereitet (API-first) |
+| 72 Android/iOS | 🟡 | **PWA fertig** (Manifest, Icons, Service Worker, Offline-Seite): „Zum Startbildschirm hinzufügen“ auf Android/iOS. Store-Hülle (Capacitor) noch offen |
 | 75–76 Grafik/Audio | ✅ | generative Stadtansichten + Admin-Upload eigener Bilder; Hintergrundmusik und Töne werden im Browser erzeugt (WebAudio, abschaltbar, epochenabhängig) |
 
 ✅ umgesetzt · 🟡 teilweise · ⏳ geplant
@@ -66,4 +66,3 @@ Hinweis: Die 3D-Räume sind prozedural (Würfel/Zylinder-Stil) – eigene Modell
 2. PayPal als zweiter Zahlungsanbieter, rechtliche Texte (AGB/Widerruf) für den Shop
 3. PWA/Capacitor-Hülle für Android/iOS
 4. Balancing mit echten Spielerdaten (Admin-Dashboard liefert die Basis), weitere Jahrhunderte/Berufe ab 2025
-5. Mehr Zufallsereignisse für Betriebe (Inspektion, Streik, Wirtschaftskrise)
