@@ -97,7 +97,7 @@ const EXACT = {
 // Muster mit Zahlen/Namen: [Regex-Quelle, Ersatz mit $1…]
 const PATTERNS = [
   ['^1 Tag$', '1 day'], ['^1 Jahr$', '1 year'], ['^(\\d+) Jahre?$', '$1 years'], ['^(\\d+) J\\. (\\d+) Mon\\.$', '$1 y. $2 mo.'],
-  ['^Platz (\\d+) von (\\d+) · (.+)$', 'Rank $1 of $2 · $3'], ['^(\\d+) Spieler online in (.+)$', '$1 players online in $2'], ['^(\\d+) neue[r]? Briefe?$', '$1 new letter(s)'],
+  ['^Platz (\\d+) von (\\d+) · Vermögen$', 'Rank $1 of $2 · Wealth'], ['^Platz (\\d+) von (\\d+) · (.+)$', 'Rank $1 of $2 · $3'], ['^auffüllen · ≈ (.+) / Tag$', 'refill · ≈ $1 / day'], ['^(\\d+) Spieler online in (.+)$', '$1 players online in $2'], ['^(\\d+) neue[r]? Briefe?$', '$1 new letter(s)'],
   ['^Zyklus (\\d+)$', 'Cycle $1'], ['^Höchststand Konto (.+)$', 'Peak balance $1'], ['^(\\d+) Freundschaftsanfragen?$', '$1 friend request(s)'], ['^(\\d+) Felder$', '$1 fields'],
   ['^(\\d+) Spieler$', '$1 players'], ['^(\\d+) Tage$', '$1 days'], ['^(\\d+) Mon\\.$', '$1 mo.'], ['^(\\d+) Briefe?$', '$1 letters'],
   ['^(\\d+) Freundschaftsanfragen?$', '$1 friend request(s)'], ['^Seite (\\d+) von (\\d+)$', 'Page $1 of $2'], ['^Willkommen, (.+)$', 'Welcome, $1'],

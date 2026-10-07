@@ -253,7 +253,32 @@ async function summary(userId) {
     const online = (await db.one(`SELECT COUNT(*) n FROM player_stats ps JOIN users u ON u.id = ps.user_id WHERE ps.city_id = ? AND ps.user_id <> ? AND u.social_public = 1 AND u.banned = 0 AND u.last_seen_at > NOW() - INTERVAL ? MINUTE`, [me.city_id, userId, cfg().onlineMinutes])).n;
     rank = { wealth: ahead + 1, total, onlineHere: online };
   }
-  return { unread: un, requests: rq, total: un + rq, rank };
+  const extra = await openRequests(userId);
+  const cityId = me ? me.city_id : (await myCity(userId));
+  const chatLast = cityId ? ((await db.one('SELECT MAX(id) m FROM chat_messages WHERE city_id = ? AND deleted = 0', [cityId])).m || 0) : 0;
+  const chatLastMine = cityId ? ((await db.one('SELECT MAX(id) m FROM chat_messages WHERE city_id = ? AND user_id = ? AND deleted = 0', [cityId, userId])).m || 0) : 0;
+  return { unread: un, requests: rq, couples: extra.couples, jobs: extra.jobs, total: un + rq + extra.couples + extra.jobs, rank, chat: { cityId, last: chatLast, lastMine: chatLastMine } };
+}
+
+async function openRequests(userId) {
+  const couples = (await db.one("SELECT COUNT(*) n FROM couples WHERE (user_a = ? OR user_b = ?) AND ((status = 'request' AND initiator <> ?) OR (status = 'engaged' AND engaged_by IS NOT NULL AND engaged_by <> ?))", [userId, userId, userId, userId])).n;
+  const jobs = (await db.one("SELECT COUNT(*) n FROM job_apps a JOIN player_jobs j ON j.id = a.offer_id WHERE a.status = 'pending' AND ((a.kind = 'apply' AND j.owner_id = ?) OR (a.kind = 'invite' AND a.user_id = ?))", [userId, userId])).n;
+  return { couples, jobs };
+}
+
+/** Glocke: wer hat dir was geschickt? (ungelesene Briefe, Freundschafts-/Beziehungsanfragen, Bewerbungen) */
+async function notifications(userId) {
+  const items = [];
+  const letters = await db.query(`SELECT m.id, m.kind, m.subject, m.created_at, u.username, ps.name char_name FROM messages m LEFT JOIN users u ON u.id = m.from_user LEFT JOIN player_stats ps ON ps.user_id = u.id WHERE m.to_user = ? AND m.del_to = 0 AND m.read_at IS NULL ORDER BY m.id DESC LIMIT 12`, [userId]);
+  for (const l of letters) items.push({ kind: l.kind === 'system' ? 'system' : 'letter', id: l.id, from: l.kind === 'system' ? 'Das Postamt' : (l.char_name || l.username), fromId: null, subject: l.subject, at: l.created_at });
+  const fr = await db.query(`SELECT f.created_at, u.id uid, u.username, ps.name char_name FROM friendships f JOIN users u ON u.id = IF(f.user_a = ?, f.user_b, f.user_a) LEFT JOIN player_stats ps ON ps.user_id = u.id WHERE (f.user_a = ? OR f.user_b = ?) AND f.status = 'pending' AND f.requester <> ? ORDER BY f.created_at DESC LIMIT 8`, [userId, userId, userId, userId]);
+  for (const f of fr) items.push({ kind: 'friend', from: f.char_name || f.username, fromId: f.uid, subject: 'Freundschaftsanfrage', at: f.created_at });
+  const cp = await db.query(`SELECT c.created_at, c.status, u.id uid, u.username, ps.name char_name FROM couples c JOIN users u ON u.id = IF(c.user_a = ?, c.user_b, c.user_a) LEFT JOIN player_stats ps ON ps.user_id = u.id WHERE (c.user_a = ? OR c.user_b = ?) AND ((c.status = 'request' AND c.initiator <> ?) OR (c.status = 'engaged' AND c.engaged_by IS NOT NULL AND c.engaged_by <> ?)) LIMIT 4`, [userId, userId, userId, userId, userId]);
+  for (const c of cp) items.push({ kind: 'couple', from: c.char_name || c.username, fromId: c.uid, subject: c.status === 'engaged' ? 'Heiratsantrag' : 'Beziehungsanfrage', at: c.created_at });
+  const jb = await db.query(`SELECT a.created_at, a.kind, j.title, u.id uid, u.username, ps.name char_name FROM job_apps a JOIN player_jobs j ON j.id = a.offer_id JOIN users u ON u.id = IF(a.kind = 'apply', a.user_id, j.owner_id) LEFT JOIN player_stats ps ON ps.user_id = u.id WHERE a.status = 'pending' AND ((a.kind = 'apply' AND j.owner_id = ?) OR (a.kind = 'invite' AND a.user_id = ?)) ORDER BY a.created_at DESC LIMIT 6`, [userId, userId]);
+  for (const j of jb) items.push({ kind: 'job', from: j.char_name || j.username, fromId: j.uid, subject: (j.kind === 'apply' ? 'Bewerbung: ' : 'Einladung: ') + j.title, at: j.created_at });
+  items.sort((a, b) => new Date(b.at) - new Date(a.at));
+  return { items: items.slice(0, 20) };
 }
 
 /* =============================== Stadtplatz-Chat =============================== */
@@ -391,6 +416,7 @@ function start() {
 }
 
 module.exports = {
+  notifications,
   lockPair, sameIp, accountAgeHours, relation: relation,
   myProfile, search, CATS, statsOf, upsertStats, publishNews, backfillStats, leaderboard, profile, setProfile, listFriends, friendRequest, friendRespond, friendRemove, relation,
   sendLetter, inbox, readLetter, deleteLetter, report, summary, chatList, chatSend, gift, visit, firmsInCity, publicNews, prune, start, mask, clean, sendSystemLetter, friendIds,

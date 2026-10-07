@@ -1,3 +1,4 @@
+import { openChatModal, openBell, chatUnread } from './chatmodal.js';
 import { html, icon, mount, api, toast, modal, confirmBox, ring, money, num, infoBtn, on, sleep, esc, yearsText } from './ui.js';
 import overview from './views/overview.js';
 import newspaper from './views/newspaper.js';
@@ -56,7 +57,7 @@ function render() {
 
 let socialTimer = 0;
 async function pollSocial() {
-  try { const r = await api('GET', '/api/social/summary'); const first = !ctx.social; const changed = first || ctx.social.total !== r.total; ctx.social = r; if (changed && shellActive()) { renderHud(); if (first && ctx.route === 'overview') rerender(); } } catch (_) { /* offline o. Ä. */ }
+  try { const r = await api('GET', '/api/social/summary'); const first = !ctx.social; const prevChat = chatUnread(ctx.social); const changed = first || ctx.social.total !== r.total; ctx.__chatChanged = chatUnread(r) !== prevChat; ctx.social = r; if ((changed || ctx.__chatChanged) && shellActive()) { renderHud(); if (first && ctx.route === 'overview') rerender(); } } catch (_) { /* offline o. Ä. */ }
 }
 function startSocialPoll() { if (socialTimer) return; pollSocial(); socialTimer = setInterval(() => { if (!document.hidden && shellActive()) pollSocial(); }, 45000); }
 
@@ -83,6 +84,8 @@ function renderHud() {
     <div class="hud-meters">
       ${[['fridge', 'Kühlschrank', 'refrigerator'], ['wellbeing', 'Wohlbefinden', 'smile'], ['rest', 'Erholung', 'moon'], ['health', 'Gesundheit', 'heart-pulse']].map((x) => html`<button class="meter" data-meter="${x[0]}" aria-label="${x[1]}: ${m[x[0]]} %">${ring(m[x[0]], x[1], x[2], { size: 44 })}<span class="mlabel">${x[1]}</span></button>`)}
     </div>
+    <button class="btn ghost sm hud-bell" data-chat aria-label="Stadtplatz-Chat" title="Stadtplatz-Chat">${icon('message-circle')}${chatUnread(ctx.social) ? html`<i class="bdot"></i>` : ''}</button>
+    <button class="btn ghost sm hud-bell" data-bell aria-label="Benachrichtigungen" title="Benachrichtigungen">${icon('bell')}${ctx.social && ctx.social.total ? html`<i class="bcount">${ctx.social.total > 9 ? '9+' : ctx.social.total}</i>` : ''}</button>
     <button class="btn ghost sm" data-motion-toggle aria-label="Animationen an/aus" title="Animationen an/aus">${icon('sparkles')}</button>
     <button class="btn ghost sm" data-sound aria-label="Ton an/aus" title="Musik & Töne">${icon(audio.isOn() ? 'volume-2' : 'volume-x')}</button>
     <a class="btn ghost sm" data-i18n-skip href="/lang/${document.documentElement.lang === 'en' ? 'de' : 'en'}?next=/play" title="Deutsch / English" aria-label="Language">${document.documentElement.lang === 'en' ? 'DE' : 'EN'}</a>
@@ -204,6 +207,8 @@ document.addEventListener('click', (e) => {
   const g = e.target.closest('[data-go]'); if (g && g.closest('#hud')) { e.preventDefault(); go(g.dataset.go); }
   const mt = e.target.closest('[data-meter]');
   if (mt) { const k = mt.dataset.meter; const lab = { fridge: 'Kühlschrank', wellbeing: 'Wohlbefinden', rest: 'Erholung', health: 'Gesundheit' }[k]; modal(html`<h3>${icon('info')} ${lab}: ${ctx.view.meters[k]} %</h3><ol class="info-steps">${['Was ist das?', 'Warum ist das wichtig?', 'Was kann ich tun?'].map((t, i) => html`<li><div><b>${t}</b>${METER_INFO[k][i]}</div></li>`)}</ol><div class="row end mt"><button class="btn primary" data-close="1">Verstanden</button></div>`); }
+  if (e.target.closest('#hud [data-chat]')) openChatModal(ctx);
+  if (e.target.closest('#hud [data-bell]')) openBell(ctx);
   if (e.target.closest('#hud [data-sound]')) { audio.toggle(); renderHud(); }
   const th = e.target.closest('#hud [data-theme-toggle]');
   if (th) { const c = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light'; document.documentElement.setAttribute('data-theme', c); try { localStorage.setItem('tp-theme', c); } catch (_) {} }

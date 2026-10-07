@@ -272,3 +272,22 @@ body.game { overflow-x: hidden; }
   .tree li { padding: 22px .22rem 0; } .tree ul { padding-top: 22px; }
   .tree .couple { gap: .1rem; } .tree .heart .i { width: .8rem; height: .8rem; }
 }
+
+/* Kopfzeile: Chat-Bubble & Glocke */
+.hud-bell { position: relative; }
+.hud-bell .bdot { position: absolute; top: 4px; right: 4px; width: 9px; height: 9px; border-radius: 50%; background: var(--good, #21a46b); box-shadow: 0 0 0 2px var(--bg); animation: pulse 2s infinite; }
+.hud-bell .bcount { position: absolute; top: -3px; right: -3px; min-width: 1.05rem; height: 1.05rem; padding: 0 .25rem; border-radius: 99px; background: var(--bad); color: #fff; font-size: .62rem; font-style: normal; font-weight: 700; display: grid; place-items: center; }
+.notif { display: flex; align-items: center; gap: .7rem; width: 100%; text-align: left; padding: .6rem .7rem; border-radius: 12px; border: 1px solid var(--border); background: var(--surface-2); color: inherit; cursor: pointer; font: inherit; }
+.notif:hover { border-color: var(--accent); }
+.notif .ni { width: 2rem; height: 2rem; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent-2); flex: none; }
+.notif b { display: block; font-size: .9rem; } .notif .subj { display: block; font-size: .82rem; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 52vw; }
+
+@media (max-width: 640px) {
+  .hud { gap: .35rem .35rem; }
+  .hud > .btn.sm, .hud .logout .btn.sm { padding: .42rem .5rem; min-width: 0; }
+  .hud [data-motion-toggle] { display: none; }
+  .hud .hud-id { min-width: 0; flex: 1 1 60px; } .hud .hud-id b, .hud .hud-id small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hud .hud-id small { font-size: .68rem; }
+  .hud .grow { display: none; }
+  .hud .hud-res, .hud .hud-meters { flex-basis: 100%; }
+}

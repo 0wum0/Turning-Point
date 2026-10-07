@@ -15,6 +15,7 @@ const uid = (req) => req.user.id;
 
 router.use((req, res, next) => (settings.get('social').enabled || req.path === '/summary' ? next() : res.status(403).json({ ok: false, error: 'Die Gemeinschaftsfunktionen sind gerade abgeschaltet.' })));
 
+router.get('/notifications', wrap(async (req, res) => res.json({ ok: true, ...(await social.notifications(uid(req))) })));
 router.get('/summary', wrap(async (req, res) => res.json({ ok: true, ...(await social.summary(uid(req))) })));
 
 router.get('/leaderboard', wrap(async (req, res) => {

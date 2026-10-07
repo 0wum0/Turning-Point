@@ -199,6 +199,8 @@ export default {
   bind(root, ctx, d) {
     const s = ctx.ui.soc;
     const go = () => ctx.rerender();
+    if (s.openLetter) { const id = s.openLetter; s.openLetter = null; setTimeout(() => { const row = root.querySelector(`[data-letter="${id}"]`); if (row) row.click(); }, 60); }
+    if (s.openProfile) { const uid = s.openProfile; s.openProfile = null; setTimeout(() => openProfile(ctx, uid), 60); }
     on(root, 'click', '[data-tab]', (e, t) => { e.preventDefault(); s.tab = t.dataset.tab; s.page = 1; go(); });
     on(root, 'click', '[data-cat]', (e, t) => { e.preventDefault(); s.cat = t.dataset.cat; go(); });
     on(root, 'click', '[data-scope]', (e, t) => { e.preventDefault(); s.scope = t.dataset.scope; go(); });

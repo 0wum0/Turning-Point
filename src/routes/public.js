@@ -1,13 +1,25 @@
 'use strict';
 const express = require('express');
 const settings = require('../settings');
+const LEGAL_DE = require('../legal-texts');
 const router = express.Router();
 
-router.get('/', (req, res) => { const st = require('../settings'); res.render('index', { landing: st.get(req.lang === 'en' ? 'landing_en' : 'landing') }); });
-router.get('/impressum', (req, res) => res.render('legal', { title: 'Impressum', body: settings.get('legal.impressum') }));
-router.get('/datenschutz', (req, res) => res.render('legal', { title: 'Datenschutz', body: settings.get('legal.datenschutz') }));
+let LEGAL_EN = {};
+try { LEGAL_EN = require('../legal-texts-en'); } catch (_) { /* Übersetzung optional */ }
 
-router.get('/agb', (req, res) => res.render('legal', { title: 'Nutzungsbedingungen (AGB)', body: settings.get('legal.agb') }));
-router.get('/widerruf', (req, res) => res.render('legal', { title: 'Widerrufsbelehrung', body: settings.get('legal.widerruf') }));
+router.get('/', (req, res) => res.render('index', { landing: settings.get(req.lang === 'en' ? 'landing_en' : 'landing') }));
+
+/** Englische Fassung nur, solange der Admin den deutschen Text nicht selbst geändert hat. */
+function legal(key, titleDe, titleEn) {
+  return (req, res) => {
+    const de = settings.get(`legal.${key}`);
+    const en = req.lang === 'en' && de === LEGAL_DE[key] && LEGAL_EN[key];
+    res.render('legal', { title: en ? titleEn : titleDe, body: en || de });
+  };
+}
+router.get('/impressum', legal('impressum', 'Impressum', 'Legal notice'));
+router.get('/datenschutz', legal('datenschutz', 'Datenschutz', 'Privacy policy'));
+router.get('/agb', legal('agb', 'Nutzungsbedingungen (AGB)', 'Terms of use'));
+router.get('/widerruf', legal('widerruf', 'Widerrufsbelehrung', 'Right of withdrawal'));
 
 module.exports = router;
