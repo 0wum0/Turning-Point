@@ -78,6 +78,7 @@ function createApp(cfg) {
         if (!u || u.banned) { req.session.destroy(() => {}); } else req.user = u;
       }
       res.locals.user = req.user;
+      res.locals.impersonating = req.user && req.session.impersonator ? req.user.username : null;
       res.locals.site = { name: settings.get('site.name'), tagline: settings.get('site.tagline') };
       res.locals.era = 1;
       res.locals.flash = req.session.flash || null; delete req.session.flash;

@@ -4,6 +4,7 @@ const { yearOf } = require('./calendar');
 const { scale, formatMoney, currencyOf } = require('./economy');
 const { notice, chronicle, isLearned, levelIndex } = require('./core');
 const { LAST } = require('./content');
+const EVD = require('./event-defaults');
 
 const tiersOf = (world) => world.econ.companies.tiers;
 const cityMult = (city) => 0.7 + 0.15 * (city ? city.size_tier : 2);
@@ -80,8 +81,9 @@ function bizEvents(ctx, c, year) {
     else if (phase.kind === 'boom') notice(state, { level: 'good', title: `Aufschwung: ${phase.name}`, tab: 'business', text: 'Die Geschäfte laufen besser als sonst – ein guter Moment zum Erweitern.' });
   }
   if (state.day % 7 !== c.id % 7) return;
+  const B = { ...EVD.business, ...((world.econ.events && world.econ.events.business) || {}) };
   const r = rngFor('bizev', state.seed || 0, c.id, Math.floor(state.day / 7));
-  if (!chance(r, 0.12)) return;
+  if (!chance(r, B.chance)) return;
   const idx = world.idx(year);
   const cur = currencyOf(year, world.econ);
   const kind = pick(r, ['inspection', 'inspection', 'strike', 'praise', 'theft']);
@@ -89,22 +91,22 @@ function bizEvents(ctx, c, year) {
   if (kind === 'inspection') {
     const clean = c.staff >= needed && c.manager;
     if (clean) {
-      c.cash += scale(150, idx);
+      c.cash += scale(B.inspectionBonus, idx);
       notice(state, { level: 'good', title: `Inspektion bei ${c.name}`, tab: 'business', text: 'Das Amt findet nichts zu beanstanden und lobt den Betrieb.' });
     } else {
-      const fine = scale(400 + c.rooms * 40, idx);
+      const fine = scale(B.fineBase + c.rooms * B.finePerRoom, idx);
       c.cash -= fine;
       notice(state, { level: 'warn', title: `Inspektion bei ${c.name}`, tab: 'business', text: `Zu wenig Personal oder keine Leitung: ${formatMoney(fine, cur)} Strafe aus der Firmenkasse.`, info: ['Ämter prüfen Hygiene, Arbeitsschutz und Besetzung.', 'Mit genug Personal und einem Manager passiert dir das nicht.', 'Stelle Mitarbeiter ein oder setze einen Manager ein.'] });
     }
-  } else if (kind === 'strike' && c.staff >= 3) {
-    c.strikeUntil = state.day + int(r, 4, 9);
+  } else if (kind === 'strike' && c.staff >= B.strikeMinStaff) {
+    c.strikeUntil = state.day + int(r, B.strikeMinDays, B.strikeMaxDays);
     notice(state, { level: 'warn', title: `Streik bei ${c.name}`, tab: 'business', text: 'Die Belegschaft legt die Arbeit nieder. Während des Streiks gibt es keinen Umsatz.', info: ['Streiks dauern wenige Tage.', 'Löhne und Unterhalt laufen weiter.', 'Ein Manager schlichtet; mehr Lohn beruhigt langfristig die Stimmung.'] });
   } else if (kind === 'praise') {
-    const bonus = scale(200 + c.rooms * 30, idx);
+    const bonus = scale(B.praiseBase + c.rooms * B.praisePerRoom, idx);
     c.cash += bonus;
     notice(state, { level: 'good', title: `Gästelob für ${c.name}`, tab: 'business', text: `Eine begeisterte Kritik bringt Zulauf: ${formatMoney(bonus, cur)} zusätzlicher Umsatz.` });
   } else if (kind === 'theft') {
-    const loss = scale(250, idx);
+    const loss = scale(B.theftLoss, idx);
     c.cash -= loss;
     notice(state, { level: 'warn', title: `Diebstahl in ${c.name}`, tab: 'business', text: `Aus dem Betrieb wurde Ware im Wert von ${formatMoney(loss, cur)} gestohlen.` });
   }

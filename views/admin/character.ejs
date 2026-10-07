@@ -1,0 +1,62 @@
+<%- include('_top', { actions: '<a class="btn sm" href="/admin/users/' + row.user_id + '">← Spieler ' + row.username + '</a>' }) %>
+<% var csrf = '<input type="hidden" name="_csrf" value="' + csrfToken + '">'; %>
+<% if (broken) { %>
+  <div class="alert bad"><%- icon('circle-alert') %><div>Der Spielstand ist beschädigt (<%= broken %>). Du kannst ihn unten als Roh-JSON reparieren.</div></div>
+  <form class="card" method="post" action="/admin/characters/<%= row.id %>/raw"><%- csrf %><textarea class="code" name="state" style="min-height:420px" spellcheck="false"><%= raw %></textarea><div class="row end mt"><button class="btn primary">Ersetzen</button></div></form>
+<% } else { %>
+<div class="row spread wrap" style="margin-bottom:1rem">
+  <div class="dim small">Charakter #<%= row.id %> · Spieler <a href="/admin/users/<%= row.user_id %>"><%= row.username %></a> · Zyklus <%= row.cycle %> · Generation <%= row.generation %> · Jahr <%= year %> · <span class="chip <%= row.status === 'alive' ? 'good' : row.status === 'dead' ? 'warn' : '' %>"><%= row.status %></span></div>
+  <div class="row"><a class="btn sm" href="/admin/characters/<%= row.id %>/preview" target="_blank" rel="noopener">Spielansicht (JSON)</a>
+    <form method="post" action="/admin/characters/<%= row.id %>/delete"><%- csrf %><button class="btn sm danger" data-confirm="Diesen Charakter unwiderruflich löschen?">Löschen</button></form></div>
+</div>
+
+<section class="card"><div class="card-title">Schnellaktionen</div>
+  <div class="row wrap" style="gap:.5rem">
+    <% [['heal','Alles heilen & füllen'],['fridge','Kühlschrank füllen'],['revive','Wiederbeleben'],['repair','Immobilien reparieren'],['cooldowns','Aufgaben-Wartezeiten löschen'],['unemploy','Beruf beenden'],['clear','Meldungen löschen']].forEach(function(a){ %>
+      <form method="post" action="/admin/characters/<%= row.id %>/quick"><%- csrf %><input type="hidden" name="do" value="<%= a[0] %>"><button class="btn sm"><%= a[1] %></button></form><% }) %>
+  </div>
+  <div class="grid c3 mt" style="--gap:.8rem">
+    <form class="row nowrap" method="post" action="/admin/characters/<%= row.id %>/quick"><%- csrf %><input type="hidden" name="do" value="money"><input type="text" name="amount" value="1000" style="width:100px" title="in DM/€ (nicht Cent)"><button class="btn sm">Geld ± (DM/€)</button></form>
+    <form class="row nowrap" method="post" action="/admin/characters/<%= row.id %>/quick"><%- csrf %><input type="hidden" name="do" value="advance"><input type="number" name="days" value="30" min="1" max="3650" style="width:100px"><button class="btn sm">Tage vorspulen</button></form>
+    <form class="row nowrap" method="post" action="/admin/characters/<%= row.id %>/quick"><%- csrf %><input type="hidden" name="do" value="setyear"><input type="number" name="year" value="<%= year %>" style="width:100px"><button class="btn sm" data-confirm="Das Spieldatum direkt setzen? Das kann Altersangaben verschieben.">Jahr setzen</button></form>
+    <form class="row nowrap" method="post" action="/admin/characters/<%= row.id %>/quick"><%- csrf %><input type="hidden" name="do" value="cards"><input type="number" name="amount" value="3" style="width:100px"><button class="btn sm">Gesundheitskarten ±</button></form>
+    <form class="row nowrap" method="post" action="/admin/characters/<%= row.id %>/quick"><%- csrf %><input type="hidden" name="do" value="learn"><select name="pkey"><% profs.forEach(function(p){ %><option value="<%= p.key %>"><%= p.name %></option><% }) %></select><button class="btn sm">Beruf erlernt</button></form>
+    <form class="row nowrap" method="post" action="/admin/characters/<%= row.id %>/quick"><%- csrf %><input type="hidden" name="do" value="kill"><input type="text" name="reason" placeholder="Todesgrund" style="width:140px"><button class="btn sm danger" data-confirm="Das Leben jetzt beenden?">Tod auslösen</button></form>
+  </div>
+  <form class="row wrap mt" method="post" action="/admin/characters/<%= row.id %>/quick"><%- csrf %><input type="hidden" name="do" value="notice">
+    <b class="small">Meldung an den Spieler:</b><select name="level" style="width:110px"><option>info</option><option>good</option><option>warn</option><option>bad</option></select><input type="text" name="title" placeholder="Titel" style="max-width:200px"><input type="text" name="text" placeholder="Text" style="max-width:340px"><label class="check"><input type="checkbox" name="interrupt" value="1"> als Pop-up</label><button class="btn sm">Senden</button></form>
+</section>
+
+<form method="post" action="/admin/characters/<%= row.id %>/save" class="mt">
+  <%- csrf %>
+  <div class="grid c2" style="--gap:1rem">
+  <% groups.forEach(function(g){ %>
+    <section class="card"><div class="card-title"><%= g.title %></div>
+      <div class="kvgrid">
+      <% g.fields.forEach(function(f){ var path = f[0], label = f[1], type = f[2], val = values[path]; %>
+        <% if (type === 'bool') { %><div class="field"><label class="check"><input type="checkbox" name="<%= path %>" value="1" <%= val ? 'checked' : '' %>> <%= label %></label></div>
+        <% } else if (type === 'select') { %><div class="field"><label><%= label %></label><select name="<%= path %>"><% f[3].forEach(function(o){ %><option value="<%= o %>" <%= val === o ? 'selected' : '' %>><%= o %></option><% }) %></select></div>
+        <% } else if (type === 'city') { %><div class="field"><label><%= label %></label><select name="<%= path %>"><% cities.forEach(function(c){ %><option value="<%= c.id %>" <%= Number(val) === c.id ? 'selected' : '' %>><%= c.name %></option><% }) %></select></div>
+        <% } else if (type === 'text') { %><div class="field"><label><%= label %></label><input type="text" name="<%= path %>" value="<%= val == null ? '' : val %>"></div>
+        <% } else { %><div class="field"><label><%= label %></label><input type="number" step="<%= type === 'float' ? 'any' : '1' %>" name="<%= path %>" value="<%= val == null ? '' : val %>"></div><% } %>
+      <% }) %></div></section>
+  <% }) %>
+  </div>
+  <section class="card mt"><div class="card-title">ID-Zähler <span class="dim small">(nur ändern, wenn du weißt, was du tust)</span></div>
+    <div class="kvgrid"><% counters.forEach(function(c){ %><div class="field"><label><%= c[0] %></label><input type="number" name="<%= c[0] %>" value="<%= c[1] %>" min="1"></div><% }) %></div></section>
+
+  <div class="card-title mt" style="margin-top:1.4rem">Bereiche bearbeiten</div>
+  <% sections.forEach(function(s){ %>
+    <details class="card mt sec"><summary><b><%= s.label %></b> <span class="dim small"><%= s.key %></span></summary>
+      <div class="field" style="margin-top:.8rem"><textarea class="code" name="sec_<%= s.key %>" data-tree spellcheck="false"><%= s.json %></textarea><div class="hint">„null“ entfernt den Bereich.</div></div></details>
+  <% }) %>
+  <div class="sticky-save row end"><button class="btn primary"><%- icon('check') %> Charakter speichern</button></div>
+</form>
+
+<details class="card mt"><summary><b>Experten: gesamten Spielstand als JSON ersetzen</b></summary>
+  <form method="post" action="/admin/characters/<%= row.id %>/raw" style="margin-top:.8rem"><%- csrf %>
+    <textarea class="code" name="state" style="min-height:420px" spellcheck="false"><%= JSON.stringify(rawState, null, 2) %></textarea>
+    <div class="hint">Ungültiges JSON wird abgelehnt.</div>
+    <div class="row end mt"><button class="btn danger" data-confirm="Den gesamten Spielstand ersetzen?">Spielstand ersetzen</button></div></form></details>
+<% } %>
+<%- include('_bottom') %>

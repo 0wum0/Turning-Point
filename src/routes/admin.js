@@ -46,26 +46,8 @@ router.get('/', wrap(async (req, res) => {
   res.render('admin/dashboard', { title: 'Dashboard', active: 'dashboard', u, c, a, p, regs, recent, alive: alive.map((x) => ({ ...x, year: startYear + Math.floor(x.game_day / 365) })) });
 }));
 
-/* ---------- Spieler ---------- */
-router.get('/users', wrap(async (req, res) => {
-  const q = clean(req.query.q, 60);
-  const page = Math.max(1, int(req.query.page, 1));
-  const per = 25;
-  const where = q ? 'WHERE username LIKE ? OR email LIKE ?' : '';
-  const params = q ? [`%${q}%`, `%${q}%`] : [];
-  const total = (await db.one(`SELECT COUNT(*) n FROM users ${where}`, params)).n;
-  const rows = await db.query(`SELECT id, username, email, role, banned, coins, efs_pool, created_at, last_seen_at FROM users ${where} ORDER BY id DESC LIMIT ? OFFSET ?`, [...params, per, (page - 1) * per]);
-  res.render('admin/users', { title: 'Spieler', active: 'users', rows, q, page, pages: Math.max(1, Math.ceil(total / per)), total });
-}));
-
-router.get('/users/:id', wrap(async (req, res) => {
-  const u = await db.one('SELECT id, username, email, role, banned, ban_reason, email_verified, coins, efs_pool, meta, created_at, last_login_at, last_seen_at FROM users WHERE id = ?', [req.params.id]);
-  if (!u) return res.status(404).render('error', { code: 404, title: 'Spieler nicht gefunden', message: '' });
-  const chars = await db.query('SELECT id, cycle, generation, status, name, game_day, money, end_reason, created_at FROM characters WHERE user_id = ? ORDER BY id DESC LIMIT 30', [u.id]);
-  const startYear = settings.get('game.start_year');
-  const audits = await db.query('SELECT action, detail, ip, created_at FROM audit_log WHERE user_id = ? ORDER BY id DESC LIMIT 15', [u.id]);
-  res.render('admin/user', { title: u.username, active: 'users', u, chars: chars.map((x) => ({ ...x, year: startYear + Math.floor(x.game_day / 365) })), audits });
-}));
+/* ---------- Spieler & Charaktere (admin-players.js) ---------- */
+require('./admin-players')(router, { wrap, flash, back, int, num, clean });
 
 router.post('/users/:id/:action', wrap(async (req, res) => {
   const id = int(req.params.id);
@@ -217,10 +199,12 @@ const GROUPS = [
   { id: 'site', title: 'Allgemein', icon: 'settings', fields: [
     ['site.name', 'Name des Spiels', 'text'], ['site.tagline', 'Slogan', 'text'], ['site.registration_open', 'Registrierung geöffnet', 'bool'],
     ['site.require_email_verification', 'E-Mail-Bestätigung verlangen (benötigt SMTP)', 'bool'], ['site.maintenance', 'Wartungsmodus (nur Admins kommen rein)', 'bool'], ['site.maintenance_message', 'Wartungsmeldung', 'textarea'],
+    ['site.contact_email', 'Kontakt-E-Mail', 'text'], ['site.legal_name', 'Betreiber (Name/Firma)', 'text'], ['site.legal_address', 'Betreiber-Anschrift', 'textarea'],
   ] },
   { id: 'efs', title: 'Spiel & EFS', icon: 'zap', fields: [
     ['efs.daily_auto', 'EFS pro realem Tag (automatisch)', 'int', 'Standard: 50. Ein EFS = ein Spieltag.'], ['efs.login_bonus', 'EFS-Bonus beim ersten Login des Tages', 'int', 'Standard: 50.'],
     ['efs.active_daily_cap', 'Max. Sammel-EFS (Karte) pro Tag', 'int'], ['efs.awards', 'EFS-Belohnungen für Lebensfortschritte (JSON)', 'json'],
+    ['game.start_year', 'Startjahr der Simulation', 'int', 'Standard: 1945'], ['game.start_age', 'Startalter des Charakters', 'int', 'Standard: 20'],
     ['game.start_money_cents', 'Startkapital in Cent', 'int', '4000 = 40,00 DM'], ['game.max_children', 'Maximale Kinderzahl', 'int'],
     ['game.offline_protection', 'Offline-Schutz aktiv', 'bool', 'Offline kann niemand verhungern oder insolvent gehen.'], ['game.offline_after_minutes', 'Abwesenheit ab (Minuten) = offline', 'int'],
     ['game.street_survival_days', 'Tage, die man auf der Straße überlebt', 'int'], ['game.legacy_year', 'Zieljahr (22. Jahrhundert)', 'int'],
@@ -232,7 +216,11 @@ const GROUPS = [
     ['offerwall.url', 'Offerwall-URL (iframe, {uid} = Spieler-ID)', 'text'], ['offerwall.secret', 'Offerwall-Postback-Geheimnis', 'secret', 'Postback: GET /webhooks/offerwall?uid=&coins=&txid=&sig= · sig = HMAC-SHA256(Geheimnis, "uid|coins|txid")'],
     ['ads.min_seconds', 'Mindest-Anzeigedauer (Sekunden)', 'int'], ['ads.daily_cap', 'Max. Videos je Spieler / 24 h', 'int'], ['ads.efs_reward', 'EFS je Video (Zeit-Bonus)', 'int'],
   ] },
-  { id: 'economy', title: 'Wirtschaft', icon: 'trending-up', fields: [['economy', 'Wirtschaftsdaten (JSON): Preisindex, Essen, Unterkunft, Immobilien, Versicherungen …', 'json']] },
+  { id: 'economy', title: 'Preise & Löhne', icon: 'trending-up', fields: [['economy:priceIndex,euroYear,food,lodging,rentPerRoom,property,upkeepYearPct,insurance,moveBaseCost,moveCostPerKm,childCostPerDay,kindergeldPct,jugendhilfePerDay,marriageCost,giftCost', 'Preisindex (Jahr → Faktor), Essen, Unterkunft, Immobilien, Versicherungen, Familienkosten', 'econ', 'Alle Geldbeträge in Cent bei Preisindex 1 (1945).']] },
+  { id: 'tasks', title: 'Gebäude-Aufgaben', icon: 'hammer', fields: [['economy:tasks', 'Aufgaben je Gebäudetyp (Minispiel, Dauer, Abkühlzeit, Belohnung)', 'econ', 'mini: collect · sequence · hunt (oder leer = ohne Minispiel). reward: efs, rest, wellbeing, health, money, influence, childSat, bizCash.']] },
+  { id: 'companies', title: 'Betriebe & Politik', icon: 'store', fields: [['economy:companies,politics,gambling', 'Betriebe (Stufen, Löhne), politische Ämter, Glücksspiel', 'econ']] },
+  { id: 'events', title: 'Ereignisse', icon: 'zap', fields: [['economy:events', 'Zufallsereignisse: Stadt (Unwetter, Feuer …), privat, Betriebe', 'econ', 'Wahrscheinlichkeiten 0–1, Kosten in % des Wertes, Beträge in Cent (Preisindex 1).']] },
+  { id: 'announce', title: 'Ankündigung', icon: 'bell', fields: [['site.announcement', 'Ankündigung an alle Spieler (JSON)', 'json', 'active: true/false · level: info/good/warn/bad · title · text · id (Zahl erhöhen, damit sie erneut erscheint)']] },
   { id: 'payments', title: 'Zahlungen', icon: 'credit-card', fields: [
     ['payments.mode', 'Zahlungsmodus', 'select', 'off = Shop gesperrt · test = Gutschrift ohne Zahlung (nur Test!) · stripe = Stripe Checkout', ['off', 'test', 'stripe']],
     ['payments.stripe_secret', 'Stripe Secret Key (sk_live_… / sk_test_…)', 'secret'], ['payments.stripe_webhook_secret', 'Stripe Webhook-Signing-Secret (whsec_…)', 'secret', 'Webhook-URL in Stripe: https://DEINE-DOMAIN/webhooks/stripe · Ereignisse: checkout.session.completed, invoice.paid, customer.subscription.deleted'],
@@ -242,7 +230,6 @@ const GROUPS = [
   { id: 'mail', title: 'E-Mail (SMTP)', icon: 'mail', fields: [['mail.smtp', 'SMTP', 'smtp']] },
   { id: 'legal', title: 'Rechtliches', icon: 'scale', fields: [['legal.impressum', 'Impressum', 'textarea', 'Pflicht in Deutschland (§ 5 DDG).'], ['legal.datenschutz', 'Datenschutzerklärung', 'textarea']] },
 ];
-const fieldMap = new Map(GROUPS.flatMap((g) => g.fields.map((f) => [f[0], f])));
 
 function validateJson(key, v) {
   const d = settings.DEFAULTS[key];
@@ -261,16 +248,52 @@ function validateJson(key, v) {
   } else if (key === 'efs.awards' && (typeof v !== 'object' || Array.isArray(v))) throw new Error('efs.awards: Objekt erwartet.');
 }
 
+const econKeys = (key) => key.slice(8).split(',');
+const pick = (o, keys) => Object.fromEntries(keys.filter((k) => k in o).map((k) => [k, o[k]]));
+const isExpert = (g) => g.id === 'expert';
+const SECRET_KEYS = new Set(['payments.stripe_secret', 'payments.stripe_webhook_secret', 'offerwall.secret', 'mail.smtp']);
+function expertGroup() {
+  const fields = Object.keys(settings.DEFAULTS).filter((k) => !SECRET_KEYS.has(k) && k !== 'economy').map((k) => {
+    const d = settings.DEFAULTS[k];
+    const t = typeof d === 'boolean' ? 'bool' : typeof d === 'number' ? 'num' : (d && typeof d === 'object') ? 'json' : (typeof d === 'string' && d.length > 80) ? 'textarea' : 'text';
+    return [k, k, t];
+  });
+  fields.push(['economy', 'economy (gesamte Wirtschaftsdaten)', 'json']);
+  return { id: 'expert', title: 'Experten (alle Werte)', icon: 'wrench', fields };
+}
+const allGroups = () => [...GROUPS, expertGroup()];
+const findGroup = (id) => allGroups().find((x) => x.id === id);
+function currentValue(key) {
+  if (key.startsWith('economy:')) return pick(settings.get('economy'), econKeys(key));
+  return settings.get(key);
+}
 router.get('/settings', (req, res) => res.redirect('/admin/settings/site'));
 router.get('/settings/:group', (req, res, next) => {
-  const g = GROUPS.find((x) => x.id === req.params.group);
+  const g = findGroup(req.params.group);
   if (!g) return res.redirect('/admin/settings/site');
   const values = {};
-  g.fields.forEach((f) => { values[f[0]] = settings.get(f[0]); });
-  res.render('admin/settings', { title: `Einstellungen · ${g.title}`, active: 'settings', groups: GROUPS, g, values, smtpOk: mailer.smtpConfigured() });
+  g.fields.forEach((f) => { values[f[0]] = currentValue(f[0]); });
+  res.render('admin/settings', { title: `Einstellungen · ${g.title}`, active: 'settings', groups: allGroups(), g, values, smtpOk: mailer.smtpConfigured() });
 });
+router.post('/settings/mail/test', wrap(async (req, res) => {
+  try { await mailer.send({ to: req.user.email, subject: 'Turning Point – Testmail', text: 'Der E-Mail-Versand funktioniert.' }); flash(req, 'good', `Testmail an ${req.user.email} gesendet.`); } catch (e) { flash(req, 'bad', `Versand fehlgeschlagen: ${e.message}`); }
+  res.redirect('/admin/settings/mail');
+}));
+router.post('/settings/:group/reset', wrap(async (req, res) => {
+  const g = findGroup(req.params.group);
+  const key = String(req.body.reset || '');
+  if (g && g.fields.some((f) => f[0] === key)) {
+    if (key.startsWith('economy:')) {
+      const cur = { ...settings.get('economy') }; const d = settings.DEFAULTS.economy;
+      for (const k of econKeys(key)) cur[k] = JSON.parse(JSON.stringify(d[k]));
+      await settings.set('economy', cur);
+    } else await settings.reset(key);
+    await audit(req, 'settings_reset', key); flash(req, 'good', 'Auf Standardwert zurückgesetzt.');
+  }
+  res.redirect(`/admin/settings/${req.params.group}`);
+}));
 router.post('/settings/:group', wrap(async (req, res) => {
-  const g = GROUPS.find((x) => x.id === req.params.group);
+  const g = findGroup(req.params.group);
   if (!g) return res.redirect('/admin/settings/site');
   try {
     const pending = [];
@@ -279,6 +302,16 @@ router.post('/settings/:group', wrap(async (req, res) => {
       let val;
       if (type === 'bool') val = raw === '1' || raw === 'on';
       else if (type === 'int') { val = parseInt(raw, 10); if (!Number.isFinite(val)) throw new Error(`${f[1]}: ganze Zahl erwartet.`); }
+      else if (type === 'num') { val = parseFloat(String(raw).replace(',', '.')); if (!Number.isFinite(val)) throw new Error(`${f[1]}: Zahl erwartet.`); }
+      else if (type === 'econ') {
+        let sub; try { sub = JSON.parse(raw); } catch (e) { throw new Error(`${f[1]}: ungültiges JSON (${e.message}).`); }
+        if (!sub || typeof sub !== 'object' || Array.isArray(sub)) throw new Error(`${f[1]}: Objekt erwartet.`);
+        const merged = { ...(pending.find((p) => p[0] === 'economy') || [null, settings.get('economy')])[1] };
+        for (const k of econKeys(key)) { if (!(k in sub)) throw new Error(`${f[1]}: Feld „${k}“ fehlt.`); merged[k] = sub[k]; }
+        validateJson('economy', merged);
+        const i = pending.findIndex((p) => p[0] === 'economy'); if (i >= 0) pending[i][1] = merged; else pending.push(['economy', merged]);
+        continue;
+      }
       else if (type === 'json') { try { val = JSON.parse(raw); } catch (e) { throw new Error(`${f[1]}: ungültiges JSON (${e.message}).`); } validateJson(key, val); }
       else if (type === 'smtp') {
         const old = settings.get('mail.smtp');
@@ -293,10 +326,6 @@ router.post('/settings/:group', wrap(async (req, res) => {
     flash(req, 'good', 'Einstellungen gespeichert.');
   } catch (e) { flash(req, 'bad', e.message); }
   res.redirect(`/admin/settings/${g.id}`);
-}));
-router.post('/settings/mail/test', wrap(async (req, res) => {
-  try { await mailer.send({ to: req.user.email, subject: 'Turning Point – Testmail', text: 'Der E-Mail-Versand funktioniert.' }); flash(req, 'good', `Testmail an ${req.user.email} gesendet.`); } catch (e) { flash(req, 'bad', `Versand fehlgeschlagen: ${e.message}`); }
-  res.redirect('/admin/settings/mail');
 }));
 
 /* ---------- System ---------- */

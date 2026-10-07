@@ -142,12 +142,12 @@ function edition(world, state, cityId) {
   const news = [];
   for (const w of [week - 1, week]) {
     if (w < 0) continue;
-    for (const ev of townEventsForWeek(city, w, state.startYear)) {
+    for (const ev of townEventsForWeek(city, w, state.startYear, world.econ.events)) {
       const day = w * 7 + ev.offset;
       if (day <= state.day) news.push({ ...describeTownEvent(ev, city, 'past'), day, ago: state.day - day, type: ev.type });
     }
   }
-  for (const ev of townEventsForWeek(city, week, state.startYear).concat(townEventsForWeek(city, week + 1, state.startYear))) {
+  for (const ev of townEventsForWeek(city, week, state.startYear, world.econ.events).concat(townEventsForWeek(city, week + 1, state.startYear, world.econ.events))) {
     const day = (Math.floor((ev.key.split(':')[1])) * 7) + ev.offset;
     if (ev.type === 'storm' && day > state.day && day - state.day <= 3) news.push({ ...describeTownEvent(ev, city, 'future'), day, ago: state.day - day, type: 'forecast' });
   }

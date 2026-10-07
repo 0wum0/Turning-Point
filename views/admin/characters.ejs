@@ -1,0 +1,13 @@
+<%- include('_top', { actions: '' }) %>
+<form class="row wrap" method="get" style="margin-bottom:1rem">
+  <input type="search" name="q" value="<%= q %>" placeholder="Name, Spieler oder ID …" style="max-width:300px">
+  <select name="st" style="max-width:160px"><% [['', 'Alle Status'], ['alive', 'lebt'], ['dead', 'tot (Erbe offen)'], ['gameover', 'beendet']].forEach(function(o){ %><option value="<%= o[0] %>" <%= st === o[0] ? 'selected' : '' %>><%= o[1] %></option><% }) %></select>
+  <select name="sort" style="max-width:190px"><% [['', 'Neueste zuerst'], ['upd', 'Zuletzt gespielt'], ['money', 'Meistes Geld'], ['day', 'Spieltag'], ['gen', 'Generation']].forEach(function(o){ %><option value="<%= o[0] %>" <%= sort === o[0] ? 'selected' : '' %>><%= o[1] %></option><% }) %></select>
+  <button class="btn"><%- icon('search') %> Filtern</button><span class="dim small"><%= total %> Charaktere</span>
+</form>
+<div class="table-wrap"><table class="table">
+  <thead><tr><th>#</th><th>Name</th><th>Spieler</th><th>Status</th><th class="num">Gen.</th><th class="num">Jahr</th><th class="num">Geld (Cent)</th><th>Zuletzt</th><th></th></tr></thead>
+  <tbody><% rows.forEach(function(c){ %><tr><td><%= c.id %></td><td><b><%= c.name %></b></td><td><a href="/admin/users/<%= c.user_id %>"><%= c.username %></a></td><td><span class="chip <%= c.status === 'alive' ? 'good' : c.status === 'dead' ? 'warn' : '' %>"><%= c.status %></span></td><td class="num"><%= c.generation %></td><td class="num"><%= c.year %></td><td class="num"><%= c.money %></td><td class="dim small"><%= new Date(c.updated_at).toLocaleString('de-DE') %></td><td class="num"><a class="btn sm" href="/admin/characters/<%= c.id %>">Bearbeiten</a></td></tr><% }) %><% if (!rows.length) { %><tr><td colspan="9" class="dim">Keine Treffer.</td></tr><% } %></tbody>
+</table></div>
+<div class="row center mt"><% var qs = '&q=' + encodeURIComponent(q) + '&st=' + encodeURIComponent(st) + '&sort=' + encodeURIComponent(sort); %><% if (page > 1) { %><a class="btn sm" href="?page=<%= page - 1 %><%= qs %>">← Zurück</a><% } %><span class="dim small">Seite <%= page %> / <%= pages %></span><% if (page < pages) { %><a class="btn sm" href="?page=<%= page + 1 %><%= qs %>">Weiter →</a><% } %></div>
+<%- include('_bottom') %>

@@ -5,6 +5,7 @@ const db = require('./db');
  * Alle Spiel- und Seiteneinstellungen. Werte sind im Admin-Panel änderbar und
  * liegen als JSON in der Tabelle `settings`. Fehlende Schlüssel fallen auf die Defaults zurück.
  */
+const EVENT_DEFAULTS = require('./game/event-defaults');
 const DEFAULTS = {
   'site.name': 'Turning Point',
   'site.tagline': 'Life. Work. Legacy.',
@@ -12,6 +13,7 @@ const DEFAULTS = {
   'site.maintenance': false,
   'site.maintenance_message': 'Turning Point wird gerade gewartet. Bitte versuche es gleich noch einmal.',
   'site.require_email_verification': false,
+  'site.announcement': { active: false, id: 1, level: 'info', title: '', text: '' },
   'site.contact_email': '',
   'site.legal_name': '',
   'site.legal_address': '',
@@ -87,6 +89,7 @@ const DEFAULTS = {
       villa: { name: 'Villa', rooms: 15, price: 15000000, rest: 60 },
     },
     upkeepYearPct: 1.2,
+    events: EVENT_DEFAULTS,
     insurance: {
       hausrat: { name: 'Hausratversicherung', perDay: 12, covers: ['burglary'] },
       gebaeude: { name: 'Gebäudeversicherung', yearPctOfValue: 0.3, covers: ['fire', 'storm'] },
@@ -194,10 +197,15 @@ async function set(key, value) {
   cache[key] = value;
 }
 
+async function reset(key) {
+  await db.query('DELETE FROM settings WHERE `key` = ?', [key]);
+  if (cache) delete cache[key];
+}
+
 function all() {
   const out = {};
   for (const k of Object.keys(DEFAULTS)) out[k] = get(k);
   return out;
 }
 
-module.exports = { DEFAULTS, load, get, set, all };
+module.exports = { DEFAULTS, load, get, set, reset, all };

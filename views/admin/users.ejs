@@ -1,11 +1,31 @@
 <%- include('_top', { actions: '' }) %>
-<form class="row" method="get" style="margin-bottom:1rem"><input type="search" name="q" value="<%= q %>" placeholder="Name oder E-Mail suchen …" style="max-width:360px"><button class="btn"><%- icon('search') %> Suchen</button><span class="dim small"><%= total %> Spieler</span></form>
-<div class="table-wrap"><table class="table">
-  <thead><tr><th>Name</th><th>E-Mail</th><th>Rolle</th><th class="num">Coins</th><th class="num">EFS</th><th>Zuletzt aktiv</th><th></th></tr></thead>
-  <tbody><% rows.forEach(function(r){ %><tr>
-    <td><a href="/admin/users/<%= r.id %>"><b><%= r.username %></b></a> <% if (r.banned) { %><span class="chip bad">gesperrt</span><% } %></td>
-    <td class="dim"><%= r.email %></td><td><%= r.role === 'admin' ? 'Admin' : 'Spieler' %></td><td class="num"><%= r.coins %></td><td class="num"><%= r.efs_pool %></td>
-    <td class="dim small"><%= r.last_seen_at ? new Date(r.last_seen_at).toLocaleString('de-DE') : '–' %></td><td class="num"><a class="btn sm" href="/admin/users/<%= r.id %>">Öffnen</a></td></tr><% }) %></tbody>
-</table></div>
-<div class="row center mt"><% if (page > 1) { %><a class="btn sm" href="?q=<%= encodeURIComponent(q) %>&page=<%= page - 1 %>">← Zurück</a><% } %><span class="dim small">Seite <%= page %> / <%= pages %></span><% if (page < pages) { %><a class="btn sm" href="?q=<%= encodeURIComponent(q) %>&page=<%= page + 1 %>">Weiter →</a><% } %></div>
+<form class="row wrap" method="get" style="margin-bottom:1rem">
+  <input type="search" name="q" value="<%= q %>" placeholder="Name, E-Mail oder ID …" style="max-width:300px">
+  <select name="f" style="max-width:180px"><% [['', 'Alle'], ['online', 'Online (10 Min.)'], ['new', 'Neu (7 Tage)'], ['sub', 'Mit Dauerkarte'], ['admin', 'Admins'], ['banned', 'Gesperrt'], ['unverified', 'E-Mail unbestätigt']].forEach(function(o){ %><option value="<%= o[0] %>" <%= f === o[0] ? 'selected' : '' %>><%= o[1] %></option><% }) %></select>
+  <select name="sort" style="max-width:180px"><% [['', 'Neueste zuerst'], ['seen', 'Zuletzt aktiv'], ['coins', 'Meiste Coins'], ['efs', 'Meiste EFS'], ['money', 'Meistes Geld'], ['name', 'Name A–Z']].forEach(function(o){ %><option value="<%= o[0] %>" <%= sort === o[0] ? 'selected' : '' %>><%= o[1] %></option><% }) %></select>
+  <button class="btn"><%- icon('search') %> Filtern</button><span class="dim small"><%= total %> Spieler</span>
+</form>
+<form method="post" action="/admin/users/bulk">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th><input type="checkbox" data-check-all="ids"></th><th>Name</th><th>E-Mail</th><th>Aktueller Charakter</th><th class="num">Coins</th><th class="num">EFS</th><th>Zuletzt aktiv</th><th></th></tr></thead>
+    <tbody><% rows.forEach(function(r){ var online = r.last_seen_at && (now - new Date(r.last_seen_at).getTime()) < 600000; %><tr>
+      <td><input type="checkbox" name="ids" value="<%= r.id %>"></td>
+      <td><a href="/admin/users/<%= r.id %>"><b><%= r.username %></b></a> <span class="dim small">#<%= r.id %></span>
+        <% if (r.role === 'admin') { %><span class="chip">Admin</span><% } %><% if (r.banned) { %><span class="chip bad">gesperrt</span><% } %><% if (r.sub_until && Number(r.sub_until) > now) { %><span class="chip good">Dauerkarte</span><% } %><% if (online) { %><span class="chip good">online</span><% } %></td>
+      <td class="dim"><%= r.email %></td>
+      <td class="small"><% if (r.cname) { %><%= r.cname %> <span class="chip <%= r.cstatus === 'alive' ? 'good' : r.cstatus === 'dead' ? 'warn' : '' %>"><%= r.cstatus %></span> <span class="dim"><%= r.chars %> Leben</span><% } else { %><span class="dim">–</span><% } %></td>
+      <td class="num"><%= r.coins %></td><td class="num"><%= r.efs_pool %></td>
+      <td class="dim small"><%= r.last_seen_at ? new Date(r.last_seen_at).toLocaleString('de-DE') : '–' %></td>
+      <td class="num"><a class="btn sm" href="/admin/users/<%= r.id %>">Bearbeiten</a></td></tr><% }) %>
+      <% if (!rows.length) { %><tr><td colspan="8" class="dim">Keine Treffer.</td></tr><% } %></tbody>
+  </table></div>
+  <div class="card mt row wrap">
+    <b class="small">Sammelaktion für die Auswahl:</b>
+    <select name="bulk" style="max-width:200px"><option value="coins">Coins buchen (±)</option><option value="efs">EFS buchen (±)</option><option value="verify">E-Mail bestätigen</option><option value="ban">Sperren</option><option value="unban">Sperre aufheben</option></select>
+    <input type="number" name="amount" value="10" style="width:110px" title="Betrag (für Coins/EFS)"><input type="text" name="reason" placeholder="Sperrgrund (optional)" style="max-width:220px">
+    <button class="btn" data-confirm="Aktion auf alle ausgewählten Spieler anwenden?">Ausführen</button>
+  </div>
+</form>
+<div class="row center mt"><% var qs = '&q=' + encodeURIComponent(q) + '&f=' + encodeURIComponent(f) + '&sort=' + encodeURIComponent(sort); %><% if (page > 1) { %><a class="btn sm" href="?page=<%= page - 1 %><%= qs %>">← Zurück</a><% } %><span class="dim small">Seite <%= page %> / <%= pages %></span><% if (page < pages) { %><a class="btn sm" href="?page=<%= page + 1 %><%= qs %>">Weiter →</a><% } %></div>
 <%- include('_bottom') %>

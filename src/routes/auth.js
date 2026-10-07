@@ -23,6 +23,14 @@ function login(req, user, cb) {
 }
 const baseUrl = (req) => (require('../config').loadConfig() || {}).siteUrl || `${req.protocol}://${req.get('host')}`;
 
+router.post('/stop-impersonation', (req, res) => {
+  const admin = req.session.impersonator;
+  if (!admin) return res.redirect('/play');
+  delete req.session.impersonator;
+  req.session.userId = admin;
+  res.redirect('/admin/users');
+});
+
 router.get('/login', (req, res) => {
   if (req.user) return res.redirect('/play');
   res.render('auth/login', { error: null, notice: req.query.registered ? 'Fast geschafft: Bitte bestätige deine E-Mail-Adresse über den Link, den wir dir geschickt haben.' : req.query.reset ? 'Passwort geändert. Du kannst dich jetzt anmelden.' : null, values: {}, next: safeNext(req.query.next) });
