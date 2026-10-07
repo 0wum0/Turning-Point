@@ -5,7 +5,7 @@ function yearOfDay(v, day) { const start = v.date.year - Math.floor(v.date.day /
 function treeHtml(v, ctx) {
   const persons = v.tree.persons; const byId = new Map(persons.map((p) => [p.id, p]));
   const seen = new Set();
-  const cityName = (id) => (ctx.world.cities.find((c) => c.id === id) || {}).name;
+  const cityName = (id) => (ctx.world.cityById.get(id) || {}).label;
   const card = (p) => {
     const by = yearOfDay(v, p.born); const dy = p.died != null && p.died >= 0 ? yearOfDay(v, p.died) : (p.died === -1 ? 1945 : null);
     const cls = [p.status, p.id === v.person.id ? 'me' : '', p.gender].join(' ');

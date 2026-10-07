@@ -1,3 +1,4 @@
+import { decodeWorld } from './places.js';
 import { openChatModal, openBell, chatUnread } from './chatmodal.js';
 import { html, icon, mount, api, toast, modal, confirmBox, ring, money, num, infoBtn, on, sleep, esc, yearsText } from './ui.js';
 import overview from './views/overview.js';
@@ -51,7 +52,7 @@ function render() {
   if (!shellActive()) {
     mount(app, html`<div class="shell"><header class="hud" id="hud"></header><nav class="side" id="side" aria-label="Hauptmenü"></nav><main class="page" id="page" tabindex="-1"></main></div>`);
   }
-  renderHud(); renderPage(true);
+  renderHud(); trackHud(); renderPage(true);
   startSocialPoll();
 }
 
@@ -67,6 +68,18 @@ const METER_INFO = {
   rest: ['Die Erholung zeigt, wie ausgeruht du bist.', 'Sie hängt vom Schlafplatz ab: Straße ist schlecht, Pension besser, Miete und Eigentum am besten. Arbeit und Kinder kosten Kraft.', 'Such dir eine richtige Unterkunft.'],
   health: ['Die Gesundheit entscheidet, wie lange du lebst.', 'Fällt sie auf null, stirbst du. Auf der Straße sinkt sie extrem schnell. Gutes Essen, Schlaf und Stimmung stärken sie.', 'Iss gut, schlafe in einer Wohnung, nutze ab 1960 Gesundheitskarten.'],
 };
+
+let hudObs = null;
+function trackHud() {
+  const hud = document.getElementById('hud'); if (!hud) return;
+  const set = () => document.documentElement.style.setProperty('--hud-h', `${hud.offsetHeight}px`);
+  set();
+  if (!hudObs && window.ResizeObserver) { hudObs = new ResizeObserver(set); hudObs.observe(hud); }
+  if (!window.__hudScroll) {
+    window.__hudScroll = true;
+    window.addEventListener('scroll', () => { const h = document.getElementById('hud'); if (h) h.classList.toggle('compact', window.scrollY > 60 && window.innerWidth <= 900); }, { passive: true });
+  }
+}
 
 function renderHud() {
   const hud = document.getElementById('hud'); const side = document.getElementById('side');
@@ -253,7 +266,7 @@ audio.resumeOnGesture();
 (async function boot() {
   try {
     const [world, st] = await Promise.all([api('GET', '/api/world'), api('GET', '/api/state')]);
-    world.cities = world.cities || [];
+    decodeWorld(world);
     ctx.world = world; ctx.coins = st.coins; ctx.efsPool = st.efsPool;
     setView(st.view);
     render();

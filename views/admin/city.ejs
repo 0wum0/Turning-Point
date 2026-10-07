@@ -8,6 +8,8 @@
     <div class="field"><label>Breitengrad</label><input type="text" name="lat" value="<%= c.lat %>"></div>
     <div class="field"><label>Längengrad</label><input type="text" name="lon" value="<%= c.lon %>"></div>
     <div class="field"><label>Preisfaktor (Miete, Immobilien)</label><input type="text" name="price_factor" value="<%= c.price_factor %>"><div class="hint">1.0 = Durchschnitt, München 1.3, Rostock 0.85</div></div>
+    <div class="field"><label>Einwohner</label><input type="number" min="0" name="pop" value="<%= c.pop || 0 %>"><div class="hint">Bestimmt Dorf / Gemeinde / Stadt / Großstadt.</div></div>
+    <div class="field"><label>Existiert seit (Jahr)</label><input type="number" min="1500" max="2999" name="since" value="<%= c.since || 1945 %>"><div class="hint">Ab diesem Spieljahr erscheint der Ort auf der Karte (Neugründungen nach 1945).</div></div>
     <div class="field"><label class="check" style="margin-top:1.7rem"><input type="checkbox" name="active" value="1" <%= c.active ? 'checked' : '' %>> Stadt ist im Spiel aktiv</label></div>
   </div>
   <div class="field"><label>Beschreibung</label><textarea name="description" maxlength="500" style="min-height:70px"><%= c.description %></textarea></div>

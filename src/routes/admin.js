@@ -16,15 +16,30 @@ const { audit } = require('../lib/audit');
 const { randomToken } = require('../lib/security');
 const APP_VERSION = require('../../package.json').version;
 
+const roles = require('../lib/roles');
 const router = express.Router();
 
 /* ---------- Zugriff ---------- */
 router.use((req, res, next) => {
   if (!req.user) return res.redirect('/login?next=/admin');
-  if (req.user.role !== 'admin') return res.status(403).render('error', { code: 403, title: 'Kein Zugriff', message: 'Dieser Bereich ist nur für Administratoren.' });
+  if (!roles.isStaff(req.user.role)) return res.status(403).render('error', { code: 403, title: 'Kein Zugriff', message: 'Dieser Bereich ist nur für das Team.' });
+  if (!roles.can(req.user.role, req.method, req.path)) return res.status(403).render('error', { code: 403, title: 'Kein Zugriff', message: `Dafür fehlt deiner Rolle (${roles.label(req.user.role)}) die Berechtigung.` });
+  res.locals.canSee = (p) => roles.can(req.user.role, 'GET', p.replace(/^\/admin/, '') || '/');
+  res.locals.roleLabel = roles.label(req.user.role);
   res.locals.adminNav = true;
   res.locals.adminBadges = {};
   res.locals.era = 1;
+  next();
+});
+/* Niemand bearbeitet gleich- oder höherrangige Konten (außer Admins) */
+router.use(async (req, res, next) => {
+  try {
+    const m = /^\/users\/(\d+)\/[a-z]+$/.exec(req.path);
+    if (m && req.method === 'POST' && req.user.role !== 'admin' && Number(m[1]) !== req.user.id) {
+      const t = await db.one('SELECT role FROM users WHERE id = ?', [Number(m[1])]);
+      if (t && roles.rank(t.role) >= roles.rank(req.user.role)) { flash(req, 'bad', 'Konten gleich- oder höherrangiger Teammitglieder kannst du nicht bearbeiten.'); return res.redirect(`/admin/users/${m[1]}`); }
+    }
+  } catch (_) { /* weiter */ }
   next();
 });
 router.use(async (req, res, next) => {
@@ -63,7 +78,7 @@ router.post('/users/:id/:action', wrap(async (req, res) => {
   else if (act === 'efs') { const n = int(req.body.amount); await db.query('UPDATE users SET efs_pool = GREATEST(0, efs_pool + ?) WHERE id = ?', [n, id]); flash(req, 'good', `${n >= 0 ? '+' : ''}${n} EFS gebucht.`); }
   else if (act === 'ban') { if (self) { flash(req, 'bad', 'Du kannst dich nicht selbst sperren.'); } else { await db.query('UPDATE users SET banned = 1, ban_reason = ? WHERE id = ?', [clean(req.body.reason, 200) || null, id]); await db.query('DELETE FROM sessions WHERE data LIKE ?', [`%"userId":${id}%`]); flash(req, 'good', 'Spieler gesperrt.'); } }
   else if (act === 'unban') { await db.query('UPDATE users SET banned = 0, ban_reason = NULL WHERE id = ?', [id]); flash(req, 'good', 'Sperre aufgehoben.'); }
-  else if (act === 'role') { if (self) flash(req, 'bad', 'Die eigene Rolle kann nicht geändert werden.'); else { const r = req.body.role === 'admin' ? 'admin' : 'player'; await db.query('UPDATE users SET role = ? WHERE id = ?', [r, id]); flash(req, 'good', `Rolle: ${r}`); } }
+  else if (act === 'role') { if (self) flash(req, 'bad', 'Die eigene Rolle kann nicht geändert werden.'); else { const r = roles.ROLES.includes(req.body.role) ? req.body.role : 'player'; await db.query('UPDATE users SET role = ? WHERE id = ?', [r, id]); flash(req, 'good', `Rolle: ${r}`); } }
   else if (act === 'password') {
     const pw = randomToken(6);
     await db.query('UPDATE users SET password_hash = ? WHERE id = ?', [await bcrypt.hash(pw, 11), id]);
@@ -105,8 +120,16 @@ const handleUpload = (field) => (req, res, next) => upload.single(field)(req, re
 
 /* ---------- Städte ---------- */
 router.get('/cities', wrap(async (req, res) => {
-  const rows = await db.query('SELECT * FROM cities ORDER BY name');
-  res.render('admin/cities', { title: 'Städte', active: 'cities', rows });
+  const q = String(req.query.q || '').trim(); const st = String(req.query.state || ''); const page = Math.max(1, int(req.query.page, 1)); const per = 100;
+  const conds = []; const params = [];
+  if (q) { conds.push('name LIKE ?'); params.push(`%${q}%`); }
+  if (st) { conds.push('state = ?'); params.push(st); }
+  if (req.query.since === '1') conds.push('since > 1945');
+  const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
+  const total = (await db.one(`SELECT COUNT(*) n FROM cities ${where}`, params)).n;
+  const rows = await db.query(`SELECT * FROM cities ${where} ORDER BY pop DESC, name LIMIT ? OFFSET ?`, [...params, per, (page - 1) * per]);
+  const states = (await db.query('SELECT DISTINCT state FROM cities ORDER BY state')).map((r) => r.state);
+  res.render('admin/cities', { title: `Orte (${total})`, active: 'cities', rows, total, page, pages: Math.max(1, Math.ceil(total / per)), q, st, states, sinceOnly: req.query.since === '1' });
 }));
 router.get('/cities/new', (req, res) => res.render('admin/city', { title: 'Neue Stadt', active: 'cities', c: { id: 0, name: '', slug: '', state: '', lat: 51, lon: 10, size_tier: 2, price_factor: 1, description: '', image: null, active: 1 } }));
 router.get('/cities/:id', wrap(async (req, res) => {
@@ -120,7 +143,7 @@ router.post('/cities/:id', (req, res, next) => upload.fields([{ name: 'image', m
   const name = clean(b.name, 80);
   if (!name) { flash(req, 'bad', 'Der Name fehlt.'); return back(req, res, '/admin/cities'); }
   const slug = clean(b.slug, 60).toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/^-+|-+$/g, '') || name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-  const vals = [slug, name, clean(b.state, 60), num(b.lat), num(b.lon), Math.min(5, Math.max(1, int(b.size_tier, 2))), Math.min(3, Math.max(0.3, num(b.price_factor, 1))), clean(b.description, 500), b.active ? 1 : 0];
+  const vals = [slug, name, clean(b.state, 60), num(b.lat), num(b.lon), Math.min(5, Math.max(1, int(b.size_tier, 2))), Math.min(3, Math.max(0.3, num(b.price_factor, 1))), clean(b.description, 500), b.active ? 1 : 0, Math.max(0, int(b.pop, 0)), Math.min(2999, Math.max(1500, int(b.since, 1945)))];
   let image = null;
   if (req.file) image = await saveImage(req.file, 'cities', req.user.id);
   let aerial = null;
@@ -128,14 +151,14 @@ router.post('/cities/:id', (req, res, next) => upload.fields([{ name: 'image', m
   try {
     if (id) {
       const old = await db.one('SELECT image FROM cities WHERE id = ?', [id]);
-      await db.query('UPDATE cities SET slug=?, name=?, state=?, lat=?, lon=?, size_tier=?, price_factor=?, description=?, active=? WHERE id=?', [...vals, id]);
+      await db.query('UPDATE cities SET slug=?, name=?, state=?, lat=?, lon=?, size_tier=?, price_factor=?, description=?, active=?, pop=?, since=? WHERE id=?', [...vals, id]);
       if (b.remove_image && old && old.image) { dropFile(old.image); await db.query('UPDATE cities SET image = NULL WHERE id = ?', [id]); }
       if (image) { if (old && old.image) dropFile(old.image); await db.query('UPDATE cities SET image = ? WHERE id = ?', [image, id]); }
       const oldA = await db.one('SELECT aerial FROM cities WHERE id = ?', [id]);
       if (b.remove_aerial && oldA && oldA.aerial) { dropFile(oldA.aerial); await db.query('UPDATE cities SET aerial = NULL WHERE id = ?', [id]); }
       if (aerial) { if (oldA && oldA.aerial) dropFile(oldA.aerial); await db.query('UPDATE cities SET aerial = ? WHERE id = ?', [aerial, id]); }
     } else {
-      const r = await db.query('INSERT INTO cities (slug, name, state, lat, lon, size_tier, price_factor, description, active, image, aerial) VALUES (?,?,?,?,?,?,?,?,?,?,?)', [...vals, image, aerial]);
+      const r = await db.query('INSERT INTO cities (slug, name, state, lat, lon, size_tier, price_factor, description, active, pop, since, image, aerial) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)', [...vals, image, aerial]);
       await audit(req, 'city_create', name);
       worldSvc.invalidate(); await worldSvc.load();
       flash(req, 'good', 'Stadt angelegt.');

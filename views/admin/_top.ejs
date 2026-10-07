@@ -10,11 +10,11 @@
     <a class="brand" href="/admin"><span class="mark"><%- icon('hourglass') %></span><span>TURNING POINT<small>Control Center</small></span></a>
     <nav aria-label="Admin-Navigation">
       <% NAV.forEach(function(g){ %><div class="nav-label"><%= g[0] %></div>
-        <% g[1].forEach(function(n){ %><a href="<%= n[3] %>" class="<%= active === n[0] ? 'on' : '' %>"><%- icon(n[2]) %><span><%= n[1] %></span><% if (badges[n[0]]) { %><em class="badge"><%= badges[n[0]] %></em><% } %></a><% }) %>
+        <% g[1].forEach(function(n){ if (typeof canSee === 'function' && !canSee(n[3])) return; %><a href="<%= n[3] %>" class="<%= active === n[0] ? 'on' : '' %>"><%- icon(n[2]) %><span><%= n[1] %></span><% if (badges[n[0]]) { %><em class="badge"><%= badges[n[0]] %></em><% } %></a><% }) %>
       <% }) %>
     </nav>
     <div class="adm-foot">
-      <div class="who"><span class="av"><%= (user.username || '?').slice(0, 1).toUpperCase() %></span><div><b><%= user.username %></b><small>Administrator</small></div>
+      <div class="who"><span class="av"><%= (user.username || '?').slice(0, 1).toUpperCase() %></span><div><b><%= user.username %></b><small><%= typeof roleLabel !== 'undefined' && roleLabel ? roleLabel : 'Administrator' %></small></div>
         <form method="post" action="/logout"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn ghost sm" title="Abmelden" aria-label="Abmelden"><%- icon('log-out') %></button></form></div>
     </div>
   </aside>

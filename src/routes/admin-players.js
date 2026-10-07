@@ -77,7 +77,7 @@ module.exports = function mount(router, H) {
     const page = Math.max(1, int(req.query.page, 1)); const per = 30;
     const conds = []; const params = [];
     if (q) { conds.push('(u.username LIKE ? OR u.email LIKE ? OR u.id = ?)'); params.push(`%${q}%`, `%${q}%`, int(q, -1)); }
-    if (f === 'admin') conds.push("u.role = 'admin'");
+    if (f === 'admin') conds.push("u.role <> 'player'");
     if (f === 'banned') conds.push('u.banned = 1');
     if (f === 'sub') conds.push('u.sub_until > ' + Date.now());
     if (f === 'online') conds.push('u.last_seen_at > NOW() - INTERVAL 10 MINUTE');
@@ -142,7 +142,8 @@ module.exports = function mount(router, H) {
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Error('Ungültige E-Mail-Adresse.');
       let meta; try { meta = JSON.parse(b.meta || '{}'); } catch (e) { throw new Error(`Meta-JSON ungültig: ${e.message}`); }
       if (!meta || typeof meta !== 'object' || Array.isArray(meta)) throw new Error('Meta muss ein Objekt sein.');
-      const role = self ? u.role : (b.role === 'admin' ? 'admin' : 'player');
+      const roleReq = require('../lib/roles').ROLES.includes(b.role) ? b.role : 'player';
+      const role = (self || req.user.role !== 'admin') ? u.role : roleReq;
       const banned = self ? 0 : (b.banned ? 1 : 0);
       const sub = b.sub_until ? new Date(b.sub_until).getTime() : null;
       if (b.sub_until && !Number.isFinite(sub)) throw new Error('Abo-Ende: ungültiges Datum.');

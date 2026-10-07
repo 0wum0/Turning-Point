@@ -1,6 +1,7 @@
 import { html, raw, icon, money, infoBtn, api, on, toast, num, esc, mount } from '../ui.js';
 import { OUTLINE, project, VIEW, outlinePath } from '../germany.js';
 import { sceneFor } from './overview.js';
+import { bindPlaceSearch, describe, kindOf } from '../places.js';
 
 function graticule() {
   let s = '';
@@ -16,19 +17,8 @@ export default {
     const v = ctx.view;
     const cities = ctx.world.cities;
     const own = new Set(data.properties.map((p) => p.cityId));
-    const pk = new Map(data.pickups.map((p) => [p.cityId, p]));
-    const dots = cities.map((c) => {
-      const [x, y] = project(c.lon, c.lat);
-      const r = 2.6 + c.tier * 1.05;
-      const here = c.id === data.here;
-      return `<g class="city t${c.tier}${here ? ' here' : ''}" data-id="${c.id}" transform="translate(${x.toFixed(1)} ${y.toFixed(1)})" tabindex="0" role="button" aria-label="${esc(c.name)}">
-        ${here ? `<circle class="pulse-ring" r="${r + 8}"/>` : ''}<circle class="hit" r="${r + 7}"/><circle class="dot" r="${r}"/>
-        ${c.id === data.birthCityId ? '<text class="glyph" y="-' + (r + 4) + '" text-anchor="middle">★</text>' : ''}
-        ${own.has(c.id) ? `<rect class="own" x="${r + 2}" y="-${r + 2}" width="6" height="6" rx="1.2"/>` : ''}
-        <text class="lbl" x="${r + 5}" y="3.5">${esc(c.name.split(' ')[0])}</text></g>`;
-    }).join('');
     const sparks = data.pickups.map((p) => {
-      const c = cities.find((x) => x.id === p.cityId); if (!c) return '';
+      const c = ctx.world.cityById.get(p.cityId); if (!c) return '';
       const [x, y] = project(c.lon, c.lat);
       return `<g class="pickup" data-key="${p.key}" transform="translate(${(x - 3).toFixed(1)} ${(y - 22).toFixed(1)})" tabindex="0" role="button" aria-label="${p.amount} EFS einsammeln"><circle class="halo" r="12"/><circle r="9"/><text y="3" text-anchor="middle">+${p.amount}</text></g>`;
     }).join('');
@@ -37,13 +27,14 @@ export default {
       <div class="row"><span class="chip accent" id="efsToday">${icon('zap')} Heute gesammelt: ${data.activeEfs.today} / ${data.activeEfs.cap} EFS</span>${infoBtn(['Auf der Karte tauchen stündlich neue EFS-Funde auf.', 'Aktive EFS beschleunigen dein Leben – 1 EFS ist 1 Spieltag. Pro Tag gibt es ein Sammel-Limit.', 'Klicke auf die goldenen Funken. Komm später wieder, neue erscheinen jede Stunde.'], 'Karte & EFS')}</div></div>
     <div class="map-layout">
       <section class="card map-card">
+        <div class="map-search pl-wrap"><input id="mapq" type="search" placeholder="Ort suchen …" autocomplete="off" aria-label="Ort suchen"><div class="pl-res" id="mapres"></div></div>
         <div class="map-tools"><button class="btn sm" id="zin" aria-label="Vergrößern">${icon('plus')}</button><button class="btn sm" id="zout" aria-label="Verkleinern">${icon('minus')}</button><button class="btn sm" id="zreset" aria-label="Zurücksetzen">${icon('refresh-cw')}</button></div>
         <svg id="germany" class="z1" viewBox="0 0 ${VIEW.w} ${VIEW.h}" preserveAspectRatio="xMidYMid meet" role="application" aria-label="Karte von Deutschland">
           <defs><linearGradient id="land" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity=".30"/><stop offset="1" stop-color="var(--accent)" stop-opacity=".10"/></linearGradient>
           <filter id="glow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
           <g id="vp"><g class="grat">${raw(graticule())}</g>
             <path class="land-glow" d="${outlinePath()}" filter="url(#glow)"/><path class="land" d="${outlinePath()}"/>
-            ${raw(dots)}${raw(sparks)}</g>
+            <g id="dots"></g>${raw(sparks)}</g>
         </svg>
         <div class="map-legend small dim"><span>${icon('map-pin')} Du wohnst hier</span><span>★ Geburtsstadt (Rückkehr gratis)</span><span><i class="sq"></i> Eigener Besitz</span></div>
       </section>
@@ -52,8 +43,34 @@ export default {
   },
   bind(root, ctx, data) {
     const svg = root.querySelector('#germany'); const vp = svg.querySelector('#vp');
+    /* nur sichtbare Orte zeichnen (rund 9.000 Orte): Zoom-Stufe bestimmt, ab welcher Ortsgröße */
+    const own = new Set(data.properties.map((p) => p.cityId)); const year = ctx.view.date.year;
+    const pts = ctx.world.byPop.filter((c) => c.since <= year).map((c) => ({ c, xy: project(c.lon, c.lat) }));
+    const dotsG = svg.querySelector('#dots'); let drawPending = false;
+    let kk = 1;
+    const dotHtml = (c, xy) => {
+      const [x, y] = xy; const r = 2.6 + c.tier * 1.05; const here = c.id === data.here;
+      return `<g class="city t${c.tier}${here ? ' here' : ''}${c.id === ctx.ui.mapCity ? ' sel' : ''}" data-id="${c.id}" transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(${kk})" tabindex="0" role="button" aria-label="${esc(c.label)}">
+        ${here ? `<circle class="pulse-ring" r="${r + 8}"/>` : ''}<circle class="hit" r="${r + 7}"/><circle class="dot" r="${r}"/>
+        ${c.id === data.birthCityId ? '<text class="glyph" y="-' + (r + 4) + '" text-anchor="middle">★</text>' : ''}
+        ${own.has(c.id) ? `<rect class="own" x="${r + 2}" y="-${r + 2}" width="6" height="6" rx="1.2"/>` : ''}
+        <text class="lbl" x="${r + 5}" y="3.5">${esc(c.name.split(' ')[0])}</text></g>`;
+    };
+    function drawDots() {
+      drawPending = false;
+      const z = full.w / box.w; const minTier = z < 1.5 ? 3 : z < 3 ? 2 : 1; const pad = 24; const out = []; kk = Math.max(0.2, Math.min(1, box.w / full.w * 1.15));
+      for (const p of pts) {
+        const c = p.c; const [x, y] = p.xy;
+        const must = c.id === data.here || c.id === ctx.ui.mapCity || c.id === data.birthCityId || own.has(c.id);
+        if (!must) { if (c.tier < minTier || x < box.x - pad || x > box.x + box.w + pad || y < box.y - pad || y > box.y + box.h + pad) continue; }
+        out.push(dotHtml(c, p.xy)); if (out.length > 800) break;
+      }
+      dotsG.innerHTML = out.join('');
+      svg.querySelectorAll('.pickup').forEach((n) => { if (!n.dataset.tx) { const m = /translate\(([-\d.]+) ([-\d.]+)\)/.exec(n.getAttribute('transform')); n.dataset.tx = m[1]; n.dataset.ty = m[2]; } n.setAttribute('transform', `translate(${n.dataset.tx} ${n.dataset.ty}) scale(${kk})`); });
+    }
+    function scheduleDraw() { if (!drawPending) { drawPending = true; requestAnimationFrame(drawDots); } }
     const full = { x: 0, y: 0, w: VIEW.w, h: VIEW.h }; let box = { ...full };
-    const apply = () => { svg.setAttribute('viewBox', `${box.x} ${box.y} ${box.w} ${box.h}`); const z = full.w / box.w; svg.setAttribute('class', z < 1.5 ? 'z1' : z < 2.8 ? 'z2' : 'z3'); };
+    const apply = () => { svg.setAttribute('viewBox', `${box.x} ${box.y} ${box.w} ${box.h}`); scheduleDraw(); const z = full.w / box.w; svg.setAttribute('class', z < 1.5 ? 'z1' : z < 2.8 ? 'z2' : z < 4.5 ? 'z3' : 'z4'); };
     const clampBox = () => { box.w = Math.max(full.w / 7, Math.min(full.w, box.w)); box.h = box.w * (full.h / full.w); box.x = Math.max(-40, Math.min(full.w - box.w + 40, box.x)); box.y = Math.max(-40, Math.min(full.h - box.h + 40, box.y)); };
     const zoomAt = (f, cx, cy) => { const nx = box.x + (cx - box.x) * (1 - f); const ny = box.y + (cy - box.y) * (1 - f); box.x = nx; box.y = ny; box.w *= f; box.h *= f; clampBox(); apply(); };
     const toSvg = (e) => { const r = svg.getBoundingClientRect(); const s = Math.max(box.w / r.width, box.h / r.height); const ox = (r.width - box.w / s) / 2; const oy = (r.height - box.h / s) / 2; return [box.x + (e.clientX - r.left - ox) * s, box.y + (e.clientY - r.top - oy) * s, s]; };
@@ -78,7 +95,7 @@ export default {
     const panel = root.querySelector('#mapPanel');
     async function showCity(id) {
       ctx.ui.mapCity = id;
-      const c = ctx.world.cities.find((x) => x.id === id); if (!c) return;
+      const c = ctx.world.cityById.get(id); if (!c) return;
       const v = ctx.view; const here = id === v.city.id;
       svg.querySelectorAll('.city.sel').forEach((n) => n.classList.remove('sel'));
       const node = svg.querySelector(`.city[data-id="${id}"]`); if (node) node.classList.add('sel');
@@ -88,9 +105,9 @@ export default {
       const cur = v.currency;
       mount(panel, html`
         <div class="city-hero">${sceneFor(ctx, id, props)}</div>
-        <h3 class="serif" style="margin-top:1rem">${c.name}</h3>
-        <div class="dim small">${c.state} · ${['', 'Kleinstadt', 'Stadt', 'Großstadt', 'Großstadt', 'Metropole'][c.tier] || 'Stadt'}</div>
-        <p class="dim small" style="margin:.6rem 0">${c.description || ''}</p>
+        <h3 class="serif" style="margin-top:1rem">${c.label}</h3>
+        <div class="dim small">${c.state} · ${kindOf(c)}${c.pop ? ' · ' + num(c.pop) + ' Einwohner' : ''}${c.since > 1945 ? ' · seit ' + c.since : ''}</div>
+        <p class="dim small" style="margin:.6rem 0">${describe(c)}</p>
         <div class="row small">${id === data.birthCityId ? html`<span class="chip accent">★ Geburtsstadt</span>` : ''}${c.factor >= 1.1 ? html`<span class="chip warn">teuer</span>` : c.factor <= 0.88 ? html`<span class="chip good">günstig</span>` : ''}${props.length ? html`<span class="chip good">${props.length} eigene Immobilie(n)</span>` : ''}</div>
         <button class="btn primary block mt" id="enterCity">${icon('building-2')} Stadt ansehen</button>
         <hr>
@@ -122,6 +139,9 @@ export default {
       } catch (_) { /* Toast kommt aus act */ }
     });
     on(svg, 'keydown', '.pickup', (e, t) => { if (e.key === 'Enter') t.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
+    function focusCity(c) { const xy = project(c.lon, c.lat); box.w = full.w / 4; box.h = box.w * (full.h / full.w); box.x = xy[0] - box.w / 2; box.y = xy[1] - box.h / 2; clampBox(); apply(); showCity(c.id); }
+    bindPlaceSearch(root.querySelector('#mapq'), root.querySelector('#mapres'), ctx, { year, onPick: focusCity });
+    apply();
     showCity(ctx.ui.mapCity || ctx.view.city.id);
   },
 };

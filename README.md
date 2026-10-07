@@ -157,3 +157,11 @@ Für ein Spiel mit eigener Bildsprache ist ein eigenes Design-System besser als 
 ## 6. Lizenzen Dritter
 
 Schriften: Inter, Fraunces (SIL OFL 1.1, via Fontsource) · Icons: Lucide (ISC).
+
+
+## Team-Rollen, Orte, Berufe, Kurzzahlen
+
+- **Rollen:** `Admin` (alles), `Co-Admin` (alles außer System, Backup & Import, Werkzeuge, Zahlungs-/Mail-/Experten-Einstellungen, Rollen vergeben, Passwörter zurücksetzen, „Als Spieler einloggen“) und `Moderator` (Spieler ansehen/sperren, Community, Anti-Cheat, News). Rollen vergibt nur ein Admin unter Admin → Spieler → Konto. Teammitglieder erscheinen in der Rangliste und im Chat mit Kennzeichnung; niemand bearbeitet gleich- oder höherrangige Konten (außer Admins). Rechte: `src/lib/roles.js`.
+- **Orte:** rund 9.000 Orte (Gemeindesitze und größere Dörfer) aus `src/db/places-de.json` (GeoNames-Daten, CC BY 4.0 – Quellenangabe: geonames.org). Migration `011_places` legt sie an; `since` (Jahr) steuert, ab wann ein Ort existiert (z. B. Eisenhüttenstadt 1950, Norderstedt 1970). Die Karte zeichnet je nach Zoom nur sichtbare Orte, die Suche findet jeden Ort. Im Admin unter Städte mit Suche, Filter und Seiten.
+- **Berufe:** über 130 Berufe mit Zeitfenster (`era_from`/`era_to`), Migration `009_professions_era`.
+- **Kurzzahlen:** große Beträge erscheinen als 1k, 12k, 999k, 1m, 5b … (`compact()` in `ui.js` und `economy.js`).

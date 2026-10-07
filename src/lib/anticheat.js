@@ -20,7 +20,7 @@ async function isAdmin(userId) {
   const hit = adminCache.get(userId);
   if (hit && Date.now() - hit.at < 300000) return hit.admin;
   const u = await db.one('SELECT role FROM users WHERE id = ?', [userId]);
-  const admin = !!u && u.role === 'admin';
+  const admin = !!u && u.role !== 'player';
   adminCache.set(userId, { admin, at: Date.now() });
   return admin;
 }
@@ -48,7 +48,7 @@ async function applyAuto(userId, score) {
   const c = cfg();
   if (c.autoAction === 'ban' && score >= c.banAt) {
     const u = await db.one('SELECT banned, role FROM users WHERE id = ?', [userId]);
-    if (u && !u.banned && u.role !== 'admin') {
+    if (u && !u.banned && u.role === 'player') {
       await db.query("UPDATE users SET banned = 1, ban_reason = 'Automatisch: Anti-Cheat' WHERE id = ?", [userId]);
       await db.query('DELETE FROM sessions WHERE data LIKE ?', [`%"userId":${userId}%`]);
       await db.query("INSERT INTO audit_log (user_id, action, detail) VALUES (NULL, 'anticheat_autoban', ?)", [`user ${userId} score ${score}`]);
@@ -82,7 +82,7 @@ setInterval(gc, 120000).unref();
 
 function middleware(req, res, next) {
   const c = cfg();
-  if (!c.enabled || !req.user || req.user.role === 'admin') return next();
+  if (!c.enabled || !req.user || req.user.role !== 'player') return next();
   const id = req.user.id; const now = Date.now();
   trackIp(req, id);
   let r = reqs.get(id); if (!r) { r = { all: [], act: [] }; reqs.set(id, r); }

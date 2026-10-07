@@ -19,18 +19,35 @@ export const mount = (el, h) => { el.innerHTML = toStr(h); return el; };
 export const icon = (name, cls = '') => raw(`<svg class="i ${cls}" aria-hidden="true"><use href="/img/icons.svg#i-${esc(name)}"/></svg>`);
 
 /* ---------- Formatierung ---------- */
-export function money(cents, cur = 'DM') {
-  const neg = cents < 0; const abs = Math.abs(Math.round(cents));
-  const e = Math.floor(abs / 100); const r = String(abs % 100).padStart(2, '0');
-  return `${neg ? '−' : ''}${String(e).replace(/\B(?=(\d{3})+(?!\d))/g, '.')},${r} ${cur === 'EUR' ? '€' : 'DM'}`;
-}
-export const moneyShort = (cents, cur) => {
-  const v = Math.round(cents / 100);
+/** Kurzform großer Zahlen: 999 · 1k · 12k · 999k · 1m · 5b · 2t (Dezimalzeichen je nach Sprache). */
+const EN_LANG = () => document.documentElement.lang === 'en';
+export function compact(v) {
   const neg = v < 0; const a = Math.abs(v);
-  const s = a >= 1e6 ? (a / 1e6).toFixed(a >= 1e7 ? 0 : 1).replace('.', ',') + ' Mio.' : String(a).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-  return `${neg ? '−' : ''}${s} ${cur === 'EUR' ? '€' : 'DM'}`;
-};
-export const num = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  const dec = EN_LANG() ? '.' : ',';
+  let out;
+  if (a < 1000) out = String(Math.round(a));
+  else {
+    const S = ['k', 'm', 'b', 't', 'qa', 'qi']; let i = -1; let x = a;
+    while (x >= 1000 && i < S.length - 1) { x /= 1000; i++; }
+    if (Math.round(x * 10) / 10 >= 1000 && i < S.length - 1) { x /= 1000; i++; }
+    const r = x < 10 ? Math.round(x * 10) / 10 : Math.round(x);
+    out = String(r).replace('.', dec) + S[i];
+  }
+  return (neg ? '−' : '') + out;
+}
+export function money(cents, cur = 'DM') {
+  const sym = cur === 'EUR' ? '€' : 'DM';
+  const neg = cents < 0; const abs = Math.abs(Math.round(cents));
+  if (abs >= 100000) return `${neg ? '−' : ''}${compact(abs / 100)} ${sym}`; // ab 1.000 verkürzt
+  const e = Math.floor(abs / 100); const r = String(abs % 100).padStart(2, '0');
+  return `${neg ? '−' : ''}${e},${r} ${sym}`.replace(',', EN_LANG() ? '.' : ',');
+}
+export const moneyShort = (cents, cur) => `${compact(cents / 100)} ${cur === 'EUR' ? '€' : 'DM'}`;
+/** Kennzeichnung für Teammitglieder (Admin / Co-Admin / Moderator) als HTML-Text. */
+const ROLE_NAMES = { admin: 'Admin', coadmin: 'Co-Admin', moderator: 'Moderator' };
+export const roleBadgeStr = (role) => (ROLE_NAMES[role] ? `<span class="rbadge ${role}" title="Team">${ROLE_NAMES[role]}</span>` : '');
+export const roleBadge = (role) => raw(roleBadgeStr(role));
+export const num = (n) => compact(Math.round(n));
 export const signed = (cents, cur) => `${cents >= 0 ? '+' : '−'}${money(Math.abs(cents), cur)}`;
 export const MONTHS = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
 export const yearsText = (days) => { const y = Math.floor(days / 365); const d = days % 365; return y ? `${y} J. ${d ? Math.round(d / 30.4) + ' Mon.' : ''}` : `${d} Tage`; };

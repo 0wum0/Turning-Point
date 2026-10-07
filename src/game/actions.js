@@ -30,6 +30,7 @@ function ladder(base, step) {
 function moveQuote(world, state, cityId) {
   const target = world.city(cityId);
   if (!target) fail('Unbekannte Stadt.');
+  if (target.since > yr(state)) fail('Diesen Ort gibt es noch nicht.');
   if (target.id === state.person.birthCityId) return { free: true, km: 0, money: 0, coins: 0, baseCoins: 0, step: 0 };
   const origins = [world.city(state.cityId), ...state.properties.map((p) => world.city(p.cityId))].filter(Boolean);
   const km = Math.min(...origins.map((o) => (o.id === target.id ? 0 : haversineKm(o, target))));
@@ -236,9 +237,15 @@ const PICKUP_LABELS = ['Ein glücklicher Fund', 'Ein heißer Tipp', 'Hilfe auf d
 function pickups(world, nowMs) {
   const slot = Math.floor(nowMs / 3600000);
   const out = [];
-  for (const c of world.cityList) {
+  // Städte (Größe ≥ 2) mit je 22 % Chance, dazu eine kleine Auswahl an Dörfern – insgesamt etwa 15–25 Funde pro Stunde
+  const towns = world.cityList.filter((c) => c.size_tier >= 2);
+  const villages = world.cityList.filter((c) => c.size_tier < 2);
+  const picks = towns.slice();
+  const vr = rngFor('pickv', slot);
+  for (let i = 0; i < 6 && villages.length; i++) picks.push(villages[Math.floor(vr() * villages.length)]);
+  for (const c of picks) {
     const r = rngFor('pick', c.id, slot);
-    if (r() < 0.22) {
+    if (r() < (c.size_tier >= 2 ? 0.1 : 1)) {
       const amount = weighted(r, [{ v: 10, w: 60 }, { v: 20, w: 30 }, { v: 40, w: 10 }]).v;
       out.push({ key: `${c.id}:${slot}`, cityId: c.id, amount, label: PICKUP_LABELS[Math.floor(r() * PICKUP_LABELS.length)] });
     }

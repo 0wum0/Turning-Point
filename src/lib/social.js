@@ -80,7 +80,7 @@ const CATS = {
   family: { label: 'Familie', expr: 'ps.children * 1000 + ps.generation', unit: 'kids', hint: 'Anzahl der Kinder.' },
   time: { label: 'Zeitreise', expr: 'ps.days', unit: 'days', hint: 'Wie weit du in der Zeit gekommen bist.' },
 };
-const VISIBLE = "u.social_public = 1 AND u.banned = 0 AND u.role = 'player'";
+const VISIBLE = "u.social_public = 1 AND u.banned = 0";
 
 async function friendIds(userId) {
   const rows = await db.query("SELECT IF(user_a = ?, user_b, user_a) id FROM friendships WHERE (user_a = ? OR user_b = ?) AND status = 'accepted'", [userId, userId, userId]);
@@ -94,13 +94,13 @@ async function leaderboard(userId, { cat = 'wealth', scope = 'all', cityId = 0 }
   if (scope === 'friends') { const f = await friendIds(userId); f.push(userId); conds.push(`ps.user_id IN (${f.map(() => '?').join(',')})`); params.push(...f); }
   const where = conds.join(' AND ');
   const rows = await db.query(
-    `SELECT ps.*, ${C.expr} AS score, u.last_seen_at, u.bio FROM player_stats ps JOIN users u ON u.id = ps.user_id WHERE ${where} ORDER BY score DESC, ps.user_id ASC LIMIT ?`, [...params, size]);
+    `SELECT ps.*, ${C.expr} AS score, u.last_seen_at, u.bio, u.role FROM player_stats ps JOIN users u ON u.id = ps.user_id WHERE ${where} ORDER BY score DESC, ps.user_id ASC LIMIT ?`, [...params, size]);
   const total = (await db.one(`SELECT COUNT(*) n FROM player_stats ps JOIN users u ON u.id = ps.user_id WHERE ${where}`, params)).n;
   const online = Date.now() - cfg().onlineMinutes * 60000;
   const out = rows.map((r, i) => ({ rank: i + 1, ...pub(r), score: Number(r.score), online: r.last_seen_at && new Date(r.last_seen_at).getTime() > online, me: r.user_id === userId }));
   let me = out.find((x) => x.me) || null;
   if (!me) {
-    const mine = await db.one(`SELECT ps.*, ${C.expr} AS score, u.social_public FROM player_stats ps JOIN users u ON u.id = ps.user_id WHERE ps.user_id = ?`, [userId]);
+    const mine = await db.one(`SELECT ps.*, ${C.expr} AS score, u.social_public, u.role FROM player_stats ps JOIN users u ON u.id = ps.user_id WHERE ps.user_id = ?`, [userId]);
     if (mine) {
       const ahead = (await db.one(`SELECT COUNT(*) n FROM player_stats ps JOIN users u ON u.id = ps.user_id WHERE ${where} AND (${C.expr} > ? OR (${C.expr} = ? AND ps.user_id < ?))`, [...params, mine.score, mine.score, userId])).n;
       me = { rank: ahead + 1, ...pub(mine), score: Number(mine.score), me: true, hidden: !mine.social_public };
@@ -109,7 +109,7 @@ async function leaderboard(userId, { cat = 'wealth', scope = 'all', cityId = 0 }
   return { cat, scope, label: C.label, unit: C.unit, hint: C.hint, total, rows: out, me, cats: Object.entries(CATS).map(([k, v]) => ({ key: k, label: v.label })) };
 }
 function pub(r) {
-  return { userId: r.user_id, username: r.username, name: r.name, cityId: r.city_id, year: r.year, status: r.status, wealth: Number(r.wealth), bizValue: Number(r.biz_value), companies: r.companies, properties: r.properties, children: r.children, generation: r.generation, cycle: r.cycle, influence: r.influence, office: r.office, days: r.days, occupation: r.occupation };
+  return { userId: r.user_id, role: r.role && r.role !== 'player' ? r.role : undefined, username: r.username, name: r.name, cityId: r.city_id, year: r.year, status: r.status, wealth: Number(r.wealth), bizValue: Number(r.biz_value), companies: r.companies, properties: r.properties, children: r.children, generation: r.generation, cycle: r.cycle, influence: r.influence, office: r.office, days: r.days, occupation: r.occupation };
 }
 
 /* =============================== Profile & Beziehungen =============================== */
@@ -131,7 +131,7 @@ async function profile(viewerId, targetId) {
   const visible = u.social_public || rel === 'self' || rel === 'friend';
   const ps = await db.one('SELECT * FROM player_stats WHERE user_id = ?', [targetId]);
   const online = u.last_seen_at && Date.now() - new Date(u.last_seen_at).getTime() < cfg().onlineMinutes * 60000;
-  const base = { id: u.id, username: u.username, relation: rel, online: !!online, joined: u.created_at, lastSeen: visible ? u.last_seen_at : null, visible };
+  const base = { id: u.id, role: u.role !== 'player' ? u.role : undefined, username: u.username, relation: rel, online: !!online, joined: u.created_at, lastSeen: visible ? u.last_seen_at : null, visible };
   if (!visible || !ps) return { ...base, bio: null, stats: null, firms: [], ranks: {} };
   const firms = await db.query('SELECT company_id id, city_id cityId, name, pkey, tier, rooms FROM player_firms WHERE user_id = ?', [targetId]);
   const ranks = {};
@@ -156,9 +156,9 @@ async function listFriends(userId) {
   const rows = await db.query(
     `SELECT f.status, f.requester, IF(f.user_a = ?, f.user_b, f.user_a) other FROM friendships f WHERE (f.user_a = ? OR f.user_b = ?) AND f.status <> 'blocked'`, [userId, userId, userId]);
   const ids = rows.map((r) => r.other);
-  const info = ids.length ? await db.query(`SELECT u.id, u.username, u.last_seen_at, ps.name, ps.city_id, ps.year, ps.wealth FROM users u LEFT JOIN player_stats ps ON ps.user_id = u.id WHERE u.id IN (${ids.map(() => '?').join(',')})`, ids) : [];
+  const info = ids.length ? await db.query(`SELECT u.id, u.username, u.role, u.last_seen_at, ps.name, ps.city_id, ps.year, ps.wealth FROM users u LEFT JOIN player_stats ps ON ps.user_id = u.id WHERE u.id IN (${ids.map(() => '?').join(',')})`, ids) : [];
   const map = new Map(info.map((i) => [i.id, i])); const online = Date.now() - cfg().onlineMinutes * 60000;
-  const shape = (r) => { const i = map.get(r.other) || {}; return { userId: r.other, username: i.username, name: i.name, cityId: i.city_id, year: i.year, wealth: Number(i.wealth || 0), online: !!(i.last_seen_at && new Date(i.last_seen_at).getTime() > online) }; };
+  const shape = (r) => { const i = map.get(r.other) || {}; return { userId: r.other, role: i.role && i.role !== 'player' ? i.role : undefined, username: i.username, name: i.name, cityId: i.city_id, year: i.year, wealth: Number(i.wealth || 0), online: !!(i.last_seen_at && new Date(i.last_seen_at).getTime() > online) }; };
   return {
     friends: rows.filter((r) => r.status === 'accepted').map(shape),
     incoming: rows.filter((r) => r.status === 'pending' && r.requester !== userId).map(shape),
@@ -292,9 +292,9 @@ async function myCity(userId) { const r = await db.one('SELECT city_id FROM play
 async function chatList(userId, cityId, after = 0) {
   const home = await myCity(userId); if (!home) fail('Beginne zuerst ein Leben, um am Stadtplatz teilzunehmen.');
   if (cityId !== home) fail('Am Stadtplatz sprichst du nur mit den Menschen deiner Stadt.');
-  const rows = await db.query(`SELECT c.id, c.user_id, c.name, c.text, c.created_at, u.username FROM chat_messages c JOIN users u ON u.id = c.user_id WHERE c.city_id = ? AND c.deleted = 0 AND c.id > ? ORDER BY c.id DESC LIMIT 60`, [cityId, after]);
-  const online = await db.query(`SELECT ps.user_id userId, ps.name, ps.occupation FROM player_stats ps JOIN users u ON u.id = ps.user_id WHERE ps.city_id = ? AND u.banned = 0 AND u.social_public = 1 AND u.last_seen_at > NOW() - INTERVAL ? MINUTE ORDER BY u.last_seen_at DESC LIMIT 40`, [cityId, cfg().onlineMinutes]);
-  return { messages: rows.reverse().map((r) => ({ id: r.id, userId: r.user_id, name: r.name, username: r.username, text: r.text, at: r.created_at, mine: r.user_id === userId })), online };
+  const rows = await db.query(`SELECT c.id, c.user_id, c.name, c.text, c.created_at, u.username, u.role FROM chat_messages c JOIN users u ON u.id = c.user_id WHERE c.city_id = ? AND c.deleted = 0 AND c.id > ? ORDER BY c.id DESC LIMIT 60`, [cityId, after]);
+  const online = await db.query(`SELECT ps.user_id userId, ps.name, ps.occupation, u.role FROM player_stats ps JOIN users u ON u.id = ps.user_id WHERE ps.city_id = ? AND u.banned = 0 AND u.social_public = 1 AND u.last_seen_at > NOW() - INTERVAL ? MINUTE ORDER BY u.last_seen_at DESC LIMIT 40`, [cityId, cfg().onlineMinutes]);
+  return { messages: rows.reverse().map((r) => ({ id: r.id, userId: r.user_id, name: r.name, username: r.username, role: r.role !== 'player' ? r.role : undefined, text: r.text, at: r.created_at, mine: r.user_id === userId })), online };
 }
 async function chatSend(userId, cityId, text) {
   const c = cfg().chat; if (!cfg().enabled || !c.enabled) fail('Der Stadtplatz ist gerade geschlossen.');
@@ -400,7 +400,7 @@ async function publicNews(cityId) {
 
 async function search(userId, q) {
   const t = String(q || '').trim().slice(0, 40); if (t.length < 2) return [];
-  const rows = await db.query(`SELECT ps.user_id userId, ps.username, ps.name, ps.city_id cityId, ps.year FROM player_stats ps JOIN users u ON u.id = ps.user_id WHERE ${VISIBLE} AND ps.user_id <> ? AND (ps.username LIKE ? OR ps.name LIKE ?) ORDER BY ps.username LIMIT 12`, [userId, `%${t}%`, `%${t}%`]);
+  const rows = await db.query(`SELECT ps.user_id userId, ps.username, ps.name, ps.city_id cityId, ps.year, u.role FROM player_stats ps JOIN users u ON u.id = ps.user_id WHERE ${VISIBLE} AND ps.user_id <> ? AND (ps.username LIKE ? OR ps.name LIKE ?) ORDER BY ps.username LIMIT 12`, [userId, `%${t}%`, `%${t}%`]);
   return rows;
 }
 

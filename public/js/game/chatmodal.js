@@ -1,5 +1,5 @@
 /* Chat-Bubble und Glocke in der Kopfzeile: Stadtplatz als Fenster, Benachrichtigungen mit Absender und Betreff. */
-import { html, raw, icon, api, on, toast, modal, esc } from './ui.js';
+import { html, raw, icon, api, on, toast, modal, esc, roleBadgeStr } from './ui.js';
 import { openProfile } from './views/social.js';
 
 const hhmm = (d) => new Date(d).toLocaleTimeString(document.documentElement.lang === 'en' ? 'en-GB' : 'de-DE', { hour: '2-digit', minute: '2-digit' });
@@ -13,12 +13,12 @@ export function chatUnread(social) {
   return c.last > chatSeen(c.cityId) && c.last > (c.lastMine || 0);
 }
 
-const line = (m) => `<div class="cl ${m.mine ? 'mine' : ''}" data-id="${m.id}"><span class="t">${hhmm(m.at)}</span> <a href="#/social" class="who" data-profile="${m.userId}">${esc(m.name)}</a> <span class="msg">${esc(m.text)}</span></div>`;
+const line = (m) => `<div class="cl ${m.mine ? 'mine' : ''}" data-id="${m.id}"><span class="t">${hhmm(m.at)}</span> <a href="#/social" class="who" data-profile="${m.userId}">${esc(m.name)}</a>${roleBadgeStr(m.role)} <span class="msg">${esc(m.text)}</span></div>`;
 
 export async function openChatModal(ctx) {
   let d;
   try { d = await api('GET', '/api/social/chat'); } catch (err) { toast(err.message, 'warn'); return; }
-  const city = (ctx.world && ctx.world.cities || []).find((c) => c.id === d.cityId);
+  const city = ctx.world.cityById.get(d.cityId);
   const m = modal(html`<div class="row spread nowrap"><h3 style="margin:0">${icon('landmark')} Stadtplatz ${city ? city.name : ''}</h3><button class="btn ghost sm" data-close="x" aria-label="Schließen">${icon('x')}</button></div>
     <p class="dim small" style="margin:.2rem 0 .6rem"><span id="cm-online">${d.online.length}</span> online · <a href="#/social" data-open-plaza>Alle Funktionen (Betriebe, Besuche) …</a></p>
     <div class="chat"><div class="chatlog" id="cm-log" aria-live="polite">${raw(d.messages.map(line).join('') || '<div class="dim small">Noch ist es still auf dem Platz. Sag Hallo!</div>')}</div>

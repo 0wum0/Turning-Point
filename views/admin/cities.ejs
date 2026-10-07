@@ -1,6 +1,7 @@
 <%- include('_top', { actions: '<a class="btn primary sm" href="/admin/cities/new">+ Neue Stadt</a>' }) %>
 <% var csrf = '<input type="hidden" name="_csrf" value="' + csrfToken + '">'; %>
 <p class="dim">Städte mit Bild: Das hochgeladene Bild ersetzt die generierte Ansicht im Spiel. Größe, Preisfaktor und Status lassen sich direkt in der Tabelle ändern; Name, Lage und Bilder in der Detailansicht.</p>
+<form method="get" class="row wrap" style="margin-bottom:1rem"><input type="search" name="q" value="<%= q %>" placeholder="Ort suchen …" style="max-width:260px"><select name="state" style="max-width:220px"><option value="">Alle Bundesländer</option><% states.forEach(function(s){ %><option <%= s === st ? 'selected' : '' %>><%= s %></option><% }) %></select><label class="check"><input type="checkbox" name="since" value="1" <%= sinceOnly ? 'checked' : '' %>> nur Neugründungen nach 1945</label><button class="btn sm">Filtern</button></form>
 <form method="post" action="/admin/cities/bulk">
   <%- csrf %>
   <div class="table-wrap"><table class="table"><thead><tr><th></th><th>Stadt</th><th>Bundesland</th><th class="num">Größe (1–5)</th><th class="num">Preisfaktor</th><th>Status</th><th></th></tr></thead>
@@ -13,4 +14,5 @@
     <td class="num"><a class="btn sm" href="/admin/cities/<%= c.id %>">Bearbeiten</a> <button class="btn sm ghost" formaction="/admin/cities/<%= c.id %>/delete" formnovalidate data-confirm="Stadt „<%= c.name %>“ löschen?" title="Löschen">✕</button></td></tr><% }) %></tbody></table></div>
   <div class="sticky-save row end"><button class="btn primary"><%- icon('check') %> Alle speichern</button></div>
 </form>
+<% if (pages > 1) { %><div class="row center mt"><% if (page > 1) { %><a class="btn sm" href="?q=<%= encodeURIComponent(q) %>&state=<%= encodeURIComponent(st) %>&page=<%= page - 1 %>">←</a><% } %><span class="dim small">Seite <%= page %> / <%= pages %></span><% if (page < pages) { %><a class="btn sm" href="?q=<%= encodeURIComponent(q) %>&state=<%= encodeURIComponent(st) %>&page=<%= page + 1 %><%= sinceOnly ? '&since=1' : '' %>">→</a><% } %></div><% } %>
 <%- include('_bottom') %>

@@ -35,9 +35,12 @@ router.get('/state', wrap(async (req, res) => {
 router.get('/world', wrap(async (req, res) => {
   const w = await worldSvc.get();
   const startYear = settings.get('game.start_year');
+  const states = [...new Set(w.cityList.map((c) => c.state))].sort();
   res.json({
     ok: true,
-    cities: w.cityList.map((c) => ({ id: c.id, name: c.name, state: c.state, lat: c.lat, lon: c.lon, tier: c.size_tier, factor: c.price_factor, image: c.image, aerial: c.aerial, description: c.description })),
+    // kompakt: [id, Name, Bundesland-Index, lat, lon, Stufe, Preisfaktor, Einwohner, seit-Jahr]; Beschreibung/Bilder nur für Kernstädte
+    states, cityRows: w.cityList.map((c) => [c.id, c.name, states.indexOf(c.state), c.lat, c.lon, c.size_tier, c.price_factor, c.pop || 0, c.since || 1945]),
+    cityExtra: Object.fromEntries(w.cityList.filter((c) => c.description || c.image || c.aerial).map((c) => [c.id, { image: c.image, aerial: c.aerial, description: c.description }])),
     startProfessions: w.activeProfessions(startYear).filter((p) => !p.academic && p.pkey !== 'helfer').map((p) => ({ key: p.pkey, name: p.name, icon: p.icon, description: p.description, category: p.category })),
     academic: w.cityList && [...w.professions.values()].filter((p) => p.academic).map((p) => ({ key: p.pkey, name: p.name, icon: p.icon, description: p.description, days: p.training_days, tuition: p.tuition_day, wage: p.base_wage })),
     professions: [...w.professions.values()].map((p) => ({ key: p.pkey, name: p.name, icon: p.icon, academic: !!p.academic, from: p.era_from, to: p.era_to, days: p.training_days })),

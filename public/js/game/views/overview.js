@@ -5,7 +5,7 @@ const LEVEL_ICON = { good: 'circle-check', warn: 'triangle-alert', bad: 'circle-
 
 export function sceneFor(ctx, cityId, owned) {
   const v = ctx.view;
-  const c = ctx.world.cities.find((x) => x.id === cityId) || { id: cityId, name: '', tier: 3 };
+  const c = ctx.world.cityById.get(cityId) || { id: cityId, name: '', tier: 3 };
   if (c.image) return html`<img class="scene" src="/media/${c.image}" alt="${c.name}">`;
   return cityScene({ id: c.id, name: c.name, tier: c.tier, era: v.date.eraKey, owned: owned || [] });
 }

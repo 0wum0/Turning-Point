@@ -28,6 +28,8 @@ function setLang(req, res) {
 function dictScript(req, res) {
   let extra = { exact: {}, patterns: [] };
   try { extra = require('./i18n-data/client'); } catch (_) { /* optional */ }
-  res.type('application/javascript').set('Cache-Control', 'public, max-age=300').send('window.TP_I18N=' + JSON.stringify({ exact: Object.assign({}, extra.exact, EN.EXACT), patterns: EN.PATTERNS.concat(extra.patterns || []) }) + ';');
+  let more = { exact: {}, patterns: [] };
+  try { more = require('./i18n-data/client-extra'); } catch (_) { /* optional */ }
+  res.type('application/javascript').set('Cache-Control', 'public, max-age=300').send('window.TP_I18N=' + JSON.stringify({ exact: Object.assign({}, extra.exact, more.exact, EN.EXACT), patterns: EN.PATTERNS.concat(extra.patterns || [], more.patterns) }) + ';');
 }
 module.exports = { middleware, setLang, dictScript, detect };

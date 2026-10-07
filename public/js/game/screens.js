@@ -1,6 +1,8 @@
+import { bindPlaceSearch, cityOf, kindOf } from './places.js';
 import { html, icon, money, moneyShort, infoBtn, api, on, mount, toast, num, esc, bar } from './ui.js';
 
 /* ---------------- Charaktererstellung ---------------- */
+const CATS = [['handwerk', 'Handwerk', 'hammer'], ['bau', 'Bau', 'building-2'], ['landwirtschaft', 'Landwirtschaft', 'wheat'], ['industrie', 'Industrie', 'factory'], ['verkehr', 'Verkehr', 'truck'], ['gastronomie', 'Gastronomie', 'utensils'], ['dienstleistung', 'Dienstleistung', 'hand-coins'], ['energie', 'Energie', 'zap'], ['technik', 'Technik', 'cpu'], ['kreativ', 'Kreatives', 'shirt']];
 export function renderCreate(root, ctx) {
   const w = ctx.world;
   const st = ctx.ui.create || (ctx.ui.create = { step: 1, gender: 'm', firstName: '', lastName: '', birthCityId: null, professionKey: null, fatherName: '', fatherJob: '', motherName: '', motherJob: '', q: '' });
@@ -8,17 +10,19 @@ export function renderCreate(root, ctx) {
   const valid = () => ({
     1: st.firstName.trim().length >= 2 && st.lastName.trim().length >= 2, 2: !!st.birthCityId, 3: !!st.professionKey, 4: true, 5: true,
   }[st.step]);
-  const city = w.cities.find((c) => c.id === st.birthCityId);
+  const city = w.cityById.get(st.birthCityId);
   const prof = w.startProfessions.find((p) => p.key === st.professionKey);
   const body = {
     1: () => html`<h2>Wer bist du?</h2><p class="dim">Wir schreiben das Jahr ${w.startYear}. Du bist 20 Jahre alt.</p>
       <div class="field"><label>Geschlecht</label><div class="choice" style="grid-template-columns:repeat(3,1fr)">${[['m', 'Mann'], ['f', 'Frau'], ['d', 'Divers']].map((g) => html`<label><input type="radio" name="gender" value="${g[0]}" ${st.gender === g[0] ? 'checked' : ''}><span class="opt">${g[1]}</span></label>`)}</div></div>
       <div class="grid c2"><div class="field"><label for="fn">Vorname</label><input id="fn" type="text" maxlength="30" value="${st.firstName}" autofocus></div><div class="field"><label for="ln">Nachname</label><input id="ln" type="text" maxlength="30" value="${st.lastName}"></div></div>`,
     2: () => html`<h2>Deine Heimatstadt</h2><p class="dim">Hier wurdest du geboren. Die Rückkehr in deine Geburtsstadt ist später immer kostenlos – jeder andere Umzug kostet Geld und Coins.</p>
-      <div class="field"><input id="cq" type="search" placeholder="Stadt suchen …" value="${st.q}"></div>
-      <div class="choice city-choice" id="cityList">${w.cities.filter((c) => !st.q || c.name.toLowerCase().includes(st.q.toLowerCase())).map((c) => html`<label><input type="radio" name="city" value="${c.id}" ${st.birthCityId === c.id ? 'checked' : ''}><span class="opt">${c.name}<small>${c.state}</small></span></label>`)}</div>`,
+      <div class="field pl-wrap"><input id="cq" type="search" placeholder="Stadt oder Dorf suchen … (rund 9.000 Orte)" autocomplete="off"><div class="pl-res" id="cqres"></div></div>
+      ${city ? html`<div class="alert good">${icon('map-pin')}<div><b>${city.label}</b> · ${city.state} · ${kindOf(city)}${city.pop ? ' · ' + num(city.pop) + ' Einwohner' : ''}</div></div>` : ''}
+      <div class="dim small" style="margin:.6rem 0 .3rem">Große Städte zum Schnellstart:</div>
+      <div class="choice city-choice" id="cityList">${w.byPop.slice(0, 36).map((c) => html`<label><input type="radio" name="city" value="${c.id}" ${st.birthCityId === c.id ? 'checked' : ''}><span class="opt">${c.label}<small>${c.state}</small></span></label>`)}</div>`,
     3: () => html`<h2>Dein erlernter Beruf</h2><p class="dim">Du hast bereits eine praktische Ausbildung. Der Beruf bestimmt, welche Betriebe du später führen darfst.</p>
-      <div class="choice prof-choice">${w.startProfessions.map((p) => html`<label><input type="radio" name="prof" value="${p.key}" ${st.professionKey === p.key ? 'checked' : ''}><span class="opt">${icon(p.icon)} ${p.name}<small>${p.description || ''}</small></span></label>`)}</div>`,
+      ${CATS.filter((c) => w.startProfessions.some((p) => p.category === c[0])).map((c) => html`<div class="prof-cat"><h4>${icon(c[2])} ${c[1]}</h4><div class="choice prof-choice">${w.startProfessions.filter((p) => p.category === c[0]).map((p) => html`<label><input type="radio" name="prof" value="${p.key}" ${st.professionKey === p.key ? 'checked' : ''}><span class="opt">${icon(p.icon)} ${p.name}<small>${p.description || ''}</small></span></label>`)}</div></div>`)}`,
     4: () => html`<h2>Deine Herkunft</h2><p class="dim">Deine Eltern und Geschwister sind im Krieg umgekommen. Wer waren sie? (optional)</p>
       <div class="grid c2"><div class="field"><label>Vater – Vorname</label><input id="fan" type="text" maxlength="40" value="${st.fatherName}"></div><div class="field"><label>Vaters Beruf</label><input id="faj" type="text" maxlength="40" value="${st.fatherJob}" placeholder="z. B. Schlosser"></div>
       <div class="field"><label>Mutter – Vorname</label><input id="mon" type="text" maxlength="40" value="${st.motherName}"></div><div class="field"><label>Mutters Beruf</label><input id="moj" type="text" maxlength="40" value="${st.motherJob}" placeholder="z. B. Näherin"></div></div>`,
@@ -36,7 +40,7 @@ export function renderCreate(root, ctx) {
   root.querySelectorAll('input[name=gender]').forEach((r) => r.addEventListener('change', () => { st.gender = r.value; }));
   root.querySelectorAll('input[name=city]').forEach((r) => r.addEventListener('change', () => { st.birthCityId = Number(r.value); root.querySelector('#next').disabled = false; }));
   root.querySelectorAll('input[name=prof]').forEach((r) => r.addEventListener('change', () => { st.professionKey = r.value; root.querySelector('#next').disabled = false; }));
-  const cq = root.querySelector('#cq'); if (cq) { cq.addEventListener('input', () => { st.q = cq.value; const pos = cq.selectionStart; rerender(); const n = root.querySelector('#cq'); n.focus(); n.setSelectionRange(pos, pos); }); }
+  const cq = root.querySelector('#cq'); if (cq) bindPlaceSearch(cq, root.querySelector('#cqres'), ctx, { year: w.startYear, onPick: (c) => { st.birthCityId = c.id; rerender(); } });
   root.querySelector('#back').onclick = () => { st.step--; rerender(); };
   root.querySelector('#next').onclick = async (e) => {
     if (st.step < 5) { st.step++; rerender(); return; }

@@ -20,13 +20,24 @@ const currencyOf = (year, econ) => (year >= (econ.euroYear || 2002) ? 'EUR' : 'D
 /** Betrag in Cent (ganzzahlig) */
 const scale = (base, idx, factor = 1) => Math.max(0, Math.round(base * idx * factor));
 
+/** Kurzform großer Zahlen: 999 · 1k · 12k · 999k · 1m · 5b · 2t */
+function compact(v) {
+  const neg = v < 0; const a = Math.abs(v);
+  if (a < 1000) return (neg ? '−' : '') + String(Math.round(a));
+  const S = ['k', 'm', 'b', 't', 'qa', 'qi']; let i = -1; let x = a;
+  while (x >= 1000 && i < S.length - 1) { x /= 1000; i++; }
+  if (Math.round(x * 10) / 10 >= 1000 && i < S.length - 1) { x /= 1000; i++; }
+  const r = x < 10 ? Math.round(x * 10) / 10 : Math.round(x);
+  return (neg ? '−' : '') + String(r).replace('.', ',') + S[i];
+}
 function formatMoney(cents, currency = 'DM') {
   const neg = cents < 0;
   const abs = Math.abs(Math.round(cents));
+  const sym = currency === 'EUR' ? '€' : 'DM';
+  if (abs >= 100000) return `${neg ? '−' : ''}${compact(abs / 100)} ${sym}`;
   const euros = Math.floor(abs / 100);
   const rest = String(abs % 100).padStart(2, '0');
-  const grouped = String(euros).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-  return `${neg ? '−' : ''}${grouped},${rest} ${currency === 'EUR' ? '€' : 'DM'}`;
+  return `${neg ? '−' : ''}${euros},${rest} ${sym}`;
 }
 
 function haversineKm(a, b) {
@@ -38,4 +49,4 @@ function haversineKm(a, b) {
   return 2 * R * Math.asin(Math.sqrt(x)) * 1.25; // 1,25 = Straßenumweg
 }
 
-module.exports = { priceIndex, currencyOf, scale, formatMoney, haversineKm };
+module.exports = { priceIndex, currencyOf, scale, formatMoney, compact, haversineKm };

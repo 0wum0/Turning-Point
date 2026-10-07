@@ -12,7 +12,7 @@
     <tbody><% rows.forEach(function(r){ var online = r.last_seen_at && (now - new Date(r.last_seen_at).getTime()) < 600000; %><tr>
       <td><input type="checkbox" name="ids" value="<%= r.id %>"></td>
       <td><a href="/admin/users/<%= r.id %>"><b><%= r.username %></b></a> <span class="dim small">#<%= r.id %></span>
-        <% if (r.role === 'admin') { %><span class="chip">Admin</span><% } %><% if (r.banned) { %><span class="chip bad">gesperrt</span><% } %><% if (r.sub_until && Number(r.sub_until) > now) { %><span class="chip good">Dauerkarte</span><% } %><% if (online) { %><span class="chip good">online</span><% } %></td>
+        <% if (r.role !== 'player') { %><span class="chip accent"><%= {admin:'Admin',coadmin:'Co-Admin',moderator:'Moderator'}[r.role] %></span><% } %><% if (r.banned) { %><span class="chip bad">gesperrt</span><% } %><% if (r.sub_until && Number(r.sub_until) > now) { %><span class="chip good">Dauerkarte</span><% } %><% if (online) { %><span class="chip good">online</span><% } %></td>
       <td class="dim"><%= r.email %></td>
       <td class="small"><% if (r.cname) { %><%= r.cname %> <span class="chip <%= r.cstatus === 'alive' ? 'good' : r.cstatus === 'dead' ? 'warn' : '' %>"><%= r.cstatus %></span> <span class="dim"><%= r.chars %> Leben</span><% } else { %><span class="dim">–</span><% } %></td>
       <td class="num"><%= r.coins %></td><td class="num"><%= r.efs_pool %></td>

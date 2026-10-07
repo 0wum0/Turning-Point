@@ -6,7 +6,7 @@
   <div class="grid c3">
     <div class="field"><label>Benutzername</label><input type="text" name="username" value="<%= u.username %>" required maxlength="40"></div>
     <div class="field"><label>E-Mail</label><input type="email" name="email" value="<%= u.email %>" required></div>
-    <div class="field"><label>Rolle</label><select name="role" <%= u.id === user.id ? 'disabled' : '' %>><option value="player" <%= u.role === 'player' ? 'selected' : '' %>>Spieler</option><option value="admin" <%= u.role === 'admin' ? 'selected' : '' %>>Admin</option></select></div>
+    <div class="field"><label>Rolle</label><select name="role" <%= (u.id === user.id || user.role !== 'admin') ? 'disabled' : '' %>><% [['player','Spieler'],['moderator','Moderator'],['coadmin','Co-Admin'],['admin','Admin']].forEach(function(r){ %><option value="<%= r[0] %>" <%= u.role === r[0] ? 'selected' : '' %>><%= r[1] %></option><% }) %></select><div class="hint">Nur Admins können Rollen vergeben.</div></div>
     <div class="field"><label>Coins</label><input type="number" name="coins" value="<%= u.coins %>" min="0"></div>
     <div class="field"><label>EFS-Vorrat</label><input type="number" name="efs_pool" value="<%= u.efs_pool %>" min="0"></div>
     <div class="field"><label>Dauerkarte läuft bis</label><input type="datetime-local" name="sub_until" value="<%= subLocal %>"><div class="hint">Leer = keine Dauerkarte.</div></div>

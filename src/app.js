@@ -96,7 +96,7 @@ function createApp(cfg) {
   // Wartungsmodus
   app.use((req, res, next) => {
     if (!settings.get('site.maintenance')) return next();
-    if (req.user && req.user.role === 'admin') return next();
+    if (req.user && req.user.role !== 'player') return next();
     if (['/login', '/logout', '/healthz'].includes(req.path) || req.path.startsWith('/admin') && !req.user) return next();
     if (req.path.startsWith('/api/')) return res.status(503).json({ ok: false, error: settings.get('site.maintenance_message') });
     return res.status(503).render('error', { code: 503, title: 'Wartung', message: settings.get('site.maintenance_message') });

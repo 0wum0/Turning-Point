@@ -1,3 +1,4 @@
+import { bindPlaceSearch } from '../places.js';
 import { html, icon, money, infoBtn, bar, on, api, num, yearsText, modal } from '../ui.js';
 import { paginate } from '../paginate.js';
 import { openProfile } from './social.js';
@@ -122,7 +123,7 @@ export default {
     }[tab]();
     return html`
     <div class="panel-head"><div><h2>${web ? 'Das Netz' : 'Die Zeitung'}</h2><p>${web ? 'Jobs, Immobilien, Kontakte und Nachrichten – seit 2002 online.' : 'Stellen, Wohnungen, Kontakte und Neuigkeiten aus deiner Stadt.'}</p></div>
-      <div class="field mb0"><label class="sr" for="nCity">Stadt</label><select id="nCity">${ctx.world.cities.map((c) => html`<option value="${c.id}" ${c.id === e.city.id ? 'selected' : ''}>${c.name}${c.id === v.city.id ? ' (dein Wohnort)' : ''}</option>`)}</select></div></div>
+      <div class="field mb0 pl-wrap" style="min-width:min(300px,100%)"><label class="sr" for="nCity">Stadt</label><input id="nCity" type="search" placeholder="${e.city.label || e.city.name}${e.city.id === v.city.id ? ' (dein Wohnort)' : ''} – anderen Ort lesen …" autocomplete="off"><div class="pl-res" id="nCityRes"></div>${e.city.id !== v.city.id ? html`<button class="btn sm ghost mt" id="nHome">${icon('map-pin')} Zurück zu meinem Wohnort</button>` : ''}</div></div>
     ${!here ? html`<div class="alert info">${icon('info')}<div>Du liest die Ausgabe aus <b>${e.city.name}</b>. Um dort zu arbeiten oder zu wohnen, musst du erst umziehen (Karte).</div></div>` : ''}
     <section class="paper ${web ? 'web' : ''}">
       ${web ? html`<div class="browser-bar"><i></i><i></i><i></i><span>www.${e.city.name.toLowerCase().replace(/[^a-zäöüß]+/g, '-')}-netz.de</span></div>` : ''}
@@ -136,7 +137,8 @@ export default {
     on(root, 'click', '[data-profile]', (ev, t) => { ev.preventDefault(); openProfile(ctx, Number(t.dataset.profile)); });
     on(root, 'click', '[data-read]', (ev, t) => { const n = data._list[Number(t.dataset.read)]; if (n) openReader(n, data.edition); });
     on(root, 'click', '[data-tab]', (e, t) => { ctx.ui.newsTab = t.dataset.tab; ctx.rerender(); });
-    root.querySelector('#nCity').addEventListener('change', (e) => { ctx.ui.newsCity = Number(e.target.value); ctx.rerender(); });
+    bindPlaceSearch(root.querySelector('#nCity'), root.querySelector('#nCityRes'), ctx, { year: ctx.view.date.year, onPick: (c) => { ctx.ui.newsCity = c.id; ctx.rerender(); } });
+    const nh = root.querySelector('#nHome'); if (nh) nh.onclick = () => { ctx.ui.newsCity = null; ctx.rerender(); };
     on(root, 'click', '[data-act]', async (e, t) => {
       const name = t.dataset.act;
       const input = name === 'tutorial' ? { on: t.dataset.on === '1' } : { listingId: t.dataset.id };

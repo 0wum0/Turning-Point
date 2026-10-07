@@ -1,9 +1,9 @@
-import { html, raw, icon, api, on, toast, modal, money, num, esc, infoBtn } from '../ui.js';
+import { html, raw, icon, api, on, toast, modal, money, num, esc, infoBtn, roleBadge, roleBadgeStr } from '../ui.js';
 
 const TABS = [['rank', 'Rangliste', 'crown'], ['plaza', 'Stadtplatz', 'landmark'], ['jobs', 'Arbeit', 'briefcase'], ['love', 'Beziehung', 'heart'], ['letters', 'Briefe', 'mail'], ['friends', 'Freunde', 'users'], ['me', 'Mein Profil', 'user']];
 const hhmm = (d) => new Date(d).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
 const dt = (d) => new Date(d).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' });
-const cityName = (ctx, id) => { const c = (ctx.world && ctx.world.cities || []).find((x) => x.id === id); return c ? c.name : '–'; };
+const cityName = (ctx, id) => { const c = ctx.world && ctx.world.cityById && ctx.world.cityById.get(id); return c ? c.label : '–'; };
 const dot = (on) => html`<i class="odot ${on ? 'on' : ''}" title="${on ? 'online' : 'offline'}"></i>`;
 const medal = (r) => (r <= 3 ? html`<span class="medal m${r}">${icon('crown')}</span>` : html`<span class="rk">${r}</span>`);
 
@@ -21,7 +21,7 @@ export async function openProfile(ctx, userId) {
   const s = p.stats; const me = p.relation === 'self';
   const rel = { none: html`<button class="btn sm primary" data-f="request">${icon('plus')} Freund hinzufügen</button>`, pending_out: html`<span class="chip">Anfrage gesendet</span>`, pending_in: html`<button class="btn sm primary" data-f="accept">Anfrage annehmen</button>`, friend: html`<button class="btn sm ghost" data-f="remove">Freundschaft beenden</button>`, self: '', blocked: html`<span class="chip bad">blockiert</span>`, blocked_by: '' }[p.relation] || '';
   const m = modal(html`<div class="profile">
-    <div class="row spread"><div><h3 class="serif" style="margin:0">${s ? s.name : p.username} ${dot(p.online)}</h3><div class="dim small">@${p.username}${s ? ` · ${cityName(ctx, s.cityId)} · ${s.year}` : ''}</div></div><button class="btn ghost sm" data-close="x" aria-label="Schließen">${icon('x')}</button></div>
+    <div class="row spread"><div><h3 class="serif" style="margin:0">${s ? s.name : p.username} ${roleBadge(p.role)} ${dot(p.online)}</h3><div class="dim small">@${p.username}${s ? ` · ${cityName(ctx, s.cityId)} · ${s.year}` : ''}</div></div><button class="btn ghost sm" data-close="x" aria-label="Schließen">${icon('x')}</button></div>
     ${p.bio ? html`<p class="bio">${p.bio}</p>` : ''}
     ${!p.visible || !s ? html`<div class="alert info">${icon('lock')}<div>Dieses Profil ist privat.</div></div>` : html`
       <div class="pgrid">
@@ -105,7 +105,7 @@ const views = {
   },
   love(ctx, d) {
     const cp = d.couple; const o = cp && cp.other; const R = d.rules;
-    const person = (p) => html`<button class="linkrow" data-profile="${p.userId}"><span class="grow"><b>${p.name}</b> <span class="dim small">@${p.username}</span><div class="dim small">${p.occupation || ''}${p.year ? ' · ' + p.year : ''}</div></span></button>`;
+    const person = (p) => html`<button class="linkrow" data-profile="${p.userId}"><span class="grow"><b>${p.name}</b> ${roleBadge(p.role)} <span class="dim small">@${p.username}</span><div class="dim small">${p.occupation || ''}${p.year ? ' · ' + p.year : ''}</div></span></button>`;
     return html`<div class="grid c2" style="--gap:1rem">
       <section class="card ${cp ? 'glow' : ''}"><div class="card-title">${icon('heart')} Deine Beziehung ${infoBtn(['Hier verbindest du dein Leben mit dem eines anderen Spielers – echte Partnerschaft statt Computer-Partner.', 'Beide müssen zustimmen: erst eine Beziehung, dann ein Heiratsantrag, den der andere annehmen muss. Die Hochzeitskosten teilt ihr euch.', 'Gemeinsame Kinder erscheinen bei beiden. Der Beruf des Partners qualifiziert für Betriebe. Stirbt ein Ehepartner, erbt der andere einen Anteil am Bargeld; bei einer Scheidung zahlt, wer sie beendet, eine Abfindung.'], 'Beziehung')}</div>
         ${!cp ? html`<p class="dim">Du bist Single. Wähle rechts jemanden aus deiner Stadt${R.sameCity ? '' : ''} oder öffne ein Profil und sende eine Anfrage. Mindestalter: ${R.minAge} Jahre.</p>`
@@ -128,7 +128,7 @@ const views = {
     <div class="row spread wrap" style="margin-bottom:.8rem"><div class="seg">${[['all', 'Alle'], ['city', 'Meine Stadt'], ['friends', 'Freunde']].map((x) => html`<a href="#/social" data-scope="${x[0]}" class="${d.scope === x[0] ? 'on' : ''}">${x[1]}</a>`)}</div><span class="dim small">${d.total} Spieler · ${d.hint}</span></div>
     ${me ? html`<div class="card me-card ${me.hidden ? 'dim' : ''}"><div class="row spread"><div><div class="dim small">Dein Platz</div><b class="serif" style="font-size:2rem">#${me.rank}</b> <span class="dim small">von ${d.total}</span></div><div class="right"><div class="dim small">${d.label}</div><b>${fmtScore(d.unit, me, ctx)}</b></div></div>${me.hidden ? html`<div class="small dim mt">Dein Profil ist privat – du erscheinst nicht in der Liste. Ändern unter „Mein Profil“.</div>` : ''}</div>` : html`<div class="alert info">${icon('info')}<div>Starte ein Leben, um in der Rangliste zu erscheinen.</div></div>`}
     <div class="table-wrap mt"><table class="table rank"><tbody>${d.rows.map((r) => html`<tr class="${r.me ? 'me' : ''}" data-profile="${r.userId}" tabindex="0">
-      <td class="rkc">${medal(r.rank)}</td><td><b>${r.name}</b> ${dot(r.online)}<div class="dim small">@${r.username} · ${r.occupation || 'ohne Beruf'}</div></td>
+      <td class="rkc">${medal(r.rank)}</td><td><b>${r.name}</b> ${roleBadge(r.role)} ${dot(r.online)}<div class="dim small">@${r.username} · ${r.occupation || 'ohne Beruf'}</div></td>
       <td class="dim small hide-sm">${cityName(ctx, r.cityId)} · ${r.year}</td><td class="num"><b>${fmtScore(d.unit, r, ctx)}</b></td></tr>`)}
       ${d.rows.length ? '' : html`<tr><td class="dim">Noch niemand hier – sei der Erste!</td></tr>`}</tbody></table></div>`;
   },
@@ -140,7 +140,7 @@ const views = {
         <form class="row nowrap" id="chatform"><input id="chatin" type="text" maxlength="${d.chat.maxLen}" placeholder="Nachricht an die Stadt …" autocomplete="off"><button class="btn primary">${icon('send')}</button></form></section>
       <aside class="stack" style="--gap:1rem">
         <section class="card"><div class="card-title">${icon('users')} Gerade hier <span class="chip">${d.online.length}</span></div>
-          <div class="stack" style="--gap:.3rem" id="onl">${d.online.map((o) => html`<button class="linkrow" data-profile="${o.userId}"><i class="odot on"></i><span class="grow">${o.name}</span><span class="dim small">${o.occupation || ''}</span></button>`)}${d.online.length ? '' : html`<div class="dim small">Niemand sonst online.</div>`}</div></section>
+          <div class="stack" style="--gap:.3rem" id="onl">${d.online.map((o) => html`<button class="linkrow" data-profile="${o.userId}"><i class="odot on"></i><span class="grow">${o.name} ${roleBadge(o.role)}</span><span class="dim small">${o.occupation || ''}</span></button>`)}${d.online.length ? '' : html`<div class="dim small">Niemand sonst online.</div>`}</div></section>
         <section class="card"><div class="card-title">${icon('store')} Betriebe anderer Spieler</div>
           ${(d.firms || []).length ? html`<div class="stack" style="--gap:.5rem">${d.firms.map((f) => html`<div class="firm"><div class="grow"><b>${f.name}</b><div class="dim small">${tierName[Math.min(2, f.tier)]} · <a href="#/social" data-profile="${f.userId}">${f.owner}</a></div></div>
             ${v.enabled ? html`<button class="btn sm primary" data-visit="${f.userId}:${f.id}" title="+${v.wellbeing[Math.min(2, f.tier)]} Wohlbefinden">${icon('utensils')} ${money(v.price[Math.min(2, f.tier)], ctx.view.currency)}</button>` : ''}</div>`)}</div><p class="dim small mt">Ein Besuch kostet etwas, hebt deine Stimmung – und der Umsatz landet in der Firmenkasse des Besitzers.</p>`
@@ -154,7 +154,7 @@ const views = {
     ${d.pages > 1 ? html`<div class="row center mt">${d.page > 1 ? html`<button class="btn sm" data-pg="${d.page - 1}">←</button>` : ''}<span class="dim small">Seite ${d.page}/${d.pages}</span>${d.page < d.pages ? html`<button class="btn sm" data-pg="${d.page + 1}">→</button>` : ''}</div>` : ''}`;
   },
   friends(ctx, d) {
-    const person = (p, extra) => html`<div class="friend"><button class="linkrow grow" data-profile="${p.userId}">${dot(p.online)}<span class="grow"><b>${p.name || p.username}</b><span class="dim small"> @${p.username}</span></span><span class="dim small">${p.cityId ? cityName(ctx, p.cityId) : ''}</span></button>${extra || ''}</div>`;
+    const person = (p, extra) => html`<div class="friend"><button class="linkrow grow" data-profile="${p.userId}">${dot(p.online)}<span class="grow"><b>${p.name || p.username}</b> ${roleBadge(p.role)}<span class="dim small"> @${p.username}</span></span><span class="dim small">${p.cityId ? cityName(ctx, p.cityId) : ''}</span></button>${extra || ''}</div>`;
     return html`<div class="grid c2" style="--gap:1rem">
       <section class="card"><div class="card-title">${icon('users')} Freunde <span class="chip">${d.friends.length}</span></div>
         <div class="stack" style="--gap:.4rem">${d.friends.map((p) => person(p, html`<button class="btn sm ghost" data-letterto="${p.userId}|${esc(p.name || p.username)}" title="Brief">${icon('mail')}</button>`))}${d.friends.length ? '' : html`<div class="dim small">Noch keine Freunde. Suche rechts nach Spielern oder klicke in der Rangliste auf einen Namen.</div>`}</div>
@@ -175,7 +175,7 @@ const views = {
   },
 };
 
-function chatLine(m) { return `<div class="cl ${m.mine ? 'mine' : ''}" data-id="${m.id}"><span class="t">${hhmm(m.at)}</span> <a href="#/social" class="who" data-profile="${m.userId}">${esc(m.name)}</a> <span class="msg">${esc(m.text)}</span>${m.mine ? '' : `<button class="rep" data-rep="${m.id}" title="Melden" aria-label="Melden">⚑</button>`}</div>`; }
+function chatLine(m) { return `<div class="cl ${m.mine ? 'mine' : ''}" data-id="${m.id}"><span class="t">${hhmm(m.at)}</span> <a href="#/social" class="who" data-profile="${m.userId}">${esc(m.name)}</a>${roleBadgeStr(m.role)} <span class="msg">${esc(m.text)}</span>${m.mine ? '' : `<button class="rep" data-rep="${m.id}" title="Melden" aria-label="Melden">⚑</button>`}</div>`; }
 
 export default {
   id: 'social', label: 'Spieler', icon: 'users',
@@ -260,7 +260,7 @@ export default {
         try {
           const r = await api('GET', `/api/social/chat?after=${last}`);
           if (r.messages.length) { const note = log.querySelector('.dim.small'); if (note && !log.querySelector('.cl')) note.remove(); const atEnd = log.scrollHeight - log.scrollTop - log.clientHeight < 60; log.insertAdjacentHTML('beforeend', r.messages.map(chatLine).join('')); last = r.messages[r.messages.length - 1].id; if (atEnd) log.scrollTop = log.scrollHeight; while (log.children.length > 120) log.firstChild.remove(); }
-          const onl = root.querySelector('#onl'); if (onl) onl.innerHTML = r.online.map((o) => `<button class="linkrow" data-profile="${o.userId}"><i class="odot on"></i><span class="grow">${esc(o.name)}</span><span class="dim small">${esc(o.occupation || '')}</span></button>`).join('') || '<div class="dim small">Niemand sonst online.</div>';
+          const onl = root.querySelector('#onl'); if (onl) onl.innerHTML = r.online.map((o) => `<button class="linkrow" data-profile="${o.userId}"><i class="odot on"></i><span class="grow">${esc(o.name)}${roleBadgeStr(o.role)}</span><span class="dim small">${esc(o.occupation || '')}</span></button>`).join('') || '<div class="dim small">Niemand sonst online.</div>';
         } catch (_) { /* nächster Versuch */ }
       }
       const iv = setInterval(() => { if (!log.isConnected) { clearInterval(iv); return; } if (!document.hidden) poll(); }, 5000);

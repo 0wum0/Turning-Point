@@ -215,6 +215,11 @@ const DEFAULTS = {
         tischler: ['Tischlerei', 'Möbelwerkstatt', 'Möbelfabrik'], schmied: ['Schmiede', 'Maschinenwerkstatt', 'Stahlwerk'],
         landwirt: ['Bauernhof', 'Gutshof', 'Agrarbetrieb'], maurer: ['Baufirma', 'Bauunternehmen', 'Baukonzern'],
         friseur: ['Friseursalon', 'Salon-Kette', 'Beauty-Konzern'],
+        einzelhandelsverkaeufer: ['Ladengeschäft', 'Supermarkt', 'Handelskette'], reisekaufmann: ['Reisebüro', 'Reiseveranstalter', 'Touristikkonzern'],
+        online_haendler: ['Onlineshop', 'Versandhandel', 'Handelsplattform'], fitnesstrainer: ['Fitnessstudio', 'Fitnesskette', 'Gesundheitskonzern'],
+        journalist: ['Zeitungsverlag', 'Medienhaus', 'Medienkonzern'], konditor: ['Konditorei', 'Café-Betrieb', 'Süßwarenfabrik'],
+        fleischermeister: ['Fleischerei', 'Wurstwarenfabrik', 'Fleischkonzern'], taxifahrer: ['Taxiunternehmen', 'Fahrdienst', 'Mobilitätskonzern'],
+        installateur: ['Installationsbetrieb', 'Haustechnikfirma', 'Haustechnik-Konzern'], gaertner: ['Gärtnerei', 'Gartenbaubetrieb', 'Gartencenter-Kette'],
       },
     },
     moveBaseCost: 300,     // Cent

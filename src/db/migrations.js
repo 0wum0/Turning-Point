@@ -405,6 +405,20 @@ const MIGRATIONS = [
     ],
   },
   { id: '007_partnered', up: ['ALTER TABLE player_stats ADD COLUMN partnered TINYINT(1) NOT NULL DEFAULT 0'] },
+  {
+    // Berufswelt nach Epochen: neue Berufe 1945–2100 (INSERT IGNORE aus den Seed-Daten, damit nichts auseinanderläuft)
+    id: '009_professions_era',
+    up: [async (db) => {
+      const { ERA_PROFESSIONS } = require('./seed-data');
+      for (const p of ERA_PROFESSIONS) {
+        await db.query(
+          'INSERT IGNORE INTO professions (pkey, name, category, icon, era_from, era_to, base_wage, training_days, tuition_day, academic, replaces, lodging, unlocks, description) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)', p,
+        );
+      }
+    }],
+  },
+  { id: '010_roles', up: ["ALTER TABLE users MODIFY role ENUM('player','moderator','coadmin','admin') NOT NULL DEFAULT 'player'"] },
+  { id: '011_places', up: ['ALTER TABLE cities ADD COLUMN pop INT NOT NULL DEFAULT 0', 'ALTER TABLE cities ADD COLUMN since SMALLINT NOT NULL DEFAULT 1945', async (db) => { const n = (await db.query('SELECT COUNT(*) n FROM cities'))[0].n; if (n > 0) await require('./places').seed(db); }] },
 ];
 
 async function ensureTable(db) {
@@ -422,7 +436,7 @@ async function migrate(db, log = () => {}) {
   for (const m of MIGRATIONS) {
     if (done.has(m.id)) continue;
     log(`Migration ${m.id} …`);
-    for (const sql of m.up) await db.query(sql);
+    for (const sql of m.up) { if (typeof sql === 'function') await sql(db); else await db.query(sql); }
     await db.query('INSERT INTO schema_migrations (id) VALUES (?)', [m.id]);
     applied++;
   }

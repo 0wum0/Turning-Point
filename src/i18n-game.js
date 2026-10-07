@@ -115,6 +115,7 @@ function tr(s) {
   }
   if (r === undefined) r = s;
   else if (/^[A-ZÄÖÜ]/.test(s) && /^[a-z]/.test(r)) r = r[0].toUpperCase() + r.slice(1);
+  if (r !== s) r = r.replace(/(\d),(\d{1,2})(?=\s?(?:DM|€|k|m|b|t)\b)/g, '$1.$2'); // englische Dezimalzeichen
   if (CACHE.size > 20000) CACHE.clear();
   CACHE.set(s, r);
   return r;
