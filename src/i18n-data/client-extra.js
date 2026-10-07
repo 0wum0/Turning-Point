@@ -2,6 +2,7 @@
 /** Zusätzliche englische Texte: Orte, Karte, Berufsgruppen, Rollen. */
 const KINDS = { Dorf: ['village', 'a village'], Gemeinde: ['municipality', 'a municipality'], Kleinstadt: ['small town', 'a small town'], Stadt: ['city', 'a city'], Großstadt: ['large city', 'a large city'], Metropole: ['metropolis', 'a metropolis'] };
 const exact = {
+  'Echtes Vermögen heute:': 'Actual wealth today:',
   'Stadt oder Dorf suchen … (rund 9.000 Orte)': 'Search a city or village … (about 9,000 places)',
   'Große Städte zum Schnellstart:': 'Big cities for a quick start:',
   'Ort suchen …': 'Search a place …', 'Kein Ort gefunden.': 'No place found.', 'Zurück zu meinem Wohnort': 'Back to my home place',
