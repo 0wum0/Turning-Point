@@ -103,6 +103,20 @@ const DEFAULTS = {
         { name: 'Bundeskanzler', campaign: 15000000, income: 6000, termBonus: 800, rest: 18, health: 0.9 },
       ],
     },
+    tasks: {
+      rathaus: [{ id: 'forms', name: 'Formulare ablegen', desc: 'Hilf im Bürgeramt, Akten zu sortieren.', mini: 'collect', minSeconds: 6, cooldownMin: 120, reward: { efs: 10, influence: 1 } }],
+      zeitung: [{ id: 'proof', name: 'Korrektur lesen', desc: 'Finde die Fehler im Satz.', mini: 'collect', minSeconds: 7, cooldownMin: 90, reward: { efs: 10 } }],
+      markt: [{ id: 'sort', name: 'Waren sortieren', desc: 'Kisten an den richtigen Stand bringen.', mini: 'collect', minSeconds: 7, cooldownMin: 60, reward: { efs: 8, money: 300 } }],
+      arzt: [{ id: 'check', name: 'Vorsorge-Untersuchung', desc: 'Ein Check-up tut gut.', mini: null, minSeconds: 0, cooldownMin: 360, reward: { health: 8, efs: 5 } }],
+      schule: [{ id: 'help', name: 'Hausaufgabenhilfe', desc: 'Hilf deinen Kindern bei den Aufgaben.', mini: 'collect', minSeconds: 6, cooldownMin: 120, requires: 'children', reward: { efs: 8, childSat: 10 } }],
+      pension: [{ id: 'rest', name: 'Ausruhen', desc: 'Eine Runde Schlaf auf dem Zimmer.', mini: null, minSeconds: 0, cooldownMin: 30, reward: { rest: 10 } }],
+      home: [
+        { id: 'rest', name: 'Ausruhen', desc: 'Ein Nickerchen im eigenen Bett.', mini: null, minSeconds: 0, cooldownMin: 30, reward: { rest: 12, wellbeing: 2 } },
+        { id: 'tidy', name: 'Aufräumen', desc: 'Ordnung schaffen – das tut der Seele gut.', mini: 'collect', minSeconds: 6, cooldownMin: 90, reward: { efs: 6, wellbeing: 4 } },
+      ],
+      biz: [{ id: 'serve', name: 'Betrieb betreuen', desc: 'Kümmere dich persönlich um Gäste und Kunden.', mini: 'collect', minSeconds: 9, cooldownMin: 60, reward: { efs: 12, bizCash: 0.5 } }],
+      work: [{ id: 'shift', name: 'Zusatzschicht', desc: 'Pack bei der Arbeit mit an.', mini: 'collect', minSeconds: 9, cooldownMin: 90, reward: { efs: 12, money: 400, rest: -4 } }],
+    },
     gambling: { ticket: 200, casinoMinAge: 21, casinoFromYear: 1950 },
     companies: {
       maxCompanies: 30,

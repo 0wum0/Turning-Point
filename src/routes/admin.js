@@ -90,7 +90,7 @@ router.post('/users/:id/:action', wrap(async (req, res) => {
 }));
 
 /* ---------- Bilder-Upload (liegt AUSSERHALB des App-Ordners) ---------- */
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 4 * 1024 * 1024, files: 1 } });
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 4 * 1024 * 1024, files: 2 } });
 function sniff(buf) {
   if (buf.length > 12 && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return ['png', 'image/png'];
   if (buf.length > 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return ['jpg', 'image/jpeg'];
@@ -128,7 +128,7 @@ router.get('/cities/:id', wrap(async (req, res) => {
   if (!c) return res.redirect('/admin/cities');
   res.render('admin/city', { title: c.name, active: 'cities', c });
 }));
-router.post('/cities/:id', handleUpload('image'), wrap(async (req, res) => {
+router.post('/cities/:id', (req, res, next) => upload.fields([{ name: 'image', maxCount: 1 }, { name: 'aerial', maxCount: 1 }])(req, res, (err) => { if (err) { flash(req, 'bad', err.code === 'LIMIT_FILE_SIZE' ? 'Eine Datei ist größer als 4 MB.' : err.message); return back(req, res, '/admin/cities'); } req.file = req.files && req.files.image && req.files.image[0]; req.fileAerial = req.files && req.files.aerial && req.files.aerial[0]; next(); }), wrap(async (req, res) => {
   const id = int(req.params.id);
   const b = req.body;
   const name = clean(b.name, 80);
@@ -137,14 +137,19 @@ router.post('/cities/:id', handleUpload('image'), wrap(async (req, res) => {
   const vals = [slug, name, clean(b.state, 60), num(b.lat), num(b.lon), Math.min(5, Math.max(1, int(b.size_tier, 2))), Math.min(3, Math.max(0.3, num(b.price_factor, 1))), clean(b.description, 500), b.active ? 1 : 0];
   let image = null;
   if (req.file) image = await saveImage(req.file, 'cities', req.user.id);
+  let aerial = null;
+  if (req.fileAerial) aerial = await saveImage(req.fileAerial, 'cities', req.user.id);
   try {
     if (id) {
       const old = await db.one('SELECT image FROM cities WHERE id = ?', [id]);
       await db.query('UPDATE cities SET slug=?, name=?, state=?, lat=?, lon=?, size_tier=?, price_factor=?, description=?, active=? WHERE id=?', [...vals, id]);
       if (b.remove_image && old && old.image) { dropFile(old.image); await db.query('UPDATE cities SET image = NULL WHERE id = ?', [id]); }
       if (image) { if (old && old.image) dropFile(old.image); await db.query('UPDATE cities SET image = ? WHERE id = ?', [image, id]); }
+      const oldA = await db.one('SELECT aerial FROM cities WHERE id = ?', [id]);
+      if (b.remove_aerial && oldA && oldA.aerial) { dropFile(oldA.aerial); await db.query('UPDATE cities SET aerial = NULL WHERE id = ?', [id]); }
+      if (aerial) { if (oldA && oldA.aerial) dropFile(oldA.aerial); await db.query('UPDATE cities SET aerial = ? WHERE id = ?', [aerial, id]); }
     } else {
-      const r = await db.query('INSERT INTO cities (slug, name, state, lat, lon, size_tier, price_factor, description, active, image) VALUES (?,?,?,?,?,?,?,?,?,?)', [...vals, image]);
+      const r = await db.query('INSERT INTO cities (slug, name, state, lat, lon, size_tier, price_factor, description, active, image, aerial) VALUES (?,?,?,?,?,?,?,?,?,?,?)', [...vals, image, aerial]);
       await audit(req, 'city_create', name);
       worldSvc.invalidate(); await worldSvc.load();
       flash(req, 'good', 'Stadt angelegt.');

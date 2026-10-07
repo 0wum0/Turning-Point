@@ -92,6 +92,7 @@ export default {
         <div class="dim small">${c.state} · ${['', 'Kleinstadt', 'Stadt', 'Großstadt', 'Großstadt', 'Metropole'][c.tier] || 'Stadt'}</div>
         <p class="dim small" style="margin:.6rem 0">${c.description || ''}</p>
         <div class="row small">${id === data.birthCityId ? html`<span class="chip accent">★ Geburtsstadt</span>` : ''}${c.factor >= 1.1 ? html`<span class="chip warn">teuer</span>` : c.factor <= 0.88 ? html`<span class="chip good">günstig</span>` : ''}${props.length ? html`<span class="chip good">${props.length} eigene Immobilie(n)</span>` : ''}</div>
+        <button class="btn primary block mt" id="enterCity">${icon('building-2')} Stadt ansehen</button>
         <hr>
         ${here ? html`<div class="alert good">${icon('map-pin')}<div>Hier wohnst du.</div></div>`
           : quote ? html`<dl class="kv small"><dt>Entfernung</dt><dd>${num(quote.km)} km</dd>
@@ -103,12 +104,14 @@ export default {
               <button class="btn primary block" id="doMove" ${(v.money < quote.money || ctx.coins < quote.coins) ? 'disabled' : ''}>${icon('truck')} Umziehen</button>
               ${(v.money < quote.money || ctx.coins < quote.coins) ? html`<div class="small neg">${v.money < quote.money ? 'Es fehlt Geld. ' : ''}${ctx.coins < quote.coins ? 'Es fehlen Coins (du hast ' + ctx.coins + ').' : ''}</div>` : ''}
             </div>` : html`<div class="skel" style="height:80px"></div>`}`);
+      panel.querySelector('#enterCity').onclick = () => { ctx.ui.cityId = id; ctx.ui.cityBox = null; ctx.go('city'); };
       const mv = panel.querySelector('#doMove');
       if (mv) mv.onclick = async () => { const ok = await ctx.confirm({ title: `Nach ${c.name} ziehen?`, text: 'Kosten werden sofort abgebucht. Du verlierst deine Stelle und eine gemietete Wohnung.', ok: 'Umziehen' }); if (ok) { ctx.ui.mapCity = null; await ctx.act('move', { cityId: id }); } };
       const ad = panel.querySelector('#adDiscount');
       if (ad) ad.onclick = async () => { await ctx.watchAd(`discount:move:${id}`); showCity(id); };
     }
     on(svg, 'click', '.city', (e, t) => { if (dragged) return; showCity(Number(t.dataset.id)); });
+    on(svg, 'dblclick', '.city', (e, t) => { ctx.ui.cityId = Number(t.dataset.id); ctx.ui.cityBox = null; ctx.go('city'); });
     on(svg, 'keydown', '.city', (e, t) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showCity(Number(t.dataset.id)); } });
     on(svg, 'click', '.pickup', async (e, t) => {
       e.stopPropagation(); if (dragged) return;

@@ -163,6 +163,7 @@ const MIGRATIONS = [
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     ],
   },
+  { id: '003_city_aerial', up: ['ALTER TABLE cities ADD COLUMN aerial VARCHAR(255) NULL'] },
 ];
 
 async function ensureTable(db) {

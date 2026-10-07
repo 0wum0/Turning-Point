@@ -8,7 +8,7 @@ Stand: Phase 2/3 des Konzepts (technischer Prototyp → Web-Version). Die Kernsc
 | Konzept | Status | Bemerkung |
 |---|---|---|
 | 1–3 Grundidee, 1945, 20 Jahre, 40 DM | ✅ | Werte im Admin änderbar |
-| 4–7 Deutschland, Geburtsort, Umzug, Heimatort der Kinder | ✅ | 48 Städte, Karte mit Zoom/Pan, Umzug kostet Geld **und** Coins (Entfernung zum nächsten eigenen Standort), Geburtsstadt gratis |
+| 4–7 Deutschland, Geburtsort, Umzug, Heimatort der Kinder | ✅ | **Karte → Stadt (Luftansicht zum Verschieben/Zoomen) → Gebäude (3D-Innenansicht mit Aufgaben)**;  48 Städte, Karte mit Zoom/Pan, Umzug kostet Geld **und** Coins (Entfernung zum nächsten eigenen Standort), Geburtsstadt gratis |
 | 8 Charaktererstellung | ✅ | Geschlecht, Name, Geburtsstadt, Startberuf, Eltern (Namen/Berufe) |
 | 9–10 Vier Lebensmeter | ✅ | Kühlschrank (4 Qualitätsstufen), Wohlbefinden, Erholung, Gesundheit – verzahnt |
 | 11 Wohnen | ✅ | Straße (Tod nach ~3 Tagen) → Arbeitgeber → Pension → Miete → Eigentum → Villa |
@@ -48,6 +48,15 @@ Stand: Phase 2/3 des Konzepts (technischer Prototyp → Web-Version). Die Kernsc
 - **Kinderwunsch** ist eine Zielzahl (Standard 3), damit Familien nicht ungewollt wachsen.
 - **Pflichtanteil:** Jedes Kind (außer bei der Trennung mitgegangenen) erhält Nachlass/Anzahl; der Erbe bekommt zuerst die ihm zugedachten Immobilien, den Rest in bar; Geschwister verlassen die Simulation.
 - **Preise/Löhne** folgen einem Preisindex (im Admin editierbar); Zahlen sind eine erste Balance und müssen anhand von Spielerdaten justiert werden.
+
+## Karte → Stadt → Gebäude (3D)
+
+1. **Karte:** Stadt anklicken → „Stadt ansehen“ (oder Doppelklick).
+2. **Stadtansicht:** generierte Satellitenansicht (je Stadt/Epoche), verschiebbar und zoombar. Anklickbar sind Rathaus, Bahnhof, Markthalle, Arztpraxis, Schule, Zeitungsverlag/Medienhaus, Lotto, Pension, Spielbank sowie **alles, was dir gehört** (Wohnung, Häuser, Betriebe, Arbeitgeber – gold umrandet). Im Admin kann je Stadt ein echtes Satellitenbild hochgeladen werden.
+3. **3D-Innenansicht** (three.js, lokal gehostet, wird erst beim Betreten geladen, rendert nur bei Bewegung): drehbar, Gegenstände anklickbar (Kühlschrank, Bett, Theke, Rednerpult …).
+4. **Aufgaben:** je Gebäude Aufgaben mit Abkühlzeit (Minispiel „goldene Marken sammeln“), die EFS (zählen zum Tageslimit), Einfluss, Erholung u. a. bringen. Server prüft Start, Mindestdauer und Abkühlzeit; Werte und Texte sind im Admin unter Wirtschaft → `tasks` einstellbar.
+
+Hinweis: Die 3D-Räume sind prozedural (Würfel/Zylinder-Stil) – eigene Modelle/Texturen lassen sich später ergänzen.
 
 ## Nächste Schritte (Vorschlag)
 

@@ -56,7 +56,7 @@ function createHeirState(world, old, childId, bequestIds) {
     notices: [], nextNoticeId: 1, interrupts: [],
     stats: { earned: 0, spent: 0, peakWorth: plan.cash, daysWorked: 0 },
     discounts: {}, collected: {}, flags: { tutorial: false, autoMaintain: old.flags.autoMaintain, foodTier: 1 },
-    pending: {}, mods: {},
+    pending: {}, mods: {}, taskCd: {},
     fx: { coins: 0, efs: 0, influence: 0 },
   };
   for (const k of c.skills || []) learn(state, k);

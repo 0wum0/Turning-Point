@@ -14,6 +14,9 @@
   <div class="field"><label>Stadtbild (PNG/JPG/WEBP, max. 4 MB, empfohlen 1600×500)</label>
     <% if (c.image) { %><div class="row" style="margin-bottom:.6rem"><img class="thumb big" src="/media/<%= c.image %>" alt=""><label class="check"><input type="checkbox" name="remove_image" value="1"> Bild entfernen (generierte Ansicht verwenden)</label></div><% } %>
     <input type="file" name="image" accept="image/png,image/jpeg,image/webp,image/gif"></div>
+  <div class="field"><label>Satellitenbild für die Stadtansicht (PNG/JPG/WEBP, max. 4 MB, empfohlen 2400×1500)</label>
+    <% if (c.aerial) { %><div class="row" style="margin-bottom:.6rem"><img class="thumb big" src="/media/<%= c.aerial %>" alt=""><label class="check"><input type="checkbox" name="remove_aerial" value="1"> Bild entfernen (generierte Luftansicht verwenden)</label></div><% } %>
+    <input type="file" name="aerial" accept="image/png,image/jpeg,image/webp,image/gif"><div class="hint">Ersetzt die automatisch erzeugte Luftansicht. Die anklickbaren Gebäude werden darüber verteilt.</div></div>
   <div class="row end"><button class="btn primary"><%- icon('check') %> Speichern</button></div>
 </form>
 <%- include('_bottom') %>

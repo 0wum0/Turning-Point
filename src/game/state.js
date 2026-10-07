@@ -68,7 +68,7 @@ function createCharacter(world, input, user, { cycle = 1 } = {}) {
     notices: [], nextNoticeId: 1, interrupts: [],
     stats: { earned: 0, spent: 0, peakWorth: 0, daysWorked: 0 },
     discounts: {}, collected: {}, flags: { tutorial: true, autoMaintain: false, foodTier: 1 },
-    pending: {}, mods: {},
+    pending: {}, mods: {}, taskCd: {},
     fx: { coins: 0, efs: 0, influence: 0 },
   };
   // Familie im Hintergrund (im Krieg umgekommen)
@@ -100,6 +100,7 @@ function upgradeState(s) {
   if (!s.plan) s.plan = { target: 3 };
   if (s.plan.target == null) s.plan.target = 3;
   if (!s.mods) s.mods = {};
+  if (!s.taskCd) s.taskCd = {};
   if (!s.pending) s.pending = {};
   return s;
 }

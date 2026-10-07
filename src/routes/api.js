@@ -11,6 +11,7 @@ const { edition } = require('../game/newspaper');
 const { yearOf } = require('../game/calendar');
 const { audit } = require('../lib/audit');
 const stripe = require('../lib/stripe');
+const places = require('../game/places');
 const config = require('../config');
 
 const router = express.Router();
@@ -31,7 +32,7 @@ router.get('/world', wrap(async (req, res) => {
   const startYear = settings.get('game.start_year');
   res.json({
     ok: true,
-    cities: w.cityList.map((c) => ({ id: c.id, name: c.name, state: c.state, lat: c.lat, lon: c.lon, tier: c.size_tier, factor: c.price_factor, image: c.image, description: c.description })),
+    cities: w.cityList.map((c) => ({ id: c.id, name: c.name, state: c.state, lat: c.lat, lon: c.lon, tier: c.size_tier, factor: c.price_factor, image: c.image, aerial: c.aerial, description: c.description })),
     startProfessions: w.activeProfessions(startYear).filter((p) => !p.academic && p.pkey !== 'helfer').map((p) => ({ key: p.pkey, name: p.name, icon: p.icon, description: p.description, category: p.category })),
     academic: w.cityList && [...w.professions.values()].filter((p) => p.academic).map((p) => ({ key: p.pkey, name: p.name, icon: p.icon, description: p.description, days: p.training_days, tuition: p.tuition_day, wage: p.base_wage })),
     professions: [...w.professions.values()].map((p) => ({ key: p.pkey, name: p.name, icon: p.icon, academic: !!p.academic, from: p.era_from, to: p.era_to, days: p.training_days })),
@@ -62,6 +63,18 @@ router.get('/newspaper', wrap(async (req, res) => {
   const cityId = Number(req.query.cityId) || p.state.cityId;
   if (!p.w.city(cityId)) return res.status(404).json({ ok: false, error: 'Unbekannte Stadt.' });
   res.json({ ok: true, edition: edition(p.w, p.state, cityId), here: cityId === p.state.cityId });
+}));
+
+router.get('/city', wrap(async (req, res) => {
+  const p = await service.peek(req.user.id);
+  if (!p || !p.state) return res.status(400).json({ ok: false, error: 'Kein Charakter.' });
+  const cityId = Number(req.query.cityId) || p.state.cityId;
+  const city = p.w.city(cityId);
+  if (!city) return res.status(404).json({ ok: false, error: 'Unbekannte Stadt.' });
+  const here = cityId === p.state.cityId && p.state.status === 'alive';
+  const now = Date.now();
+  const buildings = places.buildingsFor(p.w, p.state, cityId).map((b) => ({ ...b, tasks: here ? places.tasksOf(p.w, b).map((t) => places.taskStatus(p.w, p.state, b, t, now)) : [] }));
+  res.json({ ok: true, here, city: { id: city.id, name: city.name, state: city.state, tier: city.size_tier, image: city.image, aerial: city.aerial, description: city.description }, buildings, year: yearOf(p.state.day, p.state.startYear) });
 }));
 
 router.get('/map', wrap(async (req, res) => {

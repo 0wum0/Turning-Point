@@ -488,6 +488,7 @@ A.bizReactivate = ({ world, state, input }) => {
 };
 
 require('./society').install(A, fail, { yr, pay });
+require('./places').install(A, fail, { yr, pay, settings });
 
 /* ---------------- Meldungen ---------------- */
 A.readNotices = ({ state, input }) => {
