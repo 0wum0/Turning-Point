@@ -104,20 +104,21 @@ const DEFAULTS = {
       ],
     },
     tasks: {
-      rathaus: [{ id: 'queue', name: 'Besucher einweisen', desc: 'Schicke die Wartenden in der richtigen Reihenfolge zum Schalter.', mini: 'sequence', minSeconds: 6, cooldownMin: 90, reward: { efs: 8, wellbeing: 2 } }, { id: 'forms', name: 'Formulare ablegen', desc: 'Hilf im Bürgeramt, Akten zu sortieren.', mini: 'collect', minSeconds: 6, cooldownMin: 120, reward: { efs: 10, influence: 1 } }],
-      zeitung: [{ id: 'proof', name: 'Korrektur lesen', desc: 'Finde die Fehler im Satz.', mini: 'collect', minSeconds: 7, cooldownMin: 90, reward: { efs: 10 } }],
-      markt: [{ id: 'sell', name: 'Am Stand verkaufen', desc: 'Bediene die Kunden der Reihe nach.', mini: 'sequence', minSeconds: 6, cooldownMin: 75, reward: { efs: 8, money: 400 } }, { id: 'sort', name: 'Waren sortieren', desc: 'Kisten an den richtigen Stand bringen.', mini: 'collect', minSeconds: 7, cooldownMin: 60, reward: { efs: 8, money: 300 } }],
-      arzt: [{ id: 'check', name: 'Vorsorge-Untersuchung', desc: 'Ein Check-up tut gut.', mini: null, minSeconds: 0, cooldownMin: 360, reward: { health: 8, efs: 5 } }],
-      schule: [{ id: 'help', name: 'Hausaufgabenhilfe', desc: 'Hilf deinen Kindern bei den Aufgaben.', mini: 'collect', minSeconds: 6, cooldownMin: 120, requires: 'children', reward: { efs: 8, childSat: 10 } }],
-      pension: [{ id: 'rest', name: 'Ausruhen', desc: 'Eine Runde Schlaf auf dem Zimmer.', mini: null, minSeconds: 0, cooldownMin: 30, reward: { rest: 10 } }],
+      rathaus: [{ id: 'queue', name: 'Besucher einweisen', desc: 'Schicke die Wartenden in der richtigen Reihenfolge zum Schalter.', mini: 'sequence', minSeconds: 6, cooldownMin: 90, reward: { efs: 8, wellbeing: 2 } }, { id: 'forms', name: 'Formulare ablegen', desc: 'Hilf im Bürgeramt, Akten zu sortieren.', mini: 'collect', minSeconds: 6, cooldownMin: 120, reward: { efs: 10, influence: 1 } }, { id: 'petition', name: 'Bürgeranliegen annehmen', desc: 'Nimm die Anliegen der Bürger auf – eins nach dem anderen.', mini: 'hunt', minSeconds: 7, cooldownMin: 150, reward: { efs: 10, influence: 2 } }],
+      zeitung: [{ id: 'proof', name: 'Korrektur lesen', desc: 'Finde die Fehler im Satz.', mini: 'collect', minSeconds: 7, cooldownMin: 90, reward: { efs: 10 } }, { id: 'press', name: 'Druckmaschine anwerfen', desc: 'Drücke die Schritte in der richtigen Reihenfolge.', mini: 'sequence', minSeconds: 7, cooldownMin: 100, reward: { efs: 9, money: 300 } }, { id: 'scoop', name: 'Reportage recherchieren', desc: 'Der Tipp taucht nur kurz an einer Stelle auf.', mini: 'hunt', minSeconds: 8, cooldownMin: 120, reward: { efs: 12, influence: 1 } }],
+      markt: [{ id: 'sell', name: 'Am Stand verkaufen', desc: 'Bediene die Kunden der Reihe nach.', mini: 'sequence', minSeconds: 6, cooldownMin: 75, reward: { efs: 8, money: 400 } }, { id: 'sort', name: 'Waren sortieren', desc: 'Kisten an den richtigen Stand bringen.', mini: 'collect', minSeconds: 7, cooldownMin: 60, reward: { efs: 8, money: 300 } }, { id: 'fresh', name: 'Frische prüfen', desc: 'Finde die besten Stücke am Stand.', mini: 'hunt', minSeconds: 7, cooldownMin: 80, reward: { efs: 8, wellbeing: 2 } }],
+      arzt: [{ id: 'check', name: 'Vorsorge-Untersuchung', desc: 'Ein Check-up tut gut.', mini: null, minSeconds: 0, cooldownMin: 360, reward: { health: 8, efs: 5 } }, { id: 'volunteer', name: 'Wartezimmer helfen', desc: 'Reiche Patienten die Unterlagen in der richtigen Reihenfolge.', mini: 'sequence', minSeconds: 6, cooldownMin: 150, reward: { efs: 8, wellbeing: 3 } }],
+      schule: [{ id: 'help', name: 'Hausaufgabenhilfe', desc: 'Hilf deinen Kindern bei den Aufgaben.', mini: 'collect', minSeconds: 6, cooldownMin: 120, requires: 'children', reward: { efs: 8, childSat: 10 } }, { id: 'play', name: 'Pausenhof-Spiel', desc: 'Spiele mit den Kindern Fangen – sie verstecken sich!', mini: 'hunt', minSeconds: 7, cooldownMin: 120, requires: 'children', reward: { efs: 6, childSat: 14, wellbeing: 3 } }],
+      pension: [{ id: 'rest', name: 'Ausruhen', desc: 'Eine Runde Schlaf auf dem Zimmer.', mini: null, minSeconds: 0, cooldownMin: 30, reward: { rest: 10 } }, { id: 'chat', name: 'Mit Gästen plaudern', desc: 'Finde die gesprächigen Gäste.', mini: 'hunt', minSeconds: 6, cooldownMin: 90, reward: { wellbeing: 5, efs: 4 } }],
       home: [
         { id: 'leisure', name: 'Entspannen', desc: 'Radio, Fernseher oder Rechner – je nach Zeit.', mini: null, minSeconds: 0, cooldownMin: 60, reward: { wellbeing: 5, rest: 2 } },
         { id: 'cook', name: 'Kochen', desc: 'Bereite das Essen in der richtigen Reihenfolge zu.', mini: 'sequence', minSeconds: 6, cooldownMin: 120, reward: { efs: 6, wellbeing: 6 } },
         { id: 'rest', name: 'Ausruhen', desc: 'Ein Nickerchen im eigenen Bett.', mini: null, minSeconds: 0, cooldownMin: 30, reward: { rest: 12, wellbeing: 2 } },
+        { id: 'repair', name: 'Kleinreparatur', desc: 'Finde die defekten Stellen im Haus.', mini: 'hunt', minSeconds: 8, cooldownMin: 180, reward: { efs: 9, wellbeing: 2 } },
         { id: 'tidy', name: 'Aufräumen', desc: 'Ordnung schaffen – das tut der Seele gut.', mini: 'collect', minSeconds: 6, cooldownMin: 90, reward: { efs: 6, wellbeing: 4 } },
       ],
-      biz: [{ id: 'orders', name: 'Bestellungen abarbeiten', desc: 'Erledige die Aufträge in der richtigen Reihenfolge.', mini: 'sequence', minSeconds: 8, cooldownMin: 90, reward: { efs: 10, bizCash: 0.3 } }, { id: 'serve', name: 'Betrieb betreuen', desc: 'Kümmere dich persönlich um Gäste und Kunden.', mini: 'collect', minSeconds: 9, cooldownMin: 60, reward: { efs: 12, bizCash: 0.5 } }],
-      work: [{ id: 'tools', name: 'Werkzeug vorbereiten', desc: 'Bringe die Arbeitsschritte in die richtige Reihenfolge.', mini: 'sequence', minSeconds: 7, cooldownMin: 100, reward: { efs: 8, wellbeing: 2 } }, { id: 'shift', name: 'Zusatzschicht', desc: 'Pack bei der Arbeit mit an.', mini: 'collect', minSeconds: 9, cooldownMin: 90, reward: { efs: 12, money: 400, rest: -4 } }],
+      biz: [{ id: 'orders', name: 'Bestellungen abarbeiten', desc: 'Erledige die Aufträge in der richtigen Reihenfolge.', mini: 'sequence', minSeconds: 8, cooldownMin: 90, reward: { efs: 10, bizCash: 0.3 } }, { id: 'serve', name: 'Betrieb betreuen', desc: 'Kümmere dich persönlich um Gäste und Kunden.', mini: 'collect', minSeconds: 9, cooldownMin: 60, reward: { efs: 12, bizCash: 0.5 } }, { id: 'inventory', name: 'Inventur', desc: 'Finde die fehlenden Posten – jeweils nur einer ist sichtbar.', mini: 'hunt', minSeconds: 8, cooldownMin: 120, reward: { efs: 10, bizCash: 0.4 } }],
+      work: [{ id: 'tools', name: 'Werkzeug vorbereiten', desc: 'Bringe die Arbeitsschritte in die richtige Reihenfolge.', mini: 'sequence', minSeconds: 7, cooldownMin: 100, reward: { efs: 8, wellbeing: 2 } }, { id: 'shift', name: 'Zusatzschicht', desc: 'Pack bei der Arbeit mit an.', mini: 'collect', minSeconds: 9, cooldownMin: 90, reward: { efs: 12, money: 400, rest: -4 } }, { id: 'meeting', name: 'Besprechung vorbereiten', desc: 'Finde die Unterlagen für die Runde.', mini: 'hunt', minSeconds: 7, cooldownMin: 110, reward: { efs: 9, influence: 1 } }],
     },
     gambling: { ticket: 200, casinoMinAge: 21, casinoFromYear: 1950 },
     companies: {
@@ -161,11 +162,26 @@ async function load() {
   return m;
 }
 
+const isObj = (x) => x && typeof x === 'object' && !Array.isArray(x);
+/** Tiefes Zusammenführen: neue Standardwerte (auch neue Aufgaben je Gebäude) erscheinen trotz gespeicherter Einstellungen. */
+function deepMerge(d, v) {
+  if (isObj(d) && isObj(v)) {
+    const out = { ...d };
+    for (const k of Object.keys(v)) out[k] = k in d ? deepMerge(d[k], v[k]) : v[k];
+    return out;
+  }
+  if (Array.isArray(d) && Array.isArray(v) && d.every((x) => isObj(x) && x.id) && v.every((x) => isObj(x) && x.id)) {
+    const ids = new Set(v.map((x) => x.id));
+    return [...v, ...d.filter((x) => !ids.has(x.id))];
+  }
+  return v;
+}
+
 function get(key) {
   const v = cache && Object.prototype.hasOwnProperty.call(cache, key) ? cache[key] : undefined;
   if (v === undefined) return DEFAULTS[key];
   const d = DEFAULTS[key];
-  if (d && typeof d === 'object' && !Array.isArray(d) && v && typeof v === 'object') return { ...d, ...v };
+  if (isObj(d) && isObj(v)) return deepMerge(d, v);
   return v;
 }
 

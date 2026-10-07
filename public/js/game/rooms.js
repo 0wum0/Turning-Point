@@ -61,10 +61,7 @@ export function buildRoom(T, b, ctx) {
 
   // ---- Hotspot-Registrierung
   const spot = (obj, id, label, actions, hint) => { hot.push({ obj, id, label, hint: hint || '', actions }); return obj; };
-  const taskAct = (key) => () => {
-    const t = (b.tasks || []).find((x) => x.id === key); if (!t) return [];
-    return [{ kind: 'task', task: t }];
-  };
+  const taskAct = (...keys) => () => keys.map((key) => (b.tasks || []).find((x) => x.id === key)).filter(Boolean).map((t) => ({ kind: 'task', task: t }));
   const goAct = (label, route, sub, tab) => () => [{ label, sub, run: ({ go }) => go(route, tab) }];
 
   // ---- Möbel
@@ -89,7 +86,7 @@ export function buildRoom(T, b, ctx) {
   const t = b.type;
   if (t === 'home' || (t === 'pension')) {
     const big = t === 'home';
-    const bd = bed(w / 2 - 2, -d / 2 + 1.2, 0); spot(bd, 'bed', 'Bett', taskAct('rest'), 'Ausruhen');
+    const bd = bed(w / 2 - 2, -d / 2 + 1.2, 0); spot(bd, 'bed', 'Bett', taskAct('rest', 'chat'), 'Ausruhen');
     wardrobe(w / 2 - 4.2, -d / 2 + 0.6); plant(w / 2 - 0.8, d / 2 - 1);
     if (big) {
       const fr = fridge(-w / 2 + 0.9, -d / 2 + 0.9); spot(fr, 'fridge', 'Kühlschrank', () => [{ kind: 'food' }], 'Lebensmittel');
@@ -97,7 +94,7 @@ export function buildRoom(T, b, ctx) {
       sofa(w / 4, d / 2 - 1.5, Math.PI, pal.accent);
       const sh = shelf(0.5, -d / 2 + 0.4); spot(sh, 'shelf', 'Bücherregal – Familienchronik', goAct('Familienchronik öffnen', 'legacy', 'Stammbaum, Chronik und frühere Leben'));
       const ds = desk(-w / 2 + 1.6, d / 4, Math.PI / 2); spot(ds, 'desk', 'Schreibtisch – Finanzen', goAct('Finanzen ansehen', 'overview', 'Einnahmen, Ausgaben und Vermögen'));
-      const bro = group(w / 2 - 0.7, d / 2 - 2.6); cyl(0.03, 0.03, 1.5, 0x8a6a3a, 0, 0, 0, bro, { rot: [0, 0, 0.2] }); box(0.4, 0.12, 0.2, 0xc9a23f, 0.2, 0, 0, bro); spot(bro, 'tidy', 'Besen', taskAct('tidy'), 'Aufräumen');
+      const bro = group(w / 2 - 0.7, d / 2 - 2.6); cyl(0.03, 0.03, 1.5, 0x8a6a3a, 0, 0, 0, bro, { rot: [0, 0, 0.2] }); box(0.4, 0.12, 0.2, 0xc9a23f, 0.2, 0, 0, bro); spot(bro, 'tidy', 'Besen', taskAct('tidy', 'repair'), 'Aufräumen');
       const mb = group(-w / 2 + 0.5, d / 2 - 0.6); box(0.5, 0.6, 0.3, 0xc9a23f, 0, 0.6, 0, mb); box(0.06, 0.6, 0.06, 0x555555, 0, 0, 0, mb); spot(mb, 'mail', 'Briefkasten – Post', goAct('Postfach öffnen', 'overview', 'Meldungen und Nachrichten'));
       const kids = Math.min(6, v.children.filter((c) => c.status === 'home').length);
       for (let i = 0; i < kids; i++) bed(-w / 2 + 1.6 + (i % 3) * 1.8, -d / 2 + 3.6 + Math.floor(i / 3) * 2.2, Math.PI / 2, true, 0x4a7a9a + i * 3000);
@@ -118,7 +115,7 @@ export function buildRoom(T, b, ctx) {
     }
   } else if (t === 'rathaus') {
     box(w - 3, 0.2, 5.5, 0x8a2a2a, 0, 0, -d / 4 + 0.6, props, { noShadow: true });
-    const c1 = counter(-w / 4, -d / 4, 5.2, 0, 0x6a5a4a, 0xe8e0cc); spot(c1, 'amt', 'Bürgeramt', () => taskAct('forms')().concat(taskAct('queue')()), 'Aufgaben: Akten & Besucher');
+    const c1 = counter(-w / 4, -d / 4, 5.2, 0, 0x6a5a4a, 0xe8e0cc); spot(c1, 'amt', 'Bürgeramt', () => taskAct('forms', 'queue', 'petition')(), 'Aufgaben: Akten & Besucher');
     person(-w / 4 - 1.2, -d / 4 - 1.0, 0x555a6a); person(-w / 4 + 1.0, -d / 4 - 1.0, 0x6a5555);
     const pod = group(w / 4, -d / 4 + 0.4); box(1.2, 1.3, 0.8, 0x6a4526, 0, 0, 0, pod); box(1.4, 0.1, 1.0, 0xa2300f, 0, 1.3, 0, pod); spot(pod, 'wahl', 'Rednerpult – Wahlbüro', goAct('Zum Wahlbüro (Ämter & Wahlen)', 'society', 'Kandidieren und Einfluss'));
     for (let i = -1; i <= 1; i++) { const f = group(w / 4 + i * 1.4, -d / 2 + 0.7); cyl(0.04, 0.04, 2.8, 0x888888, 0, 0, 0, f); box(0.9, 0.55, 0.04, [0x111111, 0xcc2222, 0xe6b800][i + 1], 0.45, 2.1, 0, f, { noShadow: true }); }
@@ -134,20 +131,20 @@ export function buildRoom(T, b, ctx) {
     for (let i = 0; i < 3; i++) box(1.8, 0.45, 0.6, 0x7a5a35, -2 + i * 2.6, 0, 0.2); plant(w / 2 - 0.9, -d / 2 + 1);
   } else if (t === 'markt') {
     const stalls = [[-4.2, -2.6, 0xc43a2a, 'Obst & Gemüse'], [-0.4, -2.6, 0x3a7a4a, 'Gemüse'], [3.4, -2.6, 0xe6b800, 'Brot & Käse'], [-2.4, 1.4, 0x2f5f8a, 'Fleisch & Fisch']];
-    stalls.forEach(([x, z, col, label], i) => { const g = group(x, z); box(2.8, 1.0, 1.1, 0x7a5535, 0, 0, 0, g); for (let k = 0; k < 6; k++) sph(0.2, [0xe0402a, 0x6ab04a, 0xe6b800][k % 3], -1 + k * 0.4, 1.2, 0.0, g, { noShadow: true }); box(3.0, 0.1, 1.6, col, 0, 2.6, 0.15, g, { rot: [0.25, 0, 0] }); [-1.3, 1.3].forEach((px) => box(0.08, 2.6, 0.08, 0x555555, px, 0, 0.6, g)); person(0, -0.9, [0x8a3a3a, 0x3a7a5a, 0x3a5a8a, 0x7a5a2a][i], Math.PI); if (i < 3) spot(g, `stall${i}`, label, () => [{ kind: 'food' }].concat(i === 0 ? taskAct('sell')() : []), i === 0 ? 'Einkaufen & verkaufen' : 'Lebensmittel kaufen'); else spot(g, 'sort', 'Marktmeister', taskAct('sort'), 'Aufgabe: Waren sortieren'); });
+    stalls.forEach(([x, z, col, label], i) => { const g = group(x, z); box(2.8, 1.0, 1.1, 0x7a5535, 0, 0, 0, g); for (let k = 0; k < 6; k++) sph(0.2, [0xe0402a, 0x6ab04a, 0xe6b800][k % 3], -1 + k * 0.4, 1.2, 0.0, g, { noShadow: true }); box(3.0, 0.1, 1.6, col, 0, 2.6, 0.15, g, { rot: [0.25, 0, 0] }); [-1.3, 1.3].forEach((px) => box(0.08, 2.6, 0.08, 0x555555, px, 0, 0.6, g)); person(0, -0.9, [0x8a3a3a, 0x3a7a5a, 0x3a5a8a, 0x7a5a2a][i], Math.PI); if (i < 3) spot(g, `stall${i}`, label, () => [{ kind: 'food' }].concat(i === 0 ? taskAct('sell')() : []), i === 0 ? 'Einkaufen & verkaufen' : 'Lebensmittel kaufen'); else spot(g, 'sort', 'Marktmeister', taskAct('sort', 'fresh'), 'Aufgabe: Waren sortieren'); });
     for (let i = 0; i < 6; i++) crate(w / 2 - 1.5 + (i % 2) * 0.1, d / 2 - 1.2 - i * 0.9); barrel(-w / 2 + 1, d / 2 - 1.2); barrel(-w / 2 + 2, d / 2 - 1);
   } else if (t === 'arzt') {
-    const ex = group(w / 4, -d / 4); box(2.4, 0.6, 1.1, 0xe8edf0, 0, 0, 0, ex); box(2.4, 0.15, 1.1, 0x4a8a9a, 0, 0.6, 0, ex); person(0.8, 0.9, 0xffffff, Math.PI, 0xe0b896); spot(ex, 'exam', 'Untersuchungsliege', taskAct('check'), 'Vorsorge-Untersuchung');
+    const ex = group(w / 4, -d / 4); box(2.4, 0.6, 1.1, 0xe8edf0, 0, 0, 0, ex); box(2.4, 0.15, 1.1, 0x4a8a9a, 0, 0.6, 0, ex); person(0.8, 0.9, 0xffffff, Math.PI, 0xe0b896); spot(ex, 'exam', 'Untersuchungsliege', taskAct('check', 'volunteer'), 'Vorsorge-Untersuchung');
     const cab = group(-w / 4, -d / 2 + 0.7); box(2.4, 2.4, 0.6, 0xdfe6e8, 0, 0, 0, cab); box(0.2, 0.2, 0.05, 0xd33, 0, 1.6, 0.33, cab, { noShadow: true }); spot(cab, 'cabinet', 'Medikamentenschrank', () => (v.cards.available ? [{ label: `Gesundheitskarte kaufen (${(v.cards.price / 100).toFixed(0)} ${v.currency === 'EUR' ? '€' : 'DM'})`, sub: `Du hast ${v.cards.health}`, run: ({ act }) => act('buyCards', { pay: 'money', count: 1 }) }, { label: 'Gesundheitskarte einsetzen', sub: '+10 Lebenstage, +15 Gesundheit', disabled: v.cards.health < 1, run: ({ act }) => act('useCard', {}) }] : [{ label: 'Hier gibt es noch keine Gesundheitskarten', sub: 'Erst ab etwa 1960', disabled: true }]));
     desk(-w / 4 + 1, 1.4, Math.PI); person(-w / 4 + 1, 2.4, 0xffffff, 0); plant(w / 2 - 0.8, d / 2 - 1); box(0.6, 1.8, 0.5, 0xdddddd, -w / 2 + 0.7, 0, 1.5);
   } else if (t === 'schule') {
-    const bb = group(0, -d / 2 + 0.3); box(5.2, 2.0, 0.15, 0x233d2f, 0, 0.8, 0, bb); box(5.4, 0.12, 0.2, 0x7a5535, 0, 0.75, 0.05, bb); spot(bb, 'board', 'Tafel – Hausaufgabenhilfe', taskAct('help'), 'Aufgabe für deine Kinder');
+    const bb = group(0, -d / 2 + 0.3); box(5.2, 2.0, 0.15, 0x233d2f, 0, 0.8, 0, bb); box(5.4, 0.12, 0.2, 0x7a5535, 0, 0.75, 0.05, bb); spot(bb, 'board', 'Tafel – Hausaufgabenhilfe', taskAct('help', 'play'), 'Aufgabe für deine Kinder');
     for (let r = 0; r < 3; r++) for (let i = -2; i <= 2; i++) { const g = group(i * 1.9, -0.6 + r * 1.9); box(1.2, 0.08, 0.7, 0xb58a4f, 0, 0.9, 0, g); box(0.08, 0.9, 0.5, 0x555555, -0.5, 0, 0, g); box(0.08, 0.9, 0.5, 0x555555, 0.5, 0, 0, g); box(0.5, 0.08, 0.5, 0x7a5a35, 0, 0.5, 0.8, g); }
     const gl = group(w / 2 - 1.2, -d / 2 + 1.2); sph(0.5, 0x3a7aa8, 0, 1.6, 0, gl); cyl(0.05, 0.2, 1.0, 0x7a5535, 0, 0, 0, gl); desk(w / 4, -d / 2 + 2.2, Math.PI);
     const ks = v.children.filter((c) => c.status === 'home' && c.age >= 6 && c.age < 18); ks.slice(0, 6).forEach((c, i) => person(-2.8 + i * 1.9, 0.9 + (i % 2) * 1.9, [0x4a7a9a, 0xb06a8a, 0x6a9a4a][i % 3], 0, 0xe8c4a0));
   } else if (t === 'zeitung') {
     const pr = group(w / 4, -d / 4); box(3.4, 1.8, 1.6, 0x3a4a5a, 0, 0, 0, pr); cyl(0.5, 0.5, 2.2, 0x777f88, -1.2, 1.8, 0, pr, { rot: [0, 0, Math.PI / 2] }); cyl(0.5, 0.5, 2.2, 0x777f88, 1.0, 1.8, 0, pr, { rot: [0, 0, Math.PI / 2] }); for (let i = 0; i < 4; i++) box(1.2, 0.05, 0.8, 0xf2efe6, -0.4 + i * 0.1, 0.8 + i * 0.1, 1.1 + i * 0.12, pr, { noShadow: true }); spot(pr, 'press', 'Druckerpresse – Zeitung lesen', goAct(v.date.medium === 'web' ? 'Das Netz öffnen' : 'Die Zeitung lesen', 'newspaper', 'Stellen, Wohnungen, Nachrichten'));
-    const ed = desk(-w / 4, -d / 4 + 0.4); spot(ed, 'proof', 'Redaktionstisch – Korrektur lesen', taskAct('proof'), 'Aufgabe: Fehler finden'); person(-w / 4, -d / 4 + 1.5, 0x6a5a4a, Math.PI);
+    const ed = desk(-w / 4, -d / 4 + 0.4); spot(ed, 'proof', 'Redaktionstisch – Korrektur lesen', taskAct('proof', 'press', 'scoop'), 'Aufgabe: Fehler finden'); person(-w / 4, -d / 4 + 1.5, 0x6a5a4a, Math.PI);
     desk(-w / 4, d / 4, 0); for (let i = 0; i < 5; i++) box(0.9, 0.12 * (i + 2), 0.7, 0xf2efe6, -w / 2 + 1.2 + i * 1.1, 0, d / 2 - 1.2);
   } else if (t === 'lotto') {
     const c = counter(0, -d / 4, 3.6, 0, 0x7a5535, 0xe6b43d); box(0.9, 0.8, 0.6, 0x333333, 0.6, 1.2, 0, c); spot(c, 'counter', 'Annahmestelle – Lotto spielen', () => [{ label: '1 Tipp', sub: `${(v.gambling.ticket / 100).toFixed(2).replace('.', ',')} ${v.currency === 'EUR' ? '€' : 'DM'}`, run: ({ act }) => act('lotto', { tickets: 1 }) }, { label: '5 Tipps', run: ({ act }) => act('lotto', { tickets: 5 }) }, { label: 'Zur Gesellschaft-Seite', run: ({ go }) => go('society') }]);
@@ -161,7 +158,7 @@ export function buildRoom(T, b, ctx) {
     const live = () => v.companies.find((x) => x.id === b.ref); const c = live(); const chain = b.pkey;
     const accent = { wirt: 0x8a3a2a, baecker: 0xc9944a, tischler: 0x8a6a3a, schmied: 0x4a4a52, landwirt: 0x5a7a3a }[chain] || pal.accent;
     const cashAct = () => { const c = live(); return (c ? [{ label: 'Firmenkasse leeren', sub: `${(c.cash / 100).toFixed(2).replace('.', ',')} ${v.currency === 'EUR' ? '€' : 'DM'} liegen bereit`, disabled: c.cash <= 0, run: ({ act }) => act('bizCollect', { id: c.id }) }] : []); };
-    const cnt = counter(-w / 4, -d / 2 + 1.6, 4.4, 0, accent); spot(cnt, 'cash', 'Theke & Kasse', () => cashAct().concat(taskAct('serve')(), taskAct('orders')()), 'Kasse, Betreuung, Aufträge');
+    const cnt = counter(-w / 4, -d / 2 + 1.6, 4.4, 0, accent); spot(cnt, 'cash', 'Theke & Kasse', () => cashAct().concat(taskAct('serve', 'orders', 'inventory')()), 'Kasse, Betreuung, Aufträge');
     if (chain === 'wirt') { for (let i = 0; i < 3; i++) cyl(0.07, 0.07, 0.5, 0xc9c9c9, -w / 4 - 1 + i * 0.7, 1.2, -d / 2 + 1.6, props, { noShadow: true }); for (let i = 0; i < 6; i++) cyl(0.12, 0.1, 0.3, 0xe6b800, -w / 4 - 1.6 + i * 0.6, 1.2, -d / 2 + 1.9, props, { noShadow: true }); }
     else if (chain === 'baecker') { box(2.2, 1.6, 1.2, 0x8a4a3a, w / 4, 0, -d / 2 + 1.0); box(1.2, 0.6, 0.1, 0x222222, w / 4, 0.4, -d / 2 + 1.62, props, { noShadow: true }); for (let i = 0; i < 4; i++) { box(2.4, 0.08, 0.6, 0x7a5535, -w / 2 + 1.5, 0.5 + i * 0.6, -d / 2 + 0.5); for (let k = 0; k < 4; k++) sph(0.2, 0xd8a050, -w / 2 + 0.8 + k * 0.5, 0.7 + i * 0.6, -d / 2 + 0.5, props, { noShadow: true }); } }
     else if (chain === 'tischler') { box(3.2, 0.9, 1.2, 0x9a7a4a, w / 4, 0, -d / 2 + 1.2); for (let i = 0; i < 5; i++) box(0.12, 0.1, 2.6, 0xc9a56a, -w / 2 + 1 + i * 0.2, 0.1 + i * 0.12, -d / 2 + 2); }
@@ -177,7 +174,7 @@ export function buildRoom(T, b, ctx) {
     if (b.abandoned) { box(w, 0.4, 0.1, 0x6b5a3a, 0, 1.0, d / 2 - 0.5, props, { rot: [0, 0, 0.1] }); }
   } else if (t === 'work') {
     const bench = counter(w / 4 - 1, -d / 4, 3.6, 0, 0x6a5a4a, 0x9a8a70); const bc = (b.pkey && ctx.world.professions.find((p) => p.key === b.pkey)) || {};
-    spot(bench, 'bench', 'Werkbank – Aufgaben', () => taskAct('shift')().concat(taskAct('tools')()), 'Zusatzschicht & Werkzeug');
+    spot(bench, 'bench', 'Werkbank – Aufgaben', () => taskAct('shift', 'tools', 'meeting')(), 'Zusatzschicht & Werkzeug');
     person(w / 4 - 1, -d / 4 - 1.0, 0x4a6a8a); box(1.4, 1.6, 1.0, 0x666c74, -w / 4, 0, -d / 2 + 1.0); box(0.9, 0.9, 0.9, 0xb58a4f, -w / 4 + 2.0, 0, -d / 2 + 1.0); crate(-w / 2 + 1.2, 1.4); crate(-w / 2 + 1.2, 2.4);
     const bo = desk(w / 2 - 1.6, d / 2 - 1.6, Math.PI * 0.8); spot(bo, 'boss', 'Büro des Arbeitgebers – Beruf', goAct('Beruf & Bildung ansehen', 'work', 'Stufe, Lohn, Ausbildung')); person(w / 2 - 2.6, d / 2 - 2.6, 0x2a2a3a, -2.2);
     if (b.lodging) { const bd3 = bed(-w / 2 + 2, d / 2 - 1.8, Math.PI / 2, true, 0x6a6a7a); spot(bd3, 'cot', 'Schlafstelle', () => [{ label: 'Hier schlafen (Schlafplatz beim Arbeitgeber)', disabled: v.housing.type === 'workplace', run: ({ act }) => act('sleepAtWork', {}) }], 'Notunterkunft'); }

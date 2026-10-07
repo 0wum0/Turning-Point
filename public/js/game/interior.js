@@ -160,7 +160,7 @@ export async function openInterior(ctx, b, data) {
     try {
       if (t.minSeconds) await api('POST', '/api/action/taskStart', { building: b.key, task: t.id }).then((r) => ctx.setView(r.view));
     } catch (e) { toast(e.message, 'bad'); return; }
-    if ((t.mini === 'collect' || t.mini === 'sequence') && t.minSeconds) return startMini(t);
+    if (['collect', 'sequence', 'hunt'].includes(t.mini) && t.minSeconds) return startMini(t);
     await finishTask(t);
   }
   async function finishTask(t) {
@@ -170,21 +170,23 @@ export async function openInterior(ctx, b, data) {
   function startMini(t) {
     const n = Math.max(4, Math.ceil(t.minSeconds / 1.3)); const started = performance.now();
     const spots = tokenSpots(dims, n, Date.now() % 1000);
-    const seq = t.mini === 'sequence';
+    const hunt = t.mini === 'hunt'; const seq = t.mini === 'sequence' || hunt;
     spots.forEach((p, idx) => {
       const m = new T.Mesh(new T.SphereGeometry(seq ? 0.34 : 0.28, 16, 12), new T.MeshBasicMaterial({ color: 0xffd54a })); m.position.set(p[0], p[1], p[2]); scene.add(m);
       const ring = new T.Mesh(new T.TorusGeometry(0.42, 0.04, 8, 24), new T.MeshBasicMaterial({ color: 0xfff2b0 })); ring.rotation.x = Math.PI / 2; m.add(ring);
       if (seq) { const sp = sprite(numTex(String(idx + 1)), 0.9); sp.position.set(0, 0.85, 0); m.add(sp); }
+      if (hunt && idx > 0) m.visible = false;
       tokens.push({ mesh: m, y0: p[1], num: idx + 1 });
     });
-    minigame = { t, total: n, got: 0, started, seq, wrong: 0 };
-    mini.classList.remove('hide'); mini.innerHTML = `<b>${esc(t.name)}</b> – ${seq ? 'Klicke die Zahlen der Reihe nach (1, 2, 3 …)' : 'Sammle alle goldenen Marken'}: <span id="mc">0 / ${n}</span> <button class="btn sm ghost" id="mx">Abbrechen</button>`;
+    minigame = { t, total: n, got: 0, started, seq, hunt, wrong: 0 };
+    mini.classList.remove('hide'); mini.innerHTML = `<b>${esc(t.name)}</b> – ${hunt ? 'Die Marke taucht jeweils nur an einer Stelle auf – schnapp sie dir' : seq ? 'Klicke die Zahlen der Reihe nach (1, 2, 3 …)' : 'Sammle alle goldenen Marken'}: <span id="mc">0 / ${n}</span> <button class="btn sm ghost" id="mx">Abbrechen</button>`;
     mini.querySelector('#mx').onclick = stopMini; invalidate();
   }
   function stopMini() { tokens.splice(0).forEach((k) => scene.remove(k.mesh)); minigame = null; mini.classList.add('hide'); invalidate(); }
   async function collectToken(k) {
     if (minigame.seq && k.num !== minigame.got + 1) { minigame.wrong++; toast(`Falsche Reihenfolge – als Nächstes die ${minigame.got + 1}!`, 'warn'); return; }
     scene.remove(k.mesh); tokens.splice(tokens.indexOf(k), 1); minigame.got++;
+    if (minigame.hunt) { const nx = tokens.find((x) => x.num === minigame.got + 1); if (nx) nx.mesh.visible = true; }
     const mc = mini.querySelector('#mc'); if (mc) mc.textContent = `${minigame.got} / ${minigame.total}`; invalidate();
     if (minigame.got >= minigame.total) {
       const { t, started } = minigame; const wait = Math.max(0, t.minSeconds * 1000 - (performance.now() - started) + 350);

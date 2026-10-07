@@ -56,7 +56,7 @@ Stand: Phase 2/3 des Konzepts (technischer Prototyp → Web-Version). Die Kernsc
 3. **3D-Innenansicht** (three.js, lokal gehostet, wird erst beim Betreten geladen, rendert nur bei Bewegung): drehbar, Gegenstände anklickbar (Kühlschrank, Bett, Theke, Rednerpult …).
 4. **Aufgaben:** je Gebäude Aufgaben mit Abkühlzeit (Minispiel „goldene Marken sammeln“), die EFS (zählen zum Tageslimit), Einfluss, Erholung u. a. bringen. Server prüft Start, Mindestdauer und Abkühlzeit; Werte und Texte sind im Admin unter Wirtschaft → `tasks` einstellbar.
 
-Zwei Minispiele: „Marken sammeln“ und „Zahlen der Reihe nach“. Räume zeigen Tag/Nacht-Licht (nach Uhrzeit), grüne „!“-Marker über fälligen Aufgaben und epochentypische Ausstattung (Radio → Fernseher → PC → Bildschirm → Holo-Display).
+Drei Minispiele: „Marken sammeln“, „Zahlen der Reihe nach“ und „Marke jagen“ (taucht jeweils nur an einer Stelle auf). Jedes Gebäude hat 2–4 Aufgaben. Neue Standard-Aufgaben erscheinen auch dann, wenn im Admin schon Wirtschaftswerte gespeichert wurden (Einstellungen werden tief zusammengeführt). Räume zeigen Tag/Nacht-Licht (nach Uhrzeit), grüne „!“-Marker über fälligen Aufgaben und epochentypische Ausstattung (Radio → Fernseher → PC → Bildschirm → Holo-Display).
 
 Hinweis: Die 3D-Räume sind prozedural (Würfel/Zylinder-Stil) – eigene Modelle/Texturen lassen sich später ergänzen.
 
