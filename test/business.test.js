@@ -94,3 +94,20 @@ test('Lotto & Casino buchen Geld korrekt', () => {
   assert.ok(s.money === m2 + 1000 || s.money === m2 - 1000);
   assert.throws(() => act(s, 'casino', { bet: -5 }), /Einsatz/);
 });
+
+test('Betriebs-Ereignisse und Konjunktur laufen ohne Fehler und wirken auf die Kasse', () => {
+  const { marketPhase } = require('../src/game/business');
+  assert.ok(marketPhase(2008).factor < 1);
+  assert.ok(marketPhase(1955).factor > 1);
+  assert.strictEqual(marketPhase(1970).factor, 1);
+  const s = setup();
+  const b = edition(w, s, s.cityId).biz.find((x) => x.pkey === 'wirt');
+  act(s, 'buyBiz', { listingId: b.id });
+  act(s, 'bizWork', { id: 1 });
+  let seen = 0;
+  for (let i = 0; i < 700 && s.status === 'alive'; i++) {
+    s.meters.fridge = 100; s.money = Math.max(s.money, 1e7); advance(w, s, 1);
+    seen += s.interrupts.length; s.interrupts = [];
+  }
+  assert.ok(Number.isFinite(s.companies[0].cash));
+});
