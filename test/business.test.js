@@ -111,3 +111,28 @@ test('Betriebs-Ereignisse und Konjunktur laufen ohne Fehler und wirken auf die K
   }
   assert.ok(Number.isFinite(s.companies[0].cash));
 });
+
+test('Ereignisse landen als Zeitungsartikel (Firmeneröffnung mit Bürgermeister-Glückwunsch)', () => {
+  const s = setup();
+  const b = edition(w, s, s.cityId).biz.find((x) => x.pkey === 'wirt');
+  act(s, 'buyBiz', { listingId: b.id });
+  assert.ok(Array.isArray(s.press) && s.press.length >= 1);
+  const p = s.press.find((x) => x.type === 'business_open');
+  assert.ok(p, 'Artikel fehlt');
+  assert.ok(p.text.includes(s.person.first) && /ürgermeister/.test(p.text) && p.text.includes(b.name), p.text);
+  const e = edition(w, s, s.cityId);
+  assert.ok(e.news.some((n) => n.type === 'press' && n.title.includes(b.name)), 'nicht in der Zeitung');
+  // andere Stadt sieht den Artikel nicht
+  const other = w.cityList.find((c) => c.id !== s.cityId).id;
+  assert.ok(!edition(w, s, other).news.some((n) => n.type === 'press' && n.title.includes(b.name)));
+});
+
+test('Heirat, Tod und Lotto erzeugen Artikel; Texte stammen aus den Einstellungen', () => {
+  const press = require('../src/game/press');
+  const s = setup();
+  press.story(w, s, 'marriage', { partner: 'Anna Beispiel' });
+  press.story(w, s, 'death', { age: 71 });
+  assert.ok(s.press.find((x) => x.type === 'marriage').text.includes('Anna Beispiel'));
+  assert.ok(s.press.find((x) => x.type === 'death').text.includes('71'));
+  assert.strictEqual(press.story(w, s, 'gibt_es_nicht', {}), null);
+});

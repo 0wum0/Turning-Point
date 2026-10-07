@@ -1,5 +1,6 @@
 'use strict';
 const settings = require('../settings');
+const press = require('./press');
 const { rngFor, chance, weighted } = require('./rng');
 const { yearOf } = require('./calendar');
 const { scale, haversineKm } = require('./economy');
@@ -55,6 +56,7 @@ A.apply = ({ world, state, input }) => {
   state.occupation = { kind: l.kind, pkey: l.pkey, employer: l.employer, cityId: l.cityId, factor: l.factor, lodging: l.lodging, since: state.day, daysLeft: l.kind === 'training' ? p.training_days : 0 };
   if (state.housing.type === 'workplace' && !l.lodging) state.housing = { type: 'street', cityId: state.cityId };
   award(state, l.kind === 'training' ? 'training_start' : 'job_start');
+  press.story(world, state, l.kind === 'training' ? 'training_start' : 'job_new', { employer: l.employer, job: p.name });
   return { msg: l.kind === 'training' ? `Du beginnst eine Ausbildung zum ${p.name} bei ${l.employer}.` : `Du arbeitest jetzt als ${p.name} bei ${l.employer}.` };
 };
 
@@ -75,6 +77,7 @@ A.study = ({ world, state, input }) => {
   state.occupation = { kind: 'study', pkey: p.pkey, employer: 'Universität', cityId: state.cityId, factor: 1, lodging: false, since: state.day, daysLeft: p.training_days };
   if (state.housing.type === 'workplace') state.housing = { type: 'street', cityId: state.cityId };
   award(state, 'training_start');
+  press.story(world, state, 'study_start', { job: p.name });
   return { msg: `Du beginnst das Studium: ${p.name}.` };
 };
 
@@ -107,6 +110,7 @@ A.buy = ({ world, state, input }) => {
   state.properties.push(prop);
   award(state, 'buy_property');
   chronicle(state, `${state.person.first} kauft: ${l.name} (${world.city(l.cityId).name}).`, 'property');
+  press.story(world, state, 'property_buy', { prop: l.name, cityId: l.cityId });
   return { msg: `Gekauft: ${l.name}.` };
 };
 
@@ -222,6 +226,7 @@ A.move = ({ world, state, input, user }) => {
   award(state, 'move');
   const c = world.city(cityId);
   chronicle(state, `${state.person.first} zieht nach ${c.name}.`, 'move');
+  press.story(world, state, 'move', { cityId });
   if (!own) notice(state, { level: 'warn', title: `Neu in ${c.name}`, text: 'Du hast noch keine Unterkunft. Schau in die Zeitung.', tab: 'newspaper', info: ['Nach einem Umzug beginnst du ohne Wohnung und Arbeit.', 'Auf der Straße sinkt die Gesundheit schnell.', 'Suche sofort Unterkunft und Arbeit.'] });
   return { msg: q.free ? `Willkommen zurück in ${c.name}!` : `Umgezogen nach ${c.name}.` };
 };
@@ -286,6 +291,7 @@ A.meet = ({ world, state, input }) => {
   if (me) me.partnerId = person.id;
   award(state, 'partner');
   chronicle(state, `${state.person.first} lernt ${l.name} kennen.`, 'family');
+  press.story(world, state, 'couple', { partner: l.name });
   return { msg: `Ihr seid jetzt ein Paar: ${l.name}.`, level: 'good' };
 };
 
@@ -299,6 +305,7 @@ A.marry = ({ world, state }) => {
   p.married = true; p.sat = clamp(p.sat + 15, 0, 100);
   award(state, 'partner');
   chronicle(state, `${state.person.first} heiratet ${p.name}.`, 'family');
+  press.story(world, state, 'marriage', { partner: p.name });
   return { msg: `Ihr habt geheiratet!`, level: 'good' };
 };
 
@@ -382,6 +389,7 @@ A.search = ({ world, state, input }) => {
   if (chance(r, 0.35 + Math.min(0.4, c.searches * 0.15))) {
     c.status = 'home'; c.sat = 45; c.unhappy = 0;
     chronicle(state, `${c.name} wird gefunden und kommt nach Hause.`, 'family');
+    press.story(world, state, 'child_found', { child: c.name.split(' ')[0] });
     return { msg: `${c.name} ist wieder da!`, level: 'good' };
   }
   return { msg: 'Keine Spur. Versuche es noch einmal.', level: 'warn' };
@@ -403,6 +411,7 @@ A.buyBiz = ({ world, state, input }) => {
   state.companies.push(c);
   award(state, 'buy_property');
   chronicle(state, `${state.person.first} übernimmt ${l.name} (${world.city(l.cityId).name}).`, 'business');
+  press.story(world, state, 'business_open', { firm: l.name, cityId: l.cityId });
   return { msg: `${l.name} gehört dir. Arbeite selbst im Betrieb oder stelle Mitarbeiter ein.` };
 };
 A.bizWork = ({ world, state, input }) => {
@@ -456,6 +465,7 @@ A.bizUpgrade = ({ world, state, input }) => {
   const old = c.name; c.name = c.name.replace(/^\S+/, biz.chainNames(world, c.pkey)[c.tier].split(' ')[0]);
   award(state, 'buy_property');
   chronicle(state, `${old} wird zu ${c.name} ausgebaut.`, 'business');
+  press.story(world, state, 'business_expand', { firm: c.name, from: old, cityId: c.cityId });
   return { msg: `Ausbau abgeschlossen: ${biz.tierName(world, c)}.` };
 };
 A.bizCollect = ({ state, input }) => {
@@ -484,6 +494,7 @@ A.bizReactivate = ({ world, state, input }) => {
   if (state.money < cost) fail('Dafür reicht dein Geld nicht.');
   pay(state, cost); c.abandoned = null;
   chronicle(state, `${c.name} wird wiederbelebt.`, 'business');
+  press.story(world, state, 'business_revive', { firm: c.name, cityId: c.cityId });
   return { msg: `${c.name} ist wieder in Betrieb.` };
 };
 

@@ -1,5 +1,6 @@
 'use strict';
 const settings = require('../settings');
+const press = require('./press');
 const { rngFor, int, chance, shuffle } = require('./rng');
 const { notice, chronicle, award, clamp, kidsAtHome, minors, roomsAvailable, roomsNeeded, effectiveHousing, foodMods, learn, propertyValue, netWorth } = require('./core');
 const { randomFirstName } = require('./content');
@@ -82,6 +83,7 @@ function bornChild(ctx, r) {
   state.fx.coins += coins;
   award(state, 'child');
   chronicle(state, `${first} wird in ${city ? city.name : 'Deutschland'} geboren.`, 'birth');
+  press.story(ctx.world, state, 'birth', { child: first });
   notice(state, {
     level: 'good', title: `Ein Kind ist geboren: ${first}`, tab: 'family', interrupt: true,
     text: `${first} ist in ${city ? city.name : 'deiner Stadt'} zur Welt gekommen – du erhältst einmalig ${coins} Coins.`,
@@ -138,6 +140,7 @@ function childrenDaily(ctx, env) {
         c.path = 'done';
         notice(state, { level: 'good', title: `${c.name} hat ${wasStudy ? 'das Studium' : 'die Ausbildung'} abgeschlossen`, text: prof ? `${c.name} ist jetzt ${prof.name}.` : '', tab: 'family' });
         chronicle(state, `${c.name} schließt eine Ausbildung zum ${prof ? prof.name : 'Beruf'} ab.`, 'education');
+        press.story(ctx.world, state, 'child_edu', { child: c.name.split(' ')[0], job: prof ? prof.name : 'Beruf' });
       }
     }
   }
@@ -158,6 +161,7 @@ function runaway(ctx, c) {
     info: ['Dein Kind fühlte sich zu lange vernachlässigt und ist weg.', 'Wird es nicht gefunden, zieht es dauerhaft in eine Jugendhilfeeinrichtung – bleibt im Stammbaum, du zahlst aber weiter hohen Unterhalt.', 'Öffne „Familie“ und starte die Suche. Danach: Geschenke, Platz und Essen verbessern.'],
   });
   chronicle(state, `${c.name} läuft von zu Hause weg.`, 'family');
+  press.story(ctx.world, state, 'child_runaway', { child: c.name.split(' ')[0] });
 }
 function runawayDaily(ctx, c) {
   const { state } = ctx;
@@ -209,6 +213,7 @@ function separate(ctx) {
   const pr = state.tree.persons.find((x) => x.id === p.personId);
   if (pr) { pr.note = 'Trennung'; pr.status = 'away'; }
   chronicle(state, `Trennung von ${p.name}. ${leaving.length} Kind(er) ziehen mit.`, 'family');
+  press.story(ctx.world, state, 'separation', { partner: p.name });
   notice(state, {
     level: 'bad', title: `${p.name} hat dich verlassen`, tab: 'family', interrupt: true,
     text: `Die Hälfte des Vermögens${lostProps.length ? ' (u. a. ' + lostProps.join(', ') + ')' : ''} und ${leaving.length} Kind(er) gehen mit. Die Trennung steht im Stammbaum.`,
@@ -230,6 +235,7 @@ function endLife(ctx, reason, cause) {
   const pr = state.tree.persons.find((x) => x.id === state.person.id);
   if (pr) { pr.died = state.day; pr.status = 'dead'; pr.note = reason; }
   chronicle(state, `${state.person.first} ${state.person.last} stirbt (${reason}).`, 'death');
+  press.story(world, state, 'death', { age: Math.floor((state.day - state.person.birthDay) / 365), reason });
   if (!heirs.length) {
     const why = state.children.length ? 'Es gibt kein volljähriges Kind, das das Erbe antreten kann.' : 'Es gibt keine Kinder, die das Erbe antreten könnten.';
     state.status = 'gameover';

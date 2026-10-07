@@ -1,5 +1,6 @@
 'use strict';
 const { rngFor, int, pick, chance, weighted } = require('./rng');
+const press = require('./press');
 const { notice, chronicle, propertyValue } = require('./core');
 const { scale, formatMoney } = require('./economy');
 const { season, yearOf } = require('./calendar');
@@ -75,6 +76,7 @@ function applyTownEvents(ctx) {
           state.money -= pay; state.stats.spent += pay;
           p.condition = Math.max(5, p.condition - (insured ? 12 : 20) - (pay < cost ? 15 : 0));
           p.closedUntil = state.day + T.stormClosedDays;
+          press.story(world, state, 'storm', { prop: p.name, cityId: cid });
           notice(state, {
             level: 'bad', title: `Sturmschaden: ${p.name}`, tab: 'housing',
             text: insured ? 'Deine Gebäudeversicherung ersetzt den Schaden. Das Haus ist trotzdem für etwa 14 Tage nicht voll nutzbar.' : `Die Reparatur kostet dich ${formatMoney(pay, world.currency(year))} und das Haus ist etwa 14 Tage nicht voll nutzbar.`,
@@ -91,6 +93,7 @@ function applyTownEvents(ctx) {
           p.condition = Math.max(5, p.condition - 35);
           p.closedUntil = state.day + T.fireClosedDays;
           chronicle(state, `Feuer in ${p.name} (${city.name}).`, 'event');
+          press.story(world, state, 'fire', { prop: p.name, cityId: cid });
           notice(state, {
             level: 'bad', title: `Feuer: ${p.name}`, tab: 'housing', interrupt: true,
             text: insured ? 'Die Versicherung bezahlt die Reparatur. Das Gebäude fällt etwa 60 Tage aus.' : 'Du trägst den Schaden selbst. Das Gebäude fällt etwa 60 Tage aus.',
@@ -98,6 +101,7 @@ function applyTownEvents(ctx) {
           });
         }
       } else if (ev.type === 'burglary' && cid === state.cityId && state.housing.type !== 'street' && state.money > 0 && chance(r, T.burglaryChance)) {
+        press.story(world, state, 'burglary', { cityId: cid });
         const loss = Math.min(Math.round(state.money * T.burglaryLossPct / 100), scale(T.burglaryMax, idx));
         if (state.insurance.hausrat) {
           notice(state, { level: 'warn', title: 'Einbruch – Schaden ersetzt', text: 'Bei dir wurde eingebrochen. Deine Hausratversicherung hat den Verlust ersetzt.', info: ['Ein Einbrecher war bei dir.', 'Mit Hausratversicherung bekommst du den Schaden erstattet.', 'Du musst nichts weiter tun.'] });

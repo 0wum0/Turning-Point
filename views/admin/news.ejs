@@ -31,6 +31,12 @@
           <button class="btn primary sm" style="margin-left:auto">Speichern</button></div></form></details></td></tr><% }) %>
   <% if (!custom.length) { %><tr><td colspan="6" class="dim">Noch keine eigenen Meldungen.</td></tr><% } %></tbody></table></div></section>
 
+<section class="card mt"><div class="card-title"><%- icon('user') %> Spieler-Meldungen (automatisch aus dem Spielgeschehen)</div>
+  <p class="dim small" style="margin-top:0">Eröffnungen, Hochzeiten, Geburten, Nachrufe, Wahlen, Unglücke … – jedes Ereignis wird zum Zeitungsartikel in der Stadt, in der es passiert. Die Vorlagen änderst du unter <a href="/admin/settings/texts">Zeitung &amp; Texte → press</a>.</p>
+  <div class="table-wrap"><table class="table small"><thead><tr><th>Jahr</th><th>Spieler</th><th>Stadt</th><th>Rubrik</th><th>Artikel</th></tr></thead>
+  <tbody><% playerNews.forEach(function(n){ %><tr><td><%= n.year %></td><td><%= n.username %><div class="dim"><%= n.who %></div></td><td><%= n.city %></td><td><span class="chip <%= n.big ? 'accent' : '' %>"><%= n.section %></span></td><td><b><%= n.title %></b><div class="dim"><%= n.text %></div></td></tr><% }) %>
+  <% if (!playerNews.length) { %><tr><td colspan="5" class="dim">Noch keine Meldungen – sie entstehen, sobald Spieler etwas erleben.</td></tr><% } %></tbody></table></div></section>
+
 <section class="card mt"><div class="card-title"><%- icon('newspaper') %> Nachrichten der Spielwelt (automatisch erzeugt)</div>
   <p class="dim small">So lesen Spieler die Ereignisse: Je Stadt und Woche werden Unwetter, Feuer, Einbrüche, Feste, Lotto und Marktberichte festgelegt (mit den aktuellen Wahrscheinlichkeiten und Texten). Unwetter werden bis zu 3 Tage vorher angekündigt.</p>
   <form class="row wrap" method="get"><select name="cityId" style="max-width:220px"><% cities.forEach(function(c){ %><option value="<%= c.id %>" <%= c.id === cityId ? 'selected' : '' %>><%= c.name %></option><% }) %></select>

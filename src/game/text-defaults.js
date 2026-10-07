@@ -33,7 +33,81 @@ const NEWS = {
   market: { title: 'Markt in {city}', cheap: 'Auf dem Wochenmarkt in {city} sind Lebensmittel diese Woche erfreulich günstig.', expensive: 'Auf dem Wochenmarkt in {city} sind Lebensmittel diese Woche etwas teurer.' },
 };
 
+
+const PRESS = {
+  business_open: { section: 'Wirtschaft', big: true, title: 'Neueröffnung in {city}: {firm}', texts: [
+    '{name} hat in {city} die Firma „{firm}“ eröffnet. Die Stadt {city} und {mayorTitle} {mayor} gratulieren zur Neueröffnung und wünschen viel Erfolg.',
+    'Frischer Wind für {city}: {name} führt ab sofort „{firm}“. {mayorTitle} {mayor} besuchte den Betrieb und wünschte „allzeit gute Geschäfte“.',
+    'Eröffnungsfeier in {city}: Zahlreiche Gäste kamen, als {name} die Türen von „{firm}“ öffnete. {mayorTitle} {mayor} überbrachte die Glückwünsche der Stadt.' ] },
+  business_expand: { section: 'Wirtschaft', title: '„{firm}“ wächst', texts: [
+    'Das Geschäft läuft: „{firm}“ in {city} wird ausgebaut. {mayorTitle} {mayor} lobte den Unternehmergeist von {name}.',
+    '{name} investiert in {city}: Aus „{from}“ wird „{firm}“. Die Stadt gratuliert zum Wachstum.' ] },
+  business_revive: { section: 'Wirtschaft', title: 'Neues Leben für „{firm}“', texts: [
+    'Der lange leerstehende Betrieb „{firm}“ in {city} wird von {name} wiederbelebt. Anwohner freuen sich über das Ende des Leerstands.' ] },
+  business_closed: { section: 'Wirtschaft', title: '„{firm}“ steht leer', texts: [
+    'In {city} hat „{firm}“ den Betrieb eingestellt. Das Gebäude steht leer – Nachbarn befürchten Verfall.' ] },
+  property_buy: { section: 'Gesellschaft', title: 'Neuer Eigentümer in {city}', texts: [
+    '{name} hat in {city} eine Immobilie erworben: {prop}. {mayorTitle} {mayor} heißt den neuen Eigentümer bzw. die neue Eigentümerin willkommen.',
+    'Immobilienmarkt {city}: {prop} hat einen neuen Besitzer – {name}. Die Stadt wünscht ein gutes Einleben.' ] },
+  move: { section: 'Lokales', title: 'Zuzug: {name} kommt nach {city}', texts: [
+    '{city} hat einen neuen Einwohner: {name} ist zugezogen. {mayorTitle} {mayor} wünscht „ein herzliches Willkommen“.',
+    'Wir begrüßen {name} in {city}! Die Stadt freut sich über Zuwachs.' ] },
+  job_new: { section: 'Wirtschaft', title: 'Neu bei {employer}', texts: [
+    '{employer} in {city} stellt {name} als {job} ein. Die Belegschaft heißt die Verstärkung willkommen.' ] },
+  training_start: { section: 'Wirtschaft', title: 'Neue Lehrstelle bei {employer}', texts: [
+    '{name} beginnt bei {employer} in {city} eine Ausbildung zum {job}. Der Betrieb freut sich über den Nachwuchs.' ] },
+  study_start: { section: 'Bildung', title: 'Neu an der Universität', texts: [
+    '{name} hat in {city} ein Studium begonnen: {job}. Die Hochschule gratuliert zur Immatrikulation.' ] },
+  education_done: { section: 'Bildung', title: 'Ausbildung bestanden', texts: [
+    '{name} hat die Ausbildung zum {job} erfolgreich abgeschlossen. {mayorTitle} {mayor} gratuliert zur bestandenen Prüfung.' ] },
+  study_done: { section: 'Bildung', big: true, title: 'Abschluss: {job}', texts: [
+    'Großer Tag für {name}: Das Studium ({job}) ist geschafft. Die Stadt {city} gratuliert zum akademischen Abschluss.' ] },
+  couple: { section: 'Gesellschaft', title: 'Verliebt in {city}', texts: [
+    'Wie man hört, haben {name} und {partner} zueinander gefunden. Die Stadt wünscht dem Paar alles Gute.' ] },
+  marriage: { section: 'Gesellschaft', big: true, title: 'Hochzeit in {city}', texts: [
+    '{name} und {partner} haben geheiratet. {mayorTitle} {mayor} gratulierte dem Brautpaar im Namen der Stadt {city}.',
+    'Glockengeläut in {city}: {name} und {partner} haben sich das Ja-Wort gegeben. Die Stadt wünscht Glück und Gesundheit.' ] },
+  birth: { section: 'Gesellschaft', title: 'Nachwuchs: {child} ist da', texts: [
+    'Familie {last} in {city} freut sich: {child} ist geboren. {mayorTitle} {mayor} und die Stadt gratulieren den Eltern.',
+    'Storch in {city}: Bei {name} ist Nachwuchs eingetroffen. Der kleine Neuankömmling heißt {child}.' ] },
+  child_edu: { section: 'Bildung', title: '{child} schließt Ausbildung ab', texts: [
+    '{child} {last} hat die Ausbildung zum {job} bestanden. Die Familie ist stolz.' ] },
+  separation: { section: 'Gesellschaft', title: 'Getrennte Wege', texts: [
+    'Wie aus dem Umfeld zu hören ist, gehen {name} und {partner} künftig getrennte Wege.' ] },
+  child_runaway: { section: 'Lokales', title: 'Suchmeldung: {child}', texts: [
+    'Die Polizei in {city} sucht {child} {last}. Hinweise nimmt jede Dienststelle entgegen.' ] },
+  child_found: { section: 'Lokales', title: 'Entwarnung: {child} ist wieder da', texts: [
+    'Erleichterung in {city}: {child} {last} wurde wohlbehalten gefunden und ist zu Hause.' ] },
+  death: { section: 'Nachruf', big: true, title: 'Nachruf: {name}', texts: [
+    '{name} ist im Alter von {age} Jahren gestorben. {mayorTitle} {mayor} sprach den Angehörigen das Beileid der Stadt {city} aus.',
+    'Trauer in {city}: {name} ({age}) hat uns verlassen. Die Beisetzung findet im engsten Familienkreis statt.' ] },
+  heir: { section: 'Gesellschaft', title: 'Das Erbe ist angetreten', texts: [
+    '{child} {last} tritt das Erbe der Familie an und führt das Lebenswerk in {city} fort. Die Stadt wünscht eine glückliche Hand.' ] },
+  elected: { section: 'Politik', big: true, title: 'Wahl: {name} ist {office}', texts: [
+    '{name} wurde zum {office} gewählt. In {city} wird der Wahlausgang lebhaft diskutiert.',
+    'Wahlabend in {city}: {name} setzt sich durch und wird {office}. {mayorTitle} {mayor} gratulierte dem Wahlsieger bzw. der Wahlsiegerin.' ] },
+  term_end: { section: 'Politik', title: 'Amtszeit beendet', texts: [
+    'Die Amtszeit von {name} als {office} ist zu Ende. {city} dankt für den Einsatz.' ] },
+  lotto: { section: 'Vermischtes', big: true, title: 'Lotto-Glück in {city}', texts: [
+    'Ein Tipper aus {city} hat {amount} gewonnen – es soll sich um {name} handeln. „Ich muss mich erst einmal setzen“, soll der Gewinner gesagt haben.' ] },
+  fire: { section: 'Blaulicht', title: 'Feuer in {city}', texts: [
+    'In {city} brannte {prop}. Die Feuerwehr war stundenlang im Einsatz. Besitzer ist {name}.' ] },
+  storm: { section: 'Blaulicht', title: 'Sturmschäden in {city}', texts: [
+    'Das Unwetter hat {prop} in {city} beschädigt. Eigentümer {name} muss sich um die Reparatur kümmern.' ] },
+  burglary: { section: 'Blaulicht', title: 'Einbruch in {city}', texts: [
+    'In {city} wurde bei {name} eingebrochen. Die Polizei bittet um Hinweise und rät zu einer Hausratversicherung.' ] },
+  insolvency: { section: 'Wirtschaft', big: true, title: 'Insolvenz: {name}', texts: [
+    '{name} aus {city} musste Insolvenz anmelden. Gläubiger und Familie sind betroffen.' ] },
+  euro: { section: 'Wirtschaft', big: true, title: 'Der Euro ist da', texts: [
+    'Historischer Tag: Der Euro löst die D-Mark ab. Auch in {city} werden Preise und Löhne umgestellt.' ] },
+  legacy: { section: 'Gesellschaft', big: true, title: 'Ein Vermächtnis vollendet sich', texts: [
+    'Die Familie {last} hat das Jahr {year} erreicht. {mayorTitle} {mayor} würdigte das generationenübergreifende Lebenswerk in {city}.' ] },
+  epoch: { section: 'Wirtschaft', title: 'Berufe im Wandel', texts: [
+    'Der Strukturwandel verändert die Arbeitswelt in {city}: {change}.' ] },
+};
+
 module.exports = {
+  press: PRESS,
   paper: {
     streets: STREETS, pensions: PENSIONS, helperFirmsOld: HELPER_FIRMS_OLD, helperFirmsNew: HELPER_FIRMS_NEW, blurbs: BLURBS,
     mastheadWords: ['Tageblatt', 'Anzeiger', 'Kurier', 'Nachrichten', 'Zeitung'], webMasthead: '{city} · Das Netz',

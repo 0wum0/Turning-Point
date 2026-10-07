@@ -1,5 +1,6 @@
 'use strict';
 const settings = require('../settings');
+const press = require('./press');
 const { rngFor } = require('./rng');
 const { yearOf, dateOf } = require('./calendar');
 const { scale } = require('./economy');
@@ -181,7 +182,7 @@ function dayStep(ctx) {
   // ---- Tod / Game Over ----
   if (state.money < 0) {
     if (ctx.offline) state.money = 0;
-    else { state.status = 'gameover'; state.death = { day: state.day, reason: 'Insolvenz', gameOver: true, message: 'Dein Konto ist ins Minus gefallen – Insolvenz. Coins und Meta-Fortschritt bleiben erhalten.' }; chronicle(state, `${state.person.first} ${state.person.last} wird insolvent.`, 'death'); return; }
+    else { press.story(world, state, 'insolvency', {}); state.status = 'gameover'; state.death = { day: state.day, reason: 'Insolvenz', gameOver: true, message: 'Dein Konto ist ins Minus gefallen – Insolvenz. Coins und Meta-Fortschritt bleiben erhalten.' }; chronicle(state, `${state.person.first} ${state.person.last} wird insolvent.`, 'death'); return; }
   }
   if (m.health <= 0) {
     const cause = state.housing.type === 'street' ? 'auf der Straße gestorben' : state.hunger > 0 ? 'verhungert' : state.life.illness ? `an ${state.life.illness.name === 'Krebs' ? 'Krebs' : 'seiner Krankheit'} gestorben` : age >= 62 ? 'an Altersschwäche gestorben' : 'an Erschöpfung gestorben';
@@ -243,6 +244,7 @@ function occupationDaily(ctx, flows, year) {
       if (me && p) me.jobs.push(p.name);
       award(state, 'training_finish');
       chronicle(state, `Ausbildung zum ${p ? p.name : 'Beruf'} abgeschlossen.`, 'education');
+      press.story(ctx.world, state, 'education_done', { job: p ? p.name : 'Beruf' });
       notice(state, { level: 'good', title: `Ausbildung abgeschlossen: ${p ? p.name : ''}`, text: 'Du arbeitest jetzt als ausgebildete Fachkraft im selben Betrieb.', tab: 'work', interrupt: true, info: ['Deine Ausbildung ist beendet.', 'Du verdienst jetzt den vollen Lohn und kannst in vielen Betrieben arbeiten.', 'Prüfe in der Zeitung bessere Stellen.'] });
     }
   } else if (occ.kind === 'study') {
@@ -264,6 +266,7 @@ function occupationDaily(ctx, flows, year) {
       if (me && p) me.jobs.push(`${p.name} (Studium)`);
       award(state, 'study_finish');
       chronicle(state, `Studium abgeschlossen: ${p ? p.name : ''}.`, 'education');
+      press.story(ctx.world, state, 'study_done', { job: p ? p.name : '' });
       notice(state, { level: 'good', title: `Studium abgeschlossen: ${p ? p.name : ''}`, text: 'Der akademische Abschluss bleibt über Generationen und Neustarts erhalten.', tab: 'work', interrupt: true, info: ['Du hast ein Studium beendet.', 'Akademische Abschlüsse bleiben als Meta-Fortschritt erhalten.', 'Suche in der Zeitung nach passenden Stellen.'] });
     }
   }
@@ -298,6 +301,7 @@ function newYear(ctx, year, econ) {
     state.fx.coins += bonus;
     state.death = { day: state.day, reason: 'Vermächtnis vollendet', completed: true, gameOver: true, message: `Deine Familie hat das ${Math.floor(year / 100) + 1}. Jahrhundert erreicht! Der große Zyklus ist vollendet. Als Dank für dieses Vermächtnis erhältst du ${bonus} Coins. Die Welt beginnt von vorn – im Jahr ${state.startYear}.` };
     chronicle(state, `Das Vermächtnis der Familie ${state.person.last} erreicht das Jahr ${year}.`, 'epoch');
+    press.story(world, state, 'legacy', {});
     return;
   }
   // Währungsumstellung
@@ -306,6 +310,7 @@ function newYear(ctx, year, econ) {
     state.stats.peakWorth = Math.round(state.stats.peakWorth / 2);
     notice(state, { level: 'info', title: 'Der Euro kommt', text: 'Die D-Mark wird durch den Euro ersetzt. Alle Beträge werden im Verhältnis 2:1 umgestellt – Preise und Löhne ebenso.', interrupt: true, info: ['Die Währung wechselt von DM zu Euro.', 'Dein Geld wird ungefähr halbiert, Preise und Löhne passen sich an – real ändert sich wenig.', 'Nichts zu tun.'] });
     chronicle(state, 'Der Euro löst die D-Mark ab.', 'epoch');
+    press.story(world, state, 'euro', {});
   }
   // Berufswandel
   const lost = [];
@@ -338,7 +343,7 @@ function newYear(ctx, year, econ) {
       text: [gained.length ? `Neue Berufsbilder: ${gained.join(', ')}.` : '', lost.length ? `Dein Betrieb als ${lost.join(', ')} schließt – du bist ohne Stelle.` : ''].filter(Boolean).join(' '),
       info: ['Alle ~20 Jahre verändern sich Berufe: Handwerk wird Industrie, neue Berufe entstehen, alte verschwinden.', 'Deine erlernten Berufe wandeln sich mit; verschwindet eine Stelle ersatzlos, verlierst du den Job.', 'Prüfe in der Zeitung bzw. im Netz neue Stellen.'],
     });
-    if (gained.length || lost.length) chronicle(state, `Berufswandel ${year}: ${[...gained, ...lost.map((x) => x + ' (entfällt)')].join(', ')}.`, 'epoch');
+    if (gained.length || lost.length) { chronicle(state, `Berufswandel ${year}: ${[...gained, ...lost.map((x) => x + ' (entfällt)')].join(', ')}.`, 'epoch'); press.story(world, state, 'epoch', { change: [...gained, ...lost.map((x) => x + ' (entfällt)')].join(', ') }); }
   }
   if (year === 2002) {
     notice(state, { level: 'info', title: 'Das Internet ersetzt die Zeitung', text: 'Stellen, Wohnungen, Partnerbörsen und Nachrichten findest du ab jetzt im World Wide Web.', info: ['Der Informationskanal wechselt von der Zeitung zum Web.', 'Die Inhalte bleiben ähnlich, nur das Medium ändert sich.', 'Nutze den Reiter „Web“.'], tab: 'newspaper' });

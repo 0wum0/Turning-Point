@@ -1,5 +1,6 @@
 'use strict';
 const { rngFor, chance } = require('./rng');
+const press = require('./press');
 const { yearOf, ageYears } = require('./calendar');
 const { scale, formatMoney } = require('./economy');
 const { notice, chronicle, award, clamp } = require('./core');
@@ -40,6 +41,7 @@ function politicsDaily(ctx) {
   const gain = 2 * (t.idx + 1);
   state.fx.influence = (state.fx.influence || 0) + gain;
   chronicle(state, `${state.person.first} beendet die Amtszeit als ${o.name}.`, 'politics');
+  press.story(world, state, 'term_end', { office: o.name });
   notice(state, {
     level: 'good', title: `Amtszeit beendet: ${o.name}`, tab: 'society', interrupt: true,
     text: `Du hast ${o.name} erfolgreich ausgefüllt und gewinnst ${gain} Einfluss. Du kannst erneut kandidieren oder das nächsthöhere Amt anstreben.`,
@@ -70,6 +72,7 @@ function install(A, fail, helpers) {
     state.fx.influence = (state.fx.influence || 0) + 1;
     award(state, 'partner');
     chronicle(state, `${state.person.first} wird zum ${o.name} gewählt.`, 'politics');
+    press.story(world, state, 'elected', { office: o.name });
     return { msg: `Gewählt! Du bist jetzt ${o.name}.`, level: 'good' };
   };
   A.resignOffice = ({ state }) => {
@@ -94,7 +97,7 @@ function install(A, fail, helpers) {
     win = Math.round(win);
     state.money += win; state.stats.earned += win;
     state.stats.gambled = (state.stats.gambled || 0) + price - win;
-    if (win >= price * 100) chronicle(state, `${state.person.first} gewinnt im Lotto.`, 'luck');
+    if (win >= price * 100) { chronicle(state, `${state.person.first} gewinnt im Lotto.`, 'luck'); press.story(world, state, 'lotto', { amount: formatMoney(win, world.currency(yr(state))) }); }
     const cur = world.currency(yr(state));
     return { msg: win > 0 ? `Gewinn: ${formatMoney(win, cur)} (Einsatz ${formatMoney(price, cur)}).` : 'Leider nichts gewonnen.', level: win > price ? 'good' : 'warn', lottoWin: win, lottoStake: price };
   };

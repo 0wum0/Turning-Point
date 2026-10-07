@@ -1,5 +1,6 @@
 'use strict';
 const settings = require('../settings');
+const press = require('./press');
 const { rngFor, int, chance } = require('./rng');
 const { yearOf } = require('./calendar');
 const { notice, chronicle, learn, propertyValue } = require('./core');
@@ -55,6 +56,7 @@ function createHeirState(world, old, childId, bequestIds) {
     hunger: 0, restZero: 0,
     notices: [], nextNoticeId: 1, interrupts: [],
     stats: { earned: 0, spent: 0, peakWorth: plan.cash, daysWorked: 0 },
+    press: (old.press || []).slice(-60), nextPressId: old.nextPressId || 0,
     discounts: {}, collected: {}, flags: { tutorial: false, autoMaintain: old.flags.autoMaintain, foodTier: 1 },
     pending: {}, mods: {}, taskCd: {},
     fx: { coins: 0, efs: 0, influence: 0 },
@@ -72,6 +74,7 @@ function createHeirState(world, old, childId, bequestIds) {
     state.housing = { type: 'pension', cityId: old.cityId, name: 'Pension', base: Math.round(world.econ.lodging.pension * (cty ? cty.price_factor : 1)), rooms: 1 };
   }
   chronicle(state, `Generation ${state.generation}: ${c.name} ${state.person.last} tritt das Erbe an.`, 'inheritance');
+  press.story(world, state, 'heir', { child: c.name.split(' ')[0] });
   notice(state, {
     level: 'good', title: `Generation ${state.generation}: Das Erbe ist angetreten`, tab: 'legacy',
     text: `${c.name} erbt ${plan.properties.concat(plan.companies).length ? plan.properties.concat(plan.companies).map((p) => p.name).join(', ') + ' und ' : ''}${formatMoney(plan.cash, world.currency(year))} in bar (Pflichtanteil 1/${plan.est.n}).`,

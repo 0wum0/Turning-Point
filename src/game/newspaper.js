@@ -151,7 +151,12 @@ function edition(world, state, cityId) {
     const day = (Math.floor((ev.key.split(':')[1])) * 7) + ev.offset;
     if (ev.type === 'storm' && day > state.day && day - state.day <= 3) news.push({ ...describeTownEvent(ev, city, 'future', T.news), day, ago: state.day - day, type: 'forecast' });
   }
-  news.sort((a, b) => b.day - a.day);
+  for (const pr of (state.press || [])) {
+    if (pr.day > state.day || state.day - pr.day > 21) continue;
+    if (pr.cityId && pr.cityId !== cityId) continue;
+    news.push({ title: pr.title, text: pr.text, day: pr.day, ago: state.day - pr.day, type: 'press', section: pr.section, big: !!pr.big });
+  }
+  news.sort((a, b) => b.day - a.day || (b.big ? 1 : 0) - (a.big ? 1 : 0));
   for (const c of customNews(world, state, cityId).reverse()) news.unshift(c);
   const d = dateOf(state.day, state.startYear);
   const words = T.paper.mastheadWords;

@@ -1,5 +1,6 @@
 'use strict';
 const { rngFor, int, pick, shuffle, chance } = require('./rng');
+const press = require('./press');
 const { yearOf } = require('./calendar');
 const { scale, formatMoney, currencyOf } = require('./economy');
 const { notice, chronicle, isLearned, levelIndex } = require('./core');
@@ -124,6 +125,7 @@ function businessDaily(ctx) {
         c.abandoned = { day: state.day }; c.manager = false; c.staff = 0;
         if (state.occupation && state.occupation.ownCompanyId === c.id) state.occupation = null;
         chronicle(state, `${c.name} wird aufgegeben (fehlende Qualifikation).`, 'business');
+        press.story(world, state, 'business_closed', { firm: c.name, cityId: c.cityId });
         notice(state, {
           level: 'bad', title: `${c.name} steht leer`, tab: 'business', interrupt: true,
           text: 'Dir fehlt die nötige Qualifikation. Der Betrieb wird zum Lost Place und verliert über etwa zehn Jahre an Wert.',

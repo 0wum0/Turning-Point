@@ -105,7 +105,7 @@ export default {
     const tabs = [['news', L.news, 'newspaper'], ['jobs', L.jobs, 'briefcase'], ['housing', L.housing, 'house'], ['partners', L.partners, 'heart'], ['biz', L.biz, 'store'], ['guide', 'Ratgeber', 'lightbulb']];
     const body = {
       news: () => html`<div class="news-grid">${e.news.length ? e.news.map((n, i) => html`<article class="news-item ${n.type === 'forecast' ? 'warn' : ''} ${n.flash ? 'flash' : ''} ${i === 0 ? 'lead' : ''}">
-          <div class="kicker">${n.type === 'custom' ? (n.flash ? e.kickers.flash : e.kickers.custom) : n.type === 'forecast' ? 'WARNUNG' : n.ago === 0 ? 'HEUTE' : n.ago === 1 ? 'GESTERN' : 'VOR ' + n.ago + ' TAGEN'}</div>
+          <div class="kicker">${n.type === 'press' ? `${String(n.section || 'Lokales').toUpperCase()} · ${n.ago === 0 ? 'HEUTE' : n.ago === 1 ? 'GESTERN' : 'VOR ' + n.ago + ' TAGEN'}` : n.type === 'custom' ? (n.flash ? e.kickers.flash : e.kickers.custom) : n.type === 'forecast' ? 'WARNUNG' : n.ago === 0 ? 'HEUTE' : n.ago === 1 ? 'GESTERN' : 'VOR ' + n.ago + ' TAGEN'}</div>
           <h3>${n.title}</h3>${String(n.text).length > LONG ? html`<p>${teaser(n.text)}</p><button class="btn sm read-more" data-read="${i}">${icon('book-open')} Weiterlesen · ${paginate(n.text).length} Seiten</button>` : html`<p class="pl">${n.text}</p>`}</article>`) : html`<article class="news-item lead"><div class="kicker">${e.quiet.kicker}</div><h3>${e.quiet.title}</h3><p>${e.quiet.text}</p></article>`}</div>`,
       jobs: () => html`<div class="listings">${e.jobs.map((j) => jobCard(j, v, here))}</div>`,
       housing: () => html`<h4 class="sec">Pensionen &amp; Zimmer</h4><div class="listings">${e.housing.pension.map((h) => housingCard(h, v, here))}</div>

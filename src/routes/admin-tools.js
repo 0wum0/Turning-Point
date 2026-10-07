@@ -134,7 +134,16 @@ module.exports = function mount(router, H) {
         }
       }
     }
-    res.render('admin/news', { title: 'Zeitung & Eilmeldungen', active: 'news', cities, cityId, year, startYear, events, custom: settings.get('news.custom') || [] });
+    // Automatische Artikel über Spieler (letzte Ereignisse der zuletzt aktiven Charaktere)
+    const { parseState } = require('../game/state');
+    const pressRows = await db.query("SELECT c.state, c.name, u.username FROM characters c JOIN users u ON u.id = c.user_id WHERE c.status IN ('alive','dead') ORDER BY c.updated_at DESC LIMIT 120");
+    const playerNews = [];
+    for (const r of pressRows) {
+      let st; try { st = parseState(r.state); } catch (_) { continue; }
+      for (const pr of (st.press || []).slice(-6)) playerNews.push({ ...pr, who: r.name, username: r.username, year: st.startYear + Math.floor(pr.day / 365), city: (w.city(pr.cityId) || {}).name || 'überregional' });
+    }
+    playerNews.sort((a, b) => (b.year - a.year) || (b.day - a.day));
+    res.render('admin/news', { title: 'Zeitung & Eilmeldungen', active: 'news', playerNews: playerNews.slice(0, 60), cities, cityId, year, startYear, events, custom: settings.get('news.custom') || [] });
   }));
   const saveNews = async (list) => { await settings.set('news.custom', list); };
   router.post('/news/add', wrap(async (req, res) => {

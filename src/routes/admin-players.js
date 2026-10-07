@@ -41,7 +41,7 @@ const FIELD_GROUPS = [
 const SECTIONS = [
   ['housing', 'Wohnen'], ['occupation', 'Beruf / Ausbildung'], ['skills', 'Qualifikationen'], ['properties', 'Immobilien'], ['companies', 'Betriebe'],
   ['politics', 'Politik'], ['butler', 'Butler'], ['partner', 'Partner(in)'], ['children', 'Kinder'], ['tree', 'Stammbaum'], ['life', 'Lebensdaten'],
-  ['discounts', 'Rabatte'], ['collected', 'Karten-Funde'], ['mods', 'Temporäre Effekte'], ['taskCd', 'Aufgaben-Abkühlzeiten'], ['pending', 'Merker (intern)'],
+  ['press', 'Zeitungsartikel über den Charakter'], ['discounts', 'Rabatte'], ['collected', 'Karten-Funde'], ['mods', 'Temporäre Effekte'], ['taskCd', 'Aufgaben-Abkühlzeiten'], ['pending', 'Merker (intern)'],
   ['fx', 'Offene Effekte (Coins/EFS/Einfluss)'], ['notices', 'Meldungen'], ['death', 'Todesdaten'],
 ];
 
