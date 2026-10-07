@@ -55,9 +55,9 @@ function partnerDaily(ctx, env) {
 
   // Kinderwunsch
   const kids = state.children.length;
-  if (p.cohabit && state.plan.children && kids < settings.get('game.max_children') && partnerAge(state) >= 18 && partnerAge(state) <= 42 && !env.hunger) {
+  if (p.cohabit && kids < Math.min(state.plan.target == null ? 3 : state.plan.target, settings.get('game.max_children')) && partnerAge(state) >= 18 && partnerAge(state) <= 42 && !env.hunger) {
     const r = rngFor('birth', state.seed, state.day);
-    if (chance(r, 1 / 450)) bornChild(ctx, r);
+    if (chance(r, 1 / 520)) bornChild(ctx, r);
   }
 }
 

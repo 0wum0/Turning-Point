@@ -17,6 +17,7 @@ function flush(user, state) {
   user.coins = Math.max(0, user.coins + (state.fx.coins || 0));
   user.efs_pool = Math.max(0, user.efs_pool + (state.fx.efs || 0));
   state.fx = { coins: 0, efs: 0 };
+  if (state.death && state.death.completed && !state.death.counted) { state.death.counted = true; user.meta.completedCycles = (user.meta.completedCycles || 0) + 1; }
   if (state.pending.degrees && state.pending.degrees.length) {
     const set = new Set(user.meta.degrees || []);
     state.pending.degrees.forEach((d) => set.add(d));

@@ -1,0 +1,10 @@
+<%- include('_top', { actions: '' }) %>
+<form class="card row" method="post" action="/admin/media?_csrf=<%= csrfToken %>" enctype="multipart/form-data">
+  <input type="file" name="file" accept="image/png,image/jpeg,image/webp,image/gif" required style="max-width:420px"><button class="btn primary"><%- icon('upload') %> Hochladen</button>
+  <span class="dim small">PNG, JPG, WEBP, GIF · max. 4 MB · Speicherort: <code><%= dir %></code></span>
+</form>
+<div class="grid auto mt" style="--gap:1rem;grid-template-columns:repeat(auto-fill,minmax(210px,1fr))">
+<% rows.forEach(function(m){ %><div class="card flat media-card"><img src="/media/<%= m.filename %>" alt=""><div class="small mt"><b style="word-break:break-all"><%= m.original %></b></div><div class="dim small"><%= m.kind %> · <%= Math.round(m.size / 1024) %> KB</div><input type="text" readonly value="/media/<%= m.filename %>" onclick="this.select()" style="font-size:.72rem;margin-top:.4rem">
+  <form method="post" action="/admin/media/<%= m.id %>/delete" class="mt"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn sm danger" data-confirm="Datei löschen?">Löschen</button></form></div><% }) %>
+<% if (!rows.length) { %><div class="dim">Noch keine Dateien hochgeladen.</div><% } %></div>
+<%- include('_bottom') %>

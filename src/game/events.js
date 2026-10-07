@@ -1,7 +1,7 @@
 'use strict';
 const { rngFor, int, pick, chance, weighted } = require('./rng');
 const { notice, chronicle, propertyValue } = require('./core');
-const { scale } = require('./economy');
+const { scale, formatMoney } = require('./economy');
 const { season, yearOf } = require('./calendar');
 
 /**
@@ -76,7 +76,7 @@ function applyTownEvents(ctx) {
           p.closedUntil = state.day + 14;
           notice(state, {
             level: 'bad', title: `Sturmschaden: ${p.name}`, tab: 'housing',
-            text: insured ? 'Deine Gebäudeversicherung ersetzt den Schaden. Das Haus ist trotzdem für etwa 14 Tage nicht voll nutzbar.' : `Die Reparatur kostet dich ${pay} Cent und das Haus ist etwa 14 Tage nicht voll nutzbar.`,
+            text: insured ? 'Deine Gebäudeversicherung ersetzt den Schaden. Das Haus ist trotzdem für etwa 14 Tage nicht voll nutzbar.' : `Die Reparatur kostet dich ${formatMoney(pay, world.currency(year))} und das Haus ist etwa 14 Tage nicht voll nutzbar.`,
             info: ['Ein Unwetter hat dein Gebäude beschädigt.', 'Ohne Gebäudeversicherung zahlst du die Reparatur selbst. Auch mit Versicherung bleibt die Ausfallzeit.', 'Schließe eine Gebäudeversicherung ab und lies die Zeitung – Unwetter werden vorher angekündigt.'],
           });
         }

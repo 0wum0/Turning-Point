@@ -1,0 +1,19 @@
+<%- include('../partials/head', { title: 'Admin · ' + title, era: 1, css: ['admin'], noindex: true, bodyClass: 'admin' }) %>
+<div class="adm">
+  <aside class="adm-side">
+    <a class="brand" href="/admin"><span class="mark"><%- icon('hourglass') %></span><span>TURNING POINT<small>Admin</small></span></a>
+    <nav>
+      <% [['dashboard','Dashboard','layout-dashboard','/admin'],['users','Spieler','users','/admin/users'],['cities','Städte','map-pin','/admin/cities'],['professions','Berufe','briefcase','/admin/professions'],['media','Medien','image','/admin/media'],['settings','Einstellungen','settings','/admin/settings'],['system','System','server','/admin/system'],['audit','Protokoll','scroll','/admin/audit']].forEach(function(n){ %>
+        <a href="<%= n[3] %>" class="<%= active === n[0] ? 'on' : '' %>"><%- icon(n[2]) %><span><%= n[1] %></span></a>
+      <% }) %>
+    </nav>
+    <div class="adm-foot">
+      <a class="btn sm block" href="/play"><%- icon('play') %> Zum Spiel</a>
+      <div class="row spread small dim" style="margin-top:.8rem"><span><%= user.username %></span>
+        <form method="post" action="/logout"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn ghost sm" title="Abmelden"><%- icon('log-out') %></button></form></div>
+      <button class="btn ghost sm block" data-theme-toggle style="margin-top:.3rem"><%- icon('sun-medium') %> Design</button>
+    </div>
+  </aside>
+  <main class="adm-main">
+    <% if (flash) { %><div class="alert <%= flash.type %>"><%- icon(flash.type === 'good' ? 'circle-check' : 'circle-alert') %><div><%= flash.msg %></div></div><% } %>
+    <div class="panel-head"><div><h2><%= title %></h2></div><div class="row"><%- typeof actions !== 'undefined' ? actions : '' %></div></div>

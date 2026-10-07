@@ -134,7 +134,7 @@ function dailyFlows(world, state) {
 }
 
 function consumption(state) {
-  return 8 + (state.partner && state.partner.cohabit ? 4 : 0) + 3 * minors(state).length;
+  return 7 + (state.partner && state.partner.cohabit ? 3 : 0) + 1.5 * minors(state).length;
 }
 /** Kosten (Cent) des täglichen Essens in einer Qualitätsstufe. */
 function foodCostPerDay(world, state, tierIdx = 1) {

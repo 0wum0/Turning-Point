@@ -35,6 +35,7 @@ const DEFAULTS = {
 
   'coins.start': 5,
   'coins.per_child': 100,
+  'coins.legacy_bonus': 500,
   'coins.ad_base': 1,
   'coins.ad_video': 5,
   'coins.move_per_100km': 1,

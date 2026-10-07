@@ -1,0 +1,26 @@
+<%- include('_top', { actions: '<a class="btn sm" href="/admin/users">← Alle Spieler</a>' }) %>
+<div class="grid c3" style="--gap:1rem">
+  <section class="card"><div class="card-title">Konto</div>
+    <dl class="kv small"><dt>E-Mail</dt><dd><%= u.email %></dd><dt>Rolle</dt><dd><%= u.role %></dd><dt>E-Mail bestätigt</dt><dd><%= u.email_verified ? 'ja' : 'nein' %></dd><dt>Registriert</dt><dd><%= new Date(u.created_at).toLocaleString('de-DE') %></dd><dt>Letzter Login</dt><dd><%= u.last_login_at ? new Date(u.last_login_at).toLocaleString('de-DE') : '–' %></dd><dt>Status</dt><dd><%= u.banned ? 'gesperrt' : 'aktiv' %></dd></dl>
+    <% if (u.banned && u.ban_reason) { %><div class="alert bad small"><%= u.ban_reason %></div><% } %></section>
+  <section class="card"><div class="card-title">Guthaben</div>
+    <div class="row spread"><div><div class="dim small">Coins</div><b class="serif" style="font-size:1.8rem"><%= u.coins %></b></div><div><div class="dim small">EFS-Vorrat</div><b class="serif" style="font-size:1.8rem"><%= u.efs_pool %></b></div></div>
+    <form class="row mt" method="post" action="/admin/users/<%= u.id %>/coins"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="number" name="amount" value="10" style="width:100px"><button class="btn sm">Coins buchen</button></form>
+    <form class="row mt" method="post" action="/admin/users/<%= u.id %>/efs"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="number" name="amount" value="100" style="width:100px"><button class="btn sm">EFS buchen</button></form></section>
+  <section class="card"><div class="card-title">Aktionen</div>
+    <div class="stack" style="--gap:.5rem">
+      <% if (!u.email_verified) { %><form method="post" action="/admin/users/<%= u.id %>/verify"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn sm block">E-Mail als bestätigt markieren</button></form><% } %>
+      <form method="post" action="/admin/users/<%= u.id %>/password"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn sm block" data-confirm="Neues Zufallspasswort setzen?">Neues Passwort erzeugen</button></form>
+      <form method="post" action="/admin/users/<%= u.id %>/reset-character"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn sm block" data-confirm="Den aktuellen Charakter beenden?">Aktuellen Charakter beenden</button></form>
+      <form method="post" action="/admin/users/<%= u.id %>/role"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="role" value="<%= u.role === 'admin' ? 'player' : 'admin' %>"><button class="btn sm block"><%= u.role === 'admin' ? 'Admin-Rechte entziehen' : 'Zum Admin machen' %></button></form>
+      <% if (u.banned) { %><form method="post" action="/admin/users/<%= u.id %>/unban"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn sm good block">Sperre aufheben</button></form>
+      <% } else { %><form class="row nowrap" method="post" action="/admin/users/<%= u.id %>/ban"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="text" name="reason" placeholder="Grund" maxlength="200"><button class="btn sm danger">Sperren</button></form><% } %>
+      <form method="post" action="/admin/users/<%= u.id %>/delete"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn sm danger block" data-confirm="Konto und alle Charaktere unwiderruflich löschen?">Konto löschen</button></form>
+    </div></section>
+</div>
+<section class="card mt"><div class="card-title">Leben &amp; Generationen</div>
+  <div class="table-wrap"><table class="table"><thead><tr><th>#</th><th>Zyklus</th><th>Gen.</th><th>Name</th><th>Status</th><th class="num">Jahr</th><th class="num">Geld (Cent)</th><th>Ende</th></tr></thead>
+  <tbody><% chars.forEach(function(c){ %><tr><td><%= c.id %></td><td><%= c.cycle %></td><td><%= c.generation %></td><td><%= c.name %></td><td><span class="chip <%= c.status === 'alive' ? 'good' : c.status === 'dead' ? 'warn' : '' %>"><%= c.status %></span></td><td class="num"><%= c.year %></td><td class="num"><%= c.money %></td><td class="dim small"><%= c.end_reason || '' %></td></tr><% }) %><% if (!chars.length) { %><tr><td colspan="8" class="dim">Noch kein Charakter.</td></tr><% } %></tbody></table></div></section>
+<section class="card mt"><div class="card-title">Letzte Aktivitäten</div>
+  <table class="table"><tbody><% audits.forEach(function(a){ %><tr><td><%= a.action %></td><td class="dim small"><%= a.detail %></td><td class="dim small"><%= a.ip %></td><td class="num dim small"><%= new Date(a.created_at).toLocaleString('de-DE') %></td></tr><% }) %></tbody></table></section>
+<%- include('_bottom') %>

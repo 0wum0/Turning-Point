@@ -2,6 +2,7 @@
 const settings = require('../settings');
 const { rngFor, int, chance } = require('./rng');
 const { notice, chronicle, learn } = require('./core');
+const { randomFirstName } = require('./content');
 
 const TEXT = (v, max) => String(v == null ? '' : v).replace(/[<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, max);
 
@@ -19,10 +20,11 @@ function validateCreation(world, input, userMeta) {
   const allowed = world.activeProfessions(startYear).filter((p) => !p.academic && p.pkey !== 'helfer').map((p) => p.pkey);
   const prof = String(input.professionKey || '');
   if (!allowed.includes(prof)) err.push('Bitte einen Startberuf wählen.');
+  const nr = rngFor('parents', first, last, cityId);
   const parents = {
-    fatherName: TEXT(input.fatherName, 40) || 'Unbekannt',
+    fatherName: TEXT(input.fatherName, 40) || randomFirstName(nr, 1900, 'm'),
     fatherJob: TEXT(input.fatherJob, 40) || 'Arbeiter',
-    motherName: TEXT(input.motherName, 40) || 'Unbekannt',
+    motherName: TEXT(input.motherName, 40) || randomFirstName(nr, 1900, 'f'),
     motherJob: TEXT(input.motherJob, 40) || 'Hausfrau',
   };
   return { err, value: { gender, first, last, cityId, prof, parents } };
@@ -56,7 +58,7 @@ function createCharacter(world, input, user, { cycle = 1 } = {}) {
     properties: [], nextPropId: 1,
     insurance: { hausrat: false, gebaeude: false, gesundheit: false },
     cards: { health: 0 }, butler: null,
-    partner: null, plan: { children: true }, children: [], nextChildId: 1,
+    partner: null, plan: { target: 3 }, children: [], nextChildId: 1,
     tree: newTree(),
     life: {
       baseYears: 60 + r() * 10, extraDays: 0, illness: null, rare: chance(r, 0.015),

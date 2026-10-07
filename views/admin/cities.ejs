@@ -1,0 +1,8 @@
+<%- include('_top', { actions: '<a class="btn primary sm" href="/admin/cities/new">+ Neue Stadt</a>' }) %>
+<p class="dim">Städte mit Bild: Das hochgeladene Bild ersetzt die generierte Stadtansicht im Spiel. Bilder liegen außerhalb des App-Ordners und überstehen jeden Redeploy.</p>
+<div class="table-wrap"><table class="table"><thead><tr><th></th><th>Stadt</th><th>Bundesland</th><th class="num">Größe</th><th class="num">Preisfaktor</th><th>Status</th><th></th></tr></thead>
+<tbody><% rows.forEach(function(c){ %><tr>
+  <td style="width:76px"><% if (c.image) { %><img class="thumb" src="/media/<%= c.image %>" alt=""><% } else { %><span class="thumb ph"><%- icon('image') %></span><% } %></td>
+  <td><a href="/admin/cities/<%= c.id %>"><b><%= c.name %></b></a><div class="dim small"><%= c.slug %></div></td><td class="dim"><%= c.state %></td><td class="num"><%= c.size_tier %></td><td class="num"><%= c.price_factor %></td>
+  <td><span class="chip <%= c.active ? 'good' : '' %>"><%= c.active ? 'aktiv' : 'inaktiv' %></span></td><td class="num"><a class="btn sm" href="/admin/cities/<%= c.id %>">Bearbeiten</a></td></tr><% }) %></tbody></table></div>
+<%- include('_bottom') %>

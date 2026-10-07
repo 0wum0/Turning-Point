@@ -41,6 +41,7 @@ function dayStep(ctx) {
   const econ = world.econ;
 
   if (date.doy === 0) newYear(ctx, year, econ);
+  if (state.status !== 'alive') return;
 
   // ---- Einkommen / Beschäftigung ----
   const flows = dailyFlows(world, state);
@@ -176,7 +177,7 @@ function dayStep(ctx) {
     else { state.status = 'gameover'; state.death = { day: state.day, reason: 'Insolvenz', gameOver: true, message: 'Dein Konto ist ins Minus gefallen – Insolvenz. Coins und Meta-Fortschritt bleiben erhalten.' }; chronicle(state, `${state.person.first} ${state.person.last} wird insolvent.`, 'death'); return; }
   }
   if (m.health <= 0) {
-    const cause = state.housing.type === 'street' ? 'auf der Straße gestorben' : state.hunger > 0 ? 'verhungert' : 'an Erschöpfung gestorben';
+    const cause = state.housing.type === 'street' ? 'auf der Straße gestorben' : state.hunger > 0 ? 'verhungert' : state.life.illness ? `an ${state.life.illness.name === 'Krebs' ? 'Krebs' : 'seiner Krankheit'} gestorben` : age >= 62 ? 'an Altersschwäche gestorben' : 'an Erschöpfung gestorben';
     endLife(ctx, cause, 'health');
     return;
   }
@@ -282,6 +283,16 @@ function offlineAutopilot(ctx) {
 
 function newYear(ctx, year, econ) {
   const { world, state } = ctx;
+  // Ziel erreicht: das 22. Jahrhundert beendet den großen historischen Zyklus
+  if (year >= settings.get('game.legacy_year') && !state.legacyDone) {
+    state.legacyDone = true;
+    state.status = 'gameover';
+    const bonus = settings.get('coins.legacy_bonus');
+    state.fx.coins += bonus;
+    state.death = { day: state.day, reason: 'Vermächtnis vollendet', completed: true, gameOver: true, message: `Deine Familie hat das ${Math.floor(year / 100) + 1}. Jahrhundert erreicht! Der große Zyklus ist vollendet. Als Dank für dieses Vermächtnis erhältst du ${bonus} Coins. Die Welt beginnt von vorn – im Jahr ${state.startYear}.` };
+    chronicle(state, `Das Vermächtnis der Familie ${state.person.last} erreicht das Jahr ${year}.`, 'epoch');
+    return;
+  }
   // Währungsumstellung
   if (year === (econ.euroYear || 2002)) {
     state.money = Math.round(state.money / 2);

@@ -1,0 +1,19 @@
+<%- include('_top', { actions: '<a class="btn sm" href="/admin/cities">← Alle Städte</a>' }) %>
+<form class="card" method="post" action="/admin/cities/<%= c.id %>?_csrf=<%= csrfToken %>" enctype="multipart/form-data">
+  <div class="grid c2">
+    <div class="field"><label>Name</label><input type="text" name="name" value="<%= c.name %>" required maxlength="80"></div>
+    <div class="field"><label>Kurzname (Slug)</label><input type="text" name="slug" value="<%= c.slug %>" maxlength="60"></div>
+    <div class="field"><label>Bundesland</label><input type="text" name="state" value="<%= c.state %>" maxlength="60"></div>
+    <div class="field"><label>Größenstufe (1 klein – 5 Metropole)</label><input type="number" name="size_tier" min="1" max="5" value="<%= c.size_tier %>"></div>
+    <div class="field"><label>Breitengrad</label><input type="text" name="lat" value="<%= c.lat %>"></div>
+    <div class="field"><label>Längengrad</label><input type="text" name="lon" value="<%= c.lon %>"></div>
+    <div class="field"><label>Preisfaktor (Miete, Immobilien)</label><input type="text" name="price_factor" value="<%= c.price_factor %>"><div class="hint">1.0 = Durchschnitt, München 1.3, Rostock 0.85</div></div>
+    <div class="field"><label class="check" style="margin-top:1.7rem"><input type="checkbox" name="active" value="1" <%= c.active ? 'checked' : '' %>> Stadt ist im Spiel aktiv</label></div>
+  </div>
+  <div class="field"><label>Beschreibung</label><textarea name="description" maxlength="500" style="min-height:70px"><%= c.description %></textarea></div>
+  <div class="field"><label>Stadtbild (PNG/JPG/WEBP, max. 4 MB, empfohlen 1600×500)</label>
+    <% if (c.image) { %><div class="row" style="margin-bottom:.6rem"><img class="thumb big" src="/media/<%= c.image %>" alt=""><label class="check"><input type="checkbox" name="remove_image" value="1"> Bild entfernen (generierte Ansicht verwenden)</label></div><% } %>
+    <input type="file" name="image" accept="image/png,image/jpeg,image/webp,image/gif"></div>
+  <div class="row end"><button class="btn primary"><%- icon('check') %> Speichern</button></div>
+</form>
+<%- include('_bottom') %>

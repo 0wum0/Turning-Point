@@ -1,0 +1,20 @@
+<%- include('_top', { actions: '<a class="btn sm" href="/admin/export"><svg class="i"><use href="/img/icons.svg#i-download"/></svg> Konfiguration exportieren</a>' }) %>
+<% if (info.volatile) { %><div class="alert bad"><%- icon('triangle-alert') %><div><b>Achtung:</b> Der Daten-Ordner liegt innerhalb der App und geht beim Redeploy verloren. Setze die Umgebungsvariable <code>TP_DATA_DIR</code> auf einen Ordner außerhalb des Node.js-Ordners.</div></div><% } %>
+<div class="grid c2" style="--gap:1rem">
+  <section class="card"><div class="card-title"><%- icon('server') %> Laufzeit</div>
+    <dl class="kv small"><dt>Version</dt><dd><%= info.app %></dd><dt>Node.js</dt><dd><%= info.node %></dd><dt>Datenbank</dt><dd><%= info.db %></dd><dt>System</dt><dd><%= info.platform %></dd><dt>Laufzeit</dt><dd><%= Math.floor(info.uptime / 3600) %> h <%= Math.floor(info.uptime % 3600 / 60) %> min</dd><dt>Speicher (App / Server)</dt><dd><%= info.mem %> / <%= info.totalMem %> MB</dd></dl></section>
+  <section class="card"><div class="card-title"><%- icon('database') %> Speicherorte</div>
+    <dl class="kv small"><dt>App-Ordner (wird beim Deploy ersetzt)</dt><dd style="word-break:break-all"><%= info.appRoot %></dd><dt>Daten-Ordner (bleibt)</dt><dd style="word-break:break-all"><%= info.dataDir %></dd><dt>Gewählt weil</dt><dd><%= info.dataWhy %></dd><dt>Konfiguration</dt><dd style="word-break:break-all"><%= info.configFile %></dd><dt>Uploads</dt><dd style="word-break:break-all"><%= info.uploadsDir %> (<%= info.uploadsKb %> KB)</dd></dl></section>
+</div>
+<section class="card mt"><div class="card-title"><%- icon('settings') %> Wartung</div>
+  <div class="row">
+    <form method="post" action="/admin/system/reload"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn"><%- icon('refresh-cw') %> Einstellungen &amp; Spielwelt neu laden</button></form>
+    <form method="post" action="/admin/system/sessions"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn">Abgelaufene Sitzungen löschen</button></form>
+    <form method="post" action="/admin/system/maintenance"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn <%= info.maintenance ? 'good' : 'danger' %>"><%= info.maintenance ? 'Wartungsmodus beenden' : 'Wartungsmodus aktivieren' %></button></form>
+  </div></section>
+<div class="grid c2 mt" style="--gap:1rem">
+  <section class="card"><div class="card-title"><%- icon('layers') %> Datenbank-Tabellen</div><table class="table"><thead><tr><th>Tabelle</th><th class="num">Zeilen ca.</th><th class="num">KB</th></tr></thead><tbody><% sizes.forEach(function(s){ %><tr><td><%= s.name %></td><td class="num"><%= s.rows_ %></td><td class="num"><%= s.kb %></td></tr><% }) %></tbody></table>
+    <div class="card-title mt"><%- icon('check') %> Migrationen</div><% migs.forEach(function(m){ %><div class="small dim"><%= m.id %> · <%= new Date(m.applied_at).toLocaleString('de-DE') %></div><% }) %></section>
+  <section class="card"><div class="card-title"><%- icon('scroll') %> Protokoll (app.log)</div><pre class="logbox"><%= logs || 'Noch keine Einträge.' %></pre></section>
+</div>
+<%- include('_bottom') %>

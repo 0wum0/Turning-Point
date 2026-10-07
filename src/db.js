@@ -25,6 +25,8 @@ function connectionOptions(db) {
 function init(db) {
   if (pool) { try { pool.end(); } catch (_) {} }
   pool = mysql.createPool(connectionOptions(db));
+  // Einheitliche Zeitzone (UTC) je Verbindung, unabhängig von der Server-Einstellung des Hosters
+  pool.pool.on('connection', (conn) => conn.query("SET time_zone = '+00:00'"));
   return pool;
 }
 

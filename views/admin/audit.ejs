@@ -1,0 +1,4 @@
+<%- include('_top', { actions: '' }) %>
+<div class="table-wrap"><table class="table"><thead><tr><th>Zeit</th><th>Nutzer</th><th>Aktion</th><th>Details</th><th>IP</th></tr></thead>
+<tbody><% rows.forEach(function(r){ %><tr><td class="small dim" style="white-space:nowrap"><%= new Date(r.created_at).toLocaleString('de-DE') %></td><td><%= r.username || '–' %></td><td><span class="chip"><%= r.action %></span></td><td class="small dim"><%= r.detail %></td><td class="small dim"><%= r.ip %></td></tr><% }) %></tbody></table></div>
+<%- include('_bottom') %>

@@ -1,0 +1,21 @@
+<%- include('_top') %>
+<div class="grid c4" style="--gap:1rem">
+  <div class="card tile"><div class="card-title"><%- icon('users') %> Spieler</div><b><%= u.total %></b><span class="dim small">+<%= u.week || 0 %> in 7 Tagen · <%= u.active || 0 %> aktiv (24 h)</span></div>
+  <div class="card tile"><div class="card-title"><%- icon('user') %> Lebende Charaktere</div><b><%= c.alive || 0 %></b><span class="dim small"><%= c.ended || 0 %> beendete Leben · max. Gen. <%= c.maxgen || 0 %></span></div>
+  <div class="card tile"><div class="card-title"><%- icon('coins') %> Coins im Umlauf</div><b><%= u.coins %></b><span class="dim small"><%= u.efs %> EFS im Vorrat</span></div>
+  <div class="card tile"><div class="card-title"><%- icon('video') %> Werbung (24 h)</div><b><%= a.n %></b><span class="dim small"><%= a.coins %> Coins ausgeschüttet</span></div>
+</div>
+<div class="grid c2 mt" style="--gap:1rem">
+  <section class="card"><div class="card-title"><%- icon('trending-up') %> Neue Spieler (14 Tage)</div>
+    <% const max = Math.max(1, ...regs.map(r => r.n)); %>
+    <div class="spark"><% if (!regs.length) { %><span class="dim small">Noch keine Registrierungen.</span><% } %><% regs.forEach(function(r){ %><div title="<%= new Date(r.d).toLocaleDateString('de-DE') %>: <%= r.n %>"><i style="height:<%= Math.round(r.n / max * 100) %>%"></i><small><%= r.n %></small></div><% }) %></div>
+  </section>
+  <section class="card"><div class="card-title"><%- icon('wallet') %> Umsatz (Testmodus eingeschlossen)</div><b class="serif" style="font-size:2rem"><%= (p.cents / 100).toFixed(2).replace('.', ',') %> €</b><div class="dim small"><%= p.n %> Käufe</div></section>
+</div>
+<div class="grid c2 mt" style="--gap:1rem">
+  <section class="card"><div class="card-title"><%- icon('user') %> Neueste Spieler</div>
+    <table class="table"><tbody><% recent.forEach(function(r){ %><tr><td><a href="/admin/users/<%= r.id %>"><%= r.username %></a> <% if (r.role === 'admin') { %><span class="chip accent">Admin</span><% } %></td><td class="num dim small"><%= new Date(r.created_at).toLocaleString('de-DE') %></td></tr><% }) %></tbody></table></section>
+  <section class="card"><div class="card-title"><%- icon('activity') %> Aktive Leben</div>
+    <table class="table"><tbody><% alive.forEach(function(r){ %><tr><td><%= r.name %> <span class="dim small">(<%= r.username %>)</span></td><td class="num small">Gen. <%= r.generation %> · <%= r.year %></td></tr><% }) %><% if (!alive.length) { %><tr><td class="dim">Keine aktiven Charaktere.</td></tr><% } %></tbody></table></section>
+</div>
+<%- include('_bottom') %>

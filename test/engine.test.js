@@ -72,6 +72,7 @@ test('Währungsumstellung 2002 halbiert Geld', () => {
   s.housing = { type: 'workplace', cityId: s.cityId };
   s.occupation = { kind: 'work', pkey: 'helfer', employer: 'X', cityId: s.cityId, factor: 1, lodging: true, since: 0 };
   s.day = (2002 - 1945) * 365 - 2;
+  s.person.birthDay = s.day - 30 * 365;
   s.money = 1000000;
   const before = s.money;
   advance(w, s, 3, { mode: 'offline' });
@@ -119,4 +120,14 @@ test('Hundert Spieljahre simulieren (Smoke) ohne Fehler', () => {
     if (s.money < 1e7) s.money = 1e8;
   }
   assert.ok(s.day > 365 * 20);
+});
+
+test('22. Jahrhundert beendet den Zyklus mit Coin-Bonus', () => {
+  const s = fresh();
+  s.money = 1e12; s.housing = { type: 'rent', cityId: s.cityId, base: 70, rooms: 3 }; s.life.baseYears = 500;
+  s.day = (2100 - 1945) * 365 - 3;
+  s.person.birthDay = s.day - 30 * 365;
+  for (let i = 0; i < 6 && s.status === 'alive'; i++) { s.meters.fridge = 100; advance(w, s, 1); s.interrupts = []; }
+  assert.strictEqual(s.status, 'gameover');
+  assert.ok(s.death.completed && s.fx.coins >= 500);
 });

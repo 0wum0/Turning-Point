@@ -1,0 +1,21 @@
+<%- include('_top', { actions: '' }) %>
+<div class="tabs"><% groups.forEach(function(x){ %><a href="/admin/settings/<%= x.id %>" class="<%= x.id === g.id ? 'on' : '' %>"><%- icon(x.icon) %> <%= x.title %></a><% }) %></div>
+<form class="card" method="post" action="/admin/settings/<%= g.id %>">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <% g.fields.forEach(function(f){ const key = f[0], label = f[1], type = f[2], hint = f[3], val = values[key]; %>
+    <% if (type === 'bool') { %><div class="field"><label class="check"><input type="checkbox" name="<%= key %>" value="1" <%= val ? 'checked' : '' %>> <%= label %></label><% if (hint) { %><div class="hint"><%= hint %></div><% } %></div>
+    <% } else if (type === 'int') { %><div class="field"><label><%= label %></label><input type="number" name="<%= key %>" value="<%= val %>"><% if (hint) { %><div class="hint"><%= hint %></div><% } %></div>
+    <% } else if (type === 'text') { %><div class="field"><label><%= label %></label><input type="text" name="<%= key %>" value="<%= val %>"></div>
+    <% } else if (type === 'textarea') { %><div class="field"><label><%= label %></label><textarea name="<%= key %>" style="min-height:140px"><%= val %></textarea><% if (hint) { %><div class="hint"><%= hint %></div><% } %></div>
+    <% } else if (type === 'select') { %><div class="field"><label><%= label %></label><select name="<%= key %>"><% f[4].forEach(function(o){ %><option value="<%= o %>" <%= val === o ? 'selected' : '' %>><%= o %></option><% }) %></select><% if (hint) { %><div class="hint"><%= hint %></div><% } %></div>
+    <% } else if (type === 'json') { %><div class="field"><label><%= label %></label><textarea class="code" name="<%= key %>" spellcheck="false"><%= JSON.stringify(val, null, 2) %></textarea><div class="hint">Gültiges JSON. Fehler werden vor dem Speichern abgefangen.</div></div>
+    <% } else if (type === 'smtp') { %>
+      <div class="grid c2"><div class="field"><label>Server</label><input type="text" name="smtp_host" value="<%= val.host %>" placeholder="smtp.hostinger.com"></div><div class="field"><label>Port</label><input type="number" name="smtp_port" value="<%= val.port %>"></div>
+      <div class="field"><label>Benutzer</label><input type="text" name="smtp_user" value="<%= val.user %>" autocomplete="off"></div><div class="field"><label>Passwort</label><input type="password" name="smtp_pass" placeholder="<%= val.pass ? '•••••• (unverändert lassen)' : '' %>" autocomplete="new-password"></div>
+      <div class="field"><label>Absender</label><input type="text" name="smtp_from" value="<%= val.from %>" placeholder="Turning Point &lt;noreply@deine-domain.de&gt;"></div><div class="field"><label class="check" style="margin-top:1.7rem"><input type="checkbox" name="smtp_secure" value="1" <%= val.secure ? 'checked' : '' %>> SSL/TLS direkt (Port 465)</label></div></div>
+      <div class="alert info"><%- icon('info') %><div>Bei Hostinger: Server <code>smtp.hostinger.com</code>, Port 465 (SSL) oder 587, Zugangsdaten deines E-Mail-Postfachs. <%= smtpOk ? 'SMTP ist konfiguriert.' : 'SMTP ist noch nicht konfiguriert.' %></div></div>
+    <% } %>
+  <% }) %>
+  <div class="row end"><% if (g.id === 'mail') { %><button class="btn" formaction="/admin/settings/mail/test" formnovalidate>Testmail an mich</button><% } %><button class="btn primary"><%- icon('check') %> Speichern</button></div>
+</form>
+<%- include('_bottom') %>

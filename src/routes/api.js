@@ -17,7 +17,7 @@ const wrap = (fn) => (req, res, next) => fn(req, res, next).catch((e) => {
   return next(e);
 });
 router.use((req, res, next) => (req.user ? next() : res.status(401).json({ ok: false, error: 'Bitte melde dich an.', login: true })));
-router.use(rateLimit({ windowMs: 60 * 1000, limit: 180, standardHeaders: true, legacyHeaders: false, keyGenerator: (req) => `u${req.user ? req.user.id : req.ip}`, validate: { keyGeneratorIpFallback: false }, message: { ok: false, error: 'Zu viele Anfragen – bitte kurz warten.' } }));
+router.use(rateLimit({ windowMs: 60 * 1000, limit: Number(process.env.TP_API_RATE) || 180, standardHeaders: true, legacyHeaders: false, keyGenerator: (req) => `u${req.user ? req.user.id : req.ip}`, validate: { keyGeneratorIpFallback: false }, message: { ok: false, error: 'Zu viele Anfragen – bitte kurz warten.' } }));
 
 router.get('/state', wrap(async (req, res) => {
   const r = await service.getView(req.user.id);

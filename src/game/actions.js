@@ -321,7 +321,12 @@ A.together = ({ state }) => {
   return { msg: 'Ein schöner gemeinsamer Tag.' };
 };
 
-A.plan = ({ state, input }) => { state.plan.children = !!input.on; return { msg: input.on ? 'Kinderwunsch: ja.' : 'Kinderwunsch: nein.' }; };
+A.plan = ({ state, input }) => {
+  const max = settings.get('game.max_children');
+  const t = clamp(Math.floor(Number(input.target)), 0, max);
+  state.plan.target = Number.isFinite(t) ? t : 3;
+  return { msg: state.plan.target === 0 ? 'Kein weiterer Kinderwunsch.' : `Wunsch-Kinderzahl: ${state.plan.target}.` };
+};
 
 /* ---------------- Kinder ---------------- */
 const child = (state, id) => { const c = state.children.find((x) => x.id === Number(id)); if (!c) fail('Kind nicht gefunden.'); return c; };

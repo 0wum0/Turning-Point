@@ -52,6 +52,11 @@ function createApp(cfg) {
     name: 'tp.sid', secret: cfg.sessionSecret, resave: false, saveUninitialized: false, rolling: true, store: new MySQLStore(),
     cookie: { httpOnly: true, sameSite: 'lax', secure: 'auto', maxAge: 1000 * 60 * 60 * 24 * 30 },
   }));
+  app.use((req, res, next) => {
+    res.locals.site = { name: settings.get('site.name'), tagline: settings.get('site.tagline') };
+    res.locals.era = 1; res.locals.user = null; res.locals.flash = null; res.locals.path = req.path;
+    next();
+  });
   app.use(csrf);
 
   // aktueller Nutzer + gemeinsame Template-Variablen

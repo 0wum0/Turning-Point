@@ -4,6 +4,7 @@ const { rngFor, int, chance } = require('./rng');
 const { yearOf } = require('./calendar');
 const { notice, chronicle, learn, propertyValue } = require('./core');
 const { estateShare, eligibleHeirs, ageOfChild } = require('./family');
+const { formatMoney } = require('./economy');
 
 /**
  * Generationenwechsel. Pflichtanteil: Jedes Kind (außer den mit dem Partner gegangenen) erhält
@@ -44,7 +45,7 @@ function createHeirState(world, old, childId, bequestIds) {
     skills: { learned: [], days: {} },
     properties: plan.properties.map((p) => ({ ...p, closedUntil: p.closedUntil })), nextPropId: old.nextPropId,
     insurance: { ...old.insurance }, cards: { health: old.cards.health }, butler: null,
-    partner: null, plan: { children: true }, children: [], nextChildId: 1,
+    partner: null, plan: { target: 3 }, children: [], nextChildId: 1,
     tree: old.tree,
     life: { baseYears: 60 + r() * 10, extraDays: 0, illness: null, rare: chance(r, 0.015), healthSum: 0, healthDays: 0, cardsUsed: 0 },
     hunger: 0, restZero: 0,
@@ -69,7 +70,7 @@ function createHeirState(world, old, childId, bequestIds) {
   chronicle(state, `Generation ${state.generation}: ${c.name} ${state.person.last} tritt das Erbe an.`, 'inheritance');
   notice(state, {
     level: 'good', title: `Generation ${state.generation}: Das Erbe ist angetreten`, tab: 'legacy',
-    text: `${c.name} erbt ${plan.properties.length ? plan.properties.map((p) => p.name).join(', ') + ' und ' : ''}${plan.cash} Cent in bar (Pflichtanteil 1/${plan.est.n}).`,
+    text: `${c.name} erbt ${plan.properties.length ? plan.properties.map((p) => p.name).join(', ') + ' und ' : ''}${formatMoney(plan.cash, world.currency(year))} in bar (Pflichtanteil 1/${plan.est.n}).`,
     info: ['Du spielst jetzt das Kind des Verstorbenen.', 'Das Erbe wird nach Pflichtanteil verteilt: Je mehr Kinder, desto kleiner der Anteil.', 'Suche dir Arbeit, halte die Familie zusammen und führe das Lebenswerk fort.'],
   });
   return { state, plan };

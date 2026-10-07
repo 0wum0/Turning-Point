@@ -33,7 +33,7 @@ export default {
           <button class="btn sm" data-p="gift">${icon('gift')} Geschenk · ${money(Math.round(400 * v.idx), cur)}</button>
           <button class="btn sm" data-p="together" ${p.canTogether ? '' : 'disabled'}>${icon('sparkles')} Gemeinsame Zeit</button>
           ${!p.married ? html`<button class="btn sm" data-p="marry">${icon('party-popper')} Heiraten · ${money(Math.round(2500 * v.idx), cur)}</button>` : ''}
-          <label class="check" style="margin-left:auto"><input type="checkbox" id="plan" ${v.plan.children ? 'checked' : ''}> Kinderwunsch</label>
+          <label class="row nowrap" style="margin-left:auto;gap:.5rem">${infoBtn(['Hier legst du fest, wie viele Kinder ihr euch wünscht. Kinder kommen nur, solange diese Zahl nicht erreicht ist.', 'Jedes Kind kostet Lebensmittel, Zimmer, Schule und Lebenshaltung. Das Kindergeld deckt nur etwa die Hälfte. Dafür gibt es einmalig Coins und spätere Erben.', 'Stelle die Wunsch-Kinderzahl passend zu deinem Einkommen und deinem Wohnraum ein.'], 'Kinderwunsch')}<span class="dim small">Wunsch-Kinderzahl</span><select id="plan" style="width:auto;padding:.35rem 2rem .35rem .7rem">${Array.from({ length: v.maxChildren + 1 }, (_, i) => html`<option value="${i}" ${i === v.plan.target ? 'selected' : ''}>${i}</option>`)}</select></label>
         </div>`
       : html`<div class="empty-note">${icon('heart')}<span>Du lebst allein. In der Zeitung (Kontakte) findest du Menschen, die jemanden suchen.</span><button class="btn sm primary" data-go="newspaper">Kontakte ansehen</button></div>`}
     </section>
@@ -45,7 +45,7 @@ export default {
   bind(root, ctx) {
     on(root, 'click', '[data-go]', (e, t) => ctx.go(t.dataset.go));
     on(root, 'click', '[data-p]', (e, t) => ctx.act(t.dataset.p, {}));
-    const plan = root.querySelector('#plan'); if (plan) plan.addEventListener('change', (e) => ctx.act('plan', { on: e.target.checked }, { noRender: true }));
+    const plan = root.querySelector('#plan'); if (plan) plan.addEventListener('change', (e) => ctx.act('plan', { target: Number(e.target.value) }, { noRender: true }));
     on(root, 'click', '[data-school]', (e, t) => ctx.act('school', { childId: t.dataset.school, type: t.dataset.type }));
     on(root, 'click', '[data-nopath]', (e, t) => ctx.act('path', { childId: t.dataset.nopath, kind: 'none' }));
     on(root, 'click', '[data-gift]', (e, t) => ctx.act('giftChild', { childId: t.dataset.gift }));

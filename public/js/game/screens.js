@@ -56,7 +56,7 @@ export function renderHeir(root, ctx) {
     <section class="card create-card glow">
       <div class="serif dim" style="font-size:.9rem;letter-spacing:.2em;text-transform:uppercase">${v.date.label}</div>
       <h1 style="font-size:2.4rem;margin-top:.3rem">${v.person.name} ist gestorben.</h1>
-      <p class="dim">${v.death ? v.death.reason : ''} – im Alter von ${v.person.age} Jahren. Ein Leben endet, das Vermächtnis geht weiter.</p>
+      <p class="dim">Todesursache: ${v.death ? v.death.reason : ''} · ${v.person.age} Jahre alt. Ein Leben endet, das Vermächtnis geht weiter.</p>
       <hr>
       <div class="row spread"><h3 class="mb0">Wer führt die Familie weiter? ${infoBtn(['Ein volljähriges Kind wird zum neuen Spielcharakter.', 'Der Pflichtanteil verteilt das Erbe gleichmäßig auf alle Kinder – je mehr Kinder, desto kleiner dein Anteil. Coins sind davon ausgenommen und bleiben dir ganz.', 'Wähle den Erben und ordne ihm Immobilien zu, die in seinen Anteil passen.'], 'Erbe')}</h3></div>
       <div class="choice mt" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">${v.heirs.map((h) => html`<label><input type="radio" name="heir" value="${h.id}" ${sel.childId === h.id ? 'checked' : ''}><span class="opt">${h.name}<small>${h.age} Jahre${h.profession ? ' · ' + h.profession : ''}</small></span></label>`)}</div>
@@ -68,7 +68,7 @@ export function renderHeir(root, ctx) {
     </section></div>`);
   const plan = root.querySelector('#plan > div');
   async function preview() {
-    try { const r = await api('POST', '/api/heir/preview', { childId: sel.childId, bequest: sel.bequest }); mount(plan, html`Dein Erbe: <b>${r.properties.length ? r.properties.join(', ') + ' und ' : ''}${moneyShort(r.cash, cur)} in bar</b> (Pflichtanteil 1/${r.n}).`); } catch (e) { mount(plan, html`${e.message}`); }
+    try { const r = (await api('POST', '/api/heir/preview', { childId: sel.childId, bequest: sel.bequest })).plan; mount(plan, html`Dein Erbe: <b>${r.properties.length ? r.properties.join(', ') + ' und ' : ''}${moneyShort(r.cash, cur)} in bar</b> (Pflichtanteil 1/${r.n}).`); } catch (e) { mount(plan, html`${e.message}`); }
   }
   root.querySelectorAll('input[name=heir]').forEach((r) => r.addEventListener('change', () => { sel.childId = Number(r.value); preview(); }));
   root.querySelectorAll('[data-prop]').forEach((c) => c.addEventListener('change', () => { sel.bequest = [...root.querySelectorAll('[data-prop]')].filter((x) => x.checked).map((x) => Number(x.dataset.prop)); preview(); }));
@@ -82,9 +82,9 @@ export function renderHeir(root, ctx) {
 /* ---------------- Game Over ---------------- */
 export function renderGameOver(root, ctx) {
   const v = ctx.view; const d = v.death || {};
-  mount(root, html`<div class="create-wrap"><div class="create-head"><span class="brand"><span class="mark">${icon('hourglass')}</span><span>TURNING POINT<small>Game Over</small></span></span></div>
+  mount(root, html`<div class="create-wrap"><div class="create-head"><span class="brand"><span class="mark">${icon('hourglass')}</span><span>TURNING POINT<small>${d.completed ? 'Vermächtnis' : 'Game Over'}</small></span></span></div>
     <section class="card create-card">
-      <span class="chip bad">${icon('skull')} Die Linie endet</span>
+      ${d.completed ? html`<span class="chip good">${icon('trophy')} Zyklus vollendet</span>` : html`<span class="chip bad">${icon('skull')} Die Linie endet</span>`}
       <h1 style="font-size:2.6rem;margin-top:.8rem">${v.person.name}</h1>
       <p class="serif" style="font-size:1.2rem">${d.message || d.reason || 'Das Leben ist zu Ende.'}</p>
       <hr>
