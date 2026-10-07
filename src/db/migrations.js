@@ -164,6 +164,57 @@ const MIGRATIONS = [
     ],
   },
   { id: '003_city_aerial', up: ['ALTER TABLE cities ADD COLUMN aerial VARCHAR(255) NULL'] },
+  {
+    id: '004_anticheat_stats',
+    up: [
+      `CREATE TABLE IF NOT EXISTS cheat_flags (
+        id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        user_id INT UNSIGNED NOT NULL,
+        rule VARCHAR(40) NOT NULL,
+        weight INT NOT NULL DEFAULT 10,
+        detail TEXT NULL,
+        count INT NOT NULL DEFAULT 1,
+        status ENUM('open','dismissed','confirmed') NOT NULL DEFAULT 'open',
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        last_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        KEY idx_cf_user (user_id, status),
+        KEY idx_cf_created (created_at),
+        KEY idx_cf_rule (rule),
+        CONSTRAINT fk_cf_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+      `CREATE TABLE IF NOT EXISTS user_ips (
+        user_id INT UNSIGNED NOT NULL,
+        ip VARCHAR(64) NOT NULL,
+        first_seen DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        last_seen DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        hits INT NOT NULL DEFAULT 1,
+        PRIMARY KEY (user_id, ip),
+        KEY idx_ui_ip (ip, last_seen),
+        CONSTRAINT fk_ui_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+      `CREATE TABLE IF NOT EXISTS user_snap (
+        user_id INT UNSIGNED NOT NULL PRIMARY KEY,
+        coins INT NOT NULL DEFAULT 0,
+        at BIGINT NOT NULL DEFAULT 0,
+        CONSTRAINT fk_us_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+      `CREATE TABLE IF NOT EXISTS daily_stats (
+        day DATE NOT NULL PRIMARY KEY,
+        users_total INT NOT NULL DEFAULT 0,
+        new_users INT NOT NULL DEFAULT 0,
+        active_users INT NOT NULL DEFAULT 0,
+        online_peak INT NOT NULL DEFAULT 0,
+        chars_alive INT NOT NULL DEFAULT 0,
+        coins_total BIGINT NOT NULL DEFAULT 0,
+        efs_total BIGINT NOT NULL DEFAULT 0,
+        money_total BIGINT NOT NULL DEFAULT 0,
+        revenue_cents INT NOT NULL DEFAULT 0,
+        ad_claims INT NOT NULL DEFAULT 0,
+        flags INT NOT NULL DEFAULT 0,
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    ],
+  },
 ];
 
 async function ensureTable(db) {

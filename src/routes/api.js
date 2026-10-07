@@ -13,6 +13,7 @@ const { audit } = require('../lib/audit');
 const stripe = require('../lib/stripe');
 const places = require('../game/places');
 const config = require('../config');
+const anticheat = require('../lib/anticheat');
 
 const router = express.Router();
 const wrap = (fn) => (req, res, next) => fn(req, res, next).catch((e) => {
@@ -21,6 +22,8 @@ const wrap = (fn) => (req, res, next) => fn(req, res, next).catch((e) => {
 });
 router.use((req, res, next) => (req.user ? next() : res.status(401).json({ ok: false, error: 'Bitte melde dich an.', login: true })));
 router.use(rateLimit({ windowMs: 60 * 1000, limit: Number(process.env.TP_API_RATE) || 180, standardHeaders: true, legacyHeaders: false, keyGenerator: (req) => `u${req.user ? req.user.id : req.ip}`, validate: { keyGeneratorIpFallback: false }, message: { ok: false, error: 'Zu viele Anfragen – bitte kurz warten.' } }));
+
+router.use(anticheat.middleware);
 
 router.get('/state', wrap(async (req, res) => {
   const r = await service.getView(req.user.id);
@@ -48,7 +51,11 @@ router.post('/create', wrap(async (req, res) => {
 }));
 
 router.post('/action/:name', wrap(async (req, res) => {
-  const r = await service.doAction(req.user.id, req.params.name, req.body || {});
+  let r;
+  try { r = await service.doAction(req.user.id, req.params.name, req.body || {}); } catch (e) {
+    if (req.params.name === 'taskFinish' && e instanceof actions.ActionError) anticheat.taskRejected(req.user.id);
+    throw e;
+  }
   res.json({ ok: true, message: r.message, level: r.level, view: r.view });
 }));
 
@@ -121,6 +128,7 @@ router.post('/ads/start', wrap(async (req, res) => {
   if (n >= settings.get('ads.daily_cap')) throw new actions.ActionError('Du hast heute genug Werbung gesehen. Morgen geht es weiter.');
   const token = crypto.randomBytes(16).toString('hex');
   await db.query('INSERT INTO ad_claims (user_id, token, purpose, started_at) VALUES (?,?,?,?)', [req.user.id, token, purpose, Date.now()]);
+  anticheat.adStarted(req.user.id);
   const provider = settings.get('ads.provider'); const url = settings.get('ads.custom_url');
   res.json({ ok: true, token, seconds: settings.get('ads.min_seconds'), provider, url: provider === 'custom' && url ? `${url}${String(url).includes('?') ? '&' : '?'}tp_token=${token}` : null });
 }));
@@ -130,7 +138,7 @@ router.post('/ads/claim', wrap(async (req, res) => {
   const ad = await db.one('SELECT * FROM ad_claims WHERE token = ? AND user_id = ?', [token, req.user.id]);
   if (!ad || ad.claimed_at) throw new actions.ActionError('Diese Belohnung ist nicht mehr verfügbar.');
   const minMs = settings.get('ads.min_seconds') * 1000 - 600;
-  if (Date.now() - ad.started_at < minMs) throw new actions.ActionError('Die Anzeige wurde nicht bis zum Ende angesehen.');
+  if (Date.now() - ad.started_at < minMs) { anticheat.adTooFast(req.user.id, Date.now() - ad.started_at); throw new actions.ActionError('Die Anzeige wurde nicht bis zum Ende angesehen.'); }
   const claimed = await db.query('UPDATE ad_claims SET claimed_at = ? WHERE id = ? AND claimed_at IS NULL', [Date.now(), ad.id]);
   if (!claimed.affectedRows) throw new actions.ActionError('Bereits eingelöst.');
   let message = '';

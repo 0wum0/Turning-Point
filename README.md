@@ -94,6 +94,8 @@ Der Installer zeigt dir diese Werte am Ende zum Kopieren an. Das Session-Geheimn
 - **Einstellungen:** jede Zahl, jeder Text und jede Liste (Preise, Löhne, Aufgaben, Betriebe, Ämter, Ereignis-Wahrscheinlichkeiten, Startseite, Ankündigungs-Banner) per Formular; „Standard“ setzt zurück; „Experten“ zeigt wirklich alle Werte.
 - **Städte/Berufe:** Tabellen direkt editierbar, Duplizieren, Löschen (geschützt, wenn in Spielständen verwendet), Lohn-Faktor für alle Berufe.
 - **Zeitung & Eilmeldungen:** Eilmeldungen/Nachrichten veröffentlichen (Stadt, Zeitraum), alle automatisch erzeugten Stadtnachrichten je Jahr einsehen, sämtliche Zeitungstexte (Nachrichten-Vorlagen, Straßen, Pensionen, Kontakttexte, Beschriftungen, Ratgeber) unter Einstellungen → „Zeitung & Texte“ ändern.
+- **Dashboard & Analytics:** Kennzahlen mit Verlauf, Charts (Wachstum, Aktivität, Umsatz, Logins, Coins/Spielgeld, Berufe, Städte, Wohnformen, Vermögen, Generationen, Lebensmeter), Kohorten-Bindung und Spieler-Trichter; Zeitraum 14–180 Tage.
+- **Anti-Cheat:** serverseitige Engine (Bot-Takt, Anfrage-Flut, zu schnelle Aufgaben/Werbung, Mehrfachkonten/IP-Sharing, Zeit-/EFS-Manipulation, unmögliche Einnahmen, Coin-Zufluss, Datenintegrität) mit Risiko-Score, Verdachtsliste, IP-Gruppen, Voll-Scan und optionaler automatischer Sperre (Einstellungen → Anti-Cheat).
 - **Finanzen, Werkzeuge, Backup:** Käufe/Erstattungen/Gutschriften, Coins an Gruppen, Meldung an alle Spieler, Aufräumen, Konfig-/Vollsicherung herunterladen und einspielen, Server-Log mit Filter.
 
 ## 3. Lokale Entwicklung

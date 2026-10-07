@@ -7,6 +7,7 @@ const settings = require('../settings');
 const mailer = require('../lib/mailer');
 const { randomToken } = require('../lib/security');
 const { audit } = require('../lib/audit');
+const anticheat = require('../lib/anticheat');
 
 const router = express.Router();
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 25, standardHeaders: true, legacyHeaders: false, message: 'Zu viele Versuche. Bitte warte einige Minuten.' });
@@ -49,6 +50,7 @@ router.post('/login', authLimiter, async (req, res, next) => {
       if (err) return next(err);
       await db.query('UPDATE users SET last_login_at = NOW() WHERE id = ?', [u.id]);
       await audit(req, 'login', u.username);
+      anticheat.trackIp(req, u.id);
       res.redirect(safeNext(req.body.next));
     });
   } catch (e) { next(e); }
@@ -82,6 +84,7 @@ router.post('/register', authLimiter, async (req, res, next) => {
       [email, username, hash, 'player', needVerify ? 0 : 1, token, settings.get('coins.start'), Date.now(), JSON.stringify({})],
     );
     await audit(req, 'register', username);
+    anticheat.trackIp(req, r.insertId);
     if (needVerify) {
       const link = `${baseUrl(req)}/verify/${token}`;
       mailer.send({ to: email, subject: 'Bestätige deine E-Mail – Turning Point', text: `Willkommen bei Turning Point, ${username}!\n\nBitte bestätige deine E-Mail-Adresse:\n${link}\n`, html: `<p>Willkommen bei <b>Turning Point</b>, ${username}!</p><p><a href="${link}">E-Mail bestätigen</a></p>` }).catch(() => {});

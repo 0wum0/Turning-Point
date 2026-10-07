@@ -23,9 +23,21 @@ router.use((req, res, next) => {
   if (!req.user) return res.redirect('/login?next=/admin');
   if (req.user.role !== 'admin') return res.status(403).render('error', { code: 403, title: 'Kein Zugriff', message: 'Dieser Bereich ist nur für Administratoren.' });
   res.locals.adminNav = true;
+  res.locals.adminBadges = {};
   res.locals.era = 1;
   next();
 });
+router.use(async (req, res, next) => {
+  try {
+    if (!adminBadgeCache || Date.now() - adminBadgeCache.at > 20000) {
+      const r = await db.one("SELECT COUNT(*) n FROM cheat_flags WHERE status = 'open'");
+      adminBadgeCache = { at: Date.now(), anticheat: r.n };
+    }
+    res.locals.adminBadges = { anticheat: adminBadgeCache.anticheat };
+  } catch (_) { /* Badge ist optional */ }
+  next();
+});
+let adminBadgeCache = null;
 const wrap = (fn) => (req, res, next) => fn(req, res, next).catch(next);
 const flash = (req, type, msg) => { req.session.flash = { type, msg }; };
 const back = (req, res, fallback) => res.redirect(req.get('referer') && req.get('referer').includes('/admin') ? req.get('referer') : fallback);
@@ -37,6 +49,7 @@ const clean = (v, max) => String(v == null ? '' : v).trim().slice(0, max);
 const H = { wrap, flash, back, int, num, clean };
 require('./admin-players')(router, H);
 require('./admin-tools')(router, H);
+require('./admin-insights')(router, H);
 
 router.post('/users/:id/:action', wrap(async (req, res) => {
   const id = int(req.params.id);
@@ -205,6 +218,7 @@ const GROUPS = [
   { id: 'tasks', title: 'Gebäude-Aufgaben', icon: 'hammer', fields: [['economy:tasks', 'Aufgaben je Gebäudetyp (Minispiel, Dauer, Abkühlzeit, Belohnung)', 'econ', 'mini: collect · sequence · hunt (oder leer = ohne Minispiel). reward: efs, rest, wellbeing, health, money, influence, childSat, bizCash.']] },
   { id: 'companies', title: 'Betriebe & Politik', icon: 'store', fields: [['economy:companies,politics,gambling', 'Betriebe (Stufen, Löhne), politische Ämter, Glücksspiel', 'econ']] },
   { id: 'events', title: 'Ereignisse', icon: 'zap', fields: [['economy:events', 'Zufallsereignisse: Stadt (Unwetter, Feuer …), privat, Betriebe', 'econ', 'Wahrscheinlichkeiten 0–1, Kosten in % des Wertes, Beträge in Cent (Preisindex 1).']] },
+  { id: 'anticheat', title: 'Anti-Cheat', icon: 'shield', fields: [['anticheat', 'Anti-Cheat-Regeln: Schwellen, Gewichte, automatische Maßnahmen (autoAction: flag · throttle · ban)', 'json', 'Jede Regel hat ein Gewicht; der Risiko-Score ergibt sich aus den Gewichten offener Verdachtsfälle (verfällt über decayDays).']] },
   { id: 'texts', title: 'Zeitung & Texte', icon: 'newspaper', fields: [['texts', 'Zeitungstexte: Nachrichten-Vorlagen, Straßen, Pensionen, Kontaktanzeigen, Beschriftungen, Ratgeber', 'json', 'Platzhalter in Nachrichten: {city} = Stadtname, {kind} = Unwetterart. Listen (Straßen, Pensionen, Kontakttexte …) lassen sich beliebig erweitern.']] },
   { id: 'newsflash', title: 'Eilmeldungen', icon: 'bell', fields: [['news.custom', 'Eilmeldungen & eigene Nachrichten (erscheinen in der Zeitung)', 'json', 'Felder: active, flash (true = rote EILMELDUNG), title, text, cityId (0 = alle Städte), fromYear, toYear. Schneller geht es unter Admin → Zeitung.']] },
   { id: 'landing', title: 'Startseite', icon: 'globe', fields: [['landing', 'Texte der Startseite (Titel, Features, Statistik, Zitat). Titel: \\n = Zeilenumbruch', 'json']] },
@@ -230,6 +244,10 @@ function validateJson(key, v) {
     if (!Array.isArray(e.rentPerRoom) || e.rentPerRoom.length !== 4) throw new Error('economy.rentPerRoom: 4 Werte erwartet.');
     for (const k of ['flat', 'house_small', 'house_large', 'villa']) if (!(e.property && e.property[k] && e.property[k].price > 0)) throw new Error(`economy.property.${k} fehlt.`);
     for (const k of ['hausrat', 'gebaeude', 'gesundheit']) if (!(e.insurance && e.insurance[k])) throw new Error(`economy.insurance.${k} fehlt.`);
+  } else if (key === 'anticheat') {
+    if (!['flag', 'throttle', 'ban'].includes(v.autoAction)) throw new Error('anticheat.autoAction: flag, throttle oder ban erwartet.');
+    if (!v.rules || typeof v.rules !== 'object') throw new Error('anticheat.rules fehlt.');
+    for (const [k, r] of Object.entries(v.rules)) if (!r || typeof r.weight !== 'number') throw new Error(`anticheat.rules.${k}.weight: Zahl erwartet.`);
   } else if (key === 'packages') {
     if (!Array.isArray(v)) throw new Error('packages: Liste erwartet.');
     v.forEach((p) => { if (!p.id || !p.name || !Number.isFinite(p.price_cents)) throw new Error('Jedes Paket braucht id, name und price_cents.'); });

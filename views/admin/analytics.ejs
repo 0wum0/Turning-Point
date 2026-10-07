@@ -1,0 +1,48 @@
+<%- include('_top', { title: 'Analytics', subtitle: 'Wachstum, Bindung, Wirtschaft und Spielverhalten im Detail.', actions: '<div class="seg">' + [14, 30, 90, 180].map(function(r){ return '<a class="' + (r === range ? 'on' : '') + '" href="?range=' + r + '">' + r + ' Tage</a>'; }).join('') + '</div>' }) %>
+<%
+const C = (o) => JSON.stringify(o);
+const nf = (n) => Number(n || 0).toLocaleString('de-DE');
+const pct = (a, b) => b ? Math.round(a / b * 100) : 0;
+const sum = (a) => a.reduce((x, y) => x + y, 0);
+const funnel = [['Konten', f.users], ['Mit Charakter', f.withchar], ['Mehr als 1 Leben', f.multi], ['Haben Werbung gesehen', f.adusers], ['Zahlende Spieler', f.payers], ['Dauerkarte', f.subs]];
+%>
+<div class="kpis">
+  <div class="kpi"><span class="ico"><%- icon('users') %></span><label>Neue Spieler (<%= range %> T)</label><b><%= nf(sum(ser.newUsers)) %></b><small><span>Ø <%= (sum(ser.newUsers) / range).toFixed(1) %> / Tag</span><span data-spark="<%= C(ser.newUsers) %>"></span></small></div>
+  <div class="kpi good"><span class="ico"><%- icon('activity') %></span><label>Ø aktive Spieler / Tag</label><b><%= Math.round(sum(ser.activeUsers) / range) %></b><small><span>Spitze <%= Math.max.apply(null, ser.activeUsers.concat([0])) %></span><span data-spark="<%= C(ser.activeUsers) %>"></span></small></div>
+  <div class="kpi violet"><span class="ico"><%- icon('wallet') %></span><label>Umsatz (<%= range %> T)</label><b><%= nf(Math.round(sum(ser.revenue))) %> €</b><small><span><%= sum(ser.purchases) %> Käufe</span><span data-spark="<%= C(ser.revenue) %>"></span></small></div>
+  <div class="kpi pink"><span class="ico"><%- icon('video') %></span><label>Werbe-Belohnungen</label><b><%= nf(sum(ser.adClaims)) %></b><small><span>in <%= range %> Tagen</span><span data-spark="<%= C(ser.adClaims) %>"></span></small></div>
+  <div class="kpi info"><span class="ico"><%- icon('landmark') %></span><label>Lebende Charaktere</label><b><%= nf(eco.n) %></b><small><span>Ø Spieltag <%= Math.round(eco.avgday) %></span></small></div>
+  <div class="kpi teal"><span class="ico"><%- icon('heart') %></span><label>Mit Partner / Betrieben</label><b><%= pct(dist.partner, dist.n) %> %</b><small><span><%= dist.comps %> Betriebe · <%= dist.props %> Immobilien</span></small></div>
+</div>
+
+<div class="grid dash mt" style="--gap:1rem">
+  <section class="card span-12"><div class="card-title"><%- icon('trending-up') %> Spieler-Wachstum</div>
+    <div data-chart="<%= C({ type: 'combo', labels: ser.days, series: [{ name: 'Konten gesamt', type: 'area', data: ser.totalUsers, color: '#6aa7ff' }], height: 240 }) %>"></div></section>
+  <section class="card span-6"><div class="card-title"><%- icon('users') %> Neue &amp; aktive Spieler</div>
+    <div data-chart="<%= C({ type: 'combo', labels: ser.days, series: [{ name: 'Neu', type: 'bar', data: ser.newUsers, color: '#e0a94a' }, { name: 'Aktiv', type: 'line', data: ser.activeUsers, color: '#4fd1a1' }], height: 230 }) %>"></div></section>
+  <section class="card span-6"><div class="card-title"><%- icon('lock') %> Logins &amp; fehlgeschlagene Logins</div>
+    <div data-chart="<%= C({ type: 'combo', labels: ser.days, series: [{ name: 'Logins', type: 'line', data: ser.logins, color: '#4fd1a1' }, { name: 'Fehlgeschlagen', type: 'bar', data: ser.failedLogins, color: '#ff6b72' }], height: 230 }) %>"></div></section>
+  <section class="card span-6"><div class="card-title"><%- icon('wallet') %> Umsatz pro Tag</div>
+    <div data-chart="<%= C({ type: 'bar', fmt: 'eur', labels: ser.days, series: [{ name: 'Umsatz', data: ser.revenue, color: '#e0a94a' }], height: 230, empty: 'Noch kein Umsatz im Zeitraum.' }) %>"></div></section>
+  <section class="card span-6"><div class="card-title"><%- icon('video') %> Werbung &amp; Käufe</div>
+    <div data-chart="<%= C({ type: 'combo', labels: ser.days, series: [{ name: 'Werbe-Belohnungen', type: 'bar', data: ser.adClaims, color: '#f472b6' }, { name: 'Käufe', type: 'line', data: ser.purchases, color: '#a78bfa' }], height: 230 }) %>"></div></section>
+  <section class="card span-6"><div class="card-title"><%- icon('coins') %> Coins im Umlauf</div>
+    <div data-chart="<%= C({ type: 'area', labels: ser.days, series: [{ name: 'Coins', data: ser.coins, color: '#38bdf8' }], height: 220, empty: 'Schnappschüsse sammeln sich ab jetzt – morgen sind hier mehrere Punkte.' }) %>"></div></section>
+  <section class="card span-6"><div class="card-title"><%- icon('banknote') %> Spielgeld &amp; lebende Charaktere</div>
+    <div data-chart="<%= C({ type: 'combo', labels: ser.days, series: [{ name: 'Spielgeld gesamt', type: 'area', data: ser.money.map(function(v){ return v == null ? null : v / 100; }), color: '#e0a94a' }], height: 220, empty: 'Schnappschüsse sammeln sich ab jetzt.' }) %>"></div></section>
+  <section class="card span-4"><div class="card-title"><%- icon('briefcase') %> Berufe</div><div data-chart="<%= C({ type: 'hbar', labels: dist.professions.map(function(x){ return x[0]; }), series: [{ name: 'n', data: dist.professions.map(function(x){ return x[1]; }), color: '#e0a94a' }] }) %>"></div></section>
+  <section class="card span-4"><div class="card-title"><%- icon('map-pin') %> Städte</div><div data-chart="<%= C({ type: 'hbar', labels: dist.cities.map(function(x){ return x[0]; }), series: [{ name: 'n', data: dist.cities.map(function(x){ return x[1]; }), color: '#4fd1a1' }] }) %>"></div></section>
+  <section class="card span-4"><div class="card-title"><%- icon('house') %> Wohnformen</div><div data-chart="<%= C({ type: 'donut', center: 'Charaktere', labels: dist.housing.map(function(x){ return x[0]; }), series: [{ name: 'Wohnen', data: dist.housing.map(function(x){ return x[1]; }) }] }) %>"></div></section>
+  <section class="card span-4"><div class="card-title"><%- icon('banknote') %> Vermögensverteilung</div><div data-chart="<%= C({ type: 'bar', labels: dist.wealth.map(function(x){ return x[0]; }), series: [{ name: 'Charaktere', data: dist.wealth.map(function(x){ return x[1]; }), color: '#6aa7ff' }], height: 210 }) %>"></div></section>
+  <section class="card span-4"><div class="card-title"><%- icon('calendar') %> Spieljahre</div><div data-chart="<%= C({ type: 'bar', labels: dist.eras.map(function(x){ return x[0]; }), series: [{ name: 'Charaktere', data: dist.eras.map(function(x){ return x[1]; }), color: '#a78bfa' }], height: 210 }) %>"></div></section>
+  <section class="card span-4"><div class="card-title"><%- icon('users') %> Generationen</div><div data-chart="<%= C({ type: 'bar', labels: dist.generations.map(function(x){ return x[0]; }), series: [{ name: 'Charaktere', data: dist.generations.map(function(x){ return x[1]; }), color: '#f472b6' }], height: 210 }) %>"></div></section>
+  <section class="card span-6"><div class="card-title"><%- icon('heart-pulse') %> Durchschnittliche Lebensmeter</div>
+    <div data-chart="<%= C({ type: 'hbar', fmt: 'pct', labels: ['Kühlschrank', 'Wohlbefinden', 'Erholung', 'Gesundheit'], series: [{ name: 'Ø', data: [dist.avg.fridge, dist.avg.wellbeing, dist.avg.rest, dist.avg.health], color: '#4fd1a1' }] }) %>"></div></section>
+  <section class="card span-6"><div class="card-title"><%- icon('layers') %> Spieler-Trichter</div>
+    <div class="funnel"><% funnel.forEach(function(r){ %><div><span><%= r[0] %></span><span class="bar"><i style="width:<%= pct(r[1], f.users) %>%"></i></span><b><%= nf(r[1]) %> · <%= pct(r[1], f.users) %> %</b></div><% }) %></div></section>
+  <section class="card span-12"><div class="card-title"><%- icon('refresh-cw') %> Kohorten-Bindung (Anmeldewoche → noch aktiv nach …)</div>
+    <div class="table-wrap"><table class="table retention"><thead><tr><th>Woche ab</th><th class="num">Neu</th><th>nach 1 Tag</th><th>nach 7 Tagen</th><th>nach 14 Tagen</th><th>nach 30 Tagen</th></tr></thead>
+    <tbody><% ret.forEach(function(r){ %><tr><td><%= new Date(r.week).toLocaleDateString('de-DE') %></td><td class="num"><%= r.n %></td><% [r.d1, r.d7, r.d14, r.d30].forEach(function(v){ %><td class="pct" style="--v:<%= pct(v, r.n) * 0.6 %>"><%= pct(v, r.n) %> %</td><% }) %></tr><% }) %>
+    <% if (!ret.length) { %><tr><td colspan="6" class="dim">Noch keine Kohorten.</td></tr><% } %></tbody></table></div></section>
+</div>
+<%- include('_bottom') %>

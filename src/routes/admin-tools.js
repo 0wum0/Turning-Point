@@ -21,24 +21,6 @@ module.exports = function mount(router, H) {
   const { wrap, flash, int, num, clean } = H;
   const reload = async () => { worldSvc.invalidate(); await worldSvc.load(); };
 
-  /* ============================ Dashboard ============================ */
-  router.get('/', wrap(async (req, res) => {
-    const [u] = await db.query("SELECT COUNT(*) total, SUM(created_at > NOW() - INTERVAL 7 DAY) week, SUM(last_seen_at > NOW() - INTERVAL 1 DAY) active, SUM(last_seen_at > NOW() - INTERVAL 10 MINUTE) online, COALESCE(SUM(coins),0) coins, COALESCE(SUM(efs_pool),0) efs, SUM(banned) banned, SUM(sub_until > ?) subs FROM users", [Date.now()]);
-    const [c] = await db.query("SELECT SUM(status='alive') alive, SUM(status='dead') dead, SUM(status='gameover') ended, COUNT(*) total, MAX(generation) maxgen, AVG(generation) avggen FROM characters");
-    const [a] = await db.query('SELECT COUNT(*) n, COALESCE(SUM(reward),0) coins FROM ad_claims WHERE claimed_at > ?', [Date.now() - 86400000]);
-    const [p] = await db.query("SELECT COUNT(*) n, COALESCE(SUM(price_cents),0) cents FROM purchases WHERE status='completed'");
-    const [p30] = await db.query("SELECT COUNT(*) n, COALESCE(SUM(price_cents),0) cents FROM purchases WHERE status='completed' AND created_at > NOW() - INTERVAL 30 DAY");
-    const regs = await db.query("SELECT DATE(created_at) d, COUNT(*) n FROM users WHERE created_at > NOW() - INTERVAL 14 DAY GROUP BY DATE(created_at) ORDER BY d");
-    const revenue = await db.query("SELECT DATE(created_at) d, SUM(price_cents) cents FROM purchases WHERE status='completed' AND created_at > NOW() - INTERVAL 14 DAY GROUP BY DATE(created_at) ORDER BY d");
-    const recent = await db.query('SELECT id, username, role, created_at, last_seen_at FROM users ORDER BY id DESC LIMIT 6');
-    const startYear = settings.get('game.start_year');
-    const alive = await db.query("SELECT c.id, c.name, c.game_day, c.money, c.generation, u.username FROM characters c JOIN users u ON u.id = c.user_id WHERE c.status='alive' ORDER BY c.updated_at DESC LIMIT 6");
-    const rich = await db.query("SELECT c.id, c.name, c.game_day, c.money, c.generation, u.username FROM characters c JOIN users u ON u.id = c.user_id WHERE c.status='alive' ORDER BY c.money DESC LIMIT 6");
-    const years = await db.query("SELECT FLOOR(game_day / 365) y, COUNT(*) n FROM characters WHERE status='alive' GROUP BY y ORDER BY y");
-    const map = (x) => ({ ...x, year: startYear + Math.floor(x.game_day / 365) });
-    res.render('admin/dashboard', { title: 'Dashboard', active: 'dashboard', u, c, a, p, p30, regs, revenue, recent, alive: alive.map(map), rich: rich.map(map), years: years.map((y) => ({ year: startYear + Number(y.y), n: y.n })) });
-  }));
-
   /* ============================ Finanzen ============================ */
   router.get('/finance', wrap(async (req, res) => {
     const st = clean(req.query.st, 20); const q = clean(req.query.q, 60);
@@ -162,6 +144,14 @@ module.exports = function mount(router, H) {
     list.push({ active: true, flash: !!b.flash, title, text, cityId: int(b.cityId), fromYear: int(b.fromYear, 0) || settings.get('game.start_year'), toYear: int(b.toYear, 0) || 9999 });
     await saveNews(list); await audit(req, 'news_add', title);
     flash(req, 'good', b.flash ? 'Eilmeldung veröffentlicht – Spieler sehen sie in der Zeitung.' : 'Nachricht veröffentlicht.');
+    res.redirect('/admin/news');
+  }));
+  router.post('/news/:i(\\d+)/edit', wrap(async (req, res) => {
+    const list = (settings.get('news.custom') || []).slice(); const i = int(req.params.i); const b = req.body;
+    if (!list[i]) return res.redirect('/admin/news');
+    list[i] = { ...list[i], title: clean(b.title, 120), text: clean(b.text, 800), flash: !!b.flash, cityId: int(b.cityId), fromYear: int(b.fromYear, 0) || settings.get('game.start_year'), toYear: int(b.toYear, 0) || 9999 };
+    await saveNews(list); await audit(req, 'news_edit', list[i].title);
+    flash(req, 'good', 'Meldung gespeichert.');
     res.redirect('/admin/news');
   }));
   router.post('/news/:i(\\d+)/:act(toggle|delete|flash)', wrap(async (req, res) => {

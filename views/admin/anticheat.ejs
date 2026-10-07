@@ -1,0 +1,46 @@
+<%- include('_top', { title: 'Anti-Cheat', subtitle: 'Automatische Erkennung von Bots, Mehrfachkonten, Zeit-Manipulation und unmöglichen Spielständen.', actions: '<form method="post" action="/admin/anticheat/scan"><input type="hidden" name="_csrf" value="' + csrfToken + '"><button class="btn primary sm">Alle Spielstände jetzt prüfen</button></form><a class="btn sm" href="/admin/settings/anticheat">Regeln &amp; Schwellen</a>' }) %>
+<% var csrf = '<input type="hidden" name="_csrf" value="' + csrfToken + '">'; const C = (o) => JSON.stringify(o); const nf = (n) => Number(n || 0).toLocaleString('de-DE'); const when = (d) => new Date(d).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); %>
+<div class="alert <%= cfg.enabled ? 'info' : 'warn' %>"><%- icon('shield') %><div><b>Anti-Cheat ist <%= cfg.enabled ? 'aktiv' : 'AUS' %>.</b> Modus: <b><%= { flag: 'nur melden', throttle: 'melden + bremsen ab Score ' + cfg.throttleAt, ban: 'melden + bremsen + automatisch sperren ab Score ' + cfg.banAt }[cfg.autoAction] %></b>.
+  Der Score fasst offene Verdachtsfälle zusammen und verfällt über <%= cfg.decayDays %> Tage. Prüfungen: laufend bei jeder Anfrage, alle 30 Minuten für zuletzt aktive Spielstände und auf Knopfdruck für alle<% if (scan) { %> (zuletzt <%= when(scan.at) %>: <%= scan.users %> geprüft, <%= scan.flagged %> auffällig)<% } %>. Admins werden nie geprüft.</div></div>
+
+<div class="kpis">
+  <div class="kpi <%= k.open ? 'bad' : 'good' %>"><span class="ico"><%- icon('triangle-alert') %></span><label>Offen</label><b><%= k.open || 0 %></b><small><span>warten auf Prüfung</span></small></div>
+  <div class="kpi warn"><span class="ico"><%- icon('badge-check') %></span><label>Bestätigt</label><b><%= k.confirmed || 0 %></b><small><span><%= autoBans %> automatische Sperren</span></small></div>
+  <div class="kpi"><span class="ico"><%- icon('check') %></span><label>Entkräftet</label><b><%= k.dismissed || 0 %></b><small><span>Fehlalarme</span></small></div>
+  <div class="kpi info"><span class="ico"><%- icon('users') %></span><label>Spieler mit Risiko</label><b><%= users.filter(function(x){ return x.score > 0; }).length %></b><small><span data-spark="<%= C(ser.flags) %>"></span></small></div>
+</div>
+
+<div class="grid dash mt" style="--gap:1rem">
+  <section class="card span-8"><div class="card-title"><%- icon('activity') %> Verdachtsfälle pro Tag</div>
+    <div data-chart="<%= C({ type: 'bar', labels: ser.days, series: [{ name: 'Neue Verdachtsfälle', data: ser.flags, color: '#ff6b72' }], height: 220, empty: 'Keine Verdachtsfälle in den letzten 30 Tagen.' }) %>"></div></section>
+  <section class="card span-4"><div class="card-title"><%- icon('layers') %> Nach Regel (30 Tage)</div>
+    <div data-chart="<%= C({ type: 'hbar', labels: byRule.map(function(r){ return RULE_LABELS[r.rule] || r.rule; }), series: [{ name: 'n', data: byRule.map(function(r){ return Number(r.n); }), color: '#ff6b72' }] }) %>"></div></section>
+
+  <section class="card span-7"><div class="card-title"><%- icon('users') %> Risiko-Rangliste</div>
+    <div class="table-wrap"><table class="table"><thead><tr><th>Spieler</th><th>Score</th><th class="num">Fälle</th><th>Zuletzt</th><th></th></tr></thead><tbody>
+    <% users.forEach(function(x){ var p = Math.min(100, x.score); var c = x.score >= cfg.banAt ? 'var(--bad)' : x.score >= cfg.throttleAt ? 'var(--warn)' : 'var(--good)'; %><tr>
+      <td><a href="/admin/users/<%= x.id %>"><%= x.username %></a> <% if (x.banned) { %><span class="chip bad">gesperrt</span><% } %></td>
+      <td><span class="risk" style="--p:<%= p %>%;--c:<%= c %>"><i></i><%= x.score %></span></td><td class="num"><%= x.flags %></td><td class="dim small"><%= when(x.last_at) %></td>
+      <td class="num"><div class="row nowrap"><form method="post" action="/admin/anticheat/user/<%= x.id %>/clear"><%- csrf %><button class="btn sm">Unbedenklich</button></form>
+        <% if (!x.banned) { %><form method="post" action="/admin/anticheat/user/<%= x.id %>/ban"><%- csrf %><button class="btn sm danger" data-confirm="Spieler sperren?">Sperren</button></form><% } %></div></td></tr><% }) %>
+    <% if (!users.length) { %><tr><td colspan="5" class="dim">Niemand auffällig.</td></tr><% } %></tbody></table></div></section>
+  <section class="card span-5"><div class="card-title"><%- icon('globe') %> Geteilte IP-Adressen</div>
+    <p class="dim small" style="margin-top:0">Mehrere Konten von einer IP können Familie/WLAN sein – oder Mehrfachkonten.</p>
+    <table class="table small"><tbody><% ips.forEach(function(i){ %><tr><td><code><%= i.ip %></code></td><td class="num"><b><%= i.n %></b></td><td class="dim"><%= i.names %></td></tr><% }) %><% if (!ips.length) { %><tr><td class="dim">Keine geteilten IPs.</td></tr><% } %></tbody></table></section>
+
+  <section class="card span-12"><div class="card-title"><%- icon('shield') %> Verdachtsfälle</div>
+    <form class="row wrap" method="get" style="margin-bottom:.8rem">
+      <select name="st" style="max-width:150px"><% [['open','Offen'],['confirmed','Bestätigt'],['dismissed','Entkräftet'],['all','Alle']].forEach(function(o){ %><option value="<%= o[0] %>" <%= st === o[0] ? 'selected' : '' %>><%= o[1] %></option><% }) %></select>
+      <select name="rule" style="max-width:240px"><option value="">Alle Regeln</option><% Object.keys(RULE_LABELS).forEach(function(r){ %><option value="<%= r %>" <%= rl === r ? 'selected' : '' %>><%= RULE_LABELS[r] %></option><% }) %></select>
+      <input type="search" name="q" value="<%= q %>" placeholder="Spieler …" style="max-width:200px"><button class="btn"><%- icon('search') %> Filtern</button></form>
+    <div class="table-wrap"><table class="table"><thead><tr><th>Wann</th><th>Spieler</th><th>Regel</th><th>Details</th><th class="num">×</th><th>Gewicht</th><th></th></tr></thead><tbody>
+    <% flags.forEach(function(f){ %><tr><td class="small dim" style="white-space:nowrap"><%= when(f.last_at) %></td><td><a href="/admin/users/<%= f.user_id %>"><%= f.username %></a></td><td><span class="chip <%= f.status === 'open' ? 'warn' : f.status === 'confirmed' ? 'bad' : '' %>"><%= RULE_LABELS[f.rule] || f.rule %></span></td><td class="small" style="max-width:520px"><%= f.detail %></td><td class="num"><%= f.count %></td><td class="num dim"><%= f.weight %></td>
+      <td class="num"><div class="row nowrap"><% if (f.status !== 'confirmed') { %><form method="post" action="/admin/anticheat/flag/<%= f.id %>/confirm"><%- csrf %><button class="btn sm danger">Bestätigen</button></form><% } %><% if (f.status !== 'dismissed') { %><form method="post" action="/admin/anticheat/flag/<%= f.id %>/dismiss"><%- csrf %><button class="btn sm">Fehlalarm</button></form><% } else { %><form method="post" action="/admin/anticheat/flag/<%= f.id %>/reopen"><%- csrf %><button class="btn sm">Wieder öffnen</button></form><% } %></div></td></tr><% }) %>
+    <% if (!flags.length) { %><tr><td colspan="7" class="dim">Keine Einträge.</td></tr><% } %></tbody></table></div></section>
+
+  <section class="card span-12"><div class="card-title"><%- icon('lightbulb') %> Was geprüft wird</div>
+    <div class="grid c3" style="--gap:.8rem">
+    <% [['bot','Bot-Takt','Aktionen in unnatürlich gleichmäßigem Abstand (Makro/Skript).'],['burst','Anfrage-Flut','Mehr Anfragen pro Minute, als ein Mensch auslösen kann.'],['task_fast','Aufgaben zu schnell','Gebäude-Aufgaben vor Ablauf der Mindestdauer abgeschickt.'],['ad_fast','Werbung zu schnell','Belohnung angefordert, ohne die Anzeige anzusehen; Werbe-Serien.'],['multi_account','Mehrfachkonten','Viele Konten, die dieselbe IP nutzen.'],['multi_ip','Konto-Sharing','Ein Konto von sehr vielen IPs in kurzer Zeit.'],['time_hack','Zeit-/EFS-Manipulation','Mehr Spieltage/EFS, als das Konto je verdienen konnte.'],['wealth','Unmögliche Einnahmen','Durchschnittliche Tageseinnahmen jenseits jeder Spielmechanik.'],['coin_inflow','Coin-Zufluss','Mehr Coins in 24 h, als Werbung, Kinder und Käufe erklären.'],['integrity','Datenintegrität','Werte außerhalb des Möglichen (negative Meter, zu viele Kinder …).']].forEach(function(r){ %>
+      <div class="row nowrap" style="align-items:flex-start;gap:.7rem"><span class="chip <%= cfg.rules[r[0]] && cfg.rules[r[0]].enabled ? 'good' : '' %>"><%= cfg.rules[r[0]] && cfg.rules[r[0]].enabled ? 'an' : 'aus' %></span><div><b class="small"><%= r[1] %></b><div class="dim small"><%= r[2] %></div></div></div><% }) %></div></section>
+</div>
+<%- include('_bottom') %>

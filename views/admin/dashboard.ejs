@@ -1,26 +1,60 @@
-<%- include('_top') %>
-<% const eur = function(c){ return (c / 100).toFixed(2).replace('.', ',') + ' €'; }; const spark = function(rows, key, fmt){ const max = Math.max(1, ...rows.map(r => Number(r[key]))); return rows.map(function(r){ return '<div title="' + new Date(r.d).toLocaleDateString('de-DE') + ': ' + fmt(Number(r[key])) + '"><i style="height:' + Math.round(Number(r[key]) / max * 100) + '%"></i><small>' + (key === 'n' ? r[key] : '') + '</small></div>'; }).join(''); }; %>
-<div class="grid c4" style="--gap:1rem">
-  <div class="card tile"><div class="card-title"><%- icon('users') %> Spieler</div><b><%= u.total %></b><span class="dim small">+<%= u.week || 0 %> in 7 Tagen · <%= u.active || 0 %> aktiv (24 h) · <%= u.online || 0 %> online</span></div>
-  <div class="card tile"><div class="card-title"><%- icon('user') %> Lebende Charaktere</div><b><%= c.alive || 0 %></b><span class="dim small"><%= c.dead || 0 %> Erbe offen · <%= c.ended || 0 %> beendet · max. Gen. <%= c.maxgen || 0 %></span></div>
-  <div class="card tile"><div class="card-title"><%- icon('coins') %> Coins im Umlauf</div><b><%= u.coins %></b><span class="dim small"><%= u.efs %> EFS im Vorrat · <%= u.subs || 0 %> Dauerkarten</span></div>
-  <div class="card tile"><div class="card-title"><%- icon('video') %> Werbung (24 h)</div><b><%= a.n %></b><span class="dim small"><%= a.coins %> Coins ausgeschüttet</span></div>
+<%- include('_top', { title: 'Dashboard', subtitle: 'Gesamtüberblick über Spieler, Spielwelt, Umsatz und Sicherheit der letzten 30 Tage.', actions: '<a class="btn sm" href="/admin/analytics">Alle Analysen</a><a class="btn sm primary" href="/admin/anticheat">Anti-Cheat</a>' }) %>
+<%
+const C = (o) => JSON.stringify(o);
+const eur = (c) => (c / 100).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+const nf = (n) => Number(n || 0).toLocaleString('de-DE');
+const last = (a) => a.length ? a[a.length - 1] : 0;
+%>
+<div class="kpis">
+  <a class="kpi" href="/admin/users" style="--k:var(--c2)"><span class="ico"><%- icon('users') %></span><label>Spieler gesamt</label><b><%= nf(u.total) %></b><small><span>+<%= u.week || 0 %> in 7 Tagen</span><span data-spark="<%= C(ser.totalUsers) %>"></span></small></a>
+  <a class="kpi good" href="/admin/users?f=online"><span class="ico"><%- icon('activity') %></span><label>Aktiv (24 h)</label><b><%= nf(u.active) %></b><small><span><%= u.online || 0 %> online · <%= u.banned || 0 %> gesperrt</span><span data-spark="<%= C(ser.activeUsers) %>"></span></small></a>
+  <a class="kpi violet" href="/admin/characters?st=alive"><span class="ico"><%- icon('user') %></span><label>Lebende Charaktere</label><b><%= nf(c.alive) %></b><small><span><%= c.dead || 0 %> Erbe offen · max. Gen. <%= c.maxgen || 0 %></span><span data-spark="<%= C(ser.newChars) %>"></span></small></a>
+  <a class="kpi" href="/admin/finance"><span class="ico"><%- icon('wallet') %></span><label>Umsatz (30 Tage)</label><b><%= eur(p30.cents) %></b><small><span><%= p30.n %> Käufe · <%= u.subs || 0 %> Dauerkarten</span><span data-spark="<%= C(ser.revenue) %>"></span></small></a>
+  <div class="kpi teal"><span class="ico"><%- icon('coins') %></span><label>Coins im Umlauf</label><b><%= nf(u.coins) %></b><small><span><%= nf(u.efs) %> EFS im Vorrat</span><span data-spark="<%= C(ser.coins.map(function(v){ return v || 0; })) %>"></span></small></div>
+  <div class="kpi pink"><span class="ico"><%- icon('video') %></span><label>Werbung (24 h)</label><b><%= nf(a.n) %></b><small><span><%= nf(a.coins) %> Coins ausgeschüttet</span><span data-spark="<%= C(ser.adClaims) %>"></span></small></div>
+  <div class="kpi info"><span class="ico"><%- icon('landmark') %></span><label>Spielgeld im Umlauf</label><b><%= nf(Math.round(dist.sumMoney)) %></b><small><span>Median <%= nf(Math.round(dist.median)) %> · <%= dist.n %> Leben</span></small></div>
+  <a class="kpi <%= flags.open ? 'bad' : 'good' %>" href="/admin/anticheat"><span class="ico"><%- icon('shield') %></span><label>Offene Verdachtsfälle</label><b><%= flags.open || 0 %></b><small><span><%= flags.users || 0 %> Spieler betroffen</span><span data-spark="<%= C(ser.flags) %>"></span></small></a>
 </div>
-<div class="grid c3 mt" style="--gap:1rem">
-  <section class="card"><div class="card-title"><%- icon('trending-up') %> Neue Spieler (14 Tage)</div>
-    <div class="spark"><% if (!regs.length) { %><span class="dim small">Noch keine Registrierungen.</span><% } %><%- spark(regs, 'n', String) %></div></section>
-  <section class="card"><div class="card-title"><%- icon('wallet') %> Umsatz (14 Tage)</div>
-    <div class="spark"><% if (!revenue.length) { %><span class="dim small">Noch kein Umsatz.</span><% } %><%- spark(revenue, 'cents', eur) %></div>
-    <div class="dim small mt">30 Tage: <b><%= eur(p30.cents) %></b> (<%= p30.n %> Käufe) · gesamt <b><%= eur(p.cents) %></b> (<%= p.n %>)</div></section>
-  <section class="card"><div class="card-title"><%- icon('calendar') %> Verteilung der Spieljahre</div>
-    <div class="table-wrap"><table class="table small"><tbody><% years.forEach(function(y){ %><tr><td><%= y.year %></td><td class="num"><%= y.n %> Charakter(e)</td></tr><% }) %><% if (!years.length) { %><tr><td class="dim">Keine lebenden Charaktere.</td></tr><% } %></tbody></table></div></section>
-</div>
-<div class="grid c3 mt" style="--gap:1rem">
-  <section class="card"><div class="card-title"><%- icon('user') %> Neueste Spieler</div>
+
+<div class="grid dash mt" style="--gap:1rem">
+  <section class="card span-8"><div class="card-title"><%- icon('trending-up') %> Wachstum &amp; Aktivität</div>
+    <div class="legend-inline"><span><i style="background:var(--c1)"></i>Neue Spieler</span><span><i style="background:var(--c2)"></i>Aktive Spieler</span><span><i style="background:var(--c3)"></i>Logins</span></div>
+    <div data-chart="<%= C({ type: 'combo', labels: ser.days, series: [{ name: 'Neue Spieler', type: 'bar', data: ser.newUsers, color: '#e0a94a' }, { name: 'Aktive Spieler', type: 'area', data: ser.activeUsers, color: '#6aa7ff' }, { name: 'Logins', type: 'line', data: ser.logins, color: '#4fd1a1' }], height: 260 }) %>"></div></section>
+  <section class="card span-4"><div class="card-title"><%- icon('user') %> Charakter-Status</div>
+    <div data-chart="<%= C({ type: 'donut', center: 'Charaktere', labels: ['Lebend', 'Erbe offen', 'Beendet'], series: [{ name: 'Status', data: [Number(c.alive || 0), Number(c.dead || 0), Number(c.ended || 0)] }] }) %>"></div></section>
+
+  <section class="card span-6"><div class="card-title"><%- icon('wallet') %> Umsatz &amp; Käufe</div>
+    <div data-chart="<%= C({ type: 'combo', labels: ser.days, series: [{ name: 'Umsatz', type: 'bar', data: ser.revenue, fmt: 'eur', color: '#e0a94a' }, { name: 'Käufe', type: 'line', data: ser.purchases, fmt: 'int', color: '#a78bfa' }], fmt: 'eur', height: 230, empty: 'Noch kein Umsatz im Zeitraum.' }) %>"></div></section>
+  <section class="card span-6"><div class="card-title"><%- icon('users') %> Leben: neu gestartet vs. beendet</div>
+    <div data-chart="<%= C({ type: 'bar', labels: ser.days, series: [{ name: 'Neue Charaktere', data: ser.newChars, color: '#4fd1a1' }, { name: 'Beendete Leben', data: ser.endedChars, color: '#ff6b72' }], height: 230 }) %>"></div></section>
+
+  <section class="card span-4"><div class="card-title"><%- icon('banknote') %> Vermögensverteilung</div>
+    <div data-chart="<%= C({ type: 'bar', labels: dist.wealth.map(function(x){ return x[0]; }), series: [{ name: 'Charaktere', data: dist.wealth.map(function(x){ return x[1]; }), color: '#6aa7ff' }], height: 210 }) %>"></div></section>
+  <section class="card span-4"><div class="card-title"><%- icon('briefcase') %> Beliebteste Berufe</div>
+    <div data-chart="<%= C({ type: 'hbar', labels: dist.professions.map(function(x){ return x[0]; }), series: [{ name: 'Charaktere', data: dist.professions.map(function(x){ return x[1]; }), color: '#e0a94a' }] }) %>"></div></section>
+  <section class="card span-4"><div class="card-title"><%- icon('map-pin') %> Beliebteste Städte</div>
+    <div data-chart="<%= C({ type: 'hbar', labels: dist.cities.map(function(x){ return x[0]; }), series: [{ name: 'Charaktere', data: dist.cities.map(function(x){ return x[1]; }), color: '#4fd1a1' }] }) %>"></div></section>
+
+  <section class="card span-4"><div class="card-title"><%- icon('house') %> Wohnformen</div>
+    <div data-chart="<%= C({ type: 'donut', center: 'Charaktere', labels: dist.housing.map(function(x){ return x[0]; }), series: [{ name: 'Wohnen', data: dist.housing.map(function(x){ return x[1]; }) }] }) %>"></div></section>
+  <section class="card span-4"><div class="card-title"><%- icon('calendar') %> Spieljahre (Jahrzehnte)</div>
+    <div data-chart="<%= C({ type: 'bar', labels: dist.eras.map(function(x){ return x[0]; }), series: [{ name: 'Charaktere', data: dist.eras.map(function(x){ return x[1]; }), color: '#a78bfa' }], height: 210 }) %>"></div></section>
+  <section class="card span-4"><div class="card-title"><%- icon('users') %> Generationen &amp; Kinder</div>
+    <div data-chart="<%= C({ type: 'bar', labels: dist.kids.map(function(x){ return x[0] + ' Kind(er)'; }), series: [{ name: 'Charaktere', data: dist.kids.map(function(x){ return x[1]; }), color: '#f472b6' }], height: 210 }) %>"></div></section>
+
+  <section class="card span-4"><div class="card-title"><%- icon('user') %> Neueste Spieler</div>
     <table class="table"><tbody><% recent.forEach(function(r){ %><tr><td><a href="/admin/users/<%= r.id %>"><%= r.username %></a> <% if (r.role === 'admin') { %><span class="chip accent">Admin</span><% } %></td><td class="num dim small"><%= new Date(r.created_at).toLocaleDateString('de-DE') %></td></tr><% }) %></tbody></table></section>
-  <section class="card"><div class="card-title"><%- icon('activity') %> Zuletzt gespielt</div>
-    <table class="table"><tbody><% alive.forEach(function(r){ %><tr><td><a href="/admin/characters/<%= r.id %>"><%= r.name %></a> <span class="dim small">(<%= r.username %>)</span></td><td class="num small">Gen. <%= r.generation %> · <%= r.year %></td></tr><% }) %></tbody></table></section>
-  <section class="card"><div class="card-title"><%- icon('crown') %> Reichste lebende Charaktere</div>
-    <table class="table"><tbody><% rich.forEach(function(r){ %><tr><td><a href="/admin/characters/<%= r.id %>"><%= r.name %></a> <span class="dim small">(<%= r.username %>)</span></td><td class="num small"><%= Math.round(r.money / 100).toLocaleString('de-DE') %></td></tr><% }) %></tbody></table></section>
+  <section class="card span-4"><div class="card-title"><%- icon('activity') %> Zuletzt gespielt</div>
+    <table class="table"><tbody><% alive.forEach(function(r){ %><tr><td><a href="/admin/characters/<%= r.id %>"><%= r.name %></a> <span class="dim small"><%= r.username %></span></td><td class="num small dim">Gen. <%= r.generation %> · <%= r.year %></td></tr><% }) %></tbody></table></section>
+  <section class="card span-4"><div class="card-title"><%- icon('crown') %> Reichste Charaktere</div>
+    <table class="table"><tbody><% rich.forEach(function(r){ %><tr><td><a href="/admin/characters/<%= r.id %>"><%= r.name %></a> <span class="dim small"><%= r.username %></span></td><td class="num small"><%= nf(Math.round(r.money / 100)) %></td></tr><% }) %></tbody></table></section>
+
+  <section class="card span-5"><div class="card-title"><%- icon('shield') %> Neueste Verdachtsfälle <a class="btn sm ghost tail" href="/admin/anticheat">alle</a></div>
+    <% if (!risky.length) { %><div class="empty">Keine offenen Verdachtsfälle. 🎉</div><% } else { %><table class="table"><tbody><% risky.forEach(function(f){ %><tr><td><a href="/admin/users/<%= f.uid %>"><%= f.username %></a><div class="dim small"><%= f.detail %></div></td><td><span class="chip warn"><%= RULE_LABELS[f.rule] || f.rule %></span></td></tr><% }) %></tbody></table><% } %></section>
+  <section class="card span-4"><div class="card-title"><%- icon('scroll') %> Letzte Ereignisse <a class="btn sm ghost tail" href="/admin/audit">Protokoll</a></div>
+    <table class="table"><tbody><% events.forEach(function(e){ %><tr><td><span class="chip"><%= e.action %></span></td><td class="small dim"><%= e.username || '' %> <%= String(e.detail || '').slice(0, 40) %></td><td class="num small dim"><%= new Date(e.created_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) %></td></tr><% }) %></tbody></table></section>
+  <section class="card span-3"><div class="card-title"><%- icon('server') %> System</div>
+    <dl class="kv"><dt>Datenbank</dt><dd><%= sys.dbMs %> ms</dd><dt>Speicher</dt><dd><%= sys.mem %> MB</dd><dt>Laufzeit</dt><dd><%= sys.up >= 1440 ? Math.floor(sys.up / 1440) + ' d' : sys.up >= 60 ? Math.floor(sys.up / 60) + ' h' : sys.up + ' min' %></dd><dt>Last</dt><dd><%= sys.load %></dd><dt>Node</dt><dd><%= sys.node %></dd></dl>
+    <a class="btn sm block mt" href="/admin/system">Details</a></section>
 </div>
 <%- include('_bottom') %>

@@ -15,6 +15,24 @@ const DEFAULTS = {
   'site.require_email_verification': false,
   texts: require('./game/text-defaults'),
   'news.custom': [],
+  anticheat: {
+    enabled: true,
+    autoAction: 'flag',       // flag = nur melden · throttle = zusätzlich bremsen · ban = ab Schwelle automatisch sperren
+    throttleAt: 60, banAt: 120, decayDays: 21,
+    rules: {
+      burst: { enabled: true, perMinute: 150, weight: 12 },
+      bot: { enabled: true, samples: 40, maxJitterMs: 30, maxMeanMs: 3000, weight: 25 },
+      task_fast: { enabled: true, perHour: 8, weight: 6 },
+      ad_fast: { enabled: true, weight: 15 },
+      ad_burst: { enabled: true, perHour: 10, weight: 10 },
+      multi_account: { enabled: true, accountsPerIp: 3, windowHours: 48, weight: 18 },
+      multi_ip: { enabled: true, ips: 4, windowMinutes: 60, weight: 15 },
+      wealth: { enabled: true, maxEarnedPerDay: 2000000, weight: 25 },
+      time_hack: { enabled: true, tolerance: 2, weight: 35 },
+      coin_inflow: { enabled: true, slack: 200, weight: 25 },
+      integrity: { enabled: true, weight: 40 },
+    },
+  },
   landing: {
     eyebrow: 'Eine Lebenssimulation über Generationen',
     title: 'Ein Leben.\nEin Vermächtnis.',

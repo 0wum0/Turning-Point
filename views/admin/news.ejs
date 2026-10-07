@@ -1,13 +1,14 @@
 <%- include('_top', { actions: '<a class="btn sm" href="/admin/settings/newsflash">Alle bearbeiten</a> <a class="btn sm" href="/admin/settings/texts">Zeitungstexte</a>' }) %>
 <% var csrf = '<input type="hidden" name="_csrf" value="' + csrfToken + '">'; %>
-<section class="card"><div class="card-title"><%- icon('bell') %> Neue Eilmeldung / Nachricht</div>
+<section class="card"><div class="card-title"><%- icon('bell') %> News schreiben</div>
   <form class="stack" style="--gap:.7rem" method="post" action="/admin/news/add"><%- csrf %>
     <div class="grid c2">
-      <div class="field"><label>Überschrift</label><input type="text" name="title" maxlength="120" required></div>
+      <div class="field"><label>Überschrift</label><input type="text" name="title" maxlength="120" required data-pv="title"></div>
       <div class="field"><label>Stadt</label><select name="cityId"><option value="0">Alle Städte</option><% cities.forEach(function(c){ %><option value="<%= c.id %>"><%= c.name %></option><% }) %></select></div>
     </div>
-    <div class="field"><label>Text</label><textarea name="text" maxlength="800" style="min-height:90px"></textarea></div>
-    <div class="row wrap"><label class="check"><input type="checkbox" name="flash" value="1" checked> Rote „EILMELDUNG“ (ganz oben)</label>
+    <div class="field"><label>Text</label><textarea name="text" maxlength="800" style="min-height:90px" data-pv="text"></textarea></div>
+    <div class="paper-pv"><div class="dim small" style="margin-bottom:.4rem">Vorschau in der Zeitung</div><article class="news-item lead" data-pv-box><div class="kicker" data-pv-kicker>EILMELDUNG</div><h3 data-pv-title>Überschrift</h3><p data-pv-text>Text der Meldung …</p></article></div>
+    <div class="row wrap"><label class="check"><input type="checkbox" name="flash" value="1" checked data-pv="flash"> Rote „EILMELDUNG“ (ganz oben)</label>
       <div class="field"><label>sichtbar ab Jahr</label><input type="number" name="fromYear" value="<%= startYear %>" style="width:110px"></div>
       <div class="field"><label>bis Jahr (leer = offen)</label><input type="number" name="toYear" placeholder="offen" style="width:110px"></div>
       <button class="btn primary" style="margin-left:auto"><%- icon('send') %> Veröffentlichen</button></div>
@@ -19,7 +20,15 @@
     <td><span class="chip <%= n.flash ? 'bad' : '' %>"><%= n.flash ? 'Eilmeldung' : 'Nachricht' %></span></td>
     <td><b><%= n.title %></b><div class="dim"><%= n.text %></div></td><td><%= c ? c.name : 'alle' %></td><td class="dim"><%= n.fromYear || '–' %> – <%= n.toYear >= 9999 || !n.toYear ? 'offen' : n.toYear %></td>
     <td><span class="chip <%= n.active === false ? '' : 'good' %>"><%= n.active === false ? 'aus' : 'live' %></span></td>
-    <td class="num"><div class="row nowrap"><form method="post" action="/admin/news/<%= i %>/toggle"><%- csrf %><button class="btn sm"><%= n.active === false ? 'Aktivieren' : 'Ausblenden' %></button></form><form method="post" action="/admin/news/<%= i %>/flash"><%- csrf %><button class="btn sm ghost">Eil/Normal</button></form><form method="post" action="/admin/news/<%= i %>/delete"><%- csrf %><button class="btn sm danger" data-confirm="Meldung löschen?">✕</button></form></div></td></tr><% }) %>
+    <td class="num"><div class="row nowrap"><form method="post" action="/admin/news/<%= i %>/toggle"><%- csrf %><button class="btn sm"><%= n.active === false ? 'Aktivieren' : 'Ausblenden' %></button></form><form method="post" action="/admin/news/<%= i %>/flash"><%- csrf %><button class="btn sm ghost">Eil/Normal</button></form><form method="post" action="/admin/news/<%= i %>/delete"><%- csrf %><button class="btn sm danger" data-confirm="Meldung löschen?">✕</button></form></div></td></tr>
+    <tr><td colspan="6" style="padding:0"><details class="sec" style="padding:.2rem .9rem"><summary class="small dim" style="padding:.4rem 0">Bearbeiten</summary>
+      <form class="stack" style="--gap:.6rem;padding:.4rem 0 .9rem" method="post" action="/admin/news/<%= i %>/edit"><%- csrf %>
+        <div class="grid c2"><div class="field"><label>Überschrift</label><input type="text" name="title" value="<%= n.title %>" maxlength="120"></div>
+          <div class="field"><label>Stadt</label><select name="cityId"><option value="0">Alle Städte</option><% cities.forEach(function(c2){ %><option value="<%= c2.id %>" <%= Number(n.cityId) === c2.id ? 'selected' : '' %>><%= c2.name %></option><% }) %></select></div></div>
+        <div class="field"><label>Text</label><textarea name="text" maxlength="800" style="min-height:80px"><%= n.text %></textarea></div>
+        <div class="row wrap"><label class="check"><input type="checkbox" name="flash" value="1" <%= n.flash ? 'checked' : '' %>> Rote „EILMELDUNG“</label>
+          <div class="field"><label>ab Jahr</label><input type="number" name="fromYear" value="<%= n.fromYear || '' %>" style="width:110px"></div><div class="field"><label>bis Jahr</label><input type="number" name="toYear" value="<%= n.toYear >= 9999 ? '' : n.toYear || '' %>" placeholder="offen" style="width:110px"></div>
+          <button class="btn primary sm" style="margin-left:auto">Speichern</button></div></form></details></td></tr><% }) %>
   <% if (!custom.length) { %><tr><td colspan="6" class="dim">Noch keine eigenen Meldungen.</td></tr><% } %></tbody></table></div></section>
 
 <section class="card mt"><div class="card-title"><%- icon('newspaper') %> Nachrichten der Spielwelt (automatisch erzeugt)</div>

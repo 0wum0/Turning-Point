@@ -1,19 +1,32 @@
 <%- include('../partials/head', { title: 'Admin · ' + title, era: 1, css: ['admin'], noindex: true, bodyClass: 'admin' }) %>
-<div class="adm">
-  <aside class="adm-side">
-    <a class="brand" href="/admin"><span class="mark"><%- icon('hourglass') %></span><span>TURNING POINT<small>Admin</small></span></a>
-    <nav>
-      <% [['dashboard','Dashboard','layout-dashboard','/admin'],['users','Spieler','users','/admin/users'],['characters','Charaktere','user','/admin/characters'],['cities','Städte','map-pin','/admin/cities'],['professions','Berufe','briefcase','/admin/professions'],['news','Zeitung & Eilmeldungen','newspaper','/admin/news'],['finance','Finanzen','credit-card','/admin/finance'],['media','Medien','image','/admin/media'],['settings','Einstellungen','settings','/admin/settings'],['tools','Werkzeuge','wrench','/admin/tools'],['backup','Backup & Import','database','/admin/backup'],['system','System','server','/admin/system'],['audit','Protokoll','scroll','/admin/audit']].forEach(function(n){ %>
-        <a href="<%= n[3] %>" class="<%= active === n[0] ? 'on' : '' %>"><%- icon(n[2]) %><span><%= n[1] %></span></a>
+<% var NAV = [
+  ['Übersicht', [['dashboard','Dashboard','layout-dashboard','/admin'],['analytics','Analytics','trending-up','/admin/analytics']]],
+  ['Spieler', [['users','Spieler','users','/admin/users'],['characters','Charaktere','user','/admin/characters'],['anticheat','Anti-Cheat','shield','/admin/anticheat'],['finance','Finanzen','credit-card','/admin/finance']]],
+  ['Inhalte', [['news','Zeitung & News','newspaper','/admin/news'],['cities','Städte','map-pin','/admin/cities'],['professions','Berufe','briefcase','/admin/professions'],['media','Medien','image','/admin/media']]],
+  ['System', [['settings','Einstellungen','settings','/admin/settings'],['tools','Werkzeuge','wrench','/admin/tools'],['backup','Backup & Import','database','/admin/backup'],['system','System','server','/admin/system'],['audit','Protokoll','scroll','/admin/audit']]]
+]; var current = ''; NAV.forEach(function(g){ g[1].forEach(function(n){ if (n[0] === active) current = n[1]; }); }); var badges = (typeof adminBadges !== 'undefined' && adminBadges) || {}; %>
+<div class="adm" id="adm">
+  <aside class="adm-side" id="admSide">
+    <a class="brand" href="/admin"><span class="mark"><%- icon('hourglass') %></span><span>TURNING POINT<small>Control Center</small></span></a>
+    <nav aria-label="Admin-Navigation">
+      <% NAV.forEach(function(g){ %><div class="nav-label"><%= g[0] %></div>
+        <% g[1].forEach(function(n){ %><a href="<%= n[3] %>" class="<%= active === n[0] ? 'on' : '' %>"><%- icon(n[2]) %><span><%= n[1] %></span><% if (badges[n[0]]) { %><em class="badge"><%= badges[n[0]] %></em><% } %></a><% }) %>
       <% }) %>
     </nav>
     <div class="adm-foot">
-      <a class="btn sm block" href="/play"><%- icon('play') %> Zum Spiel</a>
-      <div class="row spread small dim" style="margin-top:.8rem"><span><%= user.username %></span>
-        <form method="post" action="/logout"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn ghost sm" title="Abmelden"><%- icon('log-out') %></button></form></div>
-      <button class="btn ghost sm block" data-theme-toggle style="margin-top:.3rem"><%- icon('sun-medium') %> Design</button>
+      <div class="who"><span class="av"><%= (user.username || '?').slice(0, 1).toUpperCase() %></span><div><b><%= user.username %></b><small>Administrator</small></div>
+        <form method="post" action="/logout"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn ghost sm" title="Abmelden" aria-label="Abmelden"><%- icon('log-out') %></button></form></div>
     </div>
   </aside>
-  <main class="adm-main">
-    <% if (flash) { %><div class="alert <%= flash.type %>"><%- icon(flash.type === 'good' ? 'circle-check' : 'circle-alert') %><div><%= flash.msg %></div></div><% } %>
-    <div class="panel-head"><div><h2><%= title %></h2></div><div class="row"><%- typeof actions !== 'undefined' ? actions : '' %></div></div>
+  <div class="adm-scrim" id="admScrim"></div>
+  <div class="adm-body">
+    <header class="adm-bar">
+      <button class="btn ghost sm adm-burger" id="admBurger" aria-label="Menü"><%- icon('menu') %></button>
+      <div class="crumb"><span>Admin</span><%- icon('chevron-right') %><b><%= current || title %></b></div>
+      <form class="adm-search" method="get" action="/admin/users" role="search"><%- icon('search') %><input type="search" name="q" id="admQ" placeholder="Spieler suchen …  ( / )" autocomplete="off"></form>
+      <button class="btn ghost sm" data-theme-toggle aria-label="Design wechseln" title="Hell/Dunkel"><%- icon('sun-medium') %></button>
+      <a class="btn sm" href="/play"><%- icon('play') %><span class="hide-sm">Zum Spiel</span></a>
+    </header>
+    <main class="adm-main">
+      <% if (flash) { %><div class="alert <%= flash.type %>"><%- icon(flash.type === 'good' ? 'circle-check' : 'circle-alert') %><div><%= flash.msg %></div></div><% } %>
+      <div class="panel-head"><div><h2><%= title %></h2><% if (typeof subtitle !== 'undefined' && subtitle) { %><p><%= subtitle %></p><% } %></div><div class="row"><%- typeof actions !== 'undefined' ? actions : '' %></div></div>
