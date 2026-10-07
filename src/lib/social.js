@@ -73,7 +73,7 @@ async function backfillStats() {
 }
 
 const CATS = {
-  wealth: { label: 'Vermögen', expr: 'ps.wealth', unit: 'money', hint: 'Geld, Immobilien und Betriebe – inflationsbereinigt (Kaufkraft von 1945), damit alle Epochen vergleichbar sind.' },
+  wealth: { label: 'Vermögen', expr: 'ps.wealth', unit: 'money', hint: 'Geld, Immobilien und Betriebe. Alle Beträge sind auf den Geldwert von 1945 umgerechnet (Preise steigen im Lauf der Jahre) – so sind Spieler aus verschiedenen Jahren fair vergleichbar.' },
   business: { label: 'Unternehmer', expr: 'ps.biz_value', unit: 'money', hint: 'Wert aller Betriebe samt Firmenkasse (inflationsbereinigt).' },
   politics: { label: 'Politik', expr: 'ps.influence', unit: 'pts', hint: 'Einfluss, den du über alle Leben gesammelt hast.' },
   dynasty: { label: 'Dynastie', expr: 'ps.generation * 1000 + ps.cycle', unit: 'gen', hint: 'Wie viele Generationen deine Familie schon trägt.' },

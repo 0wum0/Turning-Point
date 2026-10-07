@@ -8,7 +8,7 @@ const dot = (on) => html`<i class="odot ${on ? 'on' : ''}" title="${on ? 'online
 const medal = (r) => (r <= 3 ? html`<span class="medal m${r}">${icon('crown')}</span>` : html`<span class="rk">${r}</span>`);
 
 function fmtScore(unit, r, ctx) {
-  if (unit === 'money') return `${num(r.score / 100)} DM-Kaufkraft '45`;
+  if (unit === 'money') return `${num(r.score / 100)} DM (Wert 1945)`;
   if (unit === 'pts') return `${num(r.score)} Einfluss${r.office ? ' · ' + r.office : ''}`;
   if (unit === 'gen') return `Generation ${Math.floor(r.score / 1000)}`;
   if (unit === 'kids') return `${Math.floor(r.score / 1000)} Kind${Math.floor(r.score / 1000) === 1 ? '' : 'er'}`;
