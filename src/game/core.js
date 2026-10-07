@@ -48,7 +48,8 @@ function propertyValue(world, state, p, year) {
 }
 function netWorth(world, state) {
   const year = yearOf(state.day, state.startYear);
-  return state.money + state.properties.reduce((s, p) => s + propertyValue(world, state, p, year), 0);
+  const biz = (state.companies || []).reduce((s, c) => s + require('./business').companyValue(world, state, c, year) + c.cash, 0);
+  return state.money + biz + state.properties.reduce((s, p) => s + propertyValue(world, state, p, year), 0);
 }
 
 const kidsAtHome = (state) => state.children.filter((c) => c.status === 'home');
@@ -95,7 +96,9 @@ function dailyFlows(world, state) {
   if (occ) {
     const p = world.prof(occ.pkey);
     if (p) {
-      if (occ.kind === 'work') {
+      if (occ.kind === 'work' && occ.ownCompanyId) {
+        inc.wage = 0; // Eigentümer lebt vom Gewinn des Betriebs
+      } else if (occ.kind === 'work') {
         const lv = LEVELS[levelIndex(state, occ.pkey)].mult;
         inc.wage = scale(p.base_wage, idx, (occ.factor || 1) * lv);
       } else if (occ.kind === 'training') {

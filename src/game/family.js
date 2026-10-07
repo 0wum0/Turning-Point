@@ -5,6 +5,7 @@ const { notice, chronicle, award, clamp, kidsAtHome, minors, roomsAvailable, roo
 const { randomFirstName } = require('./content');
 const { addPerson } = require('./state');
 const { yearOf } = require('./calendar');
+const bizMod = require('./business');
 const { SCHOOLS } = require('./content');
 
 const ageOfChild = (state, c) => Math.floor((state.day - c.born) / 365);
@@ -189,6 +190,16 @@ function separate(ctx) {
       if (owed < 0) { state.money += -owed; owed = 0; }
     }
   }
+  if (owed > 0) {
+    for (const c of state.companies.slice().sort((a, b) => bizMod.companyValue(world, state, b, year) - bizMod.companyValue(world, state, a, year))) {
+      if (owed <= 0) break;
+      const v = bizMod.companyValue(world, state, c, year) + c.cash;
+      state.companies = state.companies.filter((x) => x.id !== c.id);
+      if (state.occupation && state.occupation.ownCompanyId === c.id) state.occupation = null;
+      lostProps.push(c.name); owed -= v;
+      if (owed < 0) { state.money += -owed; owed = 0; }
+    }
+  }
   if (!state.properties.find((x) => x.id === state.housing.propertyId) && state.housing.type === 'own') state.housing = { type: 'street', cityId: state.cityId };
   const home = state.children.filter((c) => c.status === 'home');
   const take = Math.ceil(home.length / 2);
@@ -235,7 +246,8 @@ function endLife(ctx, reason, cause) {
 function estateShare(world, state) {
   const year = yearOf(state.day, state.startYear);
   const n = Math.max(1, state.children.filter((c) => c.status !== 'withPartner').length);
-  const props = state.properties.map((p) => ({ id: p.id, value: propertyValue(world, state, p, year) }));
+  const props = state.properties.map((p) => ({ key: `p:${p.id}`, id: p.id, kind: 'property', name: p.name, value: propertyValue(world, state, p, year) }))
+    .concat((state.companies || []).map((c) => ({ key: `c:${c.id}`, id: c.id, kind: 'company', name: c.name, value: bizMod.companyValue(world, state, c, year) + c.cash })));
   const total = Math.max(0, state.money) + props.reduce((s, p) => s + p.value, 0);
   return { n, total, share: Math.floor(total / n), props, money: Math.max(0, state.money) };
 }

@@ -1,6 +1,6 @@
 import { html, icon, money, infoBtn, bar, on, api, num, yearsText } from '../ui.js';
 
-const TABS = ['news', 'jobs', 'housing', 'partners', 'guide'];
+const TABS = ['news', 'jobs', 'housing', 'partners', 'biz', 'guide'];
 
 function jobCard(j, v, here) {
   const cur = v.currency;
@@ -40,6 +40,15 @@ function housingCard(h, v, here) {
     <button class="btn ${cur2 ? '' : 'primary'} sm" data-act="rent" data-id="${h.id}" ${(!here || cur2) ? 'disabled' : ''}>${cur2 ? 'Du wohnst hier' : 'Beziehen'}</button></article>`;
 }
 
+function bizCard(b, v, here) {
+  const afford = v.money >= b.price;
+  return html`<article class="listing"><div class="lic">${icon('store', 'lg')}</div>
+    <div class="grow"><div class="row nowrap spread"><h4>${b.name}</h4><span class="chip accent">${b.tierName}</span></div>
+      <div class="dim small">${b.rooms} Räume · benötigt: ${b.profession}${b.minLevel ? ' (Stufe ' + ['Anfänger', 'Geselle', 'Fachkraft', 'Meister', 'Altmeister'][b.minLevel] + ')' : ''}</div>
+      <div class="row small" style="margin-top:.4rem"><b class="mono">${money(b.price, v.currency)}</b>${!b.qualified ? html`<span class="chip bad">Qualifikation fehlt</span>` : ''}${!afford ? html`<span class="chip bad">${money(b.price - v.money, v.currency)} fehlen</span>` : ''}</div></div>
+    <button class="btn primary sm" data-act="buyBiz" data-id="${b.id}" ${(!here || !afford || !b.qualified) ? 'disabled' : ''}>Kaufen</button></article>`;
+}
+
 function partnerCard(p, v, here) {
   return html`<article class="listing">
     <div class="lic">${icon('heart', 'lg')}</div>
@@ -60,7 +69,7 @@ export default {
     const tab = TABS.includes(ctx.ui.newsTab) ? ctx.ui.newsTab : 'news';
     const web = e.medium === 'web';
     const L = e.labels;
-    const tabs = [['news', L.news, 'newspaper'], ['jobs', L.jobs, 'briefcase'], ['housing', L.housing, 'house'], ['partners', L.partners, 'heart'], ['guide', 'Ratgeber', 'lightbulb']];
+    const tabs = [['news', L.news, 'newspaper'], ['jobs', L.jobs, 'briefcase'], ['housing', L.housing, 'house'], ['partners', L.partners, 'heart'], ['biz', L.biz, 'store'], ['guide', 'Ratgeber', 'lightbulb']];
     const body = {
       news: () => html`<div class="news-grid">${e.news.length ? e.news.map((n, i) => html`<article class="news-item ${n.type === 'forecast' ? 'warn' : ''} ${i === 0 ? 'lead' : ''}">
           <div class="kicker">${n.type === 'forecast' ? 'WARNUNG' : n.ago === 0 ? 'HEUTE' : n.ago === 1 ? 'GESTERN' : 'VOR ' + n.ago + ' TAGEN'}</div>
@@ -70,6 +79,7 @@ export default {
         <h4 class="sec">Mietwohnungen</h4><div class="listings">${e.housing.rent.map((h) => housingCard(h, v, here))}</div>
         <h4 class="sec">Zu verkaufen</h4><div class="listings">${e.housing.sale.map((h) => housingCard(h, v, here))}</div>`,
       partners: () => v.partner ? html`<div class="empty-note">${icon('heart')}<span>Du bist mit ${v.partner.name} zusammen.</span></div>` : html`<p class="dim">Ein Treffen kostet eine kleine Aufmerksamkeit. Ob es funkt, hängt von deiner Stimmung, deiner Lage und etwas Glück ab.</p><div class="listings">${e.partners.map((p) => partnerCard(p, v, here))}</div>`,
+      biz: () => e.biz.length ? html`<p class="dim">Betriebe darfst du nur mit passender Qualifikation führen. Die Angebote richten sich nach deinen Berufen (und dem deines Partners).</p><div class="listings">${e.biz.map((b) => bizCard(b, v, here))}</div>` : html`<div class="empty-note">${icon('store')}<span>Gerade keine passenden Betriebe. Mit einem erlernten Beruf (z. B. Wirt, Bäcker, Tischler) erscheinen hier Angebote.</span></div>`,
       guide: () => html`<div class="grid c2">${e.tutorial.length ? e.tutorial.map((t) => html`<article class="card flat"><h4>${t.title} ${infoBtn(t.info, t.title)}</h4><p class="dim small mb0">${t.text}</p></article>`) : html`<div class="dim">Der Ratgeber ist ausgeblendet.</div>`}</div>
         <div class="row mt"><button class="btn sm ghost" data-act="tutorial" data-on="${e.tutorial.length ? '0' : '1'}">${e.tutorial.length ? 'Ratgeber ausblenden' : 'Ratgeber wieder einblenden'}</button></div>`,
     }[tab]();
@@ -90,6 +100,7 @@ export default {
     on(root, 'click', '[data-act]', async (e, t) => {
       const name = t.dataset.act;
       const input = name === 'tutorial' ? { on: t.dataset.on === '1' } : { listingId: t.dataset.id };
+      if (name === 'buyBiz') { const ok = await ctx.confirm({ title: 'Betrieb kaufen?', text: 'Der Kaufpreis wird sofort abgebucht. Du kannst zuerst selbst im Betrieb arbeiten und später Mitarbeiter und Manager einsetzen.', ok: 'Kaufen' }); if (!ok) return; }
       if (name === 'buy') { const ok = await ctx.confirm({ title: 'Immobilie kaufen?', text: 'Der Kaufpreis wird sofort vom Konto abgebucht. Ein Kauf gibt EFS-Bonus und gehört zu deinem vererbbaren Vermögen.', ok: 'Kaufen' }); if (!ok) return; }
       if (name === 'apply' && ctx.view.occupation && ctx.view.occupation.kind !== 'work') { const ok = await ctx.confirm({ title: 'Ausbildung/Studium abbrechen?', text: 'Du hast aktuell eine Ausbildung oder ein Studium. Ein Wechsel beendet es – Fortschritt geht verloren.', ok: 'Wechseln', danger: true }); if (!ok) return; }
       await ctx.act(name, input);

@@ -11,6 +11,7 @@ const { resolveListing } = require('./newspaper');
 const { addPerson } = require('./state');
 const { SCHOOLS } = require('./content');
 const { ageOfChild } = require('./family');
+const biz = require('./business');
 
 class ActionError extends Error {}
 const fail = (m) => { throw new ActionError(m); };
@@ -384,6 +385,106 @@ A.search = ({ world, state, input }) => {
     return { msg: `${c.name} ist wieder da!`, level: 'good' };
   }
   return { msg: 'Keine Spur. Versuche es noch einmal.', level: 'warn' };
+};
+
+/* ---------------- Unternehmen ---------------- */
+const company = (state, id) => { const c = (state.companies || []).find((x) => x.id === Number(id)); if (!c) fail('Unternehmen nicht gefunden.'); return c; };
+const needActive = (c) => { if (c.abandoned) fail('Der Betrieb steht leer. Reaktiviere ihn zuerst.'); };
+
+A.buyBiz = ({ world, state, input }) => {
+  const l = resolveListing(world, state, input.listingId);
+  if (!l || l.type !== 'biz') fail('Dieses Angebot ist nicht mehr aktuell.');
+  if (l.cityId !== state.cityId) fail('Du musst in dieser Stadt wohnen.');
+  if ((state.companies || []).length >= world.econ.companies.maxCompanies) fail('Du besitzt bereits die maximale Anzahl an Unternehmen.');
+  if (!biz.qualification(world, state, l.pkey, l.tier).ok) fail('Dir fehlt die Qualifikation für diesen Betrieb.');
+  if (state.money < l.price) fail('Dafür reicht dein Geld nicht.');
+  pay(state, l.price);
+  const c = { id: state.nextCompanyId++, pkey: l.pkey, tier: l.tier, name: l.name, cityId: l.cityId, rooms: l.rooms, staff: 0, manager: false, cash: 0, base: l.base, since: state.day, abandoned: null, lastProfit: 0 };
+  state.companies.push(c);
+  award(state, 'buy_property');
+  chronicle(state, `${state.person.first} übernimmt ${l.name} (${world.city(l.cityId).name}).`, 'business');
+  return { msg: `${l.name} gehört dir. Arbeite selbst im Betrieb oder stelle Mitarbeiter ein.` };
+};
+A.bizWork = ({ world, state, input }) => {
+  const c = company(state, input.id); needActive(c);
+  if (c.cityId !== state.cityId) fail('Du musst vor Ort wohnen, um selbst zu arbeiten.');
+  state.occupation = { kind: 'work', pkey: c.pkey, employer: c.name, cityId: c.cityId, factor: 1, lodging: false, since: state.day, ownCompanyId: c.id, daysLeft: 0 };
+  if (state.housing.type === 'workplace') state.housing = { type: 'street', cityId: state.cityId };
+  return { msg: `Du arbeitest jetzt selbst in ${c.name}.` };
+};
+A.bizHire = ({ world, state, input }) => {
+  const c = company(state, input.id); needActive(c);
+  const need = biz.staffNeeded(world, c);
+  const n = Math.floor(Number(input.delta)) || 0;
+  if (n > 0 && c.staff >= need + 2) fail('Mehr Mitarbeiter braucht der Betrieb nicht.');
+  c.staff = Math.max(0, c.staff + Math.sign(n));
+  return { msg: n > 0 ? 'Mitarbeiter eingestellt.' : 'Mitarbeiter entlassen.' };
+};
+A.bizManager = ({ state, input }) => {
+  const c = company(state, input.id); needActive(c);
+  c.manager = !!input.on;
+  if (!c.manager && state.occupation && state.occupation.ownCompanyId !== c.id) { /* nichts */ }
+  return { msg: c.manager ? 'Ein Manager führt den Betrieb jetzt selbstständig.' : 'Manager entlassen.' };
+};
+A.bizExpand = ({ world, state, input, user }) => {
+  const c = company(state, input.id); needActive(c);
+  const t = biz.tiersOf(world)[c.tier];
+  if (c.rooms >= t.maxRooms) fail('Auf dieser Stufe sind alle Räume freigeschaltet. Baue den Betrieb aus (Stufe erhöhen).');
+  const idx = world.idx(yr(state));
+  const city = world.city(c.cityId);
+  const cost = Math.round(t.roomPrice * idx * (city ? city.price_factor : 1));
+  const key = `room:${c.id}`;
+  const coins = ladder(t.roomCoins, state.discounts[key] || 0);
+  if (state.money < cost) fail('Dafür reicht dein Geld nicht.');
+  if (user.coins + state.fx.coins < coins) fail('Dir fehlen Coins. Sieh Werbung an, um den Preis zu senken.');
+  pay(state, cost); state.fx.coins -= coins; delete state.discounts[key];
+  c.rooms++; c.base += Math.round(cost / idx * 0.8);
+  award(state, 'buy_property');
+  return { msg: `Neuer Raum freigeschaltet (${c.rooms} / ${t.maxRooms}).` };
+};
+A.bizUpgrade = ({ world, state, input }) => {
+  const c = company(state, input.id); needActive(c);
+  const tiers = biz.tiersOf(world);
+  if (c.tier >= tiers.length - 1) fail('Das ist bereits die höchste Stufe.');
+  const nt = tiers[c.tier + 1];
+  if (!biz.qualification(world, state, c.pkey, c.tier + 1).ok) fail('Dir fehlt die Qualifikation für die nächste Stufe (höhere Berufsstufe nötig).');
+  const idx = world.idx(yr(state)); const city = world.city(c.cityId);
+  const cost = Math.max(0, Math.round((nt.price - tiers[c.tier].price) * idx * (city ? city.price_factor : 1)));
+  if (state.money < cost) fail('Dafür reicht dein Geld nicht.');
+  pay(state, cost);
+  c.tier++; c.rooms = Math.max(c.rooms, nt.rooms); c.base += Math.round(cost / idx);
+  const old = c.name; c.name = c.name.replace(/^\S+/, biz.chainNames(world, c.pkey)[c.tier].split(' ')[0]);
+  award(state, 'buy_property');
+  chronicle(state, `${old} wird zu ${c.name} ausgebaut.`, 'business');
+  return { msg: `Ausbau abgeschlossen: ${biz.tierName(world, c)}.` };
+};
+A.bizCollect = ({ state, input }) => {
+  const list = input.id === 'all' ? state.companies : [company(state, input.id)];
+  let sum = 0;
+  for (const c of list) { sum += c.cash; c.cash = 0; }
+  if (sum <= 0) fail('Es liegt kein Geld in der Firmenkasse.');
+  state.money += sum; state.stats.earned += sum;
+  return { msg: 'Gewinn abgeholt.' };
+};
+A.bizSell = ({ world, state, input }) => {
+  const c = company(state, input.id);
+  const v = biz.companyValue(world, state, c, yr(state)) + c.cash;
+  const got = Math.round(v * (c.abandoned ? 1 : 0.9));
+  state.money += got;
+  state.companies = state.companies.filter((x) => x.id !== c.id);
+  if (state.occupation && state.occupation.ownCompanyId === c.id) state.occupation = null;
+  return { msg: `${c.name} verkauft.` };
+};
+A.bizReactivate = ({ world, state, input }) => {
+  const c = company(state, input.id);
+  if (!c.abandoned) fail('Der Betrieb ist aktiv.');
+  if (!biz.qualification(world, state, c.pkey, c.tier).ok) fail('Dir fehlt noch die Qualifikation.');
+  const idx = world.idx(yr(state));
+  const cost = Math.round(c.base * idx * (world.econ.companies.reactivatePct / 100));
+  if (state.money < cost) fail('Dafür reicht dein Geld nicht.');
+  pay(state, cost); c.abandoned = null;
+  chronicle(state, `${c.name} wird wiederbelebt.`, 'business');
+  return { msg: `${c.name} ist wieder in Betrieb.` };
 };
 
 /* ---------------- Meldungen ---------------- */

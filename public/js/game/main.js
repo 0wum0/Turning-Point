@@ -7,10 +7,11 @@ import housing from './views/housing.js';
 import household from './views/household.js';
 import family from './views/family.js';
 import legacy from './views/legacy.js';
+import business from './views/business.js';
 import shop from './views/shop.js';
 import { renderCreate, renderHeir, renderGameOver } from './screens.js';
 
-const PAGES = [overview, newspaper, map, work, housing, household, family, legacy, shop];
+const PAGES = [overview, newspaper, map, work, business, housing, household, family, legacy, shop];
 const byId = Object.fromEntries(PAGES.map((p) => [p.id, p]));
 const app = document.getElementById('app');
 

@@ -10,6 +10,7 @@ const {
 const { LEVELS, ILLNESSES } = require('./content');
 const { applyTownEvents, rollPrivateEvent } = require('./events');
 const { familyDaily, endLife, ageOfChild } = require('./family');
+const { businessDaily } = require('./business');
 
 /** Lebenserwartung (Tage). Medizin wird ab ~1955 besser, gesunder Lebensstil gibt Jahre. */
 function lifespanDays(state, year) {
@@ -160,6 +161,7 @@ function dayStep(ctx) {
 
   // Familie, Ereignisse
   familyDaily(ctx, flows);
+  businessDaily(ctx);
   applyTownEvents(ctx);
   rollPrivateEvent(ctx, flows);
 

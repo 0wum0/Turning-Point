@@ -192,7 +192,7 @@ async function previewHeir(userId, childId, bequest) {
   if (!row) throw new actions.ActionError('Es steht kein Erbe an.');
   const state = JSON.parse(row.state);
   const plan = planInheritance(w, state, childId, Array.isArray(bequest) ? bequest : []);
-  return { n: plan.est.n, share: plan.est.share, cash: plan.cash, properties: plan.properties.map((p) => p.name) };
+  return { n: plan.est.n, share: plan.est.share, cash: plan.cash, properties: plan.properties.concat(plan.companies).map((p) => p.name) };
 }
 
 /** Nur lesen (ohne Sperre/Sync) – für Zeitung, Karte, Kostenvoranschläge. */

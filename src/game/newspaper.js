@@ -5,6 +5,7 @@ const { isLearned, levelIndex } = require('./core');
 const { LEVELS, LAST, randomFirstName, demonym } = require('./content');
 const { townEventsForWeek, describeTownEvent } = require('./events');
 const { scale } = require('./economy');
+const { bizListings } = require('./business');
 
 const STREETS = ['Hauptstraße', 'Bahnhofstraße', 'Gartenweg', 'Lindenallee', 'Schillerstraße', 'Am Markt', 'Goethestraße', 'Ringstraße', 'Mühlenweg', 'Kirchplatz', 'Birkenweg', 'Hafenstraße'];
 const PENSIONS = ['Pension Haus Linde', 'Gästehaus Sonnenschein', 'Pension Zur Post', 'Fremdenzimmer Frau', 'Pension Am Bahnhof', 'Gasthof Zum Löwen'];
@@ -116,11 +117,11 @@ function partnerListings(world, state, city, week) {
 
 function allListings(world, state, cityId, week) {
   const city = world.city(cityId);
-  return { jobs: jobListings(world, state, city, week), housing: housingListings(world, state, city, week), partners: partnerListings(world, state, city, week) };
+  return { jobs: jobListings(world, state, city, week), housing: housingListings(world, state, city, week), partners: partnerListings(world, state, city, week), biz: bizListings(world, state, city, week) };
 }
 
 function resolveListing(world, state, id) {
-  const m = /^(job|pension|rent|sale|partner):(\d+):(\d+):(\d+)$/.exec(id || '');
+  const m = /^(job|pension|rent|sale|partner|biz):(\d+):(\d+):(\d+)$/.exec(id || '');
   if (!m) return null;
   const cityId = Number(m[2]);
   const week = Number(m[3]);
@@ -128,7 +129,7 @@ function resolveListing(world, state, id) {
   const city = world.city(cityId);
   if (!city) return null;
   const l = allListings(world, state, cityId, week);
-  return [...l.jobs, ...l.housing.pension, ...l.housing.rent, ...l.housing.sale, ...l.partners].find((x) => x.id === id) || null;
+  return [...l.jobs, ...l.housing.pension, ...l.housing.rent, ...l.housing.sale, ...l.partners, ...l.biz].find((x) => x.id === id) || null;
 }
 
 function edition(world, state, cityId) {
@@ -158,11 +159,11 @@ function edition(world, state, cityId) {
     medium, city: { id: city.id, name: city.name, state: city.state },
     masthead: medium === 'paper' ? `${dm} ${word}` : `${city.name} · Das Netz`,
     dateLabel: formatDate(state.day, state.startYear), edition: `Ausgabe ${d.doy + 1}/${year}`,
-    jobs: l.jobs, housing: l.housing, partners: l.partners, news,
+    jobs: l.jobs, housing: l.housing, partners: l.partners, biz: l.biz, news,
     tutorial: state.flags.tutorial ? TUTORIAL : [],
     labels: medium === 'paper'
-      ? { jobs: 'Stellenmarkt', housing: 'Wohnungsmarkt', partners: 'Kontakte', news: 'Aus der Stadt' }
-      : { jobs: 'Jobbörse', housing: 'Immobilienportal', partners: 'Partnerbörse', news: 'Nachrichten' },
+      ? { jobs: 'Stellenmarkt', housing: 'Wohnungsmarkt', partners: 'Kontakte', news: 'Aus der Stadt', biz: 'Gewerbe' }
+      : { jobs: 'Jobbörse', housing: 'Immobilienportal', partners: 'Partnerbörse', news: 'Nachrichten', biz: 'Unternehmensbörse' },
   };
 }
 

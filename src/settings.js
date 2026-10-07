@@ -85,6 +85,25 @@ const DEFAULTS = {
       gebaeude: { name: 'Gebäudeversicherung', yearPctOfValue: 0.3, covers: ['fire', 'storm'] },
       gesundheit: { name: 'Krankenzusatz', perDay: 20, covers: ['illness'] },
     },
+    companies: {
+      maxCompanies: 30,
+      staffWage: 500,          // Cent/Tag je Mitarbeiter (Index 1)
+      managerWage: 900,
+      upkeepYearPct: 1,
+      abandonYears: 10,
+      reactivatePct: 25,       // % des Kaufpreises zur Reaktivierung
+      tiers: [
+        { minLevel: 0, price: 1200000, rooms: 3, maxRooms: 6, incomePerRoom: 260, roomsPerStaff: 3, roomPrice: 150000, roomCoins: 1 },
+        { minLevel: 2, price: 4000000, rooms: 6, maxRooms: 14, incomePerRoom: 330, roomsPerStaff: 3, roomPrice: 300000, roomCoins: 2 },
+        { minLevel: 3, price: 12000000, rooms: 12, maxRooms: 50, incomePerRoom: 420, roomsPerStaff: 3, roomPrice: 600000, roomCoins: 3 },
+      ],
+      chains: {
+        wirt: ['Wirtshaus', 'Restaurant', 'Hotel'], baecker: ['Bäckerei', 'Großbäckerei', 'Backwarenfabrik'],
+        tischler: ['Tischlerei', 'Möbelwerkstatt', 'Möbelfabrik'], schmied: ['Schmiede', 'Maschinenwerkstatt', 'Stahlwerk'],
+        landwirt: ['Bauernhof', 'Gutshof', 'Agrarbetrieb'], maurer: ['Baufirma', 'Bauunternehmen', 'Baukonzern'],
+        friseur: ['Friseursalon', 'Salon-Kette', 'Beauty-Konzern'],
+      },
+    },
     moveBaseCost: 300,     // Cent
     moveCostPerKm: 1.6,    // Cent pro km bei Preisindex 1
     childCostPerDay: 90,   // Lebenshaltung je Kind (Cent, Index 1)

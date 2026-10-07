@@ -16,9 +16,10 @@ const act = (s, name, inp, u = user()) => actions.run(name, { world: w, state: s
 
 test('Straße: Tod nach etwa drei Tagen', () => {
   const s = fresh();
-  const r = advance(w, s, 10);
+  let days = 0;
+  for (let i = 0; i < 10 && s.status === 'alive'; i++) { days += advance(w, s, 10 - days).advanced; }
   assert.ok(['dead', 'gameover'].includes(s.status), 'Charakter sollte gestorben sein');
-  assert.ok(r.advanced <= 3 && r.advanced >= 2, `advanced=${r.advanced}`);
+  assert.ok(days <= 3 && days >= 2, `Tage=${days}`);
   assert.strictEqual(s.status, 'gameover'); // keine Kinder → Game Over
 });
 

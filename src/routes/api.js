@@ -100,7 +100,7 @@ router.get('/archive', wrap(async (req, res) => {
 router.post('/ads/start', wrap(async (req, res) => {
   if (!settings.get('ads.enabled')) throw new actions.ActionError('Werbung ist derzeit deaktiviert.');
   const purpose = String(req.body.purpose || 'coins');
-  if (!(purpose === 'coins' || purpose === 'efs' || /^discount:move:\d+$/.test(purpose))) throw new actions.ActionError('Unbekannter Zweck.');
+  if (!(purpose === 'coins' || purpose === 'efs' || /^discount:(move|room):\d+$/.test(purpose))) throw new actions.ActionError('Unbekannter Zweck.');
   const since = Date.now() - 24 * 3600 * 1000;
   const n = (await db.one('SELECT COUNT(*) AS n FROM ad_claims WHERE user_id = ? AND claimed_at IS NOT NULL AND claimed_at > ?', [req.user.id, since])).n;
   if (n >= settings.get('ads.daily_cap')) throw new actions.ActionError('Du hast heute genug Werbung gesehen. Morgen geht es weiter.');

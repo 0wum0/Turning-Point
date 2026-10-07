@@ -55,7 +55,7 @@ function createCharacter(world, input, user, { cycle = 1 } = {}) {
     housing: { type: 'street', cityId: v.cityId },
     occupation: null,
     skills: { learned: [], days: {} },
-    properties: [], nextPropId: 1,
+    properties: [], nextPropId: 1, companies: [], nextCompanyId: 1,
     insurance: { hausrat: false, gebaeude: false, gesundheit: false },
     cards: { health: 0 }, butler: null,
     partner: null, plan: { target: 3 }, children: [], nextChildId: 1,

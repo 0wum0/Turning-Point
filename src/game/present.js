@@ -10,6 +10,7 @@ const { HOUSING, LEVELS, SCHOOLS } = require('./content');
 const { estateShare, eligibleHeirs, ageOfChild } = require('./family');
 const { lifespanDays } = require('./engine');
 const { mediumFor } = require('./newspaper');
+const biz = require('./business');
 
 const round = (n) => Math.round(n);
 
@@ -96,6 +97,19 @@ function present(world, state, user, now) {
       value: propertyValue(world, state, p, year), closed: p.closedUntil > state.day ? p.closedUntil - state.day : 0,
       maintainCost: round(propertyValue(world, state, p, year) * ((100 - p.condition) / 100) * 0.08), residence: state.housing.propertyId === p.id,
     })),
+    companies: (state.companies || []).map((c) => {
+      const t = biz.tiersOf(world)[c.tier]; const nt = biz.tiersOf(world)[c.tier + 1]; const f = biz.companyFlows(world, state, c, year); const city = world.city(c.cityId);
+      const roomCost = Math.round(t.roomPrice * idx * (city ? city.price_factor : 1));
+      return {
+        id: c.id, name: c.name, pkey: c.pkey, profession: (world.prof(c.pkey) || {}).name, tier: c.tier, tierName: biz.tierName(world, c), cityId: c.cityId, city: city && city.name,
+        rooms: c.rooms, maxRooms: t.maxRooms, staff: c.staff, needed: f.needed || biz.staffNeeded(world, c), manager: c.manager, cash: c.cash, abandoned: !!c.abandoned,
+        value: biz.companyValue(world, state, c, year), flows: f, owner: !!(state.occupation && state.occupation.ownCompanyId === c.id),
+        roomCost, roomCoins: biz.tiersOf(world)[c.tier].roomCoins, roomStep: state.discounts[`room:${c.id}`] || 0,
+        qualified: biz.qualification(world, state, c.pkey, c.tier).ok,
+        next: nt ? { name: biz.chainNames(world, c.pkey)[c.tier + 1], cost: Math.max(0, Math.round((nt.price - t.price) * idx * (city ? city.price_factor : 1))), minLevel: nt.minLevel, qualified: biz.qualification(world, state, c.pkey, c.tier + 1).ok } : null,
+        reactivateCost: Math.round(c.base * idx * (econ.companies.reactivatePct / 100)),
+      };
+    }),
     insurance: Object.entries(econ.insurance).map(([k, v]) => ({
       key: k, name: v.name, on: !!state.insurance[k], covers: v.covers,
       perDay: v.perDay ? scale(v.perDay, idx) : round((state.properties.reduce((s, p) => s + propertyValue(world, state, p, year), 0) * v.yearPctOfValue) / 100 / 365),
@@ -131,7 +145,7 @@ function present(world, state, user, now) {
   if (state.status === 'dead') {
     const est = estateShare(world, state);
     view.heirs = eligibleHeirs(state).map((c) => ({ id: c.id, name: c.name, age: ageOfChild(state, c), profession: c.pkey ? (world.prof(c.pkey) || {}).name : null }));
-    view.estate = { n: est.n, total: est.total, share: est.share, money: est.money, properties: state.properties.map((p) => ({ id: p.id, name: p.name, value: propertyValue(world, state, p, year) })) };
+    view.estate = { n: est.n, total: est.total, share: est.share, money: est.money, properties: est.props.map((p) => ({ id: p.key, name: p.name, value: p.value })) };
   }
   return view;
 }

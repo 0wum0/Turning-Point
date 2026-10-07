@@ -71,7 +71,7 @@ export function renderHeir(root, ctx) {
     try { const r = (await api('POST', '/api/heir/preview', { childId: sel.childId, bequest: sel.bequest })).plan; mount(plan, html`Dein Erbe: <b>${r.properties.length ? r.properties.join(', ') + ' und ' : ''}${moneyShort(r.cash, cur)} in bar</b> (Pflichtanteil 1/${r.n}).`); } catch (e) { mount(plan, html`${e.message}`); }
   }
   root.querySelectorAll('input[name=heir]').forEach((r) => r.addEventListener('change', () => { sel.childId = Number(r.value); preview(); }));
-  root.querySelectorAll('[data-prop]').forEach((c) => c.addEventListener('change', () => { sel.bequest = [...root.querySelectorAll('[data-prop]')].filter((x) => x.checked).map((x) => Number(x.dataset.prop)); preview(); }));
+  root.querySelectorAll('[data-prop]').forEach((c) => c.addEventListener('change', () => { sel.bequest = [...root.querySelectorAll('[data-prop]')].filter((x) => x.checked).map((x) => x.dataset.prop); preview(); }));
   root.querySelector('#confirm').onclick = async (e) => {
     const b = e.currentTarget; b.disabled = true;
     try { const r = await api('POST', '/api/heir', { childId: sel.childId, bequest: sel.bequest }); ctx.ui.heir = null; ctx.setView(r.view); ctx.go('overview'); } catch (er) { toast(er.message, 'bad'); b.disabled = false; }

@@ -16,13 +16,15 @@ function planInheritance(world, state, childId, bequestIds = []) {
   const est = estateShare(world, state);
   let remaining = est.share;
   const taken = [];
-  for (const pid of bequestIds) {
-    const p = state.properties.find((x) => x.id === Number(pid));
-    if (!p || taken.includes(p)) continue;
-    const v = propertyValue(world, state, p, year);
-    if (v <= remaining) { taken.push(p); remaining -= v; }
+  const companies = [];
+  for (const raw of bequestIds) {
+    const key = String(raw).includes(':') ? String(raw) : `p:${raw}`;
+    const it = est.props.find((x) => x.key === key);
+    if (!it || it.value > remaining) continue;
+    if (it.kind === 'property') { const p = state.properties.find((x) => x.id === it.id); if (p && !taken.includes(p)) { taken.push(p); remaining -= it.value; } }
+    else { const c = state.companies.find((x) => x.id === it.id); if (c && !companies.includes(c)) { companies.push(c); remaining -= it.value; } }
   }
-  return { est, properties: taken, cash: remaining };
+  return { est, properties: taken, companies, cash: remaining };
 }
 
 function createHeirState(world, old, childId, bequestIds) {
@@ -44,6 +46,7 @@ function createHeirState(world, old, childId, bequestIds) {
     occupation: null,
     skills: { learned: [], days: {} },
     properties: plan.properties.map((p) => ({ ...p, closedUntil: p.closedUntil })), nextPropId: old.nextPropId,
+    companies: plan.companies.map((c) => ({ ...c, staff: c.abandoned ? 0 : c.staff })), nextCompanyId: old.nextCompanyId,
     insurance: { ...old.insurance }, cards: { health: old.cards.health }, butler: null,
     partner: null, plan: { target: 3 }, children: [], nextChildId: 1,
     tree: old.tree,
@@ -70,7 +73,7 @@ function createHeirState(world, old, childId, bequestIds) {
   chronicle(state, `Generation ${state.generation}: ${c.name} ${state.person.last} tritt das Erbe an.`, 'inheritance');
   notice(state, {
     level: 'good', title: `Generation ${state.generation}: Das Erbe ist angetreten`, tab: 'legacy',
-    text: `${c.name} erbt ${plan.properties.length ? plan.properties.map((p) => p.name).join(', ') + ' und ' : ''}${formatMoney(plan.cash, world.currency(year))} in bar (Pflichtanteil 1/${plan.est.n}).`,
+    text: `${c.name} erbt ${plan.properties.concat(plan.companies).length ? plan.properties.concat(plan.companies).map((p) => p.name).join(', ') + ' und ' : ''}${formatMoney(plan.cash, world.currency(year))} in bar (Pflichtanteil 1/${plan.est.n}).`,
     info: ['Du spielst jetzt das Kind des Verstorbenen.', 'Das Erbe wird nach Pflichtanteil verteilt: Je mehr Kinder, desto kleiner der Anteil.', 'Suche dir Arbeit, halte die Familie zusammen und führe das Lebenswerk fort.'],
   });
   return { state, plan };
