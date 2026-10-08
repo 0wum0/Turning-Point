@@ -8,9 +8,9 @@
     <span class="langsw" data-i18n-skip><a href="/lang/de?next=<%= encodeURIComponent(path || '/') %>" class="<%= lang === 'de' ? 'on' : '' %>" hreflang="de" lang="de">DE</a><a href="/lang/en?next=<%= encodeURIComponent(path || '/') %>" class="<%= lang === 'en' ? 'on' : '' %>" hreflang="en" lang="en">EN</a></span>
     <button class="btn ghost sm hide-xs" data-theme-toggle aria-label="Farbschema wechseln" title="Farbschema wechseln"><%- icon('sun-medium') %></button>
     <% if (typeof user !== 'undefined' && user) { %>
-      <% if (user.role === 'admin') { %><a class="btn ghost sm" href="/admin"><%- icon('shield') %> Admin</a><% } %>
+      <% if (user.role === 'admin') { %><a class="btn ghost sm" href="/admin"><%- icon('shield') %><span class="hide-xs"> Admin</span></a><% } %>
       <a class="btn ghost sm hide-xs" href="/account"><%- icon('user') %><span class="hide-sm"> Konto</span></a>
-      <a class="btn primary sm" href="/play"><%- icon('play') %> Weiterspielen</a>
+      <a class="btn primary sm" href="/play"><%- icon('play') %> <span class="tb-long">Weiterspielen</span><span class="tb-short">Spielen</span></a>
     <% } else { %>
       <a class="btn ghost sm hide-sm" href="/login">Anmelden</a>
       <a class="btn primary sm" href="/register">Kostenlos spielen</a>

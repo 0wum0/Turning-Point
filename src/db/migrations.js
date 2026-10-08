@@ -561,6 +561,17 @@ const MIGRATIONS = [
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     'ALTER TABLE player_props ADD COLUMN rent_open TINYINT NOT NULL DEFAULT 0',
   ] },
+  { id: '019_world_events', up: [
+    `CREATE TABLE IF NOT EXISTS world_events (
+      id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      kind VARCHAR(20) NOT NULL,
+      city_id INT UNSIGNED NOT NULL DEFAULT 0,
+      title VARCHAR(200) NOT NULL,
+      text TEXT NOT NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      KEY idx_we (id), KEY idx_we_time (created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+  ] },
 ];
 
 async function ensureTable(db) {

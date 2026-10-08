@@ -111,8 +111,11 @@ async function withCharacter(userId, fn, { needAlive = false } = {}) {
     const bonds = require('../lib/bonds');
     if (state) { await bonds.reconcile(conn, user, row, state, w); flush(user, state); }
     const ctx = { world: w, state, user, row, sync, now, conn };
+    const wasAlive = !!(state && state.status === 'alive');
     const result = (await fn(ctx)) || {};
     state = ctx.state;
+    if (wasAlive && state && state.status === 'gameover') { const nm = user.social_public ? `${state.person.first} ${state.person.last}` : 'Ein Bürger'; await require('../lib/tagesblatt').post('life', 'Insolvenz', `${nm} ist zahlungsunfähig. Besitz kommt unter den Hammer.`, state.cityId, conn); }
+    else if (wasAlive && state && state.status === 'dead' && user.social_public) { await require('../lib/tagesblatt').post('life', 'Todesfall', `${state.person.first} ${state.person.last} ist verstorben.`, state.cityId, conn); }
     if (state && row) {
       if (state.status === 'gameover' && ((state.properties || []).length || (state.companies || []).length)) { try { await require('../lib/market').estate(conn, user, state, w); } catch (e) { require('../lib/log').warn(`[market] Insolvenzmasse: ${e.message}`); } }
       flush(user, state); await bonds.beforeSave(conn, user, state, w); await saveCharacter(conn, row, state);
@@ -153,6 +156,7 @@ async function create(userId, input) {
     user.meta.cycles = (user.meta.cycles || 0) + 1;
     await saveUser(conn, user);
     await require('../lib/social').upsertStats(conn, user, { id: r.insertId }, state, w);
+    await require('../lib/tagesblatt').post('life', 'Neu in der Stadt', `${user.social_public ? `${state.person.first} ${state.person.last}` : 'Ein neuer Bürger'} beginnt ein neues Leben in ${(w.city(state.cityId) || {}).label || 'der Stadt'}.`, state.cityId, conn);
     return { view: present(w, state, user, now), id: r.insertId };
   });
 }

@@ -303,6 +303,7 @@ async function estate(conn, user, state, world) {
     const snap = detach(world, state, kind, it.id); const val = valueReal(world, { ...state, properties: state.properties, companies: state.companies }, kind, { ...it });
     await conn.query("INSERT INTO market_auctions (kind, seller_id, city_id, item, name, reason, min_real, value_real, ends_at) VALUES (?,?,?,?,?,'estate',?,?, DATE_ADD(NOW(), INTERVAL ? HOUR))", [kind, null, snap.cityId, JSON.stringify(snap), snap.name, Math.max(100, Math.round(val * 0.5)), val, cfg().auctionHours]);
   };
+  if (state.properties.length || (state.companies || []).length) await require('./tagesblatt').post('market', 'Zwangsversteigerung', `Aus einer Insolvenzmasse kommen ${state.properties.length} Immobilie(n) und ${(state.companies || []).length} Betrieb(e) unter den Hammer.`, state.cityId, conn);
   for (const p of state.properties.slice()) await make('prop', p);
   for (const c of (state.companies || []).slice()) {
     if (c.stock) { await conn.query("UPDATE stocks SET status = 'delisted' WHERE id = ?", [c.stock.id]); await conn.query("UPDATE stock_orders SET status = 'cancelled' WHERE stock_id = ? AND status = 'open'", [c.stock.id]); delete c.stock; }

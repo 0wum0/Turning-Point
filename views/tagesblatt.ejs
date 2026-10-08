@@ -1,0 +1,10 @@
+<%- include('partials/head', { title: title, era: 1, css: ['landing', 'tagesblatt'] }) %>
+<%- include('partials/topbar') %>
+<main class="container tb-page">
+  <header class="tb-mast"><span class="tb-date" id="tb-date"></span><h1>Das Tagesblatt</h1><p>Was in der Welt von Turning Point passiert – live aus allen Städten.</p></header>
+  <%- include('partials/tb-stats', { stats }) %>
+  <div class="tb-extra small dim">Spieler gesamt <b data-k="players"><%= stats.players %></b> · lebende Charaktere <b data-k="alive"><%= stats.alive %></b> · Immobilien <b data-k="props"><%= stats.props %></b> · laufende Versteigerungen <b data-k="auctions"><%= stats.auctions %></b> · Börsenumsatz 24 Std <b data-k="stockVolume"><%= stats.stockVolume.toLocaleString('de-DE') %></b></div>
+  <section class="tb-feed" id="tb-feed"><%- include('partials/tb-feed', { news }) %></section>
+</main>
+<script src="/js/tagesblatt.js?v=<%= assetV %>" defer></script>
+<%- include('partials/foot') %>

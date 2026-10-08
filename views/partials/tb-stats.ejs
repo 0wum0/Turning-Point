@@ -1,0 +1,9 @@
+<% const cp = (n) => { n = Number(n) || 0; const a = Math.abs(n); if (a >= 1e9) return (n / 1e9).toFixed(1).replace('.', ',') + ' Mrd'; if (a >= 1e6) return (n / 1e6).toFixed(1).replace('.', ',') + ' Mio'; if (a >= 1e4) return Math.round(n / 1e3) + ' Tsd'; return n.toLocaleString('de-DE'); }; %>
+<div class="tb-stats" id="tb-stats">
+  <div class="tb-stat"><b data-k="online"><%= stats.online %></b><span>jetzt online</span></div>
+  <div class="tb-stat"><b data-k="activeDay"><%= stats.activeDay %></b><span>aktiv in 24 Std</span></div>
+  <div class="tb-stat"><b data-k="money" data-fmt="cp"><%= cp(stats.money) %></b><span>Geld im Umlauf <small>(Wert 1945)</small></span></div>
+  <div class="tb-stat"><b data-k="firms"><%= stats.firms %></b><span>Betriebe</span></div>
+  <div class="tb-stat"><b data-k="trades"><%= stats.trades %></b><span>Geschäfte heute</span></div>
+  <div class="tb-stat"><b data-k="listed"><%= stats.listed %></b><span>Börsenwerte</span></div>
+</div>

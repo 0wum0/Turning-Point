@@ -1,0 +1,7 @@
+<% if (!news.length) { %><p class="dim">Noch keine Meldungen. Sobald die ersten Spieler etwas bewegen, steht es hier.</p><% } %>
+<% news.forEach(function(n){ const d = new Date(n.at); %>
+<article class="tb-item">
+  <div class="tb-meta"><span class="tb-sec"><%= n.section %></span><% if (n.city) { %><span>· <%= n.city %></span><% } %><time datetime="<%= d.toISOString() %>">· <%= d.toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin' }) %></time></div>
+  <h3><%= n.title %></h3><p><%= n.text %></p>
+</article>
+<% }) %>
