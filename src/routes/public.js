@@ -8,9 +8,11 @@ let LEGAL_EN = {};
 try { LEGAL_EN = require('../legal-texts-en'); } catch (_) { /* Übersetzung optional */ }
 
 const tb = require('../lib/tagesblatt');
-router.get('/tagesblatt.json', async (req, res) => { try { res.set('Cache-Control', 'public, max-age=30'); res.json({ stats: await tb.stats(), news: await tb.feed(Number(req.query.n) || 30) }); } catch (e) { res.status(500).json({ error: 'nicht verfügbar' }); } });
-router.get('/tagesblatt', async (req, res, next) => { try { res.render('tagesblatt', { title: 'Tagesblatt', stats: await tb.stats(), news: await tb.feed(60) }); } catch (e) { next(e); } });
-router.get('/', async (req, res, next) => { let stats = null; let news = []; try { stats = await tb.stats(); news = await tb.feed(6); } catch (_) { /* ohne Tagesblatt */ } res.render('index', { stats, news, landing: settings.get(req.lang === 'en' ? 'landing_en' : 'landing'), deleted: !!req.query.deleted }); });
+const i18n = require('../i18n-game');
+const tr = (req, news) => (req.lang !== 'en' ? news : news.map((n) => ({ ...n, section: i18n.tr(n.section), title: i18n.tr(n.title), text: i18n.tr(n.text) })));
+router.get('/tagesblatt.json', async (req, res) => { try { res.set('Cache-Control', 'public, max-age=30'); res.json({ stats: await tb.stats(), news: tr(req, await tb.feed(Number(req.query.n) || 30)) }); } catch (e) { res.status(500).json({ error: 'nicht verfügbar' }); } });
+router.get('/tagesblatt', async (req, res, next) => { try { res.render('tagesblatt', { title: 'Tagesblatt', stats: await tb.stats(), news: tr(req, await tb.feed(60)) }); } catch (e) { next(e); } });
+router.get('/', async (req, res, next) => { let stats = null; let news = []; try { stats = await tb.stats(); news = tr(req, await tb.feed(6)); } catch (_) { /* ohne Tagesblatt */ } res.render('index', { stats, news, landing: settings.get(req.lang === 'en' ? 'landing_en' : 'landing'), deleted: !!req.query.deleted }); });
 
 /** Englische Fassung nur, solange der Admin den deutschen Text nicht selbst geändert hat. */
 function legal(key, titleDe, titleEn) {

@@ -228,6 +228,17 @@ X([
   ['Du bist der letzte Admin. Vergib zuerst die Admin-Rolle an jemand anderen.', 'You are the last admin. First give the admin role to someone else.'],
 ]);
 
+// ---- Tagesblatt
+X([
+  ['Das Tagesblatt', 'The Daily Gazette'], ['Alle Meldungen →', 'All reports →'], ['Tagesblatt', 'Daily Gazette'],
+  ['Was in der Welt von Turning Point passiert – live aus allen Städten.', 'What is happening in the world of Turning Point – live from every city.'],
+  ['jetzt online', 'online now'], ['aktiv in 24 Std', 'active in 24 h'], ['Geld im Umlauf', 'Money in circulation'], ['(Wert 1945)', '(1945 value)'],
+  ['Betriebe', 'Businesses'], ['Geschäfte heute', 'Deals today'], ['Börsenwerte', 'Listed stocks'],
+  ['Spieler gesamt', 'Players in total'], ['lebende Charaktere', 'living characters'], ['Immobilien', 'Properties'], ['laufende Versteigerungen', 'running auctions'], ['Börsenumsatz 24 Std', 'Stock turnover 24 h'],
+  ['Noch keine Meldungen. Sobald die ersten Spieler etwas bewegen, steht es hier.', 'No reports yet. As soon as the first players make a move, it will appear here.'],
+  ['Wirtschaft', 'Economy'], ['Chronik', 'Chronicle'], ['Börse', 'Stock exchange'], ['Lokales', 'Local'], ['Nachruf', 'Obituary'],
+]);
+
 // Negative Beträge in „Wert 1945“
 patterns.push(['^([−-][\\d.,kmbt]+) DM \\(Wert 1945\\)$', '$1 DM (1945 value)']);
 

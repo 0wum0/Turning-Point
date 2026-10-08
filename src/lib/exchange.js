@@ -195,7 +195,9 @@ async function takeover(userId, stockId) {
 async function flushDividends(conn, state) {
   const list = state.pending && state.pending.div; if (!list || !list.length) return;
   state.pending.div = [];
-  for (const d of list) {
+  const sum = new Map(); for (const d of list) sum.set(d.stockId, (sum.get(d.stockId) || 0) + d.real);
+  for (const [stockId, real] of sum) {
+    const d = { stockId, real };
     const st = await conn.one("SELECT id, name, shares FROM stocks WHERE id = ? AND status = 'active'", [d.stockId]); if (!st) continue;
     const hs = await conn.query('SELECT user_id, shares FROM stock_holdings WHERE stock_id = ? AND shares > 0', [st.id]);
     for (const h of hs) if (h.user_id !== MAKER) await credit(conn, h.user_id, d.real * h.shares / st.shares, `Dividende „${st.name}“ (${h.shares} Anteile).`);
