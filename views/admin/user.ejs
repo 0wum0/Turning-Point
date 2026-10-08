@@ -10,7 +10,7 @@
     <div class="field"><label>Coins</label><input type="number" name="coins" value="<%= u.coins %>" min="0"></div>
     <div class="field"><label>EFS-Vorrat</label><input type="number" name="efs_pool" value="<%= u.efs_pool %>" min="0"></div>
     <div class="field"><label>Dauerkarte läuft bis</label><input type="datetime-local" name="sub_until" value="<%= subLocal %>"><div class="hint">Leer = keine Dauerkarte.</div></div>
-    <div class="field"><label>Neues Passwort setzen (optional, min. 8 Zeichen)</label><input type="text" name="new_password" autocomplete="off" placeholder="leer lassen = unverändert"></div>
+    <div class="field"><label>Neues Passwort setzen (optional, min. 10 Zeichen)</label><input type="text" name="new_password" autocomplete="off" placeholder="leer lassen = unverändert"></div>
     <div class="field"><label class="check" style="margin-top:1.7rem"><input type="checkbox" name="email_verified" value="1" <%= u.email_verified ? 'checked' : '' %>> E-Mail bestätigt</label></div>
     <div class="field"><label class="check" style="margin-top:1.7rem"><input type="checkbox" name="reset_bonus" value="1"> Tages-Login-Bonus zurücksetzen</label></div>
     <div class="field"><label class="check"><input type="checkbox" name="banned" value="1" <%= u.banned ? 'checked' : '' %> <%= u.id === user.id ? 'disabled' : '' %>> Gesperrt</label><input type="text" name="ban_reason" value="<%= u.ban_reason || '' %>" placeholder="Sperrgrund" maxlength="200"></div>

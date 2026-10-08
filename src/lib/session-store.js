@@ -32,4 +32,24 @@ class MySQLStore extends session.Store {
   }
   async prune() { await db.query('DELETE FROM sessions WHERE expires < ?', [Date.now()]); }
 }
-module.exports = { MySQLStore };
+
+/** Muster, die genau die Sitzungen eines Kontos treffen ("userId":5 darf nicht auch 50 oder 500 erwischen). */
+function userSessionPatterns(userId) {
+  const id = Math.trunc(Number(userId));
+  if (!Number.isSafeInteger(id) || id <= 0) return [];
+  return [`%"userId":${id},%`, `%"userId":${id}}%`];
+}
+/** Beendet alle Sitzungen eines Kontos (optional bis auf die aktuelle). Gibt die Anzahl zurück. */
+async function killUserSessions(userId, exceptSid = null) {
+  const pats = userSessionPatterns(userId);
+  if (!pats.length) return 0;
+  const r = await db.query(`DELETE FROM sessions WHERE (data LIKE ? OR data LIKE ?)${exceptSid ? ' AND sid <> ?' : ''}`, exceptSid ? [...pats, exceptSid] : pats);
+  return r.affectedRows || 0;
+}
+async function countUserSessions(userId) {
+  const pats = userSessionPatterns(userId);
+  if (!pats.length) return 0;
+  return (await db.one('SELECT COUNT(*) n FROM sessions WHERE (data LIKE ? OR data LIKE ?) AND expires > ?', [...pats, Date.now()])).n;
+}
+
+module.exports = { MySQLStore, userSessionPatterns, killUserSessions, countUserSessions };

@@ -35,8 +35,26 @@ function getPool() {
   return pool;
 }
 
+/**
+ * Schutz vor „Objekt-Injektion“: mysql2.query() klappt Arrays/Objekte in „?“ zu SQL-Fragmenten auf (x = ? mit {a:1} → x = `a` = 1).
+ * Wo Eingaben ungeprüft aus JSON/qs-Bodies bis hierher durchrutschen, wäre das eine Injektion – deshalb sind nur Skalare erlaubt.
+ * (Listen für IN (...) werden im Code mit einzelnen Platzhaltern gebaut.)
+ */
+function checkParams(params) {
+  if (params === undefined || params === null) return params;
+  const list = Array.isArray(params) ? params : [params];
+  for (const p of list) {
+    if (p === null || p === undefined) continue;
+    const t = typeof p;
+    if (t === 'string' || t === 'number' || t === 'boolean' || t === 'bigint') continue;
+    if (p instanceof Date || Buffer.isBuffer(p)) continue;
+    throw new TypeError('Ungültiger Abfrage-Parameter (nur Skalare erlaubt).');
+  }
+  return params;
+}
+
 async function query(sql, params) {
-  const [rows] = await getPool().query(sql, params);
+  const [rows] = await getPool().query(sql, checkParams(params));
   return rows;
 }
 
@@ -50,8 +68,8 @@ async function tx(fn) {
   try {
     await conn.beginTransaction();
     const api = {
-      query: async (sql, params) => (await conn.query(sql, params))[0],
-      one: async (sql, params) => (await conn.query(sql, params))[0][0] || null,
+      query: async (sql, params) => (await conn.query(sql, checkParams(params)))[0],
+      one: async (sql, params) => (await conn.query(sql, checkParams(params)))[0][0] || null,
     };
     const result = await fn(api);
     await conn.commit();
@@ -87,4 +105,4 @@ async function testConnection(db) {
   }
 }
 
-module.exports = { init, getPool, query, one, tx, testConnection };
+module.exports = { init, getPool, query, one, tx, testConnection, checkParams };

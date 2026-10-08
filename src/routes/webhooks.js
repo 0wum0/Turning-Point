@@ -51,14 +51,15 @@ router.post('/stripe', express.raw({ type: '*/*', limit: '1mb' }), async (req, r
 router.get('/offerwall', async (req, res) => {
   const secret = settings.get('offerwall.secret');
   const { uid, coins, txid, sig } = req.query;
-  if (!secret || !uid || !coins || !txid || !sig) return res.status(400).send('bad request');
+  // Nur einfache Texte (keine Listen/Objekte aus ?uid[]=… ), Zahlen als Ziffern, Signatur als Hex
+  if (!secret || [uid, coins, txid, sig].some((x) => typeof x !== 'string' || !x || x.length > 200) || !/^\d{1,10}$/.test(uid) || !/^\d{1,6}$/.test(coins)) return res.status(400).send('bad request');
   const exp = crypto.createHmac('sha256', secret).update(`${uid}|${coins}|${txid}`).digest('hex');
-  const a = Buffer.from(exp); const b = Buffer.from(String(sig));
+  const a = Buffer.from(exp); const b = Buffer.from(sig.toLowerCase());
   if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return res.status(403).send('bad signature');
   const n = Math.max(0, Math.min(1000, parseInt(coins, 10) || 0));
   try {
     await db.tx(async (c) => {
-      const dup = await c.one('SELECT id FROM offer_events WHERE txid = ?', [String(txid).slice(0, 120)]);
+      const dup = await c.one('SELECT id FROM offer_events WHERE txid = ? FOR UPDATE', [String(txid).slice(0, 120)]);
       if (dup) return;
       const u = await c.one('SELECT id FROM users WHERE id = ?', [Number(uid)]);
       if (!u) return;
@@ -66,7 +67,7 @@ router.get('/offerwall', async (req, res) => {
       await c.query('UPDATE users SET coins = coins + ? WHERE id = ?', [n, u.id]);
     });
     res.send('1');
-  } catch (e) { log.error('offerwall', e); res.status(500).send('error'); }
+  } catch (e) { if (e && e.code === 'ER_DUP_ENTRY') return res.send('1'); log.error('offerwall', e); res.status(500).send('error'); }
 });
 
 module.exports = router;

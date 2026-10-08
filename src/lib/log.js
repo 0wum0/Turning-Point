@@ -4,9 +4,13 @@ const path = require('path');
 const { paths } = require('../config');
 
 const MAX = 1024 * 1024;
+/** Zugangsdaten gehören nicht ins Protokoll (Reset-/Bestätigungslinks, Signaturen, Passwörter in Adressen). */
+const scrub = (t) => t
+  .replace(/(\/(?:reset|verify)\/)[A-Za-z0-9_-]{16,}/g, '$1[token]')
+  .replace(/([?&](?:sig|token|tp_token|_csrf|password|pw|secret)=)[^&#\s"']*/gi, '$1[x]');
 function write(level, args) {
   const msg = args.map((a) => (a instanceof Error ? a.stack || a.message : typeof a === 'string' ? a : JSON.stringify(a))).join(' ');
-  const line = `${new Date().toISOString()} [${level}] ${msg}\n`;
+  const line = `${new Date().toISOString()} [${level}] ${scrub(msg)}\n`;
   (level === 'error' ? process.stderr : process.stdout).write(line);
   try {
     const file = path.join(paths.logsDir, 'app.log');

@@ -17,6 +17,8 @@ const { randomToken } = require('../lib/security');
 const APP_VERSION = require('../../package.json').version;
 
 const roles = require('../lib/roles');
+const { killUserSessions } = require('../lib/session-store');
+const passwordPolicy = require('../lib/password');
 const router = express.Router();
 
 /* ---------- Zugriff ---------- */
@@ -31,15 +33,17 @@ router.use((req, res, next) => {
   res.locals.era = 1;
   next();
 });
-/* Niemand bearbeitet gleich- oder höherrangige Konten (außer Admins) */
+/* Niemand bearbeitet gleich- oder höherrangige Konten (außer Admins) – für JEDE schreibende Aktion, die ein Konto oder dessen Charakter betrifft.
+   Der Pfad wird wie bei der Rechteprüfung normalisiert (Gross-/Kleinschreibung, Schrägstriche), und bei Fehlern wird abgelehnt statt durchgewunken. */
 router.use(async (req, res, next) => {
   try {
-    const m = /^\/users\/(\d+)\/[a-z]+$/.exec(req.path);
-    if (m && req.method === 'POST' && req.user.role !== 'admin' && Number(m[1]) !== req.user.id) {
-      const t = await db.one('SELECT role FROM users WHERE id = ?', [Number(m[1])]);
-      if (t && roles.rank(t.role) >= roles.rank(req.user.role)) { flash(req, 'bad', 'Konten gleich- oder höherrangiger Teammitglieder kannst du nicht bearbeiten.'); return res.redirect(`/admin/users/${m[1]}`); }
+    if (req.user.role === 'admin' || req.method === 'GET' || req.method === 'HEAD') return next();
+    const tg = roles.targetOf(req.path);
+    if (tg) {
+      const t = tg.kind === 'user' ? await db.one('SELECT id, role FROM users WHERE id = ?', [tg.id]) : await db.one('SELECT u.id, u.role FROM characters c JOIN users u ON u.id = c.user_id WHERE c.id = ?', [tg.id]);
+      if (t && t.id !== req.user.id && roles.rank(t.role) >= roles.rank(req.user.role)) { flash(req, 'bad', 'Konten gleich- oder höherrangiger Teammitglieder kannst du nicht bearbeiten.'); return res.redirect(tg.kind === 'user' ? `/admin/users/${tg.id}` : '/admin'); }
     }
-  } catch (_) { /* weiter */ }
+  } catch (e) { return next(e); }
   next();
 });
 router.use(async (req, res, next) => {
@@ -56,13 +60,18 @@ router.use(async (req, res, next) => {
 let adminBadgeCache = null;
 const wrap = (fn) => (req, res, next) => fn(req, res, next).catch(next);
 const flash = (req, type, msg) => { req.session.flash = { type, msg }; };
-const back = (req, res, fallback) => res.redirect(req.get('referer') && req.get('referer').includes('/admin') ? req.get('referer') : fallback);
+/** Zurück zur vorigen Admin-Seite – aber nur auf der eigenen Domain (Referer ist vom Client steuerbar → kein offener Redirect). */
+const backTo = (req, fallback) => {
+  try { const u = new URL(req.get('referer') || ''); if (u.host === req.get('host') && u.pathname.startsWith('/admin')) return u.pathname + u.search; } catch (_) { /* kein/ungültiger Referer */ }
+  return fallback;
+};
+const back = (req, res, fallback) => res.redirect(backTo(req, fallback));
 const int = (v, d = 0) => { const n = parseInt(v, 10); return Number.isFinite(n) ? n : d; };
 const num = (v, d = 0) => { const n = parseFloat(String(v).replace(',', '.')); return Number.isFinite(n) ? n : d; };
 const clean = (v, max) => String(v == null ? '' : v).trim().slice(0, max);
 
 /* ---------- Spieler & Charaktere (admin-players.js) ---------- */
-const H = { wrap, flash, back, int, num, clean };
+const H = { wrap, flash, back, backTo, int, num, clean };
 require('./admin-players')(router, H);
 require('./admin-tools')(router, H);
 require('./admin-insights')(router, H);
@@ -79,12 +88,13 @@ router.post('/users/:id/:action', wrap(async (req, res) => {
   const act = req.params.action;
   if (act === 'coins') { const n = int(req.body.amount); await db.query('UPDATE users SET coins = GREATEST(0, coins + ?) WHERE id = ?', [n, id]); flash(req, 'good', `${n >= 0 ? '+' : ''}${n} Coins gebucht.`); }
   else if (act === 'efs') { const n = int(req.body.amount); await db.query('UPDATE users SET efs_pool = GREATEST(0, efs_pool + ?) WHERE id = ?', [n, id]); flash(req, 'good', `${n >= 0 ? '+' : ''}${n} EFS gebucht.`); }
-  else if (act === 'ban') { if (self) { flash(req, 'bad', 'Du kannst dich nicht selbst sperren.'); } else { await db.query('UPDATE users SET banned = 1, ban_reason = ? WHERE id = ?', [clean(req.body.reason, 200) || null, id]); await db.query('DELETE FROM sessions WHERE data LIKE ?', [`%"userId":${id}%`]); flash(req, 'good', 'Spieler gesperrt.'); } }
+  else if (act === 'ban') { if (self) { flash(req, 'bad', 'Du kannst dich nicht selbst sperren.'); } else { await db.query('UPDATE users SET banned = 1, ban_reason = ? WHERE id = ?', [clean(req.body.reason, 200) || null, id]); await killUserSessions(id); flash(req, 'good', 'Spieler gesperrt.'); } }
   else if (act === 'unban') { await db.query('UPDATE users SET banned = 0, ban_reason = NULL WHERE id = ?', [id]); flash(req, 'good', 'Sperre aufgehoben.'); }
   else if (act === 'role') { if (self) flash(req, 'bad', 'Die eigene Rolle kann nicht geändert werden.'); else { const r = roles.ROLES.includes(req.body.role) ? req.body.role : 'player'; await db.query('UPDATE users SET role = ? WHERE id = ?', [r, id]); flash(req, 'good', `Rolle: ${r}`); } }
   else if (act === 'password') {
-    const pw = randomToken(6);
-    await db.query('UPDATE users SET password_hash = ? WHERE id = ?', [await bcrypt.hash(pw, 11), id]);
+    const pw = randomToken(9);
+    await db.query('UPDATE users SET password_hash = ?, reset_token = NULL, reset_expires = NULL WHERE id = ?', [await bcrypt.hash(pw, 11), id]);
+    await killUserSessions(id);
     flash(req, 'good', `Neues Passwort für ${u.username}: ${pw} (jetzt notieren – wird nicht erneut angezeigt).`);
   } else if (act === 'verify') { await db.query('UPDATE users SET email_verified = 1, verify_token = NULL WHERE id = ?', [id]); flash(req, 'good', 'E-Mail als bestätigt markiert.'); }
   else if (act === 'reset-character') { await db.query("UPDATE characters SET status = 'gameover', end_reason = 'Vom Admin zurückgesetzt' WHERE user_id = ? AND status IN ('alive','dead')", [id]); flash(req, 'good', 'Aktueller Charakter beendet – der Spieler kann ein neues Leben beginnen.'); }
@@ -94,7 +104,7 @@ router.post('/users/:id/:action', wrap(async (req, res) => {
 }));
 
 /* ---------- Bilder-Upload (liegt AUSSERHALB des App-Ordners) ---------- */
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 4 * 1024 * 1024, files: 2 } });
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 4 * 1024 * 1024, files: 2, fields: 60, fieldSize: 100 * 1024, parts: 70 } });
 function sniff(buf) {
   if (buf.length > 12 && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return ['png', 'image/png'];
   if (buf.length > 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return ['jpg', 'image/jpeg'];
@@ -294,6 +304,7 @@ function validateJson(key, v) {
 const econKeys = (key) => key.slice(8).split(',');
 const pick = (o, keys) => Object.fromEntries(keys.filter((k) => k in o).map((k) => [k, o[k]]));
 const isExpert = (g) => g.id === 'expert';
+const URL_KEYS = new Set(['ads.custom_url', 'offerwall.url']); // landen in iframes/CSP: nur https, nie javascript:/data:
 const SECRET_KEYS = new Set(['payments.stripe_secret', 'payments.stripe_webhook_secret', 'offerwall.secret', 'mail.smtp']);
 function expertGroup() {
   const fields = Object.keys(settings.DEFAULTS).filter((k) => !SECRET_KEYS.has(k) && k !== 'economy').map((k) => {
@@ -359,9 +370,12 @@ router.post('/settings/:group', wrap(async (req, res) => {
       else if (type === 'smtp') {
         const old = settings.get('mail.smtp');
         val = { host: clean(req.body['smtp_host'], 200), port: int(req.body['smtp_port'], 587), secure: req.body['smtp_secure'] === '1', user: clean(req.body['smtp_user'], 200), pass: req.body['smtp_pass'] ? String(req.body['smtp_pass']).slice(0, 200) : (old.pass || ''), from: clean(req.body['smtp_from'], 200) };
-      } else if (type === 'secret') { val = raw ? String(raw).slice(0, 300) : (settings.get(key) || '');
+      } else if (type === 'secret') {
+        if (req.user.role !== 'admin') continue; // Geheimnisse (Offerwall-/Stripe-Schlüssel) ändert nur der Admin – auch nicht über andere Gruppen
+        val = raw ? String(raw).slice(0, 300) : (settings.get(key) || '');
       } else if (type === 'select') { val = String(raw); if (!(f[4] || []).includes(val)) throw new Error(`${f[1]}: ungültiger Wert.`); }
       else val = String(raw == null ? '' : raw).slice(0, 20000);
+      if (URL_KEYS.has(key) && val) { val = String(val).trim(); if (!/^https:\/\/[^\s<>"']+$/i.test(val.replace('{uid}', '0'))) throw new Error(`${f[1]}: nur https://-Adressen erlaubt.`); }
       pending.push([key, val]);
     }
     for (const [k, v] of pending) await settings.set(k, v);

@@ -10,10 +10,11 @@ const settings = require('./src/settings');
 const log = require('./src/lib/log');
 const { migrate } = require('./src/db/migrations');
 const { createInstallerApp } = require('./src/install/installer');
+const net = require('./src/lib/net');
 
 const root = express();
 root.disable('x-powered-by');
-root.set('trust proxy', 1);
+root.set('trust proxy', net.trustProxySetting());
 
 let live = null;
 let installer = null;
@@ -57,6 +58,7 @@ async function doBoot() {
       if (row) cfg.sessionSecret = JSON.parse(row.value);
       else { cfg.sessionSecret = require('crypto').randomBytes(48).toString('hex'); await db.query("INSERT INTO settings (`key`, value) VALUES ('session_secret', ?)", [JSON.stringify(cfg.sessionSecret)]); }
     }
+    await require('./src/lib/account').hashLegacyTokens().catch((e) => log.warn('Token-Umstellung übersprungen:', e && e.message));
     live = require('./src/app').createApp(cfg);
     if (!bgStarted) { bgStarted = true; require('./src/lib/anticheat').start(); require('./src/lib/stats').start(); require('./src/lib/social').start(); require('./src/lib/bots').start(); require('./src/lib/market').start(); require('./src/lib/exchange').start(); require('./src/lib/tagesblatt').start(); require('./src/lib/maintenance').start(); }
     log.info(`Turning Point läuft. Daten-Ordner: ${config.paths.dataDir}`);
@@ -89,5 +91,6 @@ process.on('uncaughtException', (e) => log.error('uncaughtException', e));
 
 const port = Number(process.env.PORT) || 3000;
 boot().then(() => {
-  root.listen(port, () => log.info(`Server lauscht auf Port ${port}`));
+  const server = root.listen(port, () => log.info(`Server lauscht auf Port ${port}`));
+  net.hardenServer(server);
 });

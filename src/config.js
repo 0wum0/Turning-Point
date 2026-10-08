@@ -81,7 +81,7 @@ const paths = {
 
 function ensureDirs() {
   for (const d of [paths.dataDir, paths.uploadsDir, paths.logsDir, path.join(paths.uploadsDir, 'cities'), path.join(paths.uploadsDir, 'misc')]) {
-    fs.mkdirSync(d, { recursive: true });
+    fs.mkdirSync(d, { recursive: true, mode: 0o700 }); // nur der App-Benutzer: hier liegen Zugangsdaten und Uploads
   }
 }
 
@@ -112,6 +112,7 @@ const envDb = () => { const e = envConfig(); return e ? e.db : null; };
 function writeAtomic(file, cfg) {
   const tmp = `${file}.tmp`;
   fs.writeFileSync(tmp, JSON.stringify(cfg, null, 2), { mode: 0o600 });
+  try { fs.chmodSync(tmp, 0o600); } catch (_) { /* Dateisystem ohne Rechte */ }
   fs.renameSync(tmp, file);
 }
 

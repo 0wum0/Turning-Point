@@ -6,14 +6,15 @@ const db = require('../db');
 const settings = require('../settings');
 const mailer = require('../lib/mailer');
 const account = require('../lib/account');
-const { randomToken } = require('../lib/security');
+const { randomToken, hashToken, isEmail, baseUrl: baseUrlOf } = require('../lib/security');
+const { killUserSessions } = require('../lib/session-store');
+const passwordPolicy = require('../lib/password');
 const { audit } = require('../lib/audit');
 
 const router = express.Router();
-const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/;
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: true, legacyHeaders: false, message: 'Zu viele Versuche. Bitte warte einige Minuten.' });
 const wrap = (fn) => (req, res, next) => fn(req, res, next).catch(next);
-const baseUrl = (req) => (require('../config').loadConfig() || {}).siteUrl || `${req.protocol}://${req.get('host')}`;
+const baseUrl = (req) => baseUrlOf(req, require('../config').loadConfig());
 
 router.use((req, res, next) => (req.user ? next() : res.redirect('/login?next=/account')));
 
@@ -27,24 +28,26 @@ router.get('/', wrap((req, res) => render(req, res, { notice: req.query.pw ? 'Pa
 
 router.post('/password', limiter, wrap(async (req, res) => {
   const { current = '', pw = '', pw2 = '' } = req.body;
-  const u = await db.one('SELECT id, password_hash FROM users WHERE id = ?', [req.user.id]);
-  if (!(await bcrypt.compare(String(current), u.password_hash))) return render(req, res, { error: 'Das aktuelle Passwort stimmt nicht.' });
-  if (String(pw).length < 8) return render(req, res, { error: 'Das neue Passwort braucht mindestens 8 Zeichen.' });
+  const u = await db.one('SELECT id, password_hash, username, email FROM users WHERE id = ?', [req.user.id]);
+  if (!(await bcrypt.compare(String(current).slice(0, 200), u.password_hash))) return render(req, res, { error: 'Das aktuelle Passwort stimmt nicht.' });
+  const pwErr = passwordPolicy.validate(typeof pw === 'string' ? pw : '', { username: u.username, email: u.email });
+  if (pwErr) return render(req, res, { error: pwErr });
   if (pw !== pw2) return render(req, res, { error: 'Die beiden neuen Passwörter sind nicht gleich.' });
-  await db.query('UPDATE users SET password_hash = ? WHERE id = ?', [await bcrypt.hash(String(pw), 11), u.id]);
+  await db.query('UPDATE users SET password_hash = ?, reset_token = NULL, reset_expires = NULL WHERE id = ?', [await bcrypt.hash(String(pw), 11), u.id]);
+  await killUserSessions(u.id, req.sessionID); // andere Geräte müssen sich neu anmelden; diese Sitzung bleibt
   await audit(req, 'account_password', req.user.username);
   res.redirect('/account?pw=1');
 }));
 
 router.post('/email', limiter, wrap(async (req, res) => {
-  const email = String(req.body.email || '').trim().toLowerCase(); const pw = String(req.body.current || '');
+  const email = String(req.body.email || '').trim().toLowerCase(); const pw = String(req.body.current || '').slice(0, 200);
   const u = await db.one('SELECT id, password_hash, username FROM users WHERE id = ?', [req.user.id]);
   if (!(await bcrypt.compare(pw, u.password_hash))) return render(req, res, { error: 'Das aktuelle Passwort stimmt nicht.' });
-  if (!EMAIL_RE.test(email) || email.length > 190) return render(req, res, { error: 'Bitte eine gültige E-Mail-Adresse angeben.' });
+  if (!isEmail(email)) return render(req, res, { error: 'Bitte eine gültige E-Mail-Adresse angeben.' });
   if (await db.one('SELECT id FROM users WHERE email = ? AND id <> ?', [email, u.id])) return render(req, res, { error: 'Diese E-Mail-Adresse wird schon verwendet.' });
   const needVerify = !!settings.get('site.require_email_verification') && mailer.smtpConfigured();
   const token = needVerify ? randomToken(24) : null;
-  await db.query('UPDATE users SET email = ?, email_verified = ?, verify_token = ? WHERE id = ?', [email, needVerify ? 0 : 1, token, u.id]);
+  await db.query('UPDATE users SET email = ?, email_verified = ?, verify_token = ? WHERE id = ?', [email, needVerify ? 0 : 1, token ? hashToken(token) : null, u.id]);
   if (needVerify) mailer.send({ to: email, ...require('../lib/mail-templates').build('verify', req.lang, u.username, `${baseUrl(req)}/verify/${token}`) }).catch(() => {});
   await audit(req, 'account_email', u.username);
   res.redirect('/account?mail=1');
@@ -68,7 +71,7 @@ router.get('/export', wrap(async (req, res) => {
 router.post('/delete', limiter, wrap(async (req, res) => {
   if (req.session.impersonator) return render(req, res, { error: 'Während der Admin-Ansicht kann kein Konto gelöscht werden.' });
   const u = await db.one('SELECT id, username, role, password_hash FROM users WHERE id = ?', [req.user.id]);
-  if (!(await bcrypt.compare(String(req.body.current || ''), u.password_hash))) return render(req, res, { error: 'Das Passwort stimmt nicht.', openDelete: true });
+  if (!(await bcrypt.compare(String(req.body.current || '').slice(0, 200), u.password_hash))) return render(req, res, { error: 'Das Passwort stimmt nicht.', openDelete: true });
   if (!['LÖSCHEN', 'DELETE'].includes(String(req.body.confirm || '').trim().toUpperCase())) return render(req, res, { error: 'Bitte tippe zur Bestätigung LÖSCHEN (bzw. DELETE) ein.', openDelete: true });
   if (u.role === 'admin') {
     const n = (await db.one("SELECT COUNT(*) n FROM users WHERE role = 'admin' AND banned = 0")).n;

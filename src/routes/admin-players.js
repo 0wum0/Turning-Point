@@ -11,7 +11,10 @@ const { learn, notice, chronicle } = require('../game/core');
 const { yearOf } = require('../game/calendar');
 const { present } = require('../game/present');
 const { audit } = require('../lib/audit');
-const { randomToken } = require('../lib/security');
+const { randomToken, isEmail } = require('../lib/security');
+const roles = require('../lib/roles');
+const passwordPolicy = require('../lib/password');
+const { killUserSessions, countUserSessions } = require('../lib/session-store');
 
 /** Skalare Felder des Charakters (Pfad im Spielstand → Eingabe). */
 const FIELD_GROUPS = [
@@ -99,11 +102,18 @@ module.exports = function mount(router, H) {
   router.post('/users/bulk', wrap(async (req, res) => {
     let ids = req.body.ids; ids = (Array.isArray(ids) ? ids : ids ? [ids] : []).map((x) => int(x)).filter((x) => x && x !== req.user.id);
     const act = clean(req.body.bulk, 20); const amount = int(req.body.amount);
-    if (!ids.length) { flash(req, 'bad', 'Keine Spieler ausgewählt (die eigene Person wird übersprungen).'); return res.redirect('/admin/users'); }
+    // Nur Konten, die der Handelnde auch einzeln bearbeiten dürfte (kein Co-Admin sperrt Admins, kein Moderator ändert Teammitglieder)
+    if (ids.length && req.user.role !== 'admin') {
+      const rows = await db.query(`SELECT id, role FROM users WHERE id IN (${ids.map(() => '?').join(',')})`, ids);
+      const okIds = new Set(rows.filter((r) => roles.rank(r.role) < roles.rank(req.user.role)).map((r) => r.id));
+      ids = ids.filter((x) => okIds.has(x));
+    }
+    ids = ids.slice(0, 500);
+    if (!ids.length) { flash(req, 'bad', 'Keine passenden Spieler ausgewählt (die eigene Person und höherrangige Konten werden übersprungen).'); return res.redirect('/admin/users'); }
     const ph = ids.map(() => '?').join(',');
     if (act === 'coins') await db.query(`UPDATE users SET coins = GREATEST(0, coins + ?) WHERE id IN (${ph})`, [amount, ...ids]);
     else if (act === 'efs') await db.query(`UPDATE users SET efs_pool = GREATEST(0, efs_pool + ?) WHERE id IN (${ph})`, [amount, ...ids]);
-    else if (act === 'ban') { await db.query(`UPDATE users SET banned = 1, ban_reason = ? WHERE id IN (${ph})`, [clean(req.body.reason, 200) || null, ...ids]); }
+    else if (act === 'ban') { await db.query(`UPDATE users SET banned = 1, ban_reason = ? WHERE id IN (${ph})`, [clean(req.body.reason, 200) || null, ...ids]); for (const x of ids) await killUserSessions(x); }
     else if (act === 'unban') await db.query(`UPDATE users SET banned = 0, ban_reason = NULL WHERE id IN (${ph})`, ids);
     else if (act === 'verify') await db.query(`UPDATE users SET email_verified = 1, verify_token = NULL WHERE id IN (${ph})`, ids);
     else { flash(req, 'bad', 'Unbekannte Sammelaktion.'); return res.redirect('/admin/users'); }
@@ -121,7 +131,7 @@ module.exports = function mount(router, H) {
     const audits = await db.query('SELECT action, detail, ip, created_at FROM audit_log WHERE user_id = ? ORDER BY id DESC LIMIT 25', [u.id]);
     const purchases = await db.query('SELECT * FROM purchases WHERE user_id = ? ORDER BY id DESC LIMIT 25', [u.id]);
     const ads = await db.query('SELECT * FROM ad_claims WHERE user_id = ? ORDER BY id DESC LIMIT 15', [u.id]);
-    const sess = await db.one('SELECT COUNT(*) n FROM sessions WHERE data LIKE ?', [`%"userId":${u.id}%`]);
+    const sess = { n: await countUserSessions(u.id) };
     let meta = {}; try { meta = u.meta ? JSON.parse(u.meta) : {}; } catch (_) { /* leer */ }
     const sub = u.sub_until ? new Date(Number(u.sub_until)) : null;
     render(res, 'admin/user', {
@@ -139,7 +149,7 @@ module.exports = function mount(router, H) {
     try {
       const username = clean(b.username, 40); const email = clean(b.email, 190).toLowerCase();
       if (!/^[\p{L}\p{N}_.\- ]{3,40}$/u.test(username)) throw new Error('Benutzername: 3–40 Zeichen (Buchstaben, Zahlen, _ . - Leerzeichen).');
-      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Error('Ungültige E-Mail-Adresse.');
+      if (!isEmail(email)) throw new Error('Ungültige E-Mail-Adresse.');
       let meta; try { meta = JSON.parse(b.meta || '{}'); } catch (e) { throw new Error(`Meta-JSON ungültig: ${e.message}`); }
       if (!meta || typeof meta !== 'object' || Array.isArray(meta)) throw new Error('Meta muss ein Objekt sein.');
       const roleReq = require('../lib/roles').ROLES.includes(b.role) ? b.role : 'player';
@@ -151,10 +161,12 @@ module.exports = function mount(router, H) {
         'UPDATE users SET username=?, email=?, role=?, banned=?, ban_reason=?, email_verified=?, coins=?, efs_pool=?, sub_until=?, meta=?, login_bonus_date=? WHERE id=?',
         [username, email, role, banned, banned ? (clean(b.ban_reason, 200) || null) : null, b.email_verified ? 1 : 0, Math.max(0, int(b.coins)), Math.max(0, int(b.efs_pool)), sub, JSON.stringify(meta), b.reset_bonus ? null : u.login_bonus_date, id],
       );
-      if (banned && !u.banned) await db.query('DELETE FROM sessions WHERE data LIKE ?', [`%"userId":${id}%`]);
+      if (banned && !u.banned) await killUserSessions(id);
       if (b.new_password) {
-        if (String(b.new_password).length < 8) throw new Error('Neues Passwort: mindestens 8 Zeichen.');
-        await db.query('UPDATE users SET password_hash = ? WHERE id = ?', [await bcrypt.hash(String(b.new_password), 11), id]);
+        if (req.user.role !== 'admin') throw new Error('Passwörter setzt nur der Admin.'); // Co-Admins haben /password gesperrt – dieser Umweg ebenfalls
+        const pwErr = passwordPolicy.validate(String(b.new_password), { username, email }); if (pwErr) throw new Error(`Neues Passwort: ${pwErr}`);
+        await db.query('UPDATE users SET password_hash = ?, reset_token = NULL, reset_expires = NULL WHERE id = ?', [await bcrypt.hash(String(b.new_password), 11), id]);
+        await killUserSessions(id);
       }
       await audit(req, 'admin_user_edit', `${u.username} → ${username}`);
       flash(req, 'good', 'Konto gespeichert.');
@@ -173,9 +185,9 @@ module.exports = function mount(router, H) {
   }));
   router.post('/users/:id(\\d+)/kick', wrap(async (req, res) => {
     const id = int(req.params.id);
-    const r = await db.query('DELETE FROM sessions WHERE data LIKE ?', [`%"userId":${id}%`]);
+    const n = await killUserSessions(id);
     await audit(req, 'admin_user_kick', String(id));
-    flash(req, 'good', `${r.affectedRows} Sitzung(en) beendet – der Spieler muss sich neu anmelden.`);
+    flash(req, 'good', `${n} Sitzung(en) beendet – der Spieler muss sich neu anmelden.`);
     res.redirect(`/admin/users/${id}`);
   }));
 
@@ -233,7 +245,7 @@ module.exports = function mount(router, H) {
       }
       for (const k of ['nextPropId', 'nextCompanyId', 'nextChildId', 'nextNoticeId']) if (b[k] !== undefined && b[k] !== '') { const n = int(b[k], NaN); if (Number.isFinite(n) && n >= 1) state[k] = n; }
       for (const key of Object.keys(b).filter((k) => k.startsWith('sec_'))) {
-        const k = key.slice(4); let v;
+        const k = key.slice(4); let v; if (['__proto__', 'constructor', 'prototype'].includes(k)) continue;
         try { v = JSON.parse(b[key]); } catch (e) { throw new Error(`Bereich „${k}“: ungültiges JSON (${e.message}).`); }
         if (v === null) delete state[k]; else state[k] = v;
       }

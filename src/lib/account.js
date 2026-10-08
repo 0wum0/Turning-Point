@@ -48,4 +48,17 @@ async function deleteAccount(userId) {
   await db.query('DELETE FROM users WHERE id = ?', [userId]);
 }
 
-module.exports = { exportData, deleteAccount };
+/**
+ * Einmalig nach dem Update: Reset-/Bestätigungs-Token, die noch im Klartext in der Datenbank stehen, werden durch ihren SHA-256-Hash ersetzt
+ * (Links in schon versendeten Mails funktionieren weiter). Danach nutzt der Code ausschließlich Hashes – ein Datenbank-Leck liefert keine nutzbaren Links.
+ */
+async function hashLegacyTokens() {
+  const flag = await db.one("SELECT 1 AS x FROM settings WHERE `key` = 'security.tokens_hashed'");
+  if (flag) return false;
+  await db.query('UPDATE users SET verify_token = SHA2(verify_token, 256) WHERE verify_token IS NOT NULL');
+  await db.query('UPDATE users SET reset_token = SHA2(reset_token, 256) WHERE reset_token IS NOT NULL');
+  await db.query("INSERT INTO settings (`key`, value) VALUES ('security.tokens_hashed', 'true') ON DUPLICATE KEY UPDATE value = VALUES(value)");
+  return true;
+}
+
+module.exports = { exportData, deleteAccount, hashLegacyTokens };

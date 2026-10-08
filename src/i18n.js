@@ -21,9 +21,7 @@ function middleware(req, res, next) {
 function setLang(req, res) {
   const code = LANGS.includes(req.params.code) ? req.params.code : 'de';
   res.cookie('tp_lang', code, { maxAge: 365 * 24 * 3600 * 1000, sameSite: 'lax', httpOnly: false, secure: 'auto' });
-  let next = String(req.query.next || '/');
-  if (!next.startsWith('/') || next.startsWith('//')) next = '/';
-  res.redirect(next);
+  res.redirect(require('./lib/security').safePath(req.query.next, '/')); // kein „//host“ und kein „/\\host“ (Browser lesen \\ als /)
 }
 function dictScript(req, res) {
   let extra = { exact: {}, patterns: [] };

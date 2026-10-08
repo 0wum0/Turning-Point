@@ -8,7 +8,7 @@
     <div style="position:absolute;left:-9999px" aria-hidden="true"><label>Website<input name="website" tabindex="-1" autocomplete="off"></label></div>
     <div class="field"><label for="username">Spielername</label><input id="username" name="username" type="text" autocomplete="username" required minlength="3" maxlength="24" value="<%= values.username || '' %>"><div class="hint">3–24 Zeichen, Buchstaben, Zahlen, _ . -</div></div>
     <div class="field"><label for="email">E-Mail</label><input id="email" name="email" type="email" autocomplete="email" required value="<%= values.email || '' %>"></div>
-    <div class="field"><label for="password">Passwort</label><input id="password" name="password" type="password" autocomplete="new-password" required minlength="8"><div class="hint">Mindestens 8 Zeichen.</div></div>
+    <div class="field"><label for="password">Passwort</label><input id="password" name="password" type="password" autocomplete="new-password" required minlength="10"><div class="hint">Mindestens 10 Zeichen.</div></div>
     <label class="check"><input type="checkbox" name="terms" value="1" required> <span>Ich bin mindestens 16 Jahre alt und akzeptiere die <a href="/agb" target="_blank">Nutzungsbedingungen</a> sowie die <a href="/datenschutz" target="_blank">Datenschutzerklärung</a>.</span></label>
     <button class="btn primary block lg" type="submit">Konto erstellen</button>
     <div class="small dim center">Schon dabei? <a href="/login">Anmelden</a></div>

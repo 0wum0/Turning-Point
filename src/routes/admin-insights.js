@@ -14,7 +14,8 @@ const RULE_LABELS = {
 };
 
 module.exports = function mount(router, H) {
-  const { wrap, flash, int, clean } = H;
+  const { wrap, flash, int, clean, backTo } = H;
+  const { killUserSessions } = require('../lib/session-store');
 
   /* ============================ Dashboard ============================ */
   router.get('/', wrap(async (req, res) => {
@@ -81,18 +82,18 @@ module.exports = function mount(router, H) {
     const status = { dismiss: 'dismissed', confirm: 'confirmed', reopen: 'open' }[req.params.act];
     await db.query('UPDATE cheat_flags SET status = ? WHERE id = ?', [status, int(req.params.id)]);
     await audit(req, `anticheat_${req.params.act}`, req.params.id);
-    res.redirect(req.get('referer') || '/admin/anticheat');
+    res.redirect(backTo(req, '/admin/anticheat'));
   }));
   router.post('/anticheat/user/:id(\\d+)/:act(clear|ban)', wrap(async (req, res) => {
     const id = int(req.params.id);
     if (req.params.act === 'clear') { await db.query("UPDATE cheat_flags SET status = 'dismissed' WHERE user_id = ? AND status = 'open'", [id]); flash(req, 'good', 'Alle offenen Verdachtsfälle des Spielers als unbedenklich markiert.'); }
     else if (id !== req.user.id) {
       await db.query("UPDATE users SET banned = 1, ban_reason = ? WHERE id = ? AND role <> 'admin'", [clean(req.body.reason, 200) || 'Anti-Cheat', id]);
-      await db.query('DELETE FROM sessions WHERE data LIKE ?', [`%"userId":${id}%`]);
+      await killUserSessions(id);
       await db.query("UPDATE cheat_flags SET status = 'confirmed' WHERE user_id = ? AND status = 'open'", [id]);
       flash(req, 'good', 'Spieler gesperrt, Verdachtsfälle bestätigt.');
     }
     await audit(req, `anticheat_user_${req.params.act}`, String(id));
-    res.redirect(req.get('referer') || '/admin/anticheat');
+    res.redirect(backTo(req, '/admin/anticheat'));
   }));
 };

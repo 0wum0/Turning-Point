@@ -145,8 +145,22 @@ function fire(userId, n) { notify(userId, n).catch(() => {}); }
 
 /* ---------- Abos & Einstellungen ---------- */
 const hash = (endpoint) => crypto.createHash('sha256').update(endpoint).digest('hex');
+/**
+ * Der Server schickt Push-Nachrichten per HTTPS an die Adresse, die der Browser meldet. Ohne Prüfung könnte jeder Spieler
+ * interne Adressen (127.0.0.1, 169.254.169.254, Router) anfunken lassen (SSRF). Erlaubt sind nur die Dienste der Browser-Hersteller.
+ */
+const PUSH_HOSTS = [/^(fcm|android)\.googleapis\.com$/, /(^|\.)push\.services\.mozilla\.com$/, /(^|\.)push\.apple\.com$/, /(^|\.)notify\.windows\.com$/, /(^|\.)push\.microsoft\.com$/, /(^|\.)push\.samsung\.com$/, /(^|\.)push\.opera\.com$/];
+function pushEndpointAllowed(endpoint) {
+  try {
+    const u = new URL(endpoint);
+    if (u.protocol !== 'https:' || u.username || u.password || (u.port && u.port !== '443')) return false;
+    const h = u.hostname.toLowerCase();
+    if (/^[\d.]+$/.test(h) || h.includes(':') || !h.includes('.')) return false; // IP-Adressen und Kurznamen nie
+    return PUSH_HOSTS.some((re) => re.test(h));
+  } catch (_) { return false; }
+}
 function validSub(s) {
-  return s && typeof s.endpoint === 'string' && /^https:\/\/[^\s]{10,1000}$/.test(s.endpoint) && s.keys && typeof s.keys.p256dh === 'string' && typeof s.keys.auth === 'string'
+  return s && typeof s.endpoint === 'string' && /^https:\/\/[^\s]{10,1000}$/.test(s.endpoint) && pushEndpointAllowed(s.endpoint) && s.keys && typeof s.keys.p256dh === 'string' && typeof s.keys.auth === 'string'
     && s.keys.p256dh.length <= 200 && s.keys.auth.length <= 100;
 }
 async function subscribe(userId, sub, tz, ua) {
@@ -204,4 +218,4 @@ async function writePush(userId, build) {
   return null;
 }
 
-module.exports = { notify, fire, publicKey, subscribe, unsubscribe, getPrefs, setPrefs, categoryFor, applyPatch, inQuiet, localHour, rateOk, resetLimits, buildPayload, catEnabled, setSender, topicOf, CATS, TABS };
+module.exports = { pushEndpointAllowed, notify, fire, publicKey, subscribe, unsubscribe, getPrefs, setPrefs, categoryFor, applyPatch, inQuiet, localHour, rateOk, resetLimits, buildPayload, catEnabled, setSender, topicOf, CATS, TABS };

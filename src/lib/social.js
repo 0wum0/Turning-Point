@@ -14,6 +14,7 @@ const { parseState } = require('../game/state');
 const { ActionError } = require('../game/actions');
 const anticheat = require('./anticheat');
 const push = require('./push');
+const { escapeLike } = require('./security');
 
 const cfg = () => settings.get('social');
 const fail = (m) => { throw new ActionError(m); };
@@ -99,7 +100,7 @@ async function refreshAll(conn = db) {
 
 /** Stadtverzeichnis: Einwohner, Häuser und Betriebe einer Stadt (nur sichtbare Spieler), seitenweise. Beträge in Preisen von 1945. */
 async function directory(userId, { cityId, tab = 'people', q = '', page = 1 }) {
-  const per = 20; const off = (Math.max(1, int(page, 1)) - 1) * per; const like = `%${String(q).trim().slice(0, 40)}%`; const hasQ = String(q).trim().length > 0;
+  const per = 20; const off = (Math.max(1, int(page, 1)) - 1) * per; const like = `%${escapeLike(String(q).trim().slice(0, 40))}%`; const hasQ = String(q).trim().length > 0;
   const vis = 'u.social_public = 1 AND u.banned = 0';
   const online = Date.now() - cfg().onlineMinutes * 60000;
   if (tab === 'houses') {
@@ -136,7 +137,7 @@ async function friendIds(userId) {
 }
 
 async function leaderboard(userId, { cat = 'wealth', scope = 'all', cityId = 0 } = {}) {
-  const C = CATS[cat] || CATS.wealth; const size = Math.min(100, cfg().leaderboardSize);
+  const C = Object.prototype.hasOwnProperty.call(CATS, cat) ? CATS[cat] : CATS.wealth; const size = Math.min(100, cfg().leaderboardSize);
   const conds = [VISIBLE]; const params = [];
   if (scope === 'city' && cityId) { conds.push('ps.city_id = ?'); params.push(cityId); }
   if (scope === 'friends') { const f = await friendIds(userId); f.push(userId); conds.push(`ps.user_id IN (${f.map(() => '?').join(',')})`); params.push(...f); }
@@ -482,7 +483,7 @@ async function publicNews(cityId) {
 
 async function search(userId, q) {
   const t = String(q || '').trim().slice(0, 40); if (t.length < 2) return [];
-  const rows = await db.query(`SELECT ps.user_id userId, ps.username, ps.name, ps.city_id cityId, ps.year, u.role FROM player_stats ps JOIN users u ON u.id = ps.user_id WHERE ${VISIBLE} AND ps.user_id <> ? AND (ps.username LIKE ? OR ps.name LIKE ?) ORDER BY ps.username LIMIT 12`, [userId, `%${t}%`, `%${t}%`]);
+  const rows = await db.query(`SELECT ps.user_id userId, ps.username, ps.name, ps.city_id cityId, ps.year, u.role FROM player_stats ps JOIN users u ON u.id = ps.user_id WHERE ${VISIBLE} AND ps.user_id <> ? AND (ps.username LIKE ? OR ps.name LIKE ?) ORDER BY ps.username LIMIT 12`, [userId, `%${escapeLike(t)}%`, `%${escapeLike(t)}%`]);
   return rows;
 }
 

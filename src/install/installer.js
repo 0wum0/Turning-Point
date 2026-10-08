@@ -12,6 +12,9 @@ const { migrate } = require('../db/migrations');
 const { CITIES, PROFESSIONS } = require('../db/seed-data');
 const settings = require('../settings');
 const log = require('../lib/log');
+const net = require('../lib/net');
+const { isEmail } = require('../lib/security');
+const passwordPolicy = require('../lib/password');
 
 const REQUIRED_NODE = 18;
 
@@ -78,9 +81,9 @@ async function runInstall(body, publicOrigin) {
   step(`Datenbank verbunden (${info.version}).`);
   const reconnect = info.installed;
   if (!reconnect) {
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Error('Bitte eine gültige Admin-E-Mail angeben.');
+    if (!isEmail(email)) throw new Error('Bitte eine gültige Admin-E-Mail angeben.');
     if (!/^[\p{L}\p{N}_.-]{3,24}$/u.test(username)) throw new Error('Benutzername: 3–24 Zeichen (Buchstaben, Zahlen, _ . -).');
-    if (password.length < 10) throw new Error('Das Admin-Passwort braucht mindestens 10 Zeichen.');
+    const pwErr = passwordPolicy.validate(password, { username, email }); if (pwErr) throw new Error(`Admin-Passwort: ${pwErr}`);
   }
   const dir = config.resolveDataDir();
   if (!dir.writable) throw new Error(`Der Daten-Ordner ist nicht beschreibbar: ${dir.dir}`);
@@ -119,6 +122,8 @@ async function runInstall(body, publicOrigin) {
 function createInstallerApp({ onInstalled }) {
   const app = express();
   app.disable('x-powered-by');
+  app.set('trust proxy', net.trustProxySetting());
+  app.use((req, res, next) => { res.set({ 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY', 'Referrer-Policy': 'no-referrer', 'Cache-Control': 'no-store', 'Permissions-Policy': 'camera=(), microphone=(), geolocation=()' }); next(); });
   app.set('view engine', 'ejs');
   app.set('views', require('path').join(config.APP_ROOT, 'views'));
   app.locals.icon = (n, c = '') => `<svg class="i ${c}" aria-hidden="true"><use href="/img/icons.svg#i-${n}"/></svg>`;

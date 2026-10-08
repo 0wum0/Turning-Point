@@ -50,7 +50,7 @@ async function applyAuto(userId, score) {
     const u = await db.one('SELECT banned, role FROM users WHERE id = ?', [userId]);
     if (u && !u.banned && u.role === 'player') {
       await db.query("UPDATE users SET banned = 1, ban_reason = 'Automatisch: Anti-Cheat' WHERE id = ?", [userId]);
-      await db.query('DELETE FROM sessions WHERE data LIKE ?', [`%"userId":${userId}%`]);
+      await require('./session-store').killUserSessions(userId);
       await db.query("INSERT INTO audit_log (user_id, action, detail) VALUES (NULL, 'anticheat_autoban', ?)", [`user ${userId} score ${score}`]);
       log.warn(`[anticheat] Konto ${userId} automatisch gesperrt (Score ${score}).`);
     }

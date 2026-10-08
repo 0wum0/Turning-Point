@@ -58,7 +58,12 @@ async function createOffer(world, ownerId, b) {
   const r = await db.query('INSERT INTO player_jobs (owner_id, company_id, city_id, title, role, wage, slots, text) VALUES (?,?,?,?,?,?,?,?)', [ownerId, firm.company_id, firm.city_id, title, role, real, slots, social.clean(b.text, 300)]);
   return r.insertId;
 }
-async function closeOffer(ownerId, offerId) { await db.query("UPDATE player_jobs SET status = 'closed' WHERE id = ? AND owner_id = ?", [offerId, ownerId]); await db.query("UPDATE job_apps SET status = 'rejected' WHERE offer_id = ? AND status = 'pending'", [offerId]); }
+async function closeOffer(ownerId, offerId) {
+  // Eigentum zuerst prüfen: sonst könnte jeder fremde Stellenanzeigen-Nummern schliessen lassen und deren Bewerbungen ablehnen (IDOR)
+  const r = await db.query("UPDATE player_jobs SET status = 'closed' WHERE id = ? AND owner_id = ?", [offerId, ownerId]);
+  if (!r.affectedRows) return;
+  await db.query("UPDATE job_apps SET status = 'rejected' WHERE offer_id = ? AND status = 'pending'", [offerId]);
+}
 
 async function market(world, userId) {
   const ps = await stat(userId); if (!ps) return { offers: [], mine: null };

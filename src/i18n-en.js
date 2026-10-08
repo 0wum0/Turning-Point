@@ -102,4 +102,15 @@ const PATTERNS = [
   ['^(\\d+) Spieler$', '$1 players'], ['^(\\d+) Tage$', '$1 days'], ['^(\\d+) Mon\\.$', '$1 mo.'], ['^(\\d+) Briefe?$', '$1 letters'],
   ['^(\\d+) Freundschaftsanfragen?$', '$1 friend request(s)'], ['^Seite (\\d+) von (\\d+)$', 'Page $1 of $2'], ['^Willkommen, (.+)$', 'Welcome, $1'],
 ];
+// Sicherheits-Meldungen (Passwort-Regeln, Anmelde-Bremsen)
+Object.assign(EXACT, {
+  'Mindestens 10 Zeichen.': 'At least 10 characters.',
+  'Das Passwort braucht mindestens 10 Zeichen.': 'The password needs at least 10 characters.',
+  'Das neue Passwort braucht mindestens 10 Zeichen.': 'The new password needs at least 10 characters.',
+  'Dieses Passwort ist zu verbreitet. Bitte wähle ein anderes.': 'This password is too common. Please choose another one.',
+  'Das Passwort darf deinen Spielernamen nicht enthalten.': 'The password must not contain your player name.',
+  'Das Passwort darf nicht nur aus einem wiederholten Zeichen bestehen.': 'The password must not consist of one repeated character.',
+  'Zu viele Fehlversuche für dieses Konto. Bitte warte eine Weile.': 'Too many failed attempts for this account. Please wait a while.',
+  'Dieser Link wurde bereits verwendet.': 'This link has already been used.',
+});
 module.exports = { EXACT, PATTERNS };

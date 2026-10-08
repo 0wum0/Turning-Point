@@ -63,7 +63,10 @@ Im Admin-Panel unter **System** siehst du jederzeit, welcher Ordner gewählt wur
 | `TP_INSTALL_KEY` | Schutzschlüssel für den Installer |
 | `TP_DB_HOST/PORT/NAME/USER/PASS` | Alternativ zur `config.json`: DB-Zugang aus der Umgebung |
 | `TP_SESSION_SECRET`, `TP_SITE_URL` | nur zusammen mit den `TP_DB_*`-Variablen relevant |
-| `TP_API_RATE` | API-Anfragen/Minute je Spieler (Standard 180) |
+| `TP_API_RATE` | API-Anfragen/Minute je Spieler (Standard 180); skaliert auch die Bremsen für Handel/Verzeichnis |
+| `TP_TRUST_PROXY` | Anzahl der Proxys vor der App (Standard 1 = Hostinger; `0` = direkt erreichbar) oder Liste (`loopback, 10.0.0.0/8`) |
+| `TP_IP_RATE`, `TP_WEBHOOK_RATE` | Anfragen/Minute je IP für Seiten (300) bzw. Webhooks (300) |
+| `TP_SSE_PER_IP`, `TP_SSE_TOTAL` | Obergrenzen für Live-Verbindungen je IP (15) und insgesamt (800) |
 
 ### Redeploy ohne Neuinstallation (wichtig!)
 
@@ -161,11 +164,40 @@ Für ein Spiel mit eigener Bildsprache ist ein eigenes Design-System besser als 
 
 ## 5. Sicherheit
 
-- Passwörter mit bcrypt (reines JS, keine nativen Module), Sessions in MySQL, HttpOnly/SameSite-Cookies
-- CSRF-Token für alle schreibenden Anfragen, Rate-Limits (Login/Registrierung/API)
-- Helmet + strikte Content-Security-Policy (keine Inline-Skripte)
-- Uploads: Magic-Byte-Prüfung (PNG/JPG/WEBP/GIF), Zufallsdateinamen, außerhalb der App, `nosniff`
-- Spiellogik ausschließlich serverseitig (Client schickt nur Absichten); Aktionen laufen in DB-Transaktionen mit Zeilensperre
+**Anmeldung & Konten**
+- Passwörter mit bcrypt (Kosten 11, reines JS). Neue Passwörter: mindestens 10 Zeichen, höchstens 72 Bytes (bcrypt-Grenze), keine Allerwelts-Passwörter, nicht der Spielername. Bestehende Passwörter bleiben gültig.
+- Sitzungen in MySQL, Cookie `HttpOnly` + `SameSite=Lax` + `Secure` (automatisch über https), neue Sitzungs-ID bei jeder Anmeldung (Session-Fixation), Abmelden zerstört die Sitzung, absolute Höchstdauer 90 Tage. Nach Passwort-Reset bzw. -Änderung und bei Sperre werden die Sitzungen des Kontos beendet.
+- Reset- und Bestätigungs-Links: 256-Bit-Zufall, in der Datenbank nur als SHA-256-Hash, Reset 1 Stunde gültig und atomar einmalig. Antworten verraten nicht, ob ein Konto existiert; gleiche Rechenzeit bei unbekanntem Konto.
+- Bremsen: Anmeldung je IP, je Konto+IP und je Konto gesamt; Passwort-Mails höchstens 3 pro Stunde und Adresse; API je Spieler (`TP_API_RATE`); alle übrigen Seiten je IP (`TP_IP_RATE`, Standard 300/min); Webhooks `TP_WEBHOOK_RATE`.
+
+**Rechte (Admin)**
+- Rollen Admin > Co-Admin > Moderator > Spieler; die Rechteprüfung normalisiert Pfade (Gross-/Kleinschreibung, `//`, abschließendes `/`, `%`-Kodierung), weil Express diese Varianten auf dieselben Routen leitet.
+- Niemand ändert gleich- oder höherrangige Konten (gilt auch für Sammelaktionen, Anti-Cheat, Community-Stummschaltung, Charakter-Editor); Geheimnisse (Stripe, Offerwall, SMTP) und Passwörter setzt nur der Admin.
+- Spielerrouten prüfen Eigentum serverseitig (Briefe, Angebote, Orders, Bewerbungen, Werbe-Token …); der Client schickt nur Absichten, nie Besitzer-IDs, die vertraut würden.
+
+**Transport & Header**
+- Helmet mit strikter CSP (Skripte nur von `self`, keine Inline-Handler, `frame-ancestors 'none'`, `object-src 'none'`), HSTS, `nosniff`, `Referrer-Policy: no-referrer`, `Permissions-Policy` (Kamera, Mikrofon, Standort … aus), `Cache-Control: no-store` für alle dynamischen Antworten.
+- **Proxy:** Hostinger stellt genau einen Proxy vor die App (`trust proxy` = 1); als Client-IP gilt der vom Proxy angehängte Eintrag, vom Client vorangestellte `X-Forwarded-For`-Werte werden ignoriert. Läuft die App ohne Proxy (direkt erreichbar), setze `TP_TRUST_PROXY=0`; bei mehreren Proxys die Anzahl oder eine Liste (`loopback, 10.0.0.0/8`).
+- **Setze `TP_SITE_URL` (bzw. beim Installer die Seiten-Adresse)**: Links in E-Mails und Stripe-Rücksprünge werden daraus gebaut, nie aus dem `Host`-Header.
+- Zeitlimits: Kopfzeilen 20 s, Request-Body 120 s, Antwort-Frist 45 s je Anfrage (503 statt Hängen). Live-Verbindungen (SSE): 5 je Spieler, `TP_SSE_PER_IP` (15) je IP, `TP_SSE_TOTAL` (800) insgesamt, Neuaufbau alle 20 Minuten. Bodies: Formulare 100 kB (nur Team: 12 MB, erst nach der Anmeldeprüfung), JSON 300 kB, Uploads 4 MB.
+
+**Eingaben**
+- SQL ausschließlich mit Platzhaltern; Sortierung/Tabellen/Spalten stammen aus festen Listen. Die Datenbankschicht lehnt Arrays/Objekte als Parameter ab (verhindert „Objekt-Injektion“ aus JSON-Bodies), `LIKE`-Suchtexte werden maskiert.
+- Weiterleitungen (`next`, Sprachwahl) nur auf relative Pfade der eigenen Seite (kein `//host`, kein `/\host`). E-Mail-Adressen: genau eine Adresse (keine Listen), Betreff ohne Zeilenumbrüche.
+- Push: Das Ziel eines Push-Abos muss ein Dienst der Browser-Hersteller sein (FCM, Mozilla, Apple, Windows) – kein SSRF auf interne Adressen. Ausgehende Aufrufe gibt es sonst nur an `api.stripe.com` und den konfigurierten SMTP-Server.
+- Ausgabe: EJS maskiert standardmäßig (Rohausgabe nur für Icons/Includes, per Test abgesichert); Client-Vorlagen maskieren jede Interpolation. Uploads: nur PNG/JPG/WEBP/GIF per Magic-Byte-Prüfung, Zufallsnamen, außerhalb der App, `nosniff`.
+
+**Zahlungen & Webhooks**
+- Stripe: HMAC-SHA256 über den **rohen** Body, zeitkonstanter Vergleich, Zeitfenster 5 Minuten, Gutschriften idempotent über die Zahlungsreferenz (eindeutiger Schlüssel).
+- Offerwall: HMAC über `uid|coins|txid`, strenge Typ-/Formatprüfung, eindeutige Transaktions-ID (Wiederholungen werden quittiert, aber nicht erneut gutgeschrieben), höchstens 1000 Coins je Meldung.
+- `payments.mode = test` schreibt ohne Zahlung gut – **nur zum Testen**, in Produktion auf `off` oder `stripe` lassen.
+
+**Geheimnisse & Protokolle**
+- `config.json` Rechte 0600, Daten-Ordner 0700; Session-Geheimnis zufällig und dauerhaft; Stripe-/Offerwall-/SMTP-Geheimnisse werden im Admin-Bereich nie angezeigt und fehlen in Export/Backup (außer ausdrücklich gewählt, nur Admin). Fehlerseiten und API-Antworten enthalten nie Stacktraces.
+- Protokolle (`app.log`, Audit) schwärzen Reset-/Bestätigungs-Tokens und Signaturen in Adressen, entfernen Steuerzeichen (keine gefälschten Zeilen) und kürzen lange Werte.
+- Installer: Setze vor dem ersten Aufruf `TP_INSTALL_KEY`. Ohne Schlüssel kann jeder, der die Seite vor dir aufruft, die Installation ausführen.
+
+**Abhängigkeiten:** `npm audit` meldet derzeit keine bekannten Schwachstellen; vor Releases `npm audit --omit=dev` ausführen. Tests: `npm test` (u. a. `test/security.test.js`, `test/security-hardening.test.js`).
 
 ## 6. Lizenzen Dritter
 

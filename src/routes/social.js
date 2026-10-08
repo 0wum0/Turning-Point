@@ -6,6 +6,8 @@ const leases = require('../lib/leases');
 const service = require('../game/service');
 const actions = require('../game/actions');
 const settings = require('../settings');
+const { userLimit } = require('../lib/limits');
+const { escapeLike } = require('../lib/security');
 
 const router = express.Router();
 const wrap = (fn) => (req, res, next) => fn(req, res, next).catch((e) => {
@@ -17,20 +19,30 @@ const uid = (req) => req.user.id;
 
 router.use((req, res, next) => (settings.get('social').enabled || req.path === '/summary' ? next() : res.status(403).json({ ok: false, error: 'Die Gemeinschaftsfunktionen sind gerade abgeschaltet.' })));
 
+/* Bremsen je Spieler (zusätzlich zur allgemeinen API-Bremse): schreibende Aktionen, Handel/Wahlen/Arbeit enger, teure Leseabfragen (Verzeichnis, Rangliste, Suche, Börse, Markt) */
+const writeLimit = userLimit(60); const tradeLimit = userLimit(20, 'Zu viele Handelsaktionen – bitte kurz warten.'); const heavyRead = userLimit(60);
+const TRADE_PATH = /^\/(market|exchange|elections|jobs|lease|couple|rivalry|gift|visit|friends|report|letter)(\/|$)/;
+router.use((req, res, next) => (req.method === 'POST' ? (TRADE_PATH.test(req.path) ? tradeLimit : writeLimit)(req, res, next) : next()));
+router.use(['/directory', '/leaderboard', '/search', '/exchange', '/market', '/elections', '/jobs/market'], (req, res, next) => (req.method === 'GET' ? heavyRead(req, res, next) : next()));
+
 router.get('/notifications', wrap(async (req, res) => res.json({ ok: true, ...(await social.notifications(uid(req))) })));
-router.get('/directory', wrap(async (req, res) => res.json({ ok: true, ...(await social.directory(uid(req), { cityId: int(req.query.cityId), tab: ['people', 'houses', 'firms'].includes(req.query.tab) ? req.query.tab : 'people', q: req.query.q || '', page: int(req.query.page, 1) })) })));
+router.get('/directory', wrap(async (req, res) => {
+  const a = { cityId: int(req.query.cityId), tab: ['people', 'houses', 'firms'].includes(req.query.tab) ? req.query.tab : 'people', q: String(req.query.q || '').slice(0, 40), page: Math.min(500, Math.max(1, int(req.query.page, 1))) };
+  res.json({ ok: true, ...(await social.directory(uid(req), a)) });
+}));
 router.get('/summary', wrap(async (req, res) => res.json({ ok: true, ...(await social.summary(uid(req))) })));
 
 router.get('/leaderboard', wrap(async (req, res) => {
+  const cat = String(req.query.cat || 'wealth').slice(0, 20); const scope = String(req.query.scope || 'all').slice(0, 20);
   const p = await service.peek(uid(req));
-  res.json({ ok: true, ...(await social.leaderboard(uid(req), { cat: String(req.query.cat || 'wealth'), scope: String(req.query.scope || 'all'), cityId: p && p.state ? p.state.cityId : 0 })) });
+  res.json({ ok: true, ...(await social.leaderboard(uid(req), { cat, scope, cityId: p && p.state ? p.state.cityId : 0 })) });
 }));
 
 router.get('/me', wrap(async (req, res) => res.json({ ok: true, ...(await social.myProfile(uid(req))) })));
 router.get('/profile/:id', wrap(async (req, res) => res.json({ ok: true, profile: await social.profile(uid(req), int(req.params.id)) })));
 router.post('/profile', wrap(async (req, res) => { await social.setProfile(uid(req), { bio: req.body.bio, social_public: !!req.body.public }); res.json({ ok: true }); }));
 
-router.get('/search', wrap(async (req, res) => res.json({ ok: true, players: await social.search(uid(req), req.query.q) })));
+router.get('/search', wrap(async (req, res) => res.json({ ok: true, players: await social.search(uid(req), String(req.query.q || '').slice(0, 40)) })));
 router.get('/friends', wrap(async (req, res) => res.json({ ok: true, ...(await social.listFriends(uid(req))) })));
 router.post('/friends/request', wrap(async (req, res) => res.json({ ok: true, state: await social.friendRequest(uid(req), int(req.body.userId)) })));
 router.post('/friends/respond', wrap(async (req, res) => { await social.friendRespond(uid(req), int(req.body.userId), !!req.body.accept); res.json({ ok: true }); }));

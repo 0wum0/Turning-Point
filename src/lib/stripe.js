@@ -30,16 +30,19 @@ function createCheckout(secret, { name, amountCents, currency = 'eur', successUr
   return api(secret, 'checkout/sessions', p);
 }
 
-/** Prüft den Stripe-Webhook (Header „Stripe-Signature“) gegen den ROHEN Body. */
+/**
+ * Prüft den Stripe-Webhook (Header „Stripe-Signature“) gegen den ROHEN Body: HMAC-SHA256 über „t.body“, zeitkonstanter Vergleich,
+ * Zeitstempel höchstens `toleranceSec` alt/neu (Replay-Schutz; Doppelbuchungen verhindert zusätzlich die Eindeutigkeit der Zahlungsreferenz).
+ * Mehrere v1-Signaturen (Schlüsselwechsel bei Stripe) sind erlaubt – eine passende genügt.
+ */
 function verifyWebhook(raw, header, secret, toleranceSec = 300, now = Date.now()) {
-  if (!header || !secret) return false;
-  const parts = Object.fromEntries(String(header).split(',').map((kv) => kv.split('=')).filter((a) => a.length === 2));
-  const t = Number(parts.t);
-  if (!t || Math.abs(now / 1000 - t) > toleranceSec) return false;
-  const expected = crypto.createHmac('sha256', secret).update(`${t}.${raw.toString('utf8')}`).digest('hex');
-  const given = String(String(header).split(',').filter((x) => x.startsWith('v1=')).map((x) => x.slice(3))[0] || '');
-  const a = Buffer.from(expected); const b = Buffer.from(given);
-  return a.length === b.length && crypto.timingSafeEqual(a, b);
+  if (!header || !secret || !(Buffer.isBuffer(raw) || typeof raw === 'string')) return false;
+  const items = String(header).split(',').map((kv) => kv.trim().split('=')).filter((a) => a.length === 2);
+  const t = Number((items.find((a) => a[0] === 't') || [])[1]);
+  const sigs = items.filter((a) => a[0] === 'v1').map((a) => a[1]);
+  if (!t || !sigs.length || Math.abs(now / 1000 - t) > toleranceSec) return false;
+  const expected = Buffer.from(crypto.createHmac('sha256', secret).update(`${t}.${raw.toString('utf8')}`).digest('hex'));
+  return sigs.some((g) => { const b = Buffer.from(String(g)); return b.length === expected.length && crypto.timingSafeEqual(expected, b); });
 }
 
 module.exports = { createCheckout, verifyWebhook };

@@ -15,13 +15,17 @@ const places = require('../game/places');
 const config = require('../config');
 const anticheat = require('../lib/anticheat');
 const social = require('../lib/social');
+const { baseUrl } = require('../lib/security');
+const { ttlCache } = require('../lib/limits');
 
 const router = express.Router();
 const wrap = (fn) => (req, res, next) => fn(req, res, next).catch((e) => {
   if (e instanceof actions.ActionError) return res.status(400).json({ ok: false, error: e.message });
   return next(e);
 });
-router.use((req, res, next) => (req.user ? next() : res.status(401).json({ ok: false, error: 'Bitte melde dich an.', login: true })));
+// Ohne Anmeldung nur sehr wenige Anfragen je IP (die Antwort 401 ist billig, aber nicht umsonst)
+const anonLimit = rateLimit({ windowMs: 60 * 1000, limit: 60, standardHeaders: true, legacyHeaders: false, message: { ok: false, error: 'Zu viele Anfragen – bitte kurz warten.' } });
+router.use((req, res, next) => (req.user ? next() : anonLimit(req, res, () => res.status(401).json({ ok: false, error: 'Bitte melde dich an.', login: true }))));
 router.use(rateLimit({ windowMs: 60 * 1000, limit: Number(process.env.TP_API_RATE) || 180, standardHeaders: true, legacyHeaders: false, keyGenerator: (req) => `u${req.user ? req.user.id : req.ip}`, validate: { keyGeneratorIpFallback: false }, message: { ok: false, error: 'Zu viele Anfragen – bitte kurz warten.' } }));
 
 router.use(anticheat.middleware);
@@ -34,11 +38,15 @@ router.get('/state', wrap(async (req, res) => {
   res.json({ ok: true, view: r.view, needCreate: !r.view, sync: r.sync, coins: r.coins, efsPool: r.efsPool });
 }));
 
+const worldCache = ttlCache(10000, 4); // identisch für alle Spieler (Städte, Berufe …) und gross: nicht bei jedem Aufruf neu bauen
 router.get('/world', wrap(async (req, res) => {
   const w = await worldSvc.get();
+  res.json(await worldCache.get('w', async () => buildWorld(w)));
+}));
+async function buildWorld(w) {
   const startYear = settings.get('game.start_year');
   const states = [...new Set(w.cityList.map((c) => c.state))].sort();
-  res.json({
+  return {
     ok: true,
     // kompakt: [id, Name, Bundesland-Index, lat, lon, Stufe, Preisfaktor, Einwohner, seit-Jahr]; Beschreibung/Bilder nur für Kernstädte
     states, cityRows: w.cityList.map((c) => [c.id, c.name, states.indexOf(c.state), c.lat, c.lon, c.size_tier, c.price_factor, c.pop || 0, c.since || 1945]),
@@ -49,8 +57,8 @@ router.get('/world', wrap(async (req, res) => {
     startYear, startMoney: settings.get('game.start_money_cents'), maxChildren: settings.get('game.max_children'),
     adsEnabled: settings.get('ads.enabled'), adSeconds: settings.get('ads.min_seconds'), adCoins: settings.get('coins.ad_video'), adBase: settings.get('coins.ad_base'),
     schools: { haupt: 'Hauptschule', real: 'Realschule', gym: 'Gymnasium' },
-  });
-}));
+  };
+}
 
 router.post('/create', wrap(async (req, res) => {
   const r = await service.create(req.user.id, req.body || {});
@@ -58,6 +66,8 @@ router.post('/create', wrap(async (req, res) => {
 }));
 
 router.post('/action/:name', wrap(async (req, res) => {
+  // Nur echte Aktionsnamen (A ist ein einfaches Objekt: „constructor“, „__proto__“ & Co. dürfen nicht als Handler laufen)
+  if (!actions.ACTIONS.includes(req.params.name)) throw new actions.ActionError('Unbekannte Aktion.');
   let r;
   try { r = await service.doAction(req.user.id, req.params.name, req.body || {}); } catch (e) {
     if (req.params.name === 'taskFinish' && e instanceof actions.ActionError) anticheat.taskRejected(req.user.id);
@@ -131,11 +141,14 @@ router.get('/archive', wrap(async (req, res) => {
 /* ---------- Belohnungswerbung (freiwillig, nur durch Klick) ---------- */
 router.post('/ads/start', wrap(async (req, res) => {
   if (!settings.get('ads.enabled')) throw new actions.ActionError('Werbung ist derzeit deaktiviert.');
-  const purpose = String(req.body.purpose || 'coins');
+  const purpose = String(req.body.purpose || 'coins').slice(0, 40);
   if (!(purpose === 'coins' || purpose === 'efs' || /^discount:(move|room):\d+$/.test(purpose))) throw new actions.ActionError('Unbekannter Zweck.');
   const since = Date.now() - 24 * 3600 * 1000;
   const n = (await db.one('SELECT COUNT(*) AS n FROM ad_claims WHERE user_id = ? AND claimed_at IS NOT NULL AND claimed_at > ?', [req.user.id, since])).n;
   if (n >= settings.get('ads.daily_cap')) throw new actions.ActionError('Du hast heute genug Werbung gesehen. Morgen geht es weiter.');
+  // Nicht eingelöste Starts begrenzen (sonst lässt sich die Tabelle mit Starts ohne Einlösen füllen)
+  const pending = (await db.one('SELECT COUNT(*) AS n FROM ad_claims WHERE user_id = ? AND claimed_at IS NULL AND started_at > ?', [req.user.id, Date.now() - 3600 * 1000])).n;
+  if (pending >= 20) throw new actions.ActionError('Zu viele offene Anzeigen. Bitte warte einen Moment.');
   const token = crypto.randomBytes(16).toString('hex');
   await db.query('INSERT INTO ad_claims (user_id, token, purpose, started_at) VALUES (?,?,?,?)', [req.user.id, token, purpose, Date.now()]);
   anticheat.adStarted(req.user.id);
@@ -181,7 +194,7 @@ router.post('/shop/checkout', wrap(async (req, res) => {
   if (settings.get('payments.mode') !== 'stripe') throw new actions.ActionError('Online-Zahlungen sind nicht aktiv.');
   const secret = settings.get('payments.stripe_secret');
   if (!secret) throw new actions.ActionError('Zahlungsanbieter ist nicht konfiguriert.');
-  const origin = (config.loadConfig() || {}).siteUrl || `${req.protocol}://${req.get('host')}`;
+  const origin = baseUrl(req, config.loadConfig());
   const metadata = { user_id: String(req.user.id) };
   const urls = { successUrl: `${origin}/play#/shop`, cancelUrl: `${origin}/play#/shop`, email: req.user.email };
   let session;
@@ -194,7 +207,7 @@ router.post('/shop/checkout', wrap(async (req, res) => {
     if (!pkg) throw new actions.ActionError('Paket nicht gefunden.');
     session = await stripe.createCheckout(secret, { ...urls, metadata: { ...metadata, package_id: pkg.id }, name: pkg.name, amountCents: pkg.price_cents, currency: settings.get('payments.currency') });
   }
-  await audit(req, 'checkout_start', req.body.id);
+  await audit(req, 'checkout_start', String(req.body.id).slice(0, 60));
   res.json({ ok: true, url: session.url });
 }));
 
