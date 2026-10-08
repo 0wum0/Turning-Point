@@ -1,5 +1,4 @@
 import { html, raw, icon, api, on, money, mount, esc, roleBadge, toast } from './ui.js';
-import { html, raw, icon, api, on, money, mount, esc, roleBadge } from './ui.js';
 import { openProfile } from './views/social.js';
 
 const TABS = [['people', 'Einwohner', 'users'], ['houses', 'Häuser', 'house'], ['firms', 'Betriebe', 'store']];

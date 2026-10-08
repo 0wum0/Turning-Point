@@ -7,8 +7,22 @@
   function tr(s) {
     var t = s.trim(); if (!t) return null;
     var r = ex[t]; if (r === undefined) { for (var i = 0; i < pats.length; i++) if (pats[i][0].test(t)) { r = t.replace(pats[i][0], pats[i][1]); break; } }
+    if (r === undefined) r = parts(t);
     if (r === undefined) return null;
+    r = r.replace(/(\d),(\d{1,2})(?= ?%)/g, '$1.$2');
     return s.replace(t, r);
+  }
+  /* Zusammengesetzte Zeilen („3 Zimmer · Zustand 80 %“, „Wert 5 DM ·“): Teile an „ · “ einzeln übersetzen. */
+  function one(t) {
+    var r = ex[t]; if (r !== undefined) return r;
+    for (var i = 0; i < pats.length; i++) if (pats[i][0].test(t)) return t.replace(pats[i][0], pats[i][1]);
+    return undefined;
+  }
+  function parts(t) {
+    var lead = /^· /.test(t) ? '· ' : '', trail = / ·$/.test(t) ? ' ·' : '', core = t.slice(lead.length, t.length - trail.length);
+    if (core.indexOf(' · ') < 0) { if (!lead && !trail) return undefined; var c = one(core); return c === undefined ? undefined : lead + c + trail; }
+    var any = false, out = core.split(' · ').map(function (x) { var c = one(x); if (c === undefined) return x; any = true; return c; });
+    return any ? lead + out.join(' · ') + trail : undefined;
   }
   function text(n) { var v = n.nodeValue, r = tr(v); if (r !== null && r !== v) n.nodeValue = r; }
   function walk(root) {

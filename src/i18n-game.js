@@ -71,7 +71,7 @@ function load() {
   if (LOADED) return; LOADED = true;
   const dir = path.join(__dirname, 'i18n-data');
   const tryReq = (f) => { try { return require(path.join(dir, f)); } catch (_) { return null; } };
-  for (const f of ['messages-A', 'messages-B', 'messages-C']) (tryReq(f) || []).forEach(([de, en]) => addPair(de, en, tokenizeJs));
+  for (const f of ['messages-D', 'messages-A', 'messages-B', 'messages-C']) (tryReq(f) || []).forEach(([de, en]) => addPair(de, en, tokenizeJs));
   (tryReq('extra') || []).forEach(([de, en]) => addPair(de, en, tokenizeJs));
   (tryReq('names-en') || []).forEach(([de, en]) => addPair(de, en, tokenizeJs));
   const en = tryReq('texts-en');
@@ -115,7 +115,8 @@ function tr(s) {
   }
   if (r === undefined) r = s;
   else if (/^[A-ZÄÖÜ]/.test(s) && /^[a-z]/.test(r)) r = r[0].toUpperCase() + r.slice(1);
-  if (r !== s) r = r.replace(/(\d),(\d{1,2})(?=\s?(?:DM|€|k|m|b|t)\b)/g, '$1.$2'); // englische Dezimalzeichen
+  if (r !== s) r = r.replace(/\d{1,3}(?:\.\d{3})*(?:,\d{1,2})?(?=\s?(?:DM|€|k|m|b|t)\b| \(1945 value\))/g, (x) => (/[.,]/.test(x) ? x.replace(/[.,]/g, (c) => (c === '.' ? ',' : '.')) : x)); // englische Zahlenschreibweise
+  if (r !== s) r = r.replace(/(\d),(\d{1,2})(?= ?%)/g, '$1.$2');
   if (CACHE.size > 20000) CACHE.clear();
   CACHE.set(s, r);
   return r;
