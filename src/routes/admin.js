@@ -68,6 +68,7 @@ require('./admin-tools')(router, H);
 require('./admin-insights')(router, H);
 require('./admin-community')(router, H);
 require('./admin-bots')(router, H);
+require('./admin-market')(router, H);
 
 router.post('/users/:id/:action', wrap(async (req, res) => {
   const id = int(req.params.id);
@@ -259,6 +260,7 @@ const GROUPS = [
     ['packages', 'Pakete (JSON)', 'json'], ['subscription', 'Dauerkarte (JSON)', 'json'],
   ] },
   { id: 'mail', title: 'E-Mail (SMTP)', icon: 'mail', fields: [['mail.smtp', 'SMTP', 'smtp']] },
+  { id: 'market', title: 'Markt', icon: 'handshake', fields: [['market', 'Spielermarkt: Gebühren, Fristen, Limits', 'json']] },
   { id: 'legal', title: 'Rechtliches', icon: 'scale', fields: [['legal.impressum', 'Impressum', 'textarea', 'Pflicht in Deutschland (§ 5 DDG).'], ['legal.datenschutz', 'Datenschutzerklärung', 'textarea'], ['legal.agb', 'Nutzungsbedingungen (AGB)', 'textarea'], ['legal.widerruf', 'Widerrufsbelehrung (nur nötig, wenn Käufe aktiv sind)', 'textarea']] },
 ];
 

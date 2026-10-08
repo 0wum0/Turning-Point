@@ -304,13 +304,14 @@ async function summary(userId) {
   const cityId = me ? me.city_id : (await myCity(userId));
   const chatLast = cityId ? ((await db.one('SELECT MAX(id) m FROM chat_messages WHERE city_id = ? AND deleted = 0', [cityId])).m || 0) : 0;
   const chatLastMine = cityId ? ((await db.one('SELECT MAX(id) m FROM chat_messages WHERE city_id = ? AND user_id = ? AND deleted = 0', [cityId, userId])).m || 0) : 0;
-  return { unread: un, requests: rq, couples: extra.couples, jobs: extra.jobs, total: un + rq + extra.couples + extra.jobs, rank, chat: { cityId, last: chatLast, lastMine: chatLastMine } };
+  return { unread: un, requests: rq, couples: extra.couples, jobs: extra.jobs, offers: extra.offers, total: un + rq + extra.couples + extra.jobs + extra.offers, rank, chat: { cityId, last: chatLast, lastMine: chatLastMine } };
 }
 
 async function openRequests(userId) {
   const couples = (await db.one("SELECT COUNT(*) n FROM couples WHERE (user_a = ? OR user_b = ?) AND ((status = 'request' AND initiator <> ?) OR (status = 'engaged' AND engaged_by IS NOT NULL AND engaged_by <> ?))", [userId, userId, userId, userId])).n;
   const jobs = (await db.one("SELECT COUNT(*) n FROM job_apps a JOIN player_jobs j ON j.id = a.offer_id WHERE a.status = 'pending' AND ((a.kind = 'apply' AND j.owner_id = ?) OR (a.kind = 'invite' AND a.user_id = ?))", [userId, userId])).n;
-  return { couples, jobs };
+  const offers = (await db.one("SELECT COUNT(*) n FROM market_offers WHERE status = 'open' AND expires_at > NOW() AND proposer <> ? AND (buyer_id = ? OR seller_id = ?)", [userId, userId, userId])).n;
+  return { couples, jobs, offers };
 }
 
 /** Glocke: wer hat dir was geschickt? (ungelesene Briefe, Freundschafts-/Beziehungsanfragen, Bewerbungen) */
@@ -324,6 +325,8 @@ async function notifications(userId) {
   for (const c of cp) items.push({ kind: 'couple', from: c.char_name || c.username, fromId: c.uid, subject: c.status === 'engaged' ? 'Heiratsantrag' : 'Beziehungsanfrage', at: c.created_at });
   const jb = await db.query(`SELECT a.created_at, a.kind, j.title, u.id uid, u.username, ps.name char_name FROM job_apps a JOIN player_jobs j ON j.id = a.offer_id JOIN users u ON u.id = IF(a.kind = 'apply', a.user_id, j.owner_id) LEFT JOIN player_stats ps ON ps.user_id = u.id WHERE a.status = 'pending' AND ((a.kind = 'apply' AND j.owner_id = ?) OR (a.kind = 'invite' AND a.user_id = ?)) ORDER BY a.created_at DESC LIMIT 6`, [userId, userId]);
   for (const j of jb) items.push({ kind: 'job', from: j.char_name || j.username, fromId: j.uid, subject: (j.kind === 'apply' ? 'Bewerbung: ' : 'Einladung: ') + j.title, at: j.created_at });
+  const of = await db.query("SELECT o.created_at, o.item_name, o.price_real, o.parent_id, ps.name, ps.user_id uid FROM market_offers o JOIN player_stats ps ON ps.user_id = o.proposer WHERE o.status = 'open' AND o.expires_at > NOW() AND o.proposer <> ? AND (o.buyer_id = ? OR o.seller_id = ?) ORDER BY o.id DESC LIMIT 6", [userId, userId, userId]);
+  for (const o of of) items.push({ kind: 'offer', from: o.name, fromId: o.uid, subject: (o.parent_id ? 'Gegenangebot: ' : 'Kaufangebot: ') + o.item_name, at: o.created_at });
   items.sort((a, b) => new Date(b.at) - new Date(a.at));
   return { items: items.slice(0, 20) };
 }

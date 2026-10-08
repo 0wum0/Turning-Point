@@ -7,7 +7,7 @@ function card(c, v) {
       <div class="row nowrap spread"><h3>${c.name}</h3><span class="chip bad">${icon('triangle-alert')} Lost Place</span></div>
       <div class="dim small">${c.city} · ${c.tierName} · Wert verfällt</div>
       <dl class="kv small mt"><dt>Aktueller Wert</dt><dd>${money(c.value, cur)}</dd><dt>Reaktivierung</dt><dd>${money(c.reactivateCost, cur)}</dd></dl>
-      <div class="row mt"><button class="btn primary sm" data-b="bizReactivate" data-id="${c.id}" ${c.qualified ? '' : 'disabled'}>Wiederbeleben</button><button class="btn sm danger" data-sell="${c.id}">Verkaufen</button></div>
+      <div class="row mt"><button class="btn primary sm" data-b="bizReactivate" data-id="${c.id}" ${c.qualified ? '' : 'disabled'}>Wiederbeleben</button><button class="btn sm" data-psell="${c.id}" data-name="${c.name}" data-value="${Math.round(c.value / (v.idx || 1))}">An Spieler …</button><button class="btn sm danger" data-sell="${c.id}">Verkaufen</button></div>
       ${c.qualified ? '' : html`<div class="small neg mt">Dir fehlt die Qualifikation (${c.profession}).</div>`}</article>`;
   }
   return html`<article class="card biz ${f.profit < 0 ? 'loss' : ''}">
@@ -26,7 +26,7 @@ function card(c, v) {
       <button class="btn sm" data-b="bizExpand" data-id="${c.id}" ${c.rooms >= c.maxRooms ? 'disabled' : ''}>${icon('plus')} Raum · ${money(c.roomCost, cur)} + ${Math.max(1, Math.ceil(c.roomCoins / 2 ** c.roomStep))} ${icon('coins')}</button>
       ${c.roomCoins > 1 ? html`<button class="btn sm ghost" data-ad="${c.id}" title="Werbung ansehen, Coin-Preis senken">${icon('circle-play')}</button>` : ''}
     </div>
-    <div class="row mt">${c.next ? html`<button class="btn sm" data-b="bizUpgrade" data-id="${c.id}" ${c.next.qualified && v.money >= c.next.cost ? '' : 'disabled'}>${icon('trending-up')} Zu ${c.next.name} ausbauen · ${money(c.next.cost, cur)}</button>` : ''}<button class="btn sm danger" data-sell="${c.id}">Verkaufen</button></div>
+    <div class="row mt">${c.next ? html`<button class="btn sm" data-b="bizUpgrade" data-id="${c.id}" ${c.next.qualified && v.money >= c.next.cost ? '' : 'disabled'}>${icon('trending-up')} Zu ${c.next.name} ausbauen · ${money(c.next.cost, cur)}</button>` : ''}<button class="btn sm" data-psell="${c.id}" data-name="${c.name}" data-value="${Math.round(c.value / (v.idx || 1))}">An Spieler …</button><button class="btn sm danger" data-sell="${c.id}">Verkaufen</button></div>
     ${c.next && !c.next.qualified ? html`<div class="small dim mt">Ausbau braucht Berufsstufe ${['Anfänger', 'Geselle', 'Fachkraft', 'Meister', 'Altmeister'][c.next.minLevel]}.</div>` : ''}
   </article>`;
 }
@@ -52,6 +52,7 @@ export default {
       if (t.dataset.delta) input.delta = Number(t.dataset.delta);
       ctx.act(t.dataset.b, input);
     });
+    on(root, 'click', '[data-psell]', (e, t) => import('../market.js').then((mod) => mod.openSell(ctx, 'firm', Number(t.dataset.psell), t.dataset.name, Number(t.dataset.value), null, () => ctx.rerender())));
     on(root, 'click', '[data-sell]', async (e, t) => { if (await ctx.confirm({ title: 'Betrieb verkaufen?', text: 'Du erhältst den aktuellen Wert (90 %) plus die Firmenkasse.', ok: 'Verkaufen', danger: true })) ctx.act('bizSell', { id: Number(t.dataset.sell) }); });
     on(root, 'click', '[data-ad]', async (e, t) => { await ctx.watchAd(`discount:room:${t.dataset.ad}`); ctx.rerender(); });
   },

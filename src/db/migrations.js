@@ -442,6 +442,50 @@ const MIGRATIONS = [
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     async (db) => { try { await require('../lib/social').refreshAll(db); } catch (_) { /* wird beim nächsten Spielzug nachgeholt */ } },
   ] },
+  { id: '015_market', up: [
+    `CREATE TABLE IF NOT EXISTS market_offers (
+      id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      kind ENUM('prop','firm') NOT NULL,
+      buyer_id INT UNSIGNED NOT NULL,
+      seller_id INT UNSIGNED NOT NULL,
+      item_id INT NOT NULL,
+      item_name VARCHAR(120) NOT NULL DEFAULT '',
+      price_real BIGINT NOT NULL,
+      proposer INT UNSIGNED NOT NULL,
+      message VARCHAR(240) NOT NULL DEFAULT '',
+      status ENUM('open','accepted','declined','countered','withdrawn','expired','void') NOT NULL DEFAULT 'open',
+      parent_id INT UNSIGNED NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      expires_at DATETIME NOT NULL,
+      KEY idx_mo_seller (seller_id, status), KEY idx_mo_buyer (buyer_id, status), KEY idx_mo_item (seller_id, kind, item_id, status)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    `CREATE TABLE IF NOT EXISTS market_auctions (
+      id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      kind ENUM('prop','firm') NOT NULL,
+      seller_id INT UNSIGNED NULL,
+      city_id INT UNSIGNED NOT NULL,
+      item JSON NOT NULL,
+      name VARCHAR(120) NOT NULL,
+      reason VARCHAR(20) NOT NULL DEFAULT 'owner',
+      min_real BIGINT NOT NULL,
+      value_real BIGINT NOT NULL DEFAULT 0,
+      lead_user INT UNSIGNED NULL,
+      lead_real BIGINT NULL,
+      round TINYINT NOT NULL DEFAULT 1,
+      status ENUM('open','sold','unsold','cancelled') NOT NULL DEFAULT 'open',
+      ends_at DATETIME NOT NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      KEY idx_ma_city (city_id, status), KEY idx_ma_end (status, ends_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    `CREATE TABLE IF NOT EXISTS market_bids (
+      id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      auction_id INT UNSIGNED NOT NULL,
+      user_id INT UNSIGNED NOT NULL,
+      price_real BIGINT NOT NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      KEY idx_mb_a (auction_id, price_real)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+  ] },
 ];
 
 async function ensureTable(db) {

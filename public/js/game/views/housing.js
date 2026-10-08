@@ -59,13 +59,14 @@ export default {
       <div class="row mt">
         ${p.cityId === v.city.id && !p.residence ? html`<button class="btn sm primary" data-act="moveIn" data-id="${p.id}">Einziehen</button>` : ''}
         ${p.maintainCost > 0 ? html`<button class="btn sm" data-act="maintain" data-id="${p.id}" ${v.money < p.maintainCost ? 'disabled' : ''}>Instand setzen · ${money(p.maintainCost, cur)}</button>` : ''}
-        <button class="btn sm danger" data-sell="${p.id}">Verkaufen</button>
+        <button class="btn sm" data-psell="${p.id}" data-name="${p.name}" data-value="${Math.round(p.value / (v.idx || 1))}">An Spieler verkaufen …</button><button class="btn sm danger" data-sell="${p.id}">Verkaufen</button>
       </div></article>`)}</div>`
     : html`<div class="card flat empty-note">${icon('house')}<span>Du besitzt noch keine Immobilie. Sparen lohnt sich – Eigentum steigt über Jahrzehnte im Wert.</span></div>`}
     ${saleSection(ctx, ed)}`;
   },
   bind(root, ctx) {
     on(root, 'click', '[data-go]', (e, t) => ctx.go(t.dataset.go));
+    on(root, 'click', '[data-psell]', (e, t) => import('../market.js').then((mod) => mod.openSell(ctx, 'prop', Number(t.dataset.psell), t.dataset.name, Number(t.dataset.value), null, () => ctx.rerender())));
     on(root, 'click', '[data-buy]', (e, t) => ctx.act('buy', { listingId: t.dataset.buy }));
     on(root, 'click', '[data-lease]', (e, t) => ctx.act(t.dataset.lease === 'on' ? 'letOn' : 'letOff', { propertyId: t.dataset.id, mult: 1 }));
     root.querySelectorAll('[data-lprice]').forEach((r) => {

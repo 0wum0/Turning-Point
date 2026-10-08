@@ -49,7 +49,7 @@ export async function openChatModal(ctx) {
   setTimeout(() => input.focus(), 60);
 }
 
-const KIND = { letter: ['mail', 'letters'], system: ['bell', 'letters'], friend: ['users', 'friends'], couple: ['heart', 'love'], job: ['briefcase', 'jobs'] };
+const KIND = { letter: ['mail', 'letters'], system: ['bell', 'letters'], friend: ['users', 'friends'], couple: ['heart', 'love'], job: ['briefcase', 'jobs'], offer: ['hand-coins', 'market'] };
 const ago = (d) => { const s = Math.max(0, (Date.now() - new Date(d).getTime()) / 1000); const en = document.documentElement.lang === 'en'; if (s < 90) return en ? 'now' : 'jetzt'; if (s < 3600) return `${Math.round(s / 60)} min`; if (s < 86400) return `${Math.round(s / 3600)} h`; return `${Math.round(s / 86400)} ${en ? 'd' : 'Tg.'}`; };
 
 export async function openBell(ctx) {

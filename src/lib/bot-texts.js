@@ -101,6 +101,7 @@ function letterReply(P, text, them) {
   if (RE_BOT.test(text) && /\?|bist|are you/i.test(text)) return pick(L(P).honest);
   return fill(pick(bank), { them }) + (P.tone === 'höflich' ? (P.lang === 'en' ? '\n\nBest wishes' : '\n\nViele Grüße') : '');
 }
+const offerText = (P) => (P.lang === 'en' ? pick(['I would take this business off your hands at a fair price.', 'Interested in taking over – happy to talk.']) : pick(['Ich würde den Betrieb zu einem fairen Preis übernehmen.', 'Interesse an einer Übernahme – gern reden wir darüber.', 'Falls du verkaufen möchtest: Mein Angebot steht.']));
 const applyText = (P) => (P.lang === 'en' ? 'Hello, I would like to work for you. I am reliable and quick to learn.' : pick(['Guten Tag, ich würde gern bei Ihnen arbeiten. Ich bin zuverlässig und lerne schnell.', 'Hallo, die Stelle interessiert mich sehr. Ich kann bald anfangen.']));
 
-module.exports = { nickname, bio, idle, chatReply, letterReply, applyText, style };
+module.exports = { nickname, bio, idle, chatReply, letterReply, applyText, offerText, style };

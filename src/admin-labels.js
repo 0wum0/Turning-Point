@@ -4,7 +4,7 @@ const SETTINGS = {
   'site.name': 'Name des Spiels', 'site.tagline': 'Slogan', 'site.registration_open': 'Registrierung geöffnet', 'site.maintenance': 'Wartungsmodus',
   'site.maintenance_message': 'Wartungs-Nachricht', 'site.require_email_verification': 'E-Mail-Bestätigung erforderlich', 'site.announcement': 'Ankündigungs-Banner',
   'site.contact_email': 'Kontakt-E-Mail', 'site.legal_name': 'Name des Betreibers', 'site.legal_address': 'Anschrift des Betreibers',
-  texts: 'Spieltexte (Zeitung, Meldungen, Hilfen)', 'news.custom': 'Eigene Zeitungsmeldungen', anticheat: 'Anti-Cheat-Einstellungen', social: 'Mehrspieler-Einstellungen',
+  texts: 'Spieltexte (Zeitung, Meldungen, Hilfen)', 'news.custom': 'Eigene Zeitungsmeldungen', anticheat: 'Anti-Cheat-Einstellungen', market: 'Spielermarkt', bots: 'Bots', social: 'Mehrspieler-Einstellungen',
   landing: 'Startseiten-Texte (Deutsch)', landing_en: 'Startseiten-Texte (Englisch)', packages: 'Coin-Pakete (Shop)', subscription: 'Dauerkarte', economy: 'Wirtschaftsdaten (gesamt)',
   'efs.daily_auto': 'EFS pro Tag (automatisch)', 'efs.login_bonus': 'EFS Login-Bonus', 'efs.active_daily_cap': 'EFS-Tageslimit (aktiv spielen)', 'efs.awards': 'EFS-Belohnungen',
   'game.start_year': 'Startjahr', 'game.start_age': 'Startalter', 'game.start_money_cents': 'Startgeld (in Cent)', 'game.max_children': 'Maximale Kinderzahl',
@@ -31,6 +31,7 @@ const TREE = {
   cooldownMin: 'Wartezeit (Minuten)', minWellbeing: 'Mindest-Wohlbefinden', minWage: 'Mindestlohn', maxWage: 'Höchstlohn', maxOffersPerCompany: 'Max. Angebote pro Firma', maxSlots: 'Max. Plätze', applicationsPerDay: 'Bewerbungen pro Tag', maxEmployeesPerOwner: 'Max. Angestellte pro Besitzer', minAge: 'Mindestalter',
   eyebrow: 'Kleiner Vortitel', lead: 'Einleitung', ctaStart: 'Button: Start', ctaPlay: 'Button: Spielen', timeline: 'Zeitleiste', stats: 'Kennzahlen', featuresTitle: 'Überschrift Funktionen', featuresSub: 'Unterzeile Funktionen', features: 'Funktionen', quote: 'Zitat', ctaBottom: 'Button unten', ctaBottomPlay: 'Button unten (Spielen)',
   price_cents: 'Preis (Cent)', daily_coins: 'Coins pro Tag', daily_health_cards: 'Gesundheitskarten pro Tag', coins: 'Coins', label: 'Bezeichnung', description: 'Beschreibung', desc: 'Beschreibung', key: 'Schlüssel', pkey: 'Schlüssel',
+  propFeePct: 'Gebühr Immobilien %', firmFeePct: 'Gebühr Betriebe %', offerMinPct: 'Mindestgebot % vom Wert', offerExpireDays: 'Angebot gültig (Tage)', auctionHours: 'Versteigerung (Stunden)', auctionIncrementPct: 'Mindest-Aufschlag %', maxOpenOffers: 'Max. offene Angebote', offersPerDay: 'Angebote pro Tag', estateAuctions: 'Insolvenzmasse versteigern',
   priceIndex: 'Preisindex', euroYear: 'Euro-Jahr', food: 'Lebensmittel', lodging: 'Wohnen', rentPerRoom: 'Miete pro Zimmer', property: 'Immobilien', upkeepYearPct: 'Unterhalt pro Jahr %', events: 'Ereignisse', insurance: 'Versicherungen', politics: 'Politik', tasks: 'Aufgaben', gambling: 'Glücksspiel', companies: 'Firmen',
   moveBaseCost: 'Umzug: Grundkosten', moveCostPerKm: 'Umzug: Kosten pro km', childCostPerDay: 'Kinderkosten pro Tag', kindergeldPct: 'Kindergeld %', jugendhilfePerDay: 'Jugendhilfe pro Tag', marriageCost: 'Kosten der Heirat', giftCost: 'Kosten Geschenk',
 };

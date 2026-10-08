@@ -1,0 +1,22 @@
+<%- include('_top', { actions: '' }) %>
+<% var csrf = '<input type="hidden" name="_csrf" value="' + csrfToken + '">'; const nf = (n) => Number(n || 0).toLocaleString('de-DE'); const when = (d) => new Date(d).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); %>
+<div class="kpis">
+  <div class="kpi info"><span class="ico"><%- icon('gavel') %></span><label>Offene Versteigerungen</label><b><%= k.auctions %></b></div>
+  <div class="kpi"><span class="ico"><%- icon('handshake') %></span><label>Offene Angebote</label><b><%= k.offers %></b></div>
+  <div class="kpi teal"><span class="ico"><%- icon('hand-coins') %></span><label>Geschäfte (7 Tage)</label><b><%= k.trades %></b><small><span>Volumen <%= nf(Math.round(k.volume / 100)) %> (Wert 1945)</span></small></div>
+</div>
+<div class="alert info mt"><%- icon('info') %><div>Einstellungen (Gebühren, Fristen, Limits): <a href="/admin/settings/market">Einstellungen → Markt</a>. Beträge sind „Wert von 1945“.</div></div>
+<h3 class="mt">Versteigerungen</h3>
+<div class="table-wrap"><table class="table small"><thead><tr><th>Gegenstand</th><th>Art</th><th>Verkäufer</th><th class="num">Mindest</th><th class="num">Höchstgebot</th><th>Status</th><th>Ende</th><th></th></tr></thead><tbody>
+<% auctions.forEach(function(a){ %><tr><td><b><%= a.name %></b></td><td><%= a.reason === 'estate' ? 'Zwangsversteigerung' : 'freiwillig' %> · <%= a.kind === 'prop' ? 'Immobilie' : 'Betrieb' %></td><td><%= a.seller || 'Insolvenzmasse' %></td><td class="num"><%= nf(Math.round(a.min_real / 100)) %></td><td class="num"><%= a.lead_real != null ? nf(Math.round(a.lead_real / 100)) + ' (' + a.leader + ')' : '–' %></td><td><%= a.status %></td><td class="dim"><%= when(a.ends_at) %></td>
+  <td class="num"><% if (a.status === 'open') { %><form method="post" action="/admin/market/auction/<%= a.id %>/cancel"><%- csrf %><button class="btn sm danger" data-confirm="Versteigerung abbrechen?">Abbrechen</button></form><% } %></td></tr>
+<% }) %><% if (!auctions.length) { %><tr><td colspan="8" class="dim">Keine Versteigerungen.</td></tr><% } %></tbody></table></div>
+<h3 class="mt">Angebote</h3>
+<div class="table-wrap"><table class="table small"><thead><tr><th>Gegenstand</th><th>Käufer</th><th>Verkäufer</th><th class="num">Preis</th><th>Status</th><th>Zeit</th><th></th></tr></thead><tbody>
+<% offers.forEach(function(o){ %><tr><td><b><%= o.item_name %></b></td><td><%= o.buyer %></td><td><%= o.seller %></td><td class="num"><%= nf(Math.round(o.price_real / 100)) %></td><td><%= o.status %></td><td class="dim"><%= when(o.created_at) %></td><td class="num"><% if (o.status === 'open') { %><form method="post" action="/admin/market/offer/<%= o.id %>/void"><%- csrf %><button class="btn sm ghost">Löschen</button></form><% } %></td></tr>
+<% }) %><% if (!offers.length) { %><tr><td colspan="7" class="dim">Keine Angebote.</td></tr><% } %></tbody></table></div>
+<h3 class="mt">Handelsprotokoll</h3>
+<div class="table-wrap"><table class="table small"><thead><tr><th>Zeit</th><th>Käufer</th><th>Verkäufer</th><th>Gegenstand</th><th class="num">Preis (1945)</th></tr></thead><tbody>
+<% trades.forEach(function(t){ %><tr><td class="dim"><%= when(t.created_at) %></td><td><%= t.from_name %></td><td><%= t.to_name || 'Versteigerung' %></td><td><%= t.ref %></td><td class="num"><%= nf(Math.round(t.amount / 100)) %></td></tr>
+<% }) %><% if (!trades.length) { %><tr><td colspan="5" class="dim">Noch keine Geschäfte.</td></tr><% } %></tbody></table></div>
+<%- include('_bottom') %>

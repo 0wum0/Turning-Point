@@ -83,6 +83,18 @@ router.post('/jobs/withdraw', wrap(async (req, res) => { await bonds.withdraw(ui
 router.post('/jobs/quit', wrap(async (req, res) => { await bonds.quit(uid(req)); await fresh(req, res); }));
 router.post('/jobs/fire', wrap(async (req, res) => { await bonds.fire(uid(req), int(req.body.id)); await fresh(req, res); }));
 
+/* ---------- Spielermarkt ---------- */
+const market = require('../lib/market');
+router.get('/market', wrap(async (req, res) => res.json({ ok: true, ...(await market.overview(uid(req))) })));
+router.get('/market/auctions', wrap(async (req, res) => res.json({ ok: true, auctions: await market.auctions(uid(req), int(req.query.cityId)) })));
+router.post('/market/offer', wrap(async (req, res) => { const id = await market.makeOffer(uid(req), { kind: String(req.body.kind), ownerId: int(req.body.ownerId), itemId: int(req.body.itemId), priceReal: req.body.priceReal, message: req.body.message }); res.json({ ok: true, id }); }));
+router.post('/market/respond', wrap(async (req, res) => { const r = await market.respondOffer(uid(req), int(req.body.id), String(req.body.action), req.body.priceReal); await fresh(req, res, r); }));
+router.post('/market/withdraw', wrap(async (req, res) => { await market.withdrawOffer(uid(req), int(req.body.id)); res.json({ ok: true }); }));
+router.post('/market/ask', wrap(async (req, res) => { await market.setAsk(uid(req), String(req.body.kind), int(req.body.itemId), req.body.priceReal == null || req.body.priceReal === '' ? null : req.body.priceReal); res.json({ ok: true }); }));
+router.post('/market/buy', wrap(async (req, res) => { const r = await market.buyNow(uid(req), int(req.body.sellerId), String(req.body.kind), int(req.body.itemId)); await fresh(req, res, { cost: r.cost }); }));
+router.post('/market/auction/start', wrap(async (req, res) => { const r = await market.startAuction(uid(req), String(req.body.kind), int(req.body.itemId), req.body.minReal, int(req.body.hours, 24)); await fresh(req, res, r); }));
+router.post('/market/auction/bid', wrap(async (req, res) => { await market.bid(uid(req), int(req.body.id), req.body.priceReal); res.json({ ok: true }); }));
+
 /* ---------- Beziehung & Hochzeit ---------- */
 router.get('/couple', wrap(async (req, res) => res.json({ ok: true, ...(await bonds.coupleView(await worldSvc.get(), uid(req))) })));
 router.post('/couple/request', wrap(async (req, res) => { await bonds.request(await worldSvc.get(), uid(req), int(req.body.userId)); res.json({ ok: true }); }));

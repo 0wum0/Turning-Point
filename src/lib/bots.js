@@ -274,6 +274,38 @@ async function handleChat(bot, P, bm, c) {
   await patch(bot.id, (b) => { b.chatNext = Date.now() + rnd(40, 180) * 60000 / (0.4 + P.chatty); });
 }
 
+/** Markt: Angebote an Bots beantworten, bei Versteigerungen bieten, gelegentlich ein faires Übernahmeangebot machen. */
+async function handleMarket(bot, P, c) {
+  if (!c.market) return;
+  const market = require('./market');
+  const inc = await db.query("SELECT o.* FROM market_offers o JOIN users f ON f.id = o.proposer WHERE o.status = 'open' AND o.proposer <> ? AND (o.buyer_id = ? OR o.seller_id = ?) AND f.is_bot = 0 AND o.created_at < NOW() - INTERVAL ? MINUTE LIMIT 3", [bot.id, bot.id, bot.id, 8 + (bot.id % 25)]);
+  for (const o of inc) {
+    try {
+      const tbl = o.kind === 'prop' ? ['player_props', 'prop_id'] : ['player_firms', 'company_id'];
+      const row = await db.one(`SELECT value_real FROM ${tbl[0]} WHERE user_id = ? AND ${tbl[1]} = ?`, [o.seller_id, o.item_id]);
+      const val = row ? Number(row.value_real) : Number(o.price_real); const p = Number(o.price_real); const iSell = o.seller_id === bot.id;
+      const ratio = iSell ? p / Math.max(1, val) : val / Math.max(1, p); // je höher, desto besser für den Bot
+      if (ratio >= 0.92 + P.thrift * 0.06) await market.respondOffer(bot.id, o.id, 'accept');
+      else if (ratio >= 0.6 && chance(0.7)) await market.respondOffer(bot.id, o.id, 'counter', Math.round(iSell ? val * (1 + 0.03 * Math.random()) : val * (0.97 - 0.05 * Math.random())));
+      else await market.respondOffer(bot.id, o.id, 'decline');
+    } catch (_) { /* Geld, Qualifikation, Limits */ }
+  }
+  const ps = await cityOf(bot.id); if (!ps) return;
+  if (chance(0.25)) {
+    try {
+      const list = (await market.auctions(bot.id, ps.city_id)).filter((a) => !a.mine && !a.leading);
+      const a = list[0];
+      if (a) { const floor = a.lead == null ? a.min : Math.ceil(a.lead * 1.05); if (floor <= a.value * (0.55 + 0.35 * Math.random())) await market.bid(bot.id, a.id, floor); }
+    } catch (_) { /* nicht qualifiziert / kein Geld */ }
+  }
+  if (chance(0.025 + P.ambition * 0.02)) {
+    try {
+      const f = await db.one("SELECT f.user_id, f.company_id, f.value_real, f.abandoned FROM player_firms f JOIN users u ON u.id = f.user_id WHERE f.city_id = ? AND f.user_id <> ? AND u.is_bot = 0 AND u.social_public = 1 AND u.banned = 0 AND f.ask_real IS NULL AND (f.distress = 1 OR f.abandoned = 1) ORDER BY RAND() LIMIT 1", [ps.city_id, bot.id]);
+      if (f) await market.makeOffer(bot.id, { kind: 'firm', ownerId: f.user_id, itemId: f.company_id, priceReal: Math.round(Number(f.value_real) * (0.72 + Math.random() * 0.18)), message: T.offerText(P) });
+    } catch (_) { /* Geld, Qualifikation, Limits */ }
+  }
+}
+
 /* ============================== Takt ============================== */
 async function session(bot) {
   const meta = parse(bot.meta); const bm = meta.bot || {}; const P = bm.persona || makePersona('de'); const c = cfg();
@@ -285,7 +317,7 @@ async function session(bot) {
   const state = await lifeCycle(bot.id);
   if (state === 'alive' || state === 'new' || state === 'heir') {
     if (chance(0.55)) await playGameSafe(bot.id, {});
-    await handleLetters(bot, P, c); await handleFriends(bot, P, c); await handleJobs(bot, P, c); await handleVisit(bot, P, c); await handleChat(bot, P, bm, c);
+    await handleLetters(bot, P, c); await handleFriends(bot, P, c); await handleJobs(bot, P, c); await handleVisit(bot, P, c); await handleMarket(bot, P, c); await handleChat(bot, P, bm, c);
   }
   await patch(bot.id, (b) => { b.next = nextIn(7, 38); });
 }

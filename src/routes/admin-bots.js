@@ -25,7 +25,7 @@ module.exports = function mount(router, H) {
     const b = req.body; const cur = settings.get('bots');
     const next = {
       ...cur, enabled: !!b.enabled, target: Math.max(0, Math.min(60, int(b.target, 0))), max: 60, activity: Math.max(1, Math.min(3, int(b.activity, 2))),
-      chat: !!b.chat, letters: !!b.letters, friends: !!b.friends, jobs: !!b.jobs, visits: !!b.visits,
+      chat: !!b.chat, letters: !!b.letters, friends: !!b.friends, jobs: !!b.jobs, visits: !!b.visits, market: !!b.market,
     };
     await settings.set('bots', next);
     await audit(req, 'bots_settings', next);

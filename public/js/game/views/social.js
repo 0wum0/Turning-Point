@@ -1,6 +1,7 @@
+import { renderMarket, bindMarket } from '../market.js';
 import { html, raw, icon, api, on, toast, modal, money, moneyShort, num, esc, infoBtn, roleBadge, roleBadgeStr } from '../ui.js';
 
-const TABS = [['rank', 'Rangliste', 'crown'], ['plaza', 'Stadtplatz', 'landmark'], ['jobs', 'Arbeit', 'briefcase'], ['love', 'Beziehung', 'heart'], ['letters', 'Briefe', 'mail'], ['friends', 'Freunde', 'users'], ['me', 'Mein Profil', 'user']];
+const TABS = [['rank', 'Rangliste', 'crown'], ['plaza', 'Stadtplatz', 'landmark'], ['jobs', 'Arbeit', 'briefcase'], ['love', 'Beziehung', 'heart'], ['market', 'Markt', 'handshake'], ['letters', 'Briefe', 'mail'], ['friends', 'Freunde', 'users'], ['me', 'Mein Profil', 'user']];
 const hhmm = (d) => new Date(d).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
 const dt = (d) => new Date(d).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' });
 const cityName = (ctx, id) => { const c = ctx.world && ctx.world.cityById && ctx.world.cityById.get(id); return c ? c.label : '–'; };
@@ -147,6 +148,7 @@ const views = {
             : html`<div class="dim small">Noch keine Spielerbetriebe in ${cityName(ctx, d.cityId)}. Eröffne selbst eines – andere Spieler können dich dann besuchen!</div>`}</section>
       </aside></div>`;
   },
+  market(ctx, d) { return renderMarket(ctx, d); },
   letters(ctx, d) {
     return html`<div class="row spread wrap" style="margin-bottom:.8rem"><div class="seg">${[['in', 'Posteingang'], ['out', 'Gesendet']].map((x) => html`<a href="#/social" data-box="${x[0]}" class="${d.box === x[0] ? 'on' : ''}">${x[1]}</a>`)}</div><button class="btn primary sm" id="newletter">${icon('pencil')} Neuer Brief</button></div>
     <div class="table-wrap"><table class="table letters"><tbody>${d.items.map((m) => html`<tr data-letter="${m.id}" class="${m.unread ? 'unread' : ''}" tabindex="0"><td style="width:28px">${m.kind === 'system' ? icon('bell') : icon('mail')}</td><td><b>${m.other}</b> <span class="dim small">${m.kind === 'system' ? '· Mitteilung' : ''}</span><div class="subj">${m.subject}</div><div class="dim small ellip">${m.preview}</div></td><td class="num dim small">${dt(m.at)}</td></tr>`)}
@@ -187,6 +189,7 @@ export default {
     if (tab === 'letters') return { tab, ...(await api('GET', `/api/social/inbox?box=${s.box}&page=${s.page}`)) };
     if (tab === 'friends') return { tab, ...(await api('GET', '/api/social/friends')) };
     if (tab === 'jobs') { const [market, mine] = await Promise.all([api('GET', '/api/social/jobs/market'), api('GET', '/api/social/jobs/mine')]); return { tab, market, mine }; }
+    if (tab === 'market') { const [mk, au] = await Promise.all([api('GET', '/api/social/market'), api('GET', `/api/social/market/auctions?cityId=${ctx.view.city.id}`)]); return { tab, ...mk, auctions: au.auctions }; }
     if (tab === 'love') return { tab, ...(await api('GET', '/api/social/couple')) };
     return { tab: 'me', ...(await api('GET', '/api/social/me')) };
   },
@@ -199,6 +202,7 @@ export default {
   bind(root, ctx, d) {
     const s = ctx.ui.soc;
     const go = () => ctx.rerender();
+    if (d.tab === 'market') bindMarket(root, ctx, d, go);
     if (s.openLetter) { const id = s.openLetter; s.openLetter = null; setTimeout(() => { const row = root.querySelector(`[data-letter="${id}"]`); if (row) row.click(); }, 60); }
     if (s.openProfile) { const uid = s.openProfile; s.openProfile = null; setTimeout(() => openProfile(ctx, uid), 60); }
     on(root, 'click', '[data-tab]', (e, t) => { e.preventDefault(); s.tab = t.dataset.tab; s.page = 1; go(); });
