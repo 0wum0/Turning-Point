@@ -290,8 +290,10 @@ function estateShare(world, state) {
   const n = Math.max(1, state.children.filter((c) => c.status !== 'withPartner').length);
   const props = state.properties.map((p) => ({ key: `p:${p.id}`, id: p.id, kind: 'property', name: p.name, value: propertyValue(world, state, p, year) }))
     .concat((state.companies || []).map((c) => ({ key: `c:${c.id}`, id: c.id, kind: 'company', name: c.name, value: bizMod.companyValue(world, state, c, year) + c.cash })));
-  const total = Math.max(0, state.money) + props.reduce((s, p) => s + p.value, 0);
-  return { n, total, share: Math.floor(total / n), props, money: Math.max(0, state.money) };
+  // Schulden (Kredite) werden aus dem Nachlass beglichen – sonst könnte man einen Kredit aufnehmen, sterben und das Geld schuldenfrei vererben
+  const debt = require('./credit').debt(state);
+  const total = Math.max(0, Math.max(0, state.money) + props.reduce((s, p) => s + p.value, 0) - debt);
+  return { n, total, share: Math.floor(total / n), props, money: Math.max(0, state.money), debt };
 }
 
 module.exports = { adoptionBlock, familyDaily, endLife, eligibleHeirs, estateShare, bornChild, ageOfChild, separate };

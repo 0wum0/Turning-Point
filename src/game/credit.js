@@ -58,7 +58,7 @@ function take(world, state, amount, years) {
 
 function repay(state, id, amount) {
   const l = (state.loans || []).find((x) => x.id === id); if (!l) throw new Error('Kredit nicht gefunden.');
-  const a = Math.min(Math.round(amount), l.left, state.money); if (a < 1) throw new Error('Dir fehlt das Geld für die Rückzahlung.');
+  const a = Math.min(Math.round(amount), l.left, state.money); if (!(a >= 1)) throw new Error('Dir fehlt das Geld für die Rückzahlung.');
   state.money -= a; const f = (l.left - a) / l.left; l.left -= a; l.pay = Math.max(1, Math.round(l.pay * f));
   if (l.left < 1) state.loans = state.loans.filter((x) => x.id !== id);
   return a;
@@ -69,7 +69,7 @@ function creditDaily(ctx) {
   const { state } = ctx; if (!state.loans || !state.loans.length) return;
   if (isEuroDay(state.day, state.startYear, settings.get('economy'))) {
     // Währungsumstellung 2:1: Restschuld und Rate halbieren sich wie Geld, Preise und Löhne (sonst verdoppelte sich die Last real)
-    for (const l of state.loans) { l.left = l.left / 2; l.pay = Math.max(1, Math.round(l.pay / 2)); l.principal = Math.round(l.principal / 2); }
+    for (const l of state.loans) { l.left = Math.round(l.left / 2); l.pay = Math.max(1, Math.round(l.pay / 2)); l.principal = Math.round(l.principal / 2); }
   }
   for (const l of state.loans) {
     const interest = l.left * (l.rate / 100 / 365); const principalPart = Math.min(l.left, Math.max(0, l.pay - interest));
@@ -77,7 +77,7 @@ function creditDaily(ctx) {
     const due = Math.min(l.pay, Math.round(l.left + interest));
     const paid = ctx.offline ? Math.min(due, Math.max(0, state.money)) : due;
     state.money -= paid; if (state.stats) state.stats.spent += paid;
-    if (paid >= due) l.left = Math.max(0, l.left - principalPart); else l.left += interest;
+    if (paid >= due) l.left = Math.max(0, Math.round(l.left - principalPart)); else l.left = Math.round(l.left + interest); // immer ganze Cent
     l.daysLeft--;
   }
   state.loans = state.loans.filter((l) => l.left >= 1 && l.daysLeft > -365);

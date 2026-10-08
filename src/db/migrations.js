@@ -645,6 +645,18 @@ const MIGRATIONS = [
       if (o && Number(o.study_finish) <= 150) { for (const k of Object.keys(o)) o[k] = Math.round(Number(o[k]) * 7); await db.query("UPDATE settings SET value = ? WHERE `key` = 'efs.awards'", [JSON.stringify(o)]); }
     }
   }] },
+  { id: '025_sold_listings', up: [
+    // Gekaufte Zeitungsanzeigen (Immobilien): Id enthält Stadt + Spielwoche. Eine verkaufte Anzeige darf niemand ein zweites Mal kaufen.
+    `CREATE TABLE IF NOT EXISTS sold_listings (
+      listing_id VARCHAR(64) NOT NULL PRIMARY KEY,
+      city_id INT NOT NULL,
+      week INT NOT NULL,
+      user_id INT NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      KEY idx_sold_week (week),
+      KEY idx_sold_created (created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+  ] },
 ];
 
 async function ensureTable(db) {

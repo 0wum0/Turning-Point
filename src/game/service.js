@@ -8,6 +8,7 @@ const { createHeirState, planInheritance } = require('./heir');
 const { present } = require('./present');
 const actions = require('./actions');
 const { notice } = require('./core');
+const newspaper = require('./newspaper');
 const { yearOf } = require('./calendar');
 
 const parseMeta = (s) => { try { return s ? JSON.parse(s) : {}; } catch (_) { return {}; } };
@@ -35,6 +36,9 @@ function flush(user, state) {
 function syncEfs(user, state, now, w) {
   const perMs = settings.get('game.clock_days_per_day') / 86400000;
   const last = user.efs_accrued_at || now;
+  // Die Zeit wird vor dem Warten auf die Zeilensperre gemessen: eine parallele Anfrage kann daher einen späteren Stand gebucht haben.
+  // Der Zeitstempel darf nie rückwärts laufen, sonst würde dieselbe Zeitspanne beim nächsten Abgleich ein zweites Mal gezählt.
+  if (now < last) now = last;
   const elapsed = Math.max(0, now - last);
   const accrued = elapsed * perMs + (user.efs_carry || 0);
   const whole = Math.floor(accrued);
@@ -81,6 +85,21 @@ function syncEfs(user, state, now, w) {
   return { offline, clock, bonus, perks };
 }
 
+/* ---- Gekaufte Anzeigen (Tabelle sold_listings): eine Immobilien-Anzeige ist nach dem Kauf für alle Spieler weg ---- */
+const SOLD_TTL_DAYS = 30; // echte Tage; danach darf ein später geborener Charakter dieselbe Spielwoche wieder erleben
+async function loadSold(conn, state) {
+  if (!state) return;
+  const rows = await conn.query(`SELECT listing_id FROM sold_listings WHERE week = ? AND created_at > NOW() - INTERVAL ${SOLD_TTL_DAYS} DAY`, [Math.floor(state.day / 7)]);
+  newspaper.setSoldGlobal(state, rows.map((r) => r.listing_id));
+}
+/** Hält eine soeben gekaufte Anzeige fest; schlägt fehl (ActionError → Rollback), wenn ein anderer Spieler schneller war. */
+async function recordSold(conn, listingId, userId) {
+  const m = /^sale:(\d+):(\d+):(\d+)$/.exec(listingId); if (!m) return;
+  await conn.query(`DELETE FROM sold_listings WHERE created_at <= NOW() - INTERVAL ${SOLD_TTL_DAYS} DAY`);
+  const r = await conn.query('INSERT IGNORE INTO sold_listings (listing_id, city_id, week, user_id) VALUES (?,?,?,?)', [listingId, Number(m[1]), Number(m[2]), userId]);
+  if (!r || !r.affectedRows) throw new actions.ActionError('Dieses Angebot ist nicht mehr aktuell – jemand war schneller.');
+}
+
 async function loadUser(conn, userId) {
   const u = await conn.one('SELECT * FROM users WHERE id = ? FOR UPDATE', [userId]);
   if (!u) return null;
@@ -116,11 +135,13 @@ async function withCharacter(userId, fn, { needAlive = false } = {}) {
     const row = await activeRow(conn, userId);
     let state = row ? parseState(row.state) : null;
     const pressBefore = state ? (state.nextPressId || 0) : 0;
+    // Zuerst mit der Datenbank abgleichen (beendete Mietverträge/Anstellungen, Gutschriften), dann die Spielzeit laufen lassen:
+    // Sonst würden Miete oder Lohn für Verhältnisse, die schon beendet sind, noch für die gesamte Abwesenheit gebucht.
+    const bonds = require('../lib/bonds');
+    if (state) { await bonds.reconcile(conn, user, row, state, w); flush(user, state); }
     const sync = syncEfs(user, state, now, w);
     if (state) flush(user, state);
     if (needAlive && (!state || state.status !== 'alive')) throw new actions.ActionError('Dein Charakter lebt nicht mehr.');
-    const bonds = require('../lib/bonds');
-    if (state) { await bonds.reconcile(conn, user, row, state, w); flush(user, state); }
     const ctx = { world: w, state, user, row, sync, now, conn };
     const wasAlive = !!(state && state.status === 'alive');
     const result = (await fn(ctx)) || {};
@@ -129,9 +150,12 @@ async function withCharacter(userId, fn, { needAlive = false } = {}) {
     else if (wasAlive && state && state.status === 'dead' && user.social_public) { await require('../lib/tagesblatt').post('life', 'Todesfall', `${state.person.first} ${state.person.last} ist verstorben.`, state.cityId, conn); }
     if (state && row) {
       if (state.status === 'gameover' && ((state.properties || []).length || (state.companies || []).length)) { try { await require('../lib/market').estate(conn, user, state, w); } catch (e) { require('../lib/log').warn(`[market] Insolvenzmasse: ${e.message}`); } }
-      flush(user, state); await bonds.beforeSave(conn, user, state, w); await saveCharacter(conn, row, state);
+      flush(user, state); await bonds.beforeSave(conn, user, state, w);
+      // Gutschriften an andere Spieler (Bauaufträge, Dividenden) VOR dem Speichern verbuchen: Die Listen werden dabei geleert,
+      // und das muss im gespeicherten Stand ankommen – sonst würden sie bei jedem weiteren Aufruf erneut ausgezahlt.
       try { await require('../game/contractors').flush(conn, state); } catch (e) { require('../lib/log').warn(`[contractors] ${e.message}`); }
       try { await require('../lib/exchange').flushDividends(conn, state); } catch (e) { require('../lib/log').warn(`[exchange] ${e.message}`); }
+      await saveCharacter(conn, row, state);
       const social = require('../lib/social');
       await social.upsertStats(conn, user, row, state, w);
       await social.publishNews(conn, user, state, pressBefore);
@@ -178,7 +202,10 @@ async function doAction(userId, name, input) {
     if (!ctx.state) throw new actions.ActionError('Du hast noch keinen Charakter.');
     const needAlive = !['readNotices', 'tutorial'].includes(name);
     if (needAlive && ctx.state.status !== 'alive') throw new actions.ActionError('Dein Charakter lebt nicht mehr.');
+    await loadSold(ctx.conn, ctx.state);
+    const soldBefore = new Set(ctx.state.soldListings || []);
     const out = actions.run(name, { world: ctx.world, state: ctx.state, input: input || {}, user: ctx.user, now: ctx.now });
+    for (const id of ctx.state.soldListings || []) if (!soldBefore.has(id)) await recordSold(ctx.conn, id, ctx.user.id);
     return { ok: true, message: out.msg || '', level: out.level || 'good' };
   });
 }
@@ -239,7 +266,9 @@ async function peek(userId) {
   if (!user) return null;
   user.meta = parseMeta(user.meta);
   const row = await db.one("SELECT * FROM characters WHERE user_id = ? ORDER BY (status = 'gameover'), id DESC LIMIT 1", [userId]);
-  return { w, user, row, state: row ? parseState(row.state) : null };
+  const state = row ? parseState(row.state) : null;
+  if (state && state.status === 'alive') { try { await loadSold(db, state); } catch (_) { /* Tabelle fehlt noch → ohne Filter */ } }
+  return { w, user, row, state };
 }
 
 module.exports = { activeRow, saveCharacter, peek, withCharacter, getView, create, doAction, doAdvance, chooseHeir, previewHeir, flush, syncEfs, loadUser, saveUser, parseMeta };

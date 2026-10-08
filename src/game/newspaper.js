@@ -121,6 +121,25 @@ function allListings(world, state, cityId, week) {
   return { jobs: jobListings(world, state, city, week), housing: housingListings(world, state, city, week), partners: partnerListings(world, state, city, week), biz: bizListings(world, state, city, week) };
 }
 
+/**
+ * Gekaufte Anzeigen: Eine Immobilien-/Betriebsanzeige (Id enthält Stadt + Spielwoche) ist nach dem Kauf für diese Woche weg.
+ * state.soldListings = Ids, die dieser Charakter gekauft hat (im Spielstand); state.soldGlobal = Ids, die irgendein Spieler gekauft hat
+ * (Tabelle sold_listings, vom Service vor jeder Aktion/Zeitungsansicht geladen, nicht gespeichert).
+ */
+const listingWeek = (id) => Number(String(id).split(':')[2]);
+function isSold(state, id) {
+  return !!((state.soldListings && state.soldListings.includes(id)) || (state.soldGlobal && state.soldGlobal.has(id)));
+}
+function markSold(state, id) {
+  const week = Math.floor(state.day / 7);
+  state.soldListings = (state.soldListings || []).filter((x) => listingWeek(x) === week);
+  if (!state.soldListings.includes(id)) state.soldListings.push(id);
+}
+/** Lässt eine Menge verkaufter Ids am Spielstand haften, ohne dass sie mitgespeichert wird. */
+function setSoldGlobal(state, ids) {
+  Object.defineProperty(state, 'soldGlobal', { value: new Set(ids), enumerable: false, configurable: true, writable: true });
+}
+
 function resolveListing(world, state, id) {
   const m = /^(job|pension|rent|sale|partner|biz):(\d+):(\d+):(\d+)$/.exec(id || '');
   if (!m) return null;
@@ -129,6 +148,7 @@ function resolveListing(world, state, id) {
   if (week !== Math.floor(state.day / 7)) return null;
   const city = world.city(cityId);
   if (!city) return null;
+  if (m[1] === 'sale' || m[1] === 'biz') { if (isSold(state, id)) return null; }
   const l = allListings(world, state, cityId, week);
   return [...l.jobs, ...l.housing.pension, ...l.housing.rent, ...l.housing.sale, ...l.partners, ...l.biz].find((x) => x.id === id) || null;
 }
@@ -140,6 +160,8 @@ function edition(world, state, cityId) {
   const medium = mediumFor(year);
   const T = txt(world);
   const l = allListings(world, state, cityId, week);
+  l.housing = { ...l.housing, sale: l.housing.sale.filter((x) => !isSold(state, x.id)) };
+  l.biz = l.biz.filter((x) => !isSold(state, x.id));
   // Nachrichten: Ereignisse dieser und der letzten Woche (Bericht) + Vorschau auf Unwetter
   const news = [];
   for (const w of [week - 1, week]) {
@@ -176,4 +198,4 @@ function edition(world, state, cityId) {
   };
 }
 
-module.exports = { edition, resolveListing, allListings, mediumFor, customNews };
+module.exports = { edition, resolveListing, isSold, markSold, setSoldGlobal, allListings, mediumFor, customNews };

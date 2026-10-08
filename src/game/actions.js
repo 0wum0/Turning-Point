@@ -8,7 +8,7 @@ const {
   clamp, notice, chronicle, award, isLearned, learn, propertyValue, dailyFlows, kidsAtHome, roomsAvailable,
   residenceProperty,
 } = require('./core');
-const { resolveListing } = require('./newspaper');
+const { resolveListing, markSold } = require('./newspaper');
 const { addPerson } = require('./state');
 const { SCHOOLS } = require('./content');
 const { ageOfChild } = require('./family');
@@ -44,6 +44,7 @@ function moveQuote(world, state, cityId) {
 }
 
 const A = {};
+const SELL_HOLD_DAYS = 365; // Spekulationsfrist: verhindert Kauf-Aufwerten-Verkauf-Schleifen innerhalb weniger Spieltage
 
 /* ---------------- Arbeit & Bildung ---------------- */
 A.apply = ({ world, state, input }) => {
@@ -55,6 +56,8 @@ A.apply = ({ world, state, input }) => {
   if (l.kind === 'work' && !isLearned(state, l.pkey)) fail('Dafür fehlt dir die Qualifikation.');
   if (l.kind === 'training' && isLearned(state, l.pkey)) fail('Diesen Beruf beherrschst du bereits.');
   const career = require('./career');
+  const o0 = state.occupation;
+  if (o0 && o0.kind === l.kind && o0.pkey === l.pkey && o0.employer === l.employer) fail('Diese Stelle hast du bereits.'); // sonst würden Betriebszugehörigkeit bzw. Ausbildungsfortschritt zurückgesetzt
   const cur = career.workerOcc(state);
   if (cur && l.kind === 'work' && !(cur.pkey === l.pkey && cur.employer === l.employer)) { // Stellenwechsel: Bewerbung mit Erfolgschance und Kündigungsfrist
     const cd = career.ensure(state); const key = `${l.pkey}|${l.employer}`;
@@ -123,7 +126,8 @@ A.buy = ({ world, state, input }) => {
   pay(state, l.price);
   const prop = { id: state.nextPropId++, kind: l.kind, name: l.name, cityId: l.cityId, rooms: l.rooms, base: l.base, condition: l.condition, closedUntil: 0, bought: state.day, rest: l.rest };
   state.properties.push(prop);
-  award(state, 'buy_property');
+  markSold(state, l.id);
+  award(state, 'buy_property', 'prop');
   chronicle(state, `${state.person.first} kauft: ${l.name} (${world.city(l.cityId).name}).`, 'property');
   press.story(world, state, 'property_buy', { prop: l.name, cityId: l.cityId });
   return { msg: `Gekauft: ${l.name}.` };
@@ -142,6 +146,8 @@ A.moveIn = ({ state, input }) => {
 A.sell = ({ world, state, input }) => {
   const p = state.properties.find((x) => x.id === Number(input.propertyId));
   if (!p) fail('Immobilie nicht gefunden.');
+  if (p.bought != null && state.day - p.bought < SELL_HOLD_DAYS) fail(`Spekulationsfrist: Eine Immobilie kann erst ${SELL_HOLD_DAYS} Tage nach dem Kauf wieder verkauft werden (noch ${SELL_HOLD_DAYS - (state.day - p.bought)} Tage).`);
+  if (p.lease && p.lease.tenant && p.lease.tenant.userId) fail('Ein Spieler wohnt zur Miete in der Immobilie. Beende zuerst die Vermietung.');
   const v = Math.round(propertyValue(world, state, p, yr(state)) * 0.97);
   state.money += v;
   state.properties = state.properties.filter((x) => x.id !== p.id);
@@ -155,6 +161,7 @@ const propOf = (state, input) => { const p = state.properties.find((x) => x.id =
 A.letOn = ({ state, input }) => {
   const p = propOf(state, input);
   if (landlord.isResidence(state, p)) fail('Die Immobilie bewohnst du selbst. Ziehe zuerst aus, um sie zu vermieten.');
+  if (p.lease && p.lease.tenant && p.lease.tenant.userId) fail('Ein Spieler wohnt hier zur Miete. Beende zuerst die Vermietung.');
   const mult = landlord.clamp(Number(input.mult) || 1, landlord.MIN_MULT, landlord.MAX_MULT);
   p.lease = { on: true, mult, tenant: null, vacantSince: state.day, total: (p.lease && p.lease.total) || 0 };
   return { msg: `${p.name} wird vermietet. Mieter melden sich, sobald Preis und Zustand passen.` };
@@ -265,9 +272,9 @@ A.useCard = ({ state }) => {
 
 A.insurance = ({ world, state, input }) => {
   const key = String(input.key);
-  if (!world.econ.insurance[key]) fail('Unbekannte Versicherung.');
+  if (!Object.prototype.hasOwnProperty.call(world.econ.insurance, key) || !world.econ.insurance[key]) fail('Unbekannte Versicherung.');
   const on = !!input.on;
-  if (on && !state.insurance[key]) award(state, 'insurance');
+  if (on && !state.insurance[key]) award(state, 'insurance', key);
   state.insurance[key] = on;
   return { msg: on ? `${world.econ.insurance[key].name} abgeschlossen.` : `${world.econ.insurance[key].name} gekündigt.` };
 };
@@ -294,7 +301,7 @@ A.move = ({ world, state, input, user }) => {
   delete state.discounts[`move:${cityId}`];
   state.cityId = cityId;
   if (state.occupation && state.occupation.kind !== 'study') state.occupation = null;
-  const own = state.properties.filter((p) => p.cityId === cityId).sort((a, b) => b.rooms - a.rooms)[0];
+  const own = state.properties.filter((p) => p.cityId === cityId && !(p.lease && p.lease.on && p.lease.tenant && p.lease.tenant.userId)).sort((a, b) => b.rooms - a.rooms)[0]; // nicht in eine an Spieler vermietete Wohnung
   state.housing = own ? { type: 'own', cityId, propertyId: own.id } : { type: 'street', cityId };
   award(state, 'move');
   const c = world.city(cityId);
@@ -352,10 +359,10 @@ A.meet = ({ world, state, input }) => {
   if (!l || l.type !== 'partner') fail('Diese Anzeige ist nicht mehr aktuell.');
   if (l.cityId !== state.cityId) fail('Die Person wohnt in einer anderen Stadt.');
   const cost = scale(world.econ.giftCost, world.idx(yr(state)));
-  if (state.money < cost) fail('Für ein erstes Treffen fehlt dir das Geld.');
-  pay(state, cost);
   state.pending.met = state.pending.met || {};
   if (state.pending.met[l.id]) fail('Ihr habt euch bereits getroffen.');
+  if (state.money < cost) fail('Für ein erstes Treffen fehlt dir das Geld.');
+  pay(state, cost);
   state.pending.met[l.id] = 1;
   const r = rngFor('meet', state.seed, l.id);
   const m = state.meters;
@@ -505,7 +512,8 @@ A.buyBiz = ({ world, state, input }) => {
   pay(state, l.price);
   const c = { id: state.nextCompanyId++, pkey: l.pkey, tier: l.tier, name: l.name, cityId: l.cityId, rooms: l.rooms, staff: 0, manager: false, cash: 0, base: l.base, since: state.day, abandoned: null, lastProfit: 0 };
   state.companies.push(c);
-  award(state, 'buy_property');
+  markSold(state, l.id);
+  award(state, 'buy_property', 'biz');
   chronicle(state, `${state.person.first} übernimmt ${l.name} (${world.city(l.cityId).name}).`, 'business');
   press.story(world, state, 'business_open', { firm: l.name, cityId: l.cityId });
   return { msg: `${l.name} gehört dir. Arbeite selbst im Betrieb oder stelle Mitarbeiter ein.` };
@@ -549,7 +557,7 @@ A.bizExpand = ({ world, state, input, user }) => {
   if (user.coins + state.fx.coins < coins) fail('Dir fehlen Coins. Sieh Werbung an, um den Preis zu senken.');
   pay(state, cost); state.fx.coins -= coins; delete state.discounts[key];
   c.rooms++; c.base += Math.round(cost / idx * 0.8);
-  award(state, 'buy_property');
+  award(state, 'buy_property', `room:${c.id}:${c.rooms}`);
   return { msg: `Neuer Raum freigeschaltet (${c.rooms} / ${t.maxRooms}).` };
 };
 A.bizUpgrade = ({ world, state, input }) => {
@@ -564,7 +572,7 @@ A.bizUpgrade = ({ world, state, input }) => {
   pay(state, cost);
   c.tier++; c.rooms = Math.max(c.rooms, nt.rooms); c.base += Math.round(cost / idx);
   const old = c.name; c.name = c.name.replace(/^\S+/, biz.chainNames(world, c.pkey)[c.tier].split(' ')[0]);
-  award(state, 'buy_property');
+  award(state, 'buy_property', `tier:${c.id}:${c.tier}`);
   chronicle(state, `${old} wird zu ${c.name} ausgebaut.`, 'business');
   press.story(world, state, 'business_expand', { firm: c.name, from: old, cityId: c.cityId });
   return { msg: `Ausbau abgeschlossen: ${biz.tierName(world, c)}.` };

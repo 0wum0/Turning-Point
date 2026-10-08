@@ -71,6 +71,15 @@ async function addHolding(conn, stockId, userId, n, price) {
 }
 const credit = (conn, userId, real, text) => (userId && real > 0 ? conn.query("INSERT INTO pending_credits (user_id, real_amount, reason, text) VALUES (?,?,'stock',?)", [userId, Math.round(real), text]) : null);
 
+/** Alle offenen Orders einer Aktie stornieren (Ausbuchung): reservierte Kaufmittel kommen als Gutschrift zurück, verkaufte Anteile zurück ins Depot. */
+async function releaseOrders(conn, stockId) {
+  for (const o of await conn.query("SELECT * FROM stock_orders WHERE stock_id = ? AND status = 'open' FOR UPDATE", [stockId])) {
+    if (o.side === 'buy') await credit(conn, o.user_id, Number(o.limit_real) * o.left_shares, 'Rückgabe reservierter Mittel (Aktie ausgebucht).');
+    else await conn.query('UPDATE stock_holdings SET shares = shares + ? WHERE stock_id = ? AND user_id = ?', [o.left_shares, stockId, o.user_id]);
+  }
+  await conn.query("UPDATE stock_orders SET status = 'cancelled' WHERE stock_id = ? AND status = 'open'", [stockId]);
+}
+
 /** Eine Teilausführung buchen: Anteile zum Käufer, Kurs fortschreiben. (Geld regelt der Aufrufer.) */
 async function fill(conn, st, buyer, seller, n, p) {
   if (seller === MAKER) await addHolding(conn, st.id, MAKER, -n, p);
@@ -158,7 +167,7 @@ async function cancel(userId, orderId) {
     const o = await conn.one("SELECT * FROM stock_orders WHERE id = ? AND user_id = ? AND status = 'open' FOR UPDATE", [orderId, userId]); if (!o) fail('Diese Order gibt es nicht mehr.');
     await conn.query("UPDATE stock_orders SET status = 'cancelled' WHERE id = ?", [o.id]);
     if (o.side === 'buy') { if (s && s.status === 'alive') s.money += Math.round(Number(o.limit_real) * o.left_shares * idxOf(world, s)); else await credit(conn, userId, Number(o.limit_real) * o.left_shares, 'Rückgabe reservierter Mittel.'); }
-    else await addHolding(conn, o.stock_id, userId, o.left_shares, 0);
+    else await addHolding(conn, o.stock_id, userId, o.left_shares, Number((await holding(conn, o.stock_id, userId)).avg_real)); // Einstandskurs bleibt unverändert
     return {};
   });
 }
@@ -204,7 +213,7 @@ async function delist(userId, companyId) {
     const st = await conn.one('SELECT * FROM stocks WHERE id = ? FOR UPDATE', [c.stock.id]);
     const own = await holding(conn, st.id, userId);
     if (own.shares < st.shares) fail('Du musst zuerst alle Anteile zurückkaufen (auch die der Börse).');
-    await conn.query("UPDATE stock_orders SET status = 'cancelled' WHERE stock_id = ? AND status = 'open'", [st.id]);
+    await releaseOrders(conn, st.id);
     await conn.query("UPDATE stocks SET status = 'delisted' WHERE id = ?", [st.id]); await conn.query('DELETE FROM stock_holdings WHERE stock_id = ?', [st.id]);
     delete c.stock; return {};
   });
@@ -223,6 +232,12 @@ async function takeover(userId, stockId) {
      const stock = snap.stock; delete snap.stock;
     const placed = market.attach(world, sB, 'firm', snap); placed.stock = stock;
     await conn.query('UPDATE stocks SET user_id = ?, company_id = ? WHERE id = ?', [userId, placed.id, st.id]);
+    // Eigene offene Orders des Übernehmers werden storniert – reservierte Mittel und Anteile kommen zurück (sonst gingen sie verloren)
+    const idxB = idxOf(world, sB);
+    for (const o of await conn.query("SELECT * FROM stock_orders WHERE stock_id = ? AND user_id = ? AND status = 'open' FOR UPDATE", [st.id, userId])) {
+      if (o.side === 'buy') sB.money += Math.round(Number(o.limit_real) * o.left_shares * idxB);
+      else await addHolding(conn, st.id, userId, o.left_shares, Number(mine.avg_real));
+    }
     await conn.query("UPDATE stock_orders SET status = 'cancelled' WHERE stock_id = ? AND user_id = ? AND status = 'open'", [st.id, userId]);
     await conn.query('DELETE FROM player_firms WHERE user_id = ? AND company_id = ?', [st.user_id, st.company_id]);
     const nameA = `${sA.person.first} ${sA.person.last}`; const nameB = `${sB.person.first} ${sB.person.last}`;
@@ -263,7 +278,7 @@ async function refresh() {
   const sts = await db.query("SELECT * FROM stocks WHERE status = 'active'");
   for (const st of sts) {
     const f = await db.one('SELECT value_real, profit_real, abandoned FROM player_firms WHERE user_id = ? AND company_id = ?', [st.user_id, st.company_id]);
-    if (!f) { await db.query("UPDATE stocks SET status = 'delisted' WHERE id = ?", [st.id]); await db.query("UPDATE stock_orders SET status = 'cancelled' WHERE stock_id = ? AND status = 'open'", [st.id]); continue; }
+    if (!f) { await db.tx(async (conn) => { await releaseOrders(conn, st.id); await conn.query("UPDATE stocks SET status = 'delisted' WHERE id = ?", [st.id]); }); continue; }
     const fair = fairPerShare(Number(f.value_real), Number(f.profit_real), st.shares);
     const last = await db.one('SELECT COUNT(*) n FROM stock_trades WHERE stock_id = ? AND created_at > NOW() - INTERVAL 1 DAY', [st.id]);
     const drift = last.n ? 0.03 : 0.12; const price = Math.max(1, Math.round(Number(st.price_real) + (fair - Number(st.price_real)) * drift));
@@ -309,4 +324,4 @@ function start() {
 }
 
 const live = require('./live');
-module.exports = live.announce({ fairPerShare, makerSpreadPct, capShares, sellableToMaker, dropWash, place, cancel, ipo, delist, takeover, flushDividends, dividend, reconcile, refresh, overview, history, start }, ['place', 'cancel', 'ipo', 'delist', 'takeover'], 'exchange');
+module.exports = live.announce({ fairPerShare, makerSpreadPct, capShares, sellableToMaker, dropWash, place, cancel, ipo, delist, takeover, flushDividends, dividend, releaseOrders, reconcile, refresh, overview, history, start }, ['place', 'cancel', 'ipo', 'delist', 'takeover'], 'exchange');

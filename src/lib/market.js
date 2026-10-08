@@ -53,12 +53,12 @@ function detach(world, state, kind, id) {
   return snap;
 }
 
-function attach(world, state, kind, snap) {
+function attach(world, state, kind, snap, { force = false } = {}) {
   const it = JSON.parse(JSON.stringify(snap)); const rel = it.rel || {}; delete it.rel;
   if (kind === 'prop') {
     it.id = state.nextPropId++; it.closedUntil = state.day + (rel.closed || 0); it.bought = state.day; state.properties.push(it);
   } else {
-    if ((state.companies || []).length >= world.econ.companies.maxCompanies) fail('Der Käufer besitzt schon die maximale Anzahl an Unternehmen.');
+    if (!force && (state.companies || []).length >= world.econ.companies.maxCompanies) fail('Der Käufer besitzt schon die maximale Anzahl an Unternehmen.');
     it.id = state.nextCompanyId++; it.since = state.day; it.cash = 0; it.manager = !!it.manager;
     if (rel.strike) it.strikeUntil = state.day + rel.strike; else delete it.strikeUntil;
     if (rel.abandoned != null) it.abandoned = { day: state.day - rel.abandoned };
@@ -125,6 +125,7 @@ async function executeSale(conn, world, { kind, sellerId, buyerId, itemId, snap,
   } catch (_) { /* nur Zugabe */ }
   // Verkaufsangebote und offene Angebote für diesen Gegenstand erledigen
   if (sellerId) {
+    if (kind === 'prop') await conn.query("UPDATE player_leases SET status = 'ended', ended_by = 'owner' WHERE owner_id = ? AND prop_id = ? AND status = 'active'", [sellerId, itemId]); // Spieler-Mieter verliert die Wohnung
     await conn.query("UPDATE market_offers SET status = 'void' WHERE seller_id = ? AND kind = ? AND item_id = ? AND status = 'open'", [sellerId, kind, itemId]);
     await conn.query(kind === 'prop' ? 'DELETE FROM player_props WHERE user_id = ? AND prop_id = ?' : 'DELETE FROM player_firms WHERE user_id = ? AND company_id = ?', [sellerId, itemId]);
   }
@@ -224,6 +225,7 @@ async function startAuction(userId, kind, itemId, minReal, hours) {
     const r = await ctx.conn.query("INSERT INTO market_auctions (kind, seller_id, city_id, item, name, reason, min_real, value_real, ends_at) VALUES (?,?,?,?,?,'owner',?,?, DATE_ADD(NOW(), INTERVAL ? HOUR))", [kind, userId, snap.cityId, JSON.stringify(snap), snap.name, min, val, h]);
     await ctx.conn.query(kind === 'prop' ? 'DELETE FROM player_props WHERE user_id = ? AND prop_id = ?' : 'DELETE FROM player_firms WHERE user_id = ? AND company_id = ?', [userId, itemId]);
     await ctx.conn.query("UPDATE market_offers SET status = 'void' WHERE seller_id = ? AND kind = ? AND item_id = ? AND status = 'open'", [userId, kind, itemId]);
+    if (kind === 'prop') await ctx.conn.query("UPDATE player_leases SET status = 'ended', ended_by = 'owner' WHERE owner_id = ? AND prop_id = ? AND status = 'active'", [userId, itemId]);
     return { id: r.insertId };
   });
 }
@@ -242,9 +244,11 @@ async function bid(userId, auctionId, priceReal) {
   if (s.money < cost + fee) fail('Dafür reicht dein Geld nicht (Gebühren kommen hinzu).');
   checkBuyer(world, s, a.kind, JSON.parse(typeof a.item === 'string' ? a.item : JSON.stringify(a.item)));
   const prev = a.lead_user;
+  // Gebote kurz vor Schluss verlängern die Versteigerung um 10 Minuten (wie bei echten Auktionen).
+  // Bedingtes Update: Wer zeitgleich ein höheres Gebot abgegeben hat, wird nicht überschrieben (der Mindestschritt gilt gegen den aktuellen Stand).
+  const upd = await db.query("UPDATE market_auctions SET lead_user = ?, lead_real = ?, ends_at = IF(ends_at < DATE_ADD(NOW(), INTERVAL 10 MINUTE), DATE_ADD(NOW(), INTERVAL 10 MINUTE), ends_at) WHERE id = ? AND status = 'open' AND (lead_real IS NULL OR lead_real * (1 + ? / 100) <= ?)", [userId, p, auctionId, C.auctionIncrementPct, p]);
+  if (!upd || !upd.affectedRows) fail('In der Zwischenzeit hat jemand höher geboten. Bitte biete erneut.');
   await db.query('INSERT INTO market_bids (auction_id, user_id, price_real) VALUES (?,?,?)', [auctionId, userId, p]);
-  // Gebote kurz vor Schluss verlängern die Versteigerung um 10 Minuten (wie bei echten Auktionen)
-  await db.query("UPDATE market_auctions SET lead_user = ?, lead_real = ?, ends_at = IF(ends_at < DATE_ADD(NOW(), INTERVAL 10 MINUTE), DATE_ADD(NOW(), INTERVAL 10 MINUTE), ends_at) WHERE id = ?", [userId, p, auctionId]);
   if (prev && prev !== userId) await social.sendSystemLetter(prev, 'Überboten', `Bei der Versteigerung von „${a.name}“ hat jemand mehr geboten. Du kannst noch einmal bieten – unter „Spieler → Markt“.`);
 }
 
@@ -280,17 +284,23 @@ async function settleAuctions() {
 }
 
 async function returnProceeds(world, sellerId, priceReal, name) {
-  await service.withCharacter(sellerId, async (ctx) => {
-    if (!ctx.state || ctx.state.status !== 'alive') return;
-    const got = Math.round(priceReal * idxOf(world, ctx.state)); ctx.state.money += got; ctx.state.stats.earned = (ctx.state.stats.earned || 0) + got;
-    notice(ctx.state, { level: 'good', title: `Versteigert: ${name}`, text: `Der Zuschlag brachte ${fmt(world, ctx.state, got)}.`, tab: 'social', interrupt: true });
-  });
+  let paid = false;
+  try {
+    await service.withCharacter(sellerId, async (ctx) => {
+      if (!ctx.state || ctx.state.status !== 'alive') return;
+      const got = Math.round(priceReal * idxOf(world, ctx.state)); ctx.state.money += got; ctx.state.stats.earned = (ctx.state.stats.earned || 0) + got;
+      notice(ctx.state, { level: 'good', title: `Versteigert: ${name}`, text: `Der Zuschlag brachte ${fmt(world, ctx.state, got)}.`, tab: 'social', interrupt: true });
+      paid = true;
+    });
+  } catch (e) { log.warn(`[market] Erlös der Versteigerung „${name}“ für Nutzer ${sellerId}: ${e.message}`); }
+  // Der Gegenstand ist bereits verkauft: Erlös nie verfallen lassen, sondern als Gutschrift bereithalten (wird beim nächsten lebenden Charakter gebucht)
+  if (!paid) await db.query("INSERT INTO pending_credits (user_id, real_amount, reason, text) VALUES (?,?,'auction',?)", [sellerId, Math.round(priceReal), `Erlös der Versteigerung „${String(name).slice(0, 80)}“.`]);
 }
 async function returnItem(world, sellerId, kind, snap) {
   try {
     await service.withCharacter(sellerId, async (ctx) => {
       if (!ctx.state || ctx.state.status !== 'alive') throw new ActionError('tot');
-      attach(world, ctx.state, kind, snap);
+      attach(world, ctx.state, kind, snap, { force: true }); // der Betrieb gehörte ihm schon: die Obergrenze darf die Rückgabe nicht verhindern
     });
     return true;
   } catch (_) { return false; }
@@ -306,7 +316,7 @@ async function estate(conn, user, state, world) {
   if (state.properties.length || (state.companies || []).length) await require('./tagesblatt').post('market', 'Zwangsversteigerung', `Aus einer Insolvenzmasse kommen ${state.properties.length} Immobilie(n) und ${(state.companies || []).length} Betrieb(e) unter den Hammer.`, state.cityId, conn);
   for (const p of state.properties.slice()) await make('prop', p);
   for (const c of (state.companies || []).slice()) {
-    if (c.stock) { await conn.query("UPDATE stocks SET status = 'delisted' WHERE id = ?", [c.stock.id]); await conn.query("UPDATE stock_orders SET status = 'cancelled' WHERE stock_id = ? AND status = 'open'", [c.stock.id]); delete c.stock; }
+    if (c.stock) { await require('./exchange').releaseOrders(conn, c.stock.id); await conn.query("UPDATE stocks SET status = 'delisted' WHERE id = ?", [c.stock.id]); delete c.stock; }
     await make('firm', c);
   }
 }

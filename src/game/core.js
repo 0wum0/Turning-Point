@@ -25,9 +25,19 @@ function chronicle(state, text, type = 'life') {
 }
 
 /** Belohnung (EFS-Pool / Coins) – wird vom Server in den User-Datensatz übernommen. */
-function award(state, kind) {
+/** Mindestabstand (Spieltage) zwischen zwei Belohnungen derselben Art – verhindert EFS-Farming durch wiederholtes Mieten, Bewerben, Versichern usw. */
+const AWARD_SPACING = { rent: 365, insurance: 365, job_start: 365, training_start: 365, move: 365, buy_property: 180 };
+function award(state, kind, tag = '') {
   const amount = (settings.get('efs.awards') || {})[kind] || 0;
-  if (amount) state.fx.efs += amount;
+  if (!amount) return 0;
+  const gap = AWARD_SPACING[kind];
+  if (gap) {
+    const log = state.awardLog || (state.awardLog = {});
+    const k = tag ? `${kind}:${tag}` : kind;
+    if (log[k] != null && state.day - log[k] >= 0 && state.day - log[k] < gap) return 0;
+    log[k] = state.day;
+  }
+  state.fx.efs += amount;
   return amount;
 }
 
