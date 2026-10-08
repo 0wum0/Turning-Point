@@ -103,7 +103,8 @@ function partnerListings(world, state, city, week) {
   const profs = world.activeProfessions(year).filter((p) => p.pkey !== 'helfer');
   const out = [];
   for (let i = 0; i < 3; i++) {
-    const gender = r() < 0.5 ? 'f' : 'm';
+    const g0 = r() < 0.5 ? 'f' : 'm'; const mine = state.person.gender;
+    const gender = mine === 'm' ? 'f' : mine === 'f' ? 'm' : g0; // Ehen gibt es nur zwischen Mann und Frau
     const age = Math.min(48, Math.max(18, myAge + int(r, -6, 8)));
     const first = randomFirstName(r, year - age, gender);
     const p = pick(r, profs);
