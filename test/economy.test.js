@@ -80,7 +80,9 @@ test('Tagesabrechnung: Miete wird gutgeschrieben, Einkommensteuer und Kreditrate
   s.meters.fridge = 100;
   const f = dailyFlows(w, s);
   const m0 = s.money; const d0 = credit.debt(s);
-  advance(w, s, 1);
+  // Zufallsereignisse (Fundstücke, Trinkgeld …) würden die Bilanz verfälschen – für diesen Test abschalten (Ursache früherer sporadischer Fehlschläge)
+  const evBefore = w.econ.events; w.econ.events = { ...(evBefore || {}), private: { rate: 1e12, poorRate: 1e12 } };
+  try { advance(w, s, 1); } finally { w.econ.events = evBefore; }
   assert.ok(f.inc.rent > 0 && f.exp.tax > 0 && f.exp.loan > 0);
   // Lohn + Miete - Steuer - Rate - Unterkunft - Unterhalt (Essen ist über den Kühlschrank gedeckt)
   const expected = f.inc.wage + f.inc.rent - f.exp.tax - f.exp.loan - f.exp.lodging - f.exp.upkeep;
