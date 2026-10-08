@@ -71,7 +71,7 @@ module.exports = [
   ["Das Team hat das Arbeitsverhältnis beendet.", "The team has ended the employment."],
   ["Das Arbeitsverhältnis endet durch den Umzug.", "The employment ends because of the move."],
   ["Das Arbeitsverhältnis wurde beendet.", "The employment has ended."],
-  ["${wasMarried ? 'Scheidung' : 'Trennung'} von ${p.name}.", "${wasMarried ? 'Scheidung' : 'Trennung'} from ${p.name}."],
+  ["Scheidung von ${p.name}.", "Divorce from ${p.name}."], ["Trennung von ${p.name}.", "Separation from ${p.name}."],
   ["${p.name} ist gestorben", "${p.name} has died"],
   ["Dein Ehepartner ist verstorben. Ein Teil des Nachlasses geht an dich.", "Your spouse has passed away. Part of the estate goes to you."],
   ["Die Beziehung zu ${p.name} ist beendet.", "The relationship with ${p.name} has ended."],
