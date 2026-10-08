@@ -255,6 +255,9 @@ X([
 patterns.push(['^Mit dem EFS-Vorrat kannst du zusätzlich vorspulen\\. Das erste Login des Tages bringt (\\d+) EFS\\.$', 'With your EFS stock you can also fast-forward. The first login of the day brings $1 EFS.']);
 patterns.push(['^Die Uhr läuft: ein Spieltag alle ([\\d.,]+) Min\\.$', 'The clock is running: one game day every $1 min.']);
 
+X([['Mieter seit', 'Tenant since']]);
+patterns.push(['^(\\d+) Mon\\. · unbefristet$', '$1 mo. · open-ended']);
+
 // Negative Beträge in „Wert 1945“
 patterns.push(['^([−-][\\d.,kmbt]+) DM \\(Wert 1945\\)$', '$1 DM (1945 value)']);
 

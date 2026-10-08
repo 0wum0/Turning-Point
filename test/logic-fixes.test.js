@@ -189,3 +189,15 @@ test('Steuer: Einkommen oberhalb der letzten Stufe wird nicht steuerfrei', () =>
     assert.strictEqual(Math.round(tax.annual(15000)), Math.round(800 + 10000 * 0.2));
   } finally { t.brackets = saved; }
 });
+
+test('NPC-Mieter bleiben unbefristet, solange das Haus bewohnbar ist', () => {
+  const { testWorld, input } = require('./helpers');
+  const { createCharacter } = require('../src/game/state');
+  const { landlordDaily } = require('../src/game/landlord');
+  const w = testWorld(); const s = createCharacter(w, input(w, { professionKey: 'baecker' }), { meta: {}, coins: 0, efs_pool: 0 });
+  s.properties.push({ id: 1, kind: 'house_small', name: 'H', cityId: s.cityId, rooms: 4, base: 2000000, condition: 100, closedUntil: 0, bought: 0, lease: { on: true, mult: 1, tenant: { name: 'Mieter', since: 0, until: 10, arrears: 0 }, total: 0 } });
+  const ev = w.econ.events; w.econ.events = { ...(ev || {}), private: { rate: 1e12, poorRate: 1e12 } };
+  s.day = 5000; // weit nach dem früheren Ablaufdatum
+  try { for (let i = 0; i < 300; i++) { s.day++; s.properties[0].condition = 100; s.properties[0].lease.tenant.arrears = 0; landlordDaily({ world: w, state: s, offline: false }); } } finally { w.econ.events = ev; }
+  assert.ok(s.properties[0].lease.tenant, 'Mieter wohnt weiter');
+});

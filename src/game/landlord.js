@@ -87,14 +87,14 @@ function landlordDaily(ctx) {
       if (r() < 0.00022) {
         T.arrears = 45 + Math.floor(r() * 60);
         notice(state, { level: 'bad', title: `${p.name}: Mieter zahlt nicht`, text: `${T.name} bleibt die Miete schuldig.`, tab: 'housing', info: ['Mietausfall: Ein Mieter zahlt nicht mehr.', 'Du erhältst vorerst keine Miete, der Unterhalt läuft weiter.', 'Das passiert selten. Du kannst den Preis senken und gepflegte Wohnungen anbieten.'] });
-      } else if (state.day >= T.until || (p.condition < 25 && r() < 0.01)) {
+      } else if (p.condition < 25 && r() < 0.01) { // Mieter bleiben, solange das Haus bewohnbar ist; die Miete läuft unbefristet
         L.tenant = null; L.vacantSince = state.day;
         if (state.day - (state.pending.tenantMsg || -99) >= 30) { state.pending.tenantMsg = state.day; notice(state, { level: 'info', title: `${p.name}: Mieter zieht aus`, text: `${T.name} zieht nach ${Math.round((state.day - T.since) / 365 * 10) / 10} Jahren aus. Die Wohnung wird neu angeboten.`, tab: 'housing' }); }
       }
     } else if (r() < demand(world, p)) {
       const female = r() < 0.5;
       const name = `${randomFirstName(r, year - 25 - Math.floor(r() * 30), female ? 'f' : 'm')} ${require('./content').LAST[Math.floor(r() * require('./content').LAST.length)]}`;
-      L.tenant = { name, since: state.day, until: state.day + 240 + Math.floor(r() * 960), arrears: 0 };
+      L.tenant = { name, since: state.day, until: 1e9, arrears: 0 }; // unbefristet
       if (state.day - (state.pending.tenantMsg || -99) >= 20) { state.pending.tenantMsg = state.day; notice(state, { level: 'good', title: `${p.name}: Neuer Mieter`, text: `${name} hat die Immobilie gemietet – die Miete fließt ab sofort täglich.`, tab: 'housing' }); }
     }
   }
