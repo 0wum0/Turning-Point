@@ -47,9 +47,23 @@ async function upsertStats(conn, user, charRow, state, world) {
        ON DUPLICATE KEY UPDATE char_id=VALUES(char_id), username=VALUES(username), name=VALUES(name), city_id=VALUES(city_id), year=VALUES(year), status=VALUES(status), wealth=VALUES(wealth), biz_value=VALUES(biz_value),
          companies=VALUES(companies), properties=VALUES(properties), children=VALUES(children), generation=VALUES(generation), cycle=VALUES(cycle), influence=VALUES(influence), office=VALUES(office), days=VALUES(days), occupation=VALUES(occupation), pkey=VALUES(pkey), partnered=VALUES(partnered)`,
       [s.user_id, s.char_id, s.username, s.name, s.city_id, s.year, s.status, s.wealth, s.biz_value, s.companies, s.properties, s.children, s.generation, s.cycle, s.influence, s.office, s.days, s.occupation, s.pkey, s.partnered]);
+    const year = yearOf(state.day, state.startYear); const idx = Math.max(0.0001, world.idx(year));
+    const biz = require('../game/business'); const lord = require('../game/landlord');
+    const askF = new Map((await conn.query('SELECT company_id, ask_real FROM player_firms WHERE user_id = ?', [user.id])).map((r) => [r.company_id, r.ask_real]));
+    const askP = new Map((await conn.query('SELECT prop_id, ask_real FROM player_props WHERE user_id = ?', [user.id])).map((r) => [r.prop_id, r.ask_real]));
     await conn.query('DELETE FROM player_firms WHERE user_id = ?', [user.id]);
-    for (const c of (state.companies || []).filter((x) => !x.abandoned)) {
-      await conn.query('INSERT INTO player_firms (user_id, company_id, city_id, name, pkey, tier, rooms) VALUES (?,?,?,?,?,?,?)', [user.id, c.id, c.cityId, c.name, c.pkey, c.tier, c.rooms]);
+    for (const c of (state.companies || [])) {
+      const f = biz.companyFlows(world, state, c, year);
+      const distress = c.abandoned ? 1 : (f.profit < 0 && c.cash < Math.abs(f.profit) * 30) || (c.strikeUntil && state.day < c.strikeUntil) ? 1 : 0;
+      await conn.query('INSERT INTO player_firms (user_id, company_id, city_id, name, pkey, tier, rooms, value_real, cash_real, profit_real, staff, distress, abandoned, ask_real) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+        [user.id, c.id, c.cityId, c.name, c.pkey, c.tier, c.rooms, Math.round(biz.companyValue(world, state, c, year) / idx), Math.round((c.cash || 0) / idx), Math.round(f.profit / idx), (c.staff || 0) + (c.playerStaff || []).length, distress, c.abandoned ? 1 : 0, askF.get(c.id) || null]);
+    }
+    await conn.query('DELETE FROM player_props WHERE user_id = ?', [user.id]);
+    const { propertyValue } = require('../game/core');
+    for (const p of (state.properties || [])) {
+      const L = lord.viewOf(world, state, p, year);
+      await conn.query('INSERT INTO player_props (user_id, prop_id, city_id, name, kind, rooms, cond_pct, value_real, rent_real, tenant, residence, ask_real) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
+        [user.id, p.id, p.cityId, p.name, p.kind, p.rooms, Math.round(p.condition), Math.round(propertyValue(world, state, p, year) / idx), L.on ? Math.round(L.perDay / idx) : null, L.tenant ? 1 : 0, state.housing.type === 'own' && state.housing.propertyId === p.id ? 1 : 0, askP.get(p.id) || null]);
     }
   } catch (e) { log.error('[social] Statistik', e); }
 }
@@ -70,6 +84,39 @@ async function backfillStats() {
     try { const user = { id: r.user_id, username: r.username, meta: JSON.parse(r.meta || '{}'), social_public: r.social_public }; await upsertStats(db, user, r, parseState(r.state), world); } catch (_) { /* defekter Spielstand */ }
   }
   return rows.length;
+}
+
+/** Alle aktuellen Charaktere neu veröffentlichen (Rangliste, Firmen, Häuser) – z. B. nach neuen Spalten. */
+async function refreshAll(conn = db) {
+  const world = await require('../game/world').get();
+  const rows = await conn.query("SELECT c.*, u.username, u.meta, u.social_public FROM characters c JOIN users u ON u.id = c.user_id WHERE c.id = (SELECT MAX(c2.id) FROM characters c2 WHERE c2.user_id = c.user_id)");
+  for (const r of rows) {
+    try { const user = { id: r.user_id, username: r.username, meta: JSON.parse(r.meta || '{}'), social_public: r.social_public }; await upsertStats(conn, user, r, parseState(r.state), world); } catch (_) { /* defekter Spielstand */ }
+  }
+  return rows.length;
+}
+
+/** Stadtverzeichnis: Einwohner, Häuser und Betriebe einer Stadt (nur sichtbare Spieler), seitenweise. Beträge in Preisen von 1945. */
+async function directory(userId, { cityId, tab = 'people', q = '', page = 1 }) {
+  const per = 20; const off = (Math.max(1, int(page, 1)) - 1) * per; const like = `%${String(q).trim().slice(0, 40)}%`; const hasQ = String(q).trim().length > 0;
+  const vis = 'u.social_public = 1 AND u.banned = 0';
+  const online = Date.now() - cfg().onlineMinutes * 60000;
+  if (tab === 'houses') {
+    const w = `pp.city_id = ? AND ${vis}${hasQ ? ' AND (pp.name LIKE ? OR ps.name LIKE ? OR ps.username LIKE ?)' : ''}`; const prm = hasQ ? [cityId, like, like, like] : [cityId];
+    const total = (await db.one(`SELECT COUNT(*) n FROM player_props pp JOIN users u ON u.id = pp.user_id JOIN player_stats ps ON ps.user_id = pp.user_id WHERE ${w}`, prm)).n;
+    const rows = await db.query(`SELECT pp.*, ps.name owner, ps.username, u.role FROM player_props pp JOIN users u ON u.id = pp.user_id JOIN player_stats ps ON ps.user_id = pp.user_id WHERE ${w} ORDER BY pp.value_real DESC LIMIT ? OFFSET ?`, [...prm, per, off]);
+    return { tab, total, page: Math.max(1, int(page, 1)), pages: Math.max(1, Math.ceil(total / per)), items: rows.map((r) => ({ userId: r.user_id, propId: r.prop_id, owner: r.owner, username: r.username, role: r.role !== 'player' ? r.role : undefined, name: r.name, kind: r.kind, rooms: r.rooms, cond: r.cond_pct, value: Number(r.value_real), rent: r.rent_real == null ? null : Number(r.rent_real), tenant: !!r.tenant, residence: !!r.residence, ask: r.ask_real == null ? null : Number(r.ask_real), mine: r.user_id === userId })) };
+  }
+  if (tab === 'firms') {
+    const w = `f.city_id = ? AND ${vis}${hasQ ? ' AND (f.name LIKE ? OR ps.name LIKE ? OR ps.username LIKE ?)' : ''}`; const prm = hasQ ? [cityId, like, like, like] : [cityId];
+    const total = (await db.one(`SELECT COUNT(*) n FROM player_firms f JOIN users u ON u.id = f.user_id JOIN player_stats ps ON ps.user_id = f.user_id WHERE ${w}`, prm)).n;
+    const rows = await db.query(`SELECT f.*, ps.name owner, ps.username, u.role FROM player_firms f JOIN users u ON u.id = f.user_id JOIN player_stats ps ON ps.user_id = f.user_id WHERE ${w} ORDER BY f.value_real DESC LIMIT ? OFFSET ?`, [...prm, per, off]);
+    return { tab, total, page: Math.max(1, int(page, 1)), pages: Math.max(1, Math.ceil(total / per)), items: rows.map((r) => ({ userId: r.user_id, id: r.company_id, owner: r.owner, username: r.username, role: r.role !== 'player' ? r.role : undefined, name: r.name, pkey: r.pkey, tier: r.tier, rooms: r.rooms, staff: r.staff, value: Number(r.value_real), profit: Number(r.profit_real), distress: !!r.distress, abandoned: !!r.abandoned, ask: r.ask_real == null ? null : Number(r.ask_real), mine: r.user_id === userId })) };
+  }
+  const w = `ps.city_id = ? AND ${VISIBLE}${hasQ ? ' AND (ps.name LIKE ? OR ps.username LIKE ?)' : ''}`; const prm = hasQ ? [cityId, like, like] : [cityId];
+  const total = (await db.one(`SELECT COUNT(*) n FROM player_stats ps JOIN users u ON u.id = ps.user_id WHERE ${w}`, prm)).n;
+  const rows = await db.query(`SELECT ps.*, u.last_seen_at, u.role FROM player_stats ps JOIN users u ON u.id = ps.user_id WHERE ${w} ORDER BY ps.wealth DESC LIMIT ? OFFSET ?`, [...prm, per, off]);
+  return { tab: 'people', total, page: Math.max(1, int(page, 1)), pages: Math.max(1, Math.ceil(total / per)), items: rows.map((r) => ({ ...pub(r), online: !!(r.last_seen_at && new Date(r.last_seen_at).getTime() > online), me: r.user_id === userId })) };
 }
 
 const CATS = {
@@ -416,7 +463,7 @@ function start() {
 }
 
 module.exports = {
-  notifications,
+  notifications, directory, refreshAll,
   lockPair, sameIp, accountAgeHours, relation: relation,
   myProfile, search, CATS, statsOf, upsertStats, publishNews, backfillStats, leaderboard, profile, setProfile, listFriends, friendRequest, friendRespond, friendRemove, relation,
   sendLetter, inbox, readLetter, deleteLetter, report, summary, chatList, chatSend, gift, visit, firmsInCity, publicNews, prune, start, mask, clean, sendSystemLetter, friendIds,

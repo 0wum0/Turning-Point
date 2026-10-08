@@ -421,6 +421,27 @@ const MIGRATIONS = [
   { id: '011_places', up: ['ALTER TABLE cities ADD COLUMN pop INT NOT NULL DEFAULT 0', 'ALTER TABLE cities ADD COLUMN since SMALLINT NOT NULL DEFAULT 1945', async (db) => { const n = (await db.query('SELECT COUNT(*) n FROM cities'))[0].n; if (n > 0) await require('./places').seed(db); }] },
   { id: '012_user_lang', up: ["ALTER TABLE users ADD COLUMN lang CHAR(2) NOT NULL DEFAULT 'de'"] },
   { id: '013_bots', up: ['ALTER TABLE users ADD COLUMN is_bot TINYINT(1) NOT NULL DEFAULT 0', 'ALTER TABLE users ADD KEY idx_users_bot (is_bot)'] },
+  { id: '014_directory', up: [
+    'ALTER TABLE player_firms ADD COLUMN value_real BIGINT NOT NULL DEFAULT 0, ADD COLUMN cash_real BIGINT NOT NULL DEFAULT 0, ADD COLUMN profit_real INT NOT NULL DEFAULT 0, ADD COLUMN staff INT NOT NULL DEFAULT 0, ADD COLUMN distress TINYINT NOT NULL DEFAULT 0, ADD COLUMN abandoned TINYINT NOT NULL DEFAULT 0, ADD COLUMN ask_real BIGINT NULL',
+    `CREATE TABLE IF NOT EXISTS player_props (
+      user_id INT UNSIGNED NOT NULL,
+      prop_id INT NOT NULL,
+      city_id INT UNSIGNED NOT NULL,
+      name VARCHAR(120) NOT NULL,
+      kind VARCHAR(30) NOT NULL,
+      rooms INT NOT NULL DEFAULT 1,
+      cond_pct INT NOT NULL DEFAULT 100,
+      value_real BIGINT NOT NULL DEFAULT 0,
+      rent_real INT NULL,
+      tenant TINYINT NOT NULL DEFAULT 0,
+      residence TINYINT NOT NULL DEFAULT 0,
+      ask_real BIGINT NULL,
+      PRIMARY KEY (user_id, prop_id),
+      KEY idx_pp_city (city_id),
+      CONSTRAINT fk_pp_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    async (db) => { try { await require('../lib/social').refreshAll(db); } catch (_) { /* wird beim nächsten Spielzug nachgeholt */ } },
+  ] },
 ];
 
 async function ensureTable(db) {

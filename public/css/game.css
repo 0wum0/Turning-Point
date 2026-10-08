@@ -335,3 +335,9 @@ html { scroll-padding-top: calc(var(--hud-h, 62px) + 10px); }
 /* Vermietung */
 .lease { border-top: 1px dashed var(--border-strong); padding-top: .7rem; } .lease.off { display: flex; align-items: center; justify-content: space-between; gap: .6rem; flex-wrap: wrap; }
 .lease .lrange { width: 100%; accent-color: var(--accent); margin: .3rem 0; }
+
+/* Stadtverzeichnis */
+.dir-list { display: grid; gap: .4rem; } .dir-row { display: flex; gap: .8rem; align-items: center; padding: .6rem .7rem; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); }
+.dir-row .grow { min-width: 0; } .dir-row .right { text-align: right; flex: none; } .dir-ic { width: 2.2rem; height: 2.2rem; border-radius: 10px; display: grid; place-items: center; background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent-2); flex: none; }
+.dir-row .linkrow { background: none; border: 0; padding: 0; text-align: left; color: inherit; font: inherit; display: flex; gap: .5rem; align-items: center; cursor: pointer; }
+@media (max-width: 560px) { .dir-row { flex-wrap: wrap; } .dir-row .right { width: 100%; text-align: left; display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; } }

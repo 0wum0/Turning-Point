@@ -16,6 +16,7 @@ const uid = (req) => req.user.id;
 router.use((req, res, next) => (settings.get('social').enabled || req.path === '/summary' ? next() : res.status(403).json({ ok: false, error: 'Die Gemeinschaftsfunktionen sind gerade abgeschaltet.' })));
 
 router.get('/notifications', wrap(async (req, res) => res.json({ ok: true, ...(await social.notifications(uid(req))) })));
+router.get('/directory', wrap(async (req, res) => res.json({ ok: true, ...(await social.directory(uid(req), { cityId: int(req.query.cityId), tab: ['people', 'houses', 'firms'].includes(req.query.tab) ? req.query.tab : 'people', q: req.query.q || '', page: int(req.query.page, 1) })) })));
 router.get('/summary', wrap(async (req, res) => res.json({ ok: true, ...(await social.summary(uid(req))) })));
 
 router.get('/leaderboard', wrap(async (req, res) => {
