@@ -1,4 +1,4 @@
-import { html, icon, money, moneyShort, signed, infoBtn, bar, on, num, yearsText } from '../ui.js';
+import { term, html, icon, money, moneyShort, signed, infoBtn, bar, on, num, yearsText } from '../ui.js';
 import { cityScene } from '../scene.js';
 import { advisorCard, questCard, bindGuide, isOpen, lockHint } from '../onboarding.js';
 
@@ -47,7 +47,7 @@ export default {
       <section class="card">
         <div class="card-title">${icon('wallet')} Finanzen ${infoBtn(['Hier siehst du, was täglich hereinkommt und was abgeht.', 'Fällt dein Konto unter null, endet das Spiel sofort (Insolvenz).', 'Halte Einnahmen über den Ausgaben, spare für Notfälle und prüfe Versicherungen.'], 'Finanzen')}</div>
         <div class="big-money">${money(v.money, cur)}</div>
-        <div class="dim small">Vermögen gesamt: <b>${moneyShort(v.worth, cur)}</b></div>
+        <div class="dim small">${term('Vermögen')} gesamt: <b>${moneyShort(v.worth, cur)}</b></div>
         <hr>
         <dl class="kv small">
           <dt>Einnahmen / Tag</dt><dd class="pos">${money(f.income, cur)}</dd>
@@ -73,7 +73,7 @@ export default {
       </section>
 
       <section class="card time-card">
-        <div class="card-title">${icon('zap')} EFS – deine Zeit ${infoBtn(['EFS sind Erfahrung, Fortschritt und Zeit in einem: 1 EFS = 1 Spieltag, 365 EFS = 1 Jahr.', `Die Spielzeit läuft von selbst mit der echten Uhr: 24 Stunden sind ein Spieljahr.`, `Mit dem EFS-Vorrat kannst du zusätzlich vorspulen. Das erste Login des Tages bringt ${v.efs.login} EFS.`, 'Sammle auf der Karte mehr EFS – oder spule die Zeit vor, wenn du bereit bist.'], 'EFS')}</div>
+        <div class="card-title">${icon('zap')} ${term('EFS')} – dein Vorrat an Spieltagen ${infoBtn(['EFS sind Erfahrung, Fortschritt und Zeit in einem: 1 EFS = 1 Spieltag, 365 EFS = 1 Jahr.', `Die Spielzeit läuft von selbst mit der echten Uhr: 24 Stunden sind ein Spieljahr.`, `Mit dem EFS-Vorrat kannst du zusätzlich vorspulen. Das erste Login des Tages bringt ${v.efs.login} EFS.`, 'Sammle auf der Karte mehr EFS – oder spule die Zeit vor, wenn du bereit bist.'], 'EFS')}</div>
         <div class="big-money" style="color:var(--accent-2)">${num(pool)} <small>EFS</small></div>
         <div class="dim small">entspricht ${yearsText(pool)} Lebenszeit</div>
         <div class="adv-grid mt">

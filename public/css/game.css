@@ -391,3 +391,10 @@ html { scroll-padding-top: calc(var(--hud-h, 62px) + 10px); }
 .card .lock-card { box-shadow: none; padding: 1rem; }
 .lockmark .i { width: 13px; height: 13px; }
 .spot-tip { position: fixed; z-index: 120; max-width: min(300px, calc(100vw - 16px)); padding: .55rem .8rem; border-radius: 12px; background: var(--accent); color: var(--accent-ink); font-size: .88rem; font-weight: 600; line-height: 1.35; box-shadow: 0 12px 30px -10px rgba(0, 0, 0, .5); pointer-events: none; animation: fade .25s var(--ease); }
+
+/* Glossar und Seiten-Einführungen */
+.term { all: unset; cursor: help; border-bottom: 1px dotted var(--accent); color: inherit; font: inherit; } .term:hover, .term:focus-visible { color: var(--accent-2); outline: 0; }
+.gl-list { display: grid; gap: .5rem; max-height: 52vh; overflow: auto; } .gl-entry { padding: .6rem .8rem; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); } .gl-entry[hidden] { display: none; } .gl-entry.hit { border-color: var(--accent); }
+.tab-intro { display: flex; gap: .7rem; align-items: center; padding: .7rem .9rem; margin-bottom: 1rem; border-radius: 14px; border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border)); background: color-mix(in srgb, var(--accent) 7%, var(--surface)); }
+.tab-intro > .i { width: 20px; height: 20px; flex: none; color: var(--accent-2); } .tab-intro .tx { flex: 1; font-size: .93rem; line-height: 1.45; } .tab-intro .tx b { display: block; font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--text-faint); }
+@media (max-width: 640px) { .tab-intro { flex-wrap: wrap; } .tab-intro .tx { flex-basis: calc(100% - 40px); } }

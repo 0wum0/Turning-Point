@@ -16,7 +16,7 @@ import city from './views/city.js';
 import shop from './views/shop.js';
 import { renderCreate, renderHeir, renderGameOver } from './screens.js';
 import * as audio from './audio.js';
-import { maybeWelcome, openHelp, celebrateQuests, clearSpot, isOpen, lockCard, lockMark, lockHint, setShowAll } from './onboarding.js';
+import { maybeWelcome, openHelp, celebrateQuests, clearSpot, mountIntro, isOpen, lockCard, lockMark, lockHint, setShowAll } from './onboarding.js';
 
 const PAGES = [overview, newspaper, map, city, work, business, society, socialView, housing, household, family, legacy, shop];
 const byId = Object.fromEntries(PAGES.map((p) => [p.id, p]));
@@ -186,6 +186,7 @@ async function renderPage(animate) {
   if (keep) { const el = document.getElementById(keep.id); if (el) { if (keep.v != null && 'value' in el && !el.value) el.value = keep.v; el.focus({ preventScroll: true }); try { el.setSelectionRange(keep.s, keep.e); } catch (_) { /* kein Textfeld */ } } }
   root.classList.remove('enter'); void root.offsetWidth; if (animate) root.classList.add('enter');
   page.bind(root, ctx, data);
+  mountIntro(root, ctx);
   showAnnouncement(root);
   window.scrollTo(0, scroll);
   if (ctx.route === 'legacy' && ctx.view.status === 'gameover') {

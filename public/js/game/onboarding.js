@@ -1,5 +1,6 @@
 /* Einsteiger-Erlebnis (Oberfläche): Willkommensdialog, Hilfe-Menü, später Aufgabenreihe, „Was jetzt?“, Freischaltungen. */
-import { html, icon, modal, money, num, bar, on, toast } from './ui.js';
+import { html, icon, modal, money, num, bar, on, toast, term } from './ui.js';
+import { openGlossary } from './glossary.js';
 
 /** Tempo der Spielzeit aus der Uhr der Ansicht (Standard: 24 Std. = 1 Jahr, ein Tag ≈ 4 Min.). */
 export function pace(v) {
@@ -80,6 +81,8 @@ export function openHelp(ctx) {
   const m = modal(html`<h3>${icon('lightbulb')} Hilfe</h3>
     <div class="stack" style="--gap:.5rem">
       <button class="linkrow" data-help-do="welcome">${icon('play')}<span class="grow"><b>Einführung ansehen</b><div class="dim small">Die vier Folien zum Spielstart – in einer Minute gelesen.</div></span></button>
+      <button class="linkrow" data-help-do="glossary">${icon('book-open')}<span class="grow"><b>Glossar</b><div class="dim small">Fachwörter wie EFS, Börse oder Order in einfachen Worten.</div></span></button>
+      <button class="linkrow" data-help-do="intros">${icon('lightbulb')}<span class="grow"><b>Seiten-Hinweise wieder einblenden</b><div class="dim small">Die kurze Erklärung „Worum geht es hier?“ oben auf jeder Seite.</div></span></button>
       <label class="check linkrow"><input type="checkbox" id="helpShowAll" ${ctx.view.onboarding && ctx.view.onboarding.showAll ? 'checked' : ''}><span class="grow"><b>Alle Funktionen anzeigen</b><div class="dim small">Zeigt auch Bereiche, die sich sonst erst nach und nach freischalten.</div></span></label>
     </div>
     <div class="row end mt"><button class="btn primary" data-close="x">Schließen</button></div>`);
@@ -88,6 +91,8 @@ export function openHelp(ctx) {
     const b = e.target.closest('[data-help-do]'); if (!b) return;
     const k = b.dataset.helpDo; m.close();
     if (k === 'welcome') openWelcome(ctx, {});
+    if (k === 'glossary') openGlossary();
+    if (k === 'intros') { showIntrosAgain(); ctx.rerender(); toast('Die Hinweise sind wieder da.'); }
   });
   return m;
 }
@@ -104,6 +109,10 @@ export const SPOTS = {
   'listing:contact': { pre: news('partners'), sel: '[data-act="meet"]:not([disabled])', text: 'Triff jemanden – ob es funkt, hängt von deiner Lage ab.' },
   'listing:biz': { pre: news('biz'), sel: '[data-act="buyBiz"]:not([disabled])', text: 'Such dir einen Betrieb aus, der zu deinem Beruf passt.' },
   time: { sel: '.time-card', text: 'Hier läuft die Zeit. Der Lohn kommt automatisch, sobald ein Tag vergeht.' },
+  advisor: { sel: '#advisor .btn.primary', text: 'Das ist dein nächster sinnvoller Schritt.' },
+  primary: { sel: '.btn.primary:not([disabled]):not([data-quest-show]):not([data-adv])', text: 'Der wichtigste Knopf dieser Seite.' },
+  papertabs: { sel: '.paper-tabs', text: 'Wähle oben einen Reiter: Stellen, Wohnungen, Kontakte, Betriebe.' },
+  soctabs: { sel: '.soc-tabs', text: 'Wähle oben einen Bereich.' },
   money: { sel: '.big-money', text: 'Das ist dein Geld. Spare es auf!' },
   course: { sel: '[data-course]:not([disabled])', text: 'Hier kannst du einen weiteren Beruf lernen.' },
   hire: { sel: '[data-b="bizHire"]', text: 'Tippe auf „+“, um jemanden einzustellen.' },
@@ -244,3 +253,39 @@ export const lockMark = (ctx, key) => (isOpen(ctx, key) ? '' : html`<span class=
 export async function setShowAll(ctx, on) {
   try { await ctx.act('uiPrefs', { showAll: !!on }); } catch (_) { /* Meldung kam bereits */ }
 }
+
+/* ---------- „Worum geht es hier?“ – kurze Einführung oben auf jeder Seite ---------- */
+const INTROS = {
+  overview: ['Deine Zentrale: Oben steht, was jetzt wichtig ist. Darunter findest du Geld, Zeit, Postfach und deinen Fortschritt.', 'advisor', 'Zeig mir den nächsten Schritt'],
+  newspaper: ['Die Zeitung zeigt Stellen, Wohnungen, mögliche Partner und Betriebe zum Kauf. Wähle oben einen Reiter und tippe bei einem Angebot auf den Knopf.', 'papertabs', 'Zeig mir die Reiter'],
+  map: ['Die Karte zeigt ganz Deutschland. Hier ziehst du in eine andere Stadt um und sammelst goldene EFS-Funken (Spieltage).', 'primary', 'Zeig mir den wichtigsten Knopf'],
+  city: ['In der Stadtansicht betrittst du Gebäude. Dort warten Aufgaben, die Geld oder Erfahrung bringen.', 'primary', 'Zeig mir den wichtigsten Knopf'],
+  work: ['Hier siehst du deinen Beruf, deine Erfahrung und Weiterbildungen. Mehr Erfahrung heißt mehr Lohn.', 'primary', 'Zeig mir den wichtigsten Knopf'],
+  business: ['Hier führst du deine Firmen: Mitarbeiter einstellen, Betriebe ausbauen und Gewinn abholen.', 'primary', 'Zeig mir den wichtigsten Knopf'],
+  society: ['Hier kandidierst du für Ämter und sammelst Einfluss. Lotto und Spielbank sind nur ein Zeitvertreib.', 'primary', 'Zeig mir den wichtigsten Knopf'],
+  social: ['Hier triffst du die anderen echten Spieler: Rangliste, Chat, Briefe, Freunde, Markt, Börse und Wahlen.', 'soctabs', 'Zeig mir die Bereiche'],
+  housing: ['Dein Zuhause entscheidet über Erholung und Gesundheit. Hier siehst du, wo du wohnst, und kannst Immobilien kaufen oder vermieten.', 'primary', 'Zeig mir den wichtigsten Knopf'],
+  household: ['Hier füllst du den Kühlschrank, schließt Versicherungen ab und sorgst für deine Gesundheit.', 'food', 'Zeig mir, wo ich Essen kaufe'],
+  family: ['Partner, Kinder und Erben: Sie sind die Zukunft deines Lebenswerks.', 'primary', 'Zeig mir den wichtigsten Knopf'],
+  legacy: ['Dein Stammbaum und die Geschichte deiner Familie über alle Generationen. Hier gibt es nichts zu erledigen.', null, ''],
+  shop: ['Freiwillig: Coins und EFS-Pakete. Das Spiel ist ohne Kauf komplett spielbar.', null, ''],
+};
+const introOff = (id) => { try { return localStorage.getItem(`tp-intro-${id}`) === '0'; } catch (_) { return false; } };
+const introSet = (id, on) => { try { if (on) localStorage.removeItem(`tp-intro-${id}`); else localStorage.setItem(`tp-intro-${id}`, '0'); } catch (_) { /* ohne Speicher */ } };
+export function introHtml(ctx, id) {
+  const d = INTROS[id]; if (!d || introOff(id)) return '';
+  return html`<aside class="tab-intro" data-intro="${id}">${icon('lightbulb')}<div class="tx"><b>Worum geht es hier?</b>${d[0]}</div>
+    <div class="row nowrap">${d[1] ? html`<button class="btn sm" data-intro-show="${d[1]}">${d[2]}</button>` : ''}<button class="btn sm ghost" data-intro-hide="${id}" aria-label="Hinweis ausblenden" title="Ausblenden">${icon('x')}</button></div></aside>`;
+}
+/** Setzt die Einführung an den Anfang der Seite und verdrahtet sie. */
+export function mountIntro(root, ctx) {
+  const h = introHtml(ctx, ctx.route); if (!h) return;
+  root.insertAdjacentHTML('afterbegin', h.__raw);
+  const el = root.querySelector('[data-intro]'); if (!el) return;
+  el.addEventListener('click', (e) => {
+    const sh = e.target.closest('[data-intro-show]'); const hd = e.target.closest('[data-intro-hide]');
+    if (sh) showMe(ctx, { tab: ctx.route, spot: sh.dataset.introShow });
+    if (hd) { introSet(hd.dataset.introHide, false); el.remove(); }
+  });
+}
+export const showIntrosAgain = () => Object.keys(INTROS).forEach((k) => introSet(k, true));

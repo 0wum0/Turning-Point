@@ -147,6 +147,14 @@ document.addEventListener('click', (e) => {
     <div class="row end mt"><button class="btn primary" data-close="1">Verstanden</button></div>`);
 });
 
+/* ---------- Glossar: term('EFS') = antippbares Wort mit kurzer Erklärung ---------- */
+export const term = (key, label) => html`<button type="button" class="term" data-term="${key}" aria-label="Erklärung: ${key}">${label || key}</button>`;
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-term]'); if (!t) return;
+  e.preventDefault(); e.stopPropagation();
+  import('./glossary.js').then((m) => m.openTerm(t.dataset.term));
+});
+
 /* ---------- Bausteine ---------- */
 export function ring(value, label, ic, { size = 46, tone } = {}) {
   const v = Math.max(0, Math.min(100, value));

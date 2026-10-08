@@ -2,7 +2,7 @@ import { renderMarket, bindMarket } from '../market.js';
 import { renderExchange, bindExchange } from '../exchange.js';
 import { renderElections, bindElections } from '../elections.js';
 import { isOpen, lockCard, lockMark, lockHint } from '../onboarding.js';
-import { html, raw, icon, api, on, toast, modal, money, moneyShort, num, esc, infoBtn, roleBadge, roleBadgeStr } from '../ui.js';
+import { term, html, raw, icon, api, on, toast, modal, money, moneyShort, num, esc, infoBtn, roleBadge, roleBadgeStr } from '../ui.js';
 
 const TABS = [['rank', 'Rangliste', 'crown'], ['plaza', 'Stadtplatz', 'landmark'], ['jobs', 'Arbeit', 'briefcase'], ['love', 'Beziehung', 'heart'], ['market', 'Markt', 'handshake'], ['exchange', 'Börse', 'trending-up'], ['elections', 'Wahlen', 'landmark'], ['letters', 'Briefe', 'mail'], ['friends', 'Freunde', 'users'], ['me', 'Mein Profil', 'user']];
 const GATE = { market: 'market', exchange: 'exchange', elections: 'elections' };
@@ -132,6 +132,7 @@ const views = {
     <div class="tabs">${d.cats.map((c) => html`<a href="#/social" data-cat="${c.key}" class="${c.key === d.cat ? 'on' : ''}">${c.label}</a>`)}</div>
     <div class="row spread wrap" style="margin-bottom:.8rem"><div class="seg">${[['all', 'Alle'], ['city', 'Meine Stadt'], ['friends', 'Freunde']].map((x) => html`<a href="#/social" data-scope="${x[0]}" class="${d.scope === x[0] ? 'on' : ''}">${x[1]}</a>`)}</div><span class="dim small">${d.total} Spieler · ${d.hint}</span></div>
     ${me ? html`<div class="card me-card ${me.hidden ? 'dim' : ''}"><div class="row spread"><div><div class="dim small">Dein Platz</div><b class="serif" style="font-size:2rem">#${me.rank}</b> <span class="dim small">von ${d.total}</span></div><div class="right"><div class="dim small">${d.label}</div><b>${fmtScore(d.unit, me, ctx)}</b>${d.unit === 'money' && ctx.view ? html`<div class="dim small">Echtes Vermögen heute: <b>${moneyShort(ctx.view.worth, ctx.view.currency)}</b></div>` : ''}</div></div>${me.hidden ? html`<div class="small dim mt">Dein Profil ist privat – du erscheinst nicht in der Liste. Ändern unter „Mein Profil“.</div>` : ''}</div>` : html`<div class="alert info">${icon('info')}<div>Starte ein Leben, um in der Rangliste zu erscheinen.</div></div>`}
+    <p class="dim small mt">Beträge sind auf den ${term('Wert 1945', 'Wert von 1945')} umgerechnet, damit alle Zeiten fair vergleichbar sind.</p>
     <div class="table-wrap mt"><table class="table rank"><tbody>${d.rows.map((r) => html`<tr class="${r.me ? 'me' : ''}" data-profile="${r.userId}" tabindex="0">
       <td class="rkc">${medal(r.rank)}</td><td><b data-i18n-skip>${r.name}</b> ${roleBadge(r.role)} ${dot(r.online)}<div class="dim small">@${r.username} · ${r.occupation || 'ohne Beruf'}</div></td>
       <td class="dim small hide-sm">${cityName(ctx, r.cityId)} · ${r.year}</td><td class="num"><b>${fmtScore(d.unit, r, ctx)}</b></td></tr>`)}

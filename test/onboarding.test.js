@@ -116,3 +116,18 @@ test('Aufgaben-Definitionen: eindeutige ids, Pflichtfelder', () => {
   assert.equal(new Set(ids).size, ids.length);
   for (const q of ob.QUESTS) { assert.ok(q.title && q.why && q.tab && q.spot && typeof q.done === 'function', q.id); }
 });
+
+test('Englisch: Aufgaben, Freischalt-Hinweise und Glossar sind übersetzt', () => {
+  const g = require('../src/i18n-game');
+  const missing = [];
+  for (const q of ob.QUESTS) for (const t of [q.title, q.why]) if (g.tr(t) === t) missing.push(t);
+  for (const u of ob.UNLOCKS) for (const t of [u.cond]) if (g.tr(t) === t) missing.push(t);
+  const hint = ob.unlocks(base(), new Set(), false).business.hint;
+  if (g.tr(hint) === hint || /Wird freigeschaltet/.test(g.tr(hint))) missing.push(hint);
+  const adv = ob.advise(V({ hunger: 1, housing: { type: 'street' }, occupation: null, properties: [{ id: 1, name: 'Haus', closed: 30, repairCost: 1, condition: 10 }], children: [{ name: 'A', pendingSchool: true }] }));
+  for (const a of [adv.top, ...adv.more]) for (const t of [a.title, a.why, a.cta.label]) if (g.tr(t) === t) missing.push(t);
+  assert.deepEqual(missing, []);
+  const c = require('../src/i18n-data/client-I');
+  const src = require('fs').readFileSync(require('path').join(__dirname, '../public/js/game/glossary.js'), 'utf8');
+  assert.equal([...src.matchAll(/^  \['/gm)].length, c.GLOSSARY_EN_COUNT);
+});

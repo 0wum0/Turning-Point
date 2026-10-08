@@ -1,5 +1,5 @@
 /* Börse: Aktien von Spielerbetrieben handeln. Kurse laufen intern in „Wert von 1945“ (real); angezeigt wird in eigener Währung. */
-import { html, icon, api, on, modal, toast, money, infoBtn } from './ui.js';
+import { term, html, icon, api, on, modal, toast, money, infoBtn } from './ui.js';
 
 const k = (ctx) => ctx.view.idx || 1;
 const m = (ctx, real) => money(Math.round(real * k(ctx)), ctx.view.currency);
@@ -53,6 +53,7 @@ export function renderExchange(ctx, d) {
     <div class="row nowrap wrap" style="justify-content:flex-end"><button class="btn sm primary" data-xbuy="${s.id}">Kaufen</button>${s.held ? html`<button class="btn sm" data-xsell="${s.id}">Verkaufen</button>` : ''}${!s.mine && s.held * 2 >= s.shares ? html`<button class="btn sm danger" data-xtake="${s.id}">Übernehmen</button>` : ''}</div></div>`;
   return html`<div class="grid c2" style="--gap:1rem">
     <section class="card" style="grid-column:1/-1"><div class="card-title">${icon('trending-up')} Börse ${infoBtn(['Spielerbetriebe können an die Börse gehen: 1.000 Anteile, davon 10–49 % im Streubesitz.', 'Kauf- und Verkaufsorders mit Limit treffen sich im Orderbuch. Die Börse selbst kauft und verkauft in begrenztem Umfang mit einem Aufschlag von ca. ' + d.config.spread + ' %, damit der Handel nie stillsteht.', 'Börsennotierte Betriebe schütten täglich einen Teil ihres Gewinns an alle Aktionäre aus.', 'Wer 50 % oder mehr der Anteile hält, kann den Betrieb übernehmen. Der bisherige Eigentümer bleibt Minderheitsaktionär.', 'Preise sind intern „Wert von 1945“; jeder zahlt in seiner eigenen Währung.'], 'Börse')}</div>
+      <p class="dim small">Hier kaufst und verkaufst du ${term('Anteil', 'Anteile')} an Betrieben anderer Spieler. Der Kurs ist der aktuelle Preis eines Anteils, „fair“ der rechnerische Wert.</p>
       <div class="stack" style="--gap:.6rem">${d.stocks.map(row)}${d.stocks.length ? '' : html`<div class="dim small">Noch ist kein Betrieb börsennotiert. Starte unter „Unternehmen“ den ersten Börsengang (Mindestwert ${m(ctx, d.config.minValueReal)}).</div>`}</div></section>
     <section class="card"><div class="card-title">${icon('briefcase')} Mein Depot</div>
       <div class="stack" style="--gap:.4rem">${d.holdings.map((h) => html`<div class="firm"><div class="grow"><b data-i18n-skip>${h.name}</b> <span class="dim small">${h.shares} Anteile · Kurs ${m(ctx, h.price)}</span></div><span class="${h.price >= h.avg ? 'pos' : 'neg'} small mono">${h.avg ? (((h.price / h.avg) - 1) * 100).toFixed(1).replace('.', ',') + ' %' : ''}</span></div>`)}${d.holdings.length ? '' : html`<div class="dim small">Du hältst keine Aktien.</div>`}</div></section>
