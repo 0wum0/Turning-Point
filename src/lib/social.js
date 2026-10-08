@@ -223,6 +223,8 @@ async function friendRequest(from, to) {
     if (ex.requester !== from) { await db.query("UPDATE friendships SET status = 'accepted' WHERE user_a = ? AND user_b = ?", [a, b]); return 'accepted'; }
     fail('Die Anfrage läuft schon.');
   }
+  const pend = (await db.one("SELECT COUNT(*) n FROM friendships WHERE requester = ? AND status = 'pending'", [from])).n;
+  if (pend >= 30) fail('Du hast schon viele offene Freundschaftsanfragen. Warte, bis einige beantwortet sind.');
   const n = (await db.one("SELECT COUNT(*) n FROM friendships WHERE (user_a = ? OR user_b = ?) AND status = 'accepted'", [from, from])).n;
   if (n >= cfg().friends.max) fail('Deine Freundesliste ist voll.');
   await db.query("INSERT INTO friendships (user_a, user_b, requester, status) VALUES (?,?,?, 'pending')", [a, b, from]);
@@ -243,6 +245,9 @@ async function friendRemove(me, other, block) {
 
 /* =============================== Briefe =============================== */
 const clean = (s, max) => String(s == null ? '' : s).replace(/\r\n?/g, '\n').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '').trim().slice(0, max);
+/** Enthält der Text eine Web-Adresse? (http/https/www oder Domain-Endung) – Chat und Briefe neuer Konten sind frei von Werbelinks. */
+const LINK_RE = /(?:https?:\/\/|www\.|\b[a-z0-9-]{2,}\.(?:com|net|org|de|info|biz|ru|cn|xyz|top|club|shop|online|site|link|tk)\b|\bt\.me\/|\bdiscord\.gg\/)/i;
+const hasLink = (t) => LINK_RE.test(String(t == null ? '' : t));
 async function accountAgeHours(userId) { const u = await db.one('SELECT created_at, mute_until FROM users WHERE id = ?', [userId]); return u ? { h: (Date.now() - new Date(u.created_at).getTime()) / 3600000, mute: Number(u.mute_until || 0) } : { h: 0, mute: 0 }; }
 async function sendSystemLetter(to, subject, body, fromUser = null) {
   await db.query("INSERT INTO messages (from_user, to_user, kind, subject, body) VALUES (?,?,?,?,?)", [fromUser, to, 'system', subject, body]);
@@ -263,7 +268,11 @@ async function sendLetter(from, to, subject, body) {
   const n = (await db.one("SELECT COUNT(*) n FROM messages WHERE from_user = ? AND kind = 'letter' AND created_at > NOW() - INTERVAL 1 DAY", [from])).n;
   if (n >= c.perDay) fail(`Du hast heute schon ${c.perDay} Briefe geschrieben.`);
   const text = clean(body, c.maxLen); if (text.length < 2) fail('Der Brief ist leer.');
-  const r = await db.query("INSERT INTO messages (from_user, to_user, kind, subject, body) VALUES (?,?,'letter',?,?)", [from, to, clean(subject, 120) || '(ohne Betreff)', text]);
+  const subj = clean(subject, 120) || '(ohne Betreff)';
+  if (a.h < 48 && (hasLink(text) || hasLink(subj))) fail('Neue Konten können in den ersten 48 Stunden keine Links verschicken.');
+  const dup = await db.one("SELECT 1 x FROM messages WHERE from_user = ? AND kind = 'letter' AND body = ? AND created_at > NOW() - INTERVAL 1 DAY LIMIT 1", [from, text]);
+  if (dup) fail('Diesen Brief hast du heute schon verschickt.');
+  const r = await db.query("INSERT INTO messages (from_user, to_user, kind, subject, body) VALUES (?,?,'letter',?,?)", [from, to, subj, text]);
   if (n >= Math.floor(c.perDay * 0.8)) anticheat.flag(from, 'chat_spam', `${n + 1} Briefe in 24 Stunden`);
   notifyLetter(from, to); // Inhalt bleibt aus dem Push (Spielereingabe, Datenschutz auf dem Sperrbildschirm)
   return r.insertId;
@@ -292,8 +301,9 @@ async function report(userId, kind, refId, reason) {
   let target = null;
   if (kind === 'letter') { const m = await db.one('SELECT from_user, to_user FROM messages WHERE id = ?', [refId]); if (!m || m.to_user !== userId) fail('Nur erhaltene Briefe können gemeldet werden.'); target = m.from_user; await db.query('UPDATE messages SET reported = 1 WHERE id = ?', [refId]); }
   else if (kind === 'chat') { const m = await db.one('SELECT user_id FROM chat_messages WHERE id = ?', [refId]); if (!m) fail('Nachricht nicht gefunden.'); target = m.user_id; }
-  else if (kind === 'player') target = refId;
+  else if (kind === 'player') { if (!(await db.one('SELECT id FROM users WHERE id = ?', [refId]))) fail('Spieler nicht gefunden.'); target = refId; }
   else fail('Unbekannte Meldung.');
+  if ((await db.one("SELECT COUNT(*) n FROM reports WHERE reporter = ? AND created_at > NOW() - INTERVAL 1 DAY", [userId])).n >= 20) fail('Du hast heute schon sehr viele Meldungen abgeschickt.');
   const dup = await db.one("SELECT id FROM reports WHERE reporter = ? AND kind = ? AND ref_id = ? AND status = 'open'", [userId, kind, refId]);
   if (!dup) await db.query('INSERT INTO reports (reporter, target_user, kind, ref_id, reason) VALUES (?,?,?,?,?)', [userId, target, kind, refId, clean(reason, 300)]);
 }
@@ -371,7 +381,9 @@ async function chatSend(userId, cityId, text) {
   const now = Date.now(); const last = lastChat.get(userId) || { t: 0, text: '', n: 0 };
   if (now - last.t < c.cooldownSec * 1000) fail('Langsam – bitte kurz warten.');
   const t = clean(text, c.maxLen).replace(/\n+/g, ' '); if (!t) fail('Die Nachricht ist leer.');
+  if (hasLink(t)) fail('Links sind im Stadtplatz-Chat nicht erlaubt.');
   if (t.toLowerCase() === last.text && now - last.t < 60000) { last.n++; if (last.n >= 3) anticheat.flag(userId, 'chat_spam', 'Wiederholte identische Chat-Nachrichten'); fail('Das hast du gerade schon geschrieben.'); }
+  if (lastChat.size > 5000) for (const [k, v] of lastChat) if (now - v.t > 600000) lastChat.delete(k);
   lastChat.set(userId, { t: now, text: t.toLowerCase(), n: 0 });
   const ps = await db.one('SELECT name FROM player_stats WHERE user_id = ?', [userId]);
   const r = await db.query('INSERT INTO chat_messages (city_id, user_id, name, text) VALUES (?,?,?,?)', [cityId, userId, ps ? ps.name : 'Unbekannt', mask(t)]);
@@ -486,5 +498,5 @@ module.exports = {
   notifications, directory, refreshAll,
   lockPair, sameIp, accountAgeHours, relation: relation,
   myProfile, search, CATS, statsOf, upsertStats, publishNews, backfillStats, leaderboard, profile, setProfile, listFriends, friendRequest, friendRespond, friendRemove, relation,
-  sendLetter, inbox, readLetter, deleteLetter, report, summary, chatList, chatSend, gift, visit, firmsInCity, publicNews, prune, start, mask, clean, sendSystemLetter, friendIds, mentionsIn,
+  sendLetter, hasLink, inbox, readLetter, deleteLetter, report, summary, chatList, chatSend, gift, visit, firmsInCity, publicNews, prune, start, mask, clean, sendSystemLetter, friendIds, mentionsIn,
 };

@@ -59,6 +59,12 @@ const DEFAULTS = {
     couples: { enabled: true, minAge: 18, minAccountHours: 12, requireSameCity: true, weddingSharePct: 50, spouseSharePct: 30, divorceSettlementPct: 20, blockSameIp: false },
     news: { publicEvents: true, keepDays: 5, types: ['business_open', 'business_expand', 'couple', 'marriage', 'birth', 'elected', 'lotto', 'death', 'heir', 'study_done'] },
   },
+  maintenance: {
+    enabled: true,
+    batch: 2000,            // Zeilen je DELETE (kurze Sperren)
+    chatDays: 30, lettersReadDays: 180, newsDays: 90, worldEventsDays: 60,
+    marketDays: 30, ordersDays: 30, tradesDays: 180, leasesDays: 90, anonSessionDays: 2,
+  },
   push: {
     enabled: true,         // Web-Push (Handy-Benachrichtigungen) global an/aus
     perHour: 6,            // max. Pushes je Spieler und Stunde
@@ -101,11 +107,14 @@ const DEFAULTS = {
     ],
     quote: '“A small event can change a great life.”', ctaBottom: 'Begin your first life', ctaBottomPlay: 'Back to the game',
   },
-  tax: { enabled: true, brackets: [[1500, 0], [6000, 0.15], [20000, 0.28], [60000, 0.38], [1e15, 0.45]], corporatePct: 10 },
-  credit: { enabled: true, spread: 1.5, assetPct: 60, incomeDays: 150, minAmount: 20000, maxYears: 30 },
+  tax: { enabled: true, brackets: [[1500, 0], [6000, 0.15], [20000, 0.28], [60000, 0.38], [1e15, 0.45]], corporatePct: 15 },
+  credit: { enabled: true, spread: 1.0, assetPct: 60, incomeDays: 150, minAmount: 20000, maxYears: 30 },
   competition: { enabled: true, cap: [6, 6, 9, 16, 30, 55], minFactor: 0.35, exponent: 0.8 },
   cycles: { realEstate: [[1945, 0.75], [1950, 0.85], [1957, 1.0], [1965, 1.08], [1973, 1.15], [1976, 1.05], [1985, 1.0], [1990, 1.2], [1993, 1.3], [1996, 1.0], [2005, 0.9], [2010, 1.0], [2015, 1.2], [2021, 1.5], [2023, 1.35], [2035, 1.4], [2060, 1.5], [2100, 1.6]] },
-  exchange: { enabled: true, shares: 1000, minValueReal: 300000, minGameDays: 90, minFloatPct: 10, maxFloatPct: 49, makerSpreadPct: 5, makerDailyPct: 5, maxOrderShares: 500, openOrdersMax: 12, takeoverPct: 50 },
+  exchange: { enabled: true, shares: 1000, minValueReal: 300000, minGameDays: 90, minFloatPct: 10, maxFloatPct: 49, makerSpreadPct: 5, makerDailyPct: 5, maxOrderShares: 500, openOrdersMax: 12, takeoverPct: 50,
+    // Grenzen des Marktteilnehmers: Tageslimit je Nutzer (Gesamtwert real in Cent, 0 = kein Limit), Mindest-Haltedauer vor dem Rückverkauf an ihn,
+    // Spread-Zuschlag je eigenem Geschäft am Tag (bis zum Höchstwert), Scheinhandel zwischen Konten mit gleicher IP sperren
+    makerUserDailyReal: 200000, makerMinHoldMinutes: 60, makerSpreadStepPct: 0.5, makerSpreadMaxPct: 15, blockSameIp: true },
   rivalry: {
     mode: 'optin', // off | optin (Spieler wählen selbst) | all (für alle aktiv)
     optOutLockDays: 7, attackerMinGameDays: 60, targetMinGameDays: 60, minAccountHours: 24,
@@ -199,7 +208,9 @@ const DEFAULTS = {
       villa: { name: 'Villa', rooms: 15, price: 15000000, rest: 60 },
     },
     upkeepYearPct: 1.2,
-    events: EVENT_DEFAULTS,
+    // Wirtschaftsbalance: Unwetter und Brände trafen jede Immobilie ca. 5x bzw. 0,6x im Jahr (Schäden von >40 % des Werts jährlich);
+    // abgeschwächt auf ca. 1,1 Sturmschäden / 0,2 Brände je Immobilie und Jahr.
+    events: { ...EVENT_DEFAULTS, town: { ...EVENT_DEFAULTS.town, stormHitChance: 0.1, stormCostPct: 4, fireHitChance: 0.04 } },
     insurance: {
       hausrat: { name: 'Hausratversicherung', perDay: 12, covers: ['burglary'] },
       gebaeude: { name: 'Gebäudeversicherung', yearPctOfValue: 0.3, covers: ['fire', 'storm'] },

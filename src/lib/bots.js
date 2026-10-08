@@ -203,7 +203,7 @@ async function lifeCycle(userId) {
 
 /* ============================== Soziales ============================== */
 const answered = new Set();
-async function cityOf(userId) { const r = await db.one('SELECT city_id, name FROM player_stats WHERE user_id = ?', [userId]); return r; }
+async function cityOf(userId) { const r = await db.one('SELECT city_id, name, pkey FROM player_stats WHERE user_id = ?', [userId]); return r; }
 async function patch(userId, fn) {
   const u = await db.one('SELECT meta FROM users WHERE id = ?', [userId]); if (!u) return;
   const meta = parse(u.meta); meta.bot = meta.bot || {}; fn(meta.bot);
@@ -219,7 +219,7 @@ async function handleLetters(bot, P, c) {
     await db.query('UPDATE messages SET read_at = NOW() WHERE id = ?', [m.id]);
     if (!chance(0.9)) continue;
     const from = await db.one('SELECT ps.name FROM player_stats ps WHERE ps.user_id = ?', [m.from_user]);
-    const body = T.letterReply(P, `${m.subject} ${m.body}`, from ? from.name.split(' ')[0] : '');
+    const body = T.letterReply(P, `${m.subject} ${m.body}`, from ? from.name.split(' ')[0] : '', bot.id);
     try { await social.sendLetter(bot.id, m.from_user, /^re:/i.test(m.subject) ? m.subject : `Re: ${m.subject}`, body); } catch (_) { /* Limits */ }
   }
 }
@@ -239,7 +239,7 @@ async function handleJobs(bot, P, c) {
   const inv = await db.query("SELECT a.id FROM job_apps a WHERE a.user_id = ? AND a.kind = 'invite' AND a.status = 'pending' LIMIT 2", [bot.id]);
   for (const a of inv) { try { await bonds.decide(w, bot.id, a.id, chance(0.7)); } catch (_) { /* ignorieren */ } }
   if (chance(0.06 + P.ambition * 0.05)) {
-    try { const m = await bonds.market(w, bot.id); const o = shuffle(m.offers.filter((x) => !x.mystatus))[0]; if (o) await bonds.apply(w, bot.id, o.id, T.applyText(P)); } catch (_) { /* ignorieren */ }
+    try { const m = await bonds.market(w, bot.id); const o = shuffle(m.offers.filter((x) => !x.mystatus))[0]; if (o) await bonds.apply(w, bot.id, o.id, T.applyText(P, bot.id)); } catch (_) { /* ignorieren */ }
   }
 }
 
@@ -258,11 +258,12 @@ async function handleChat(bot, P, bm, c) {
   const ps = await cityOf(bot.id); if (!ps) return;
   const recent = await db.query('SELECT c.id, c.user_id, c.name, c.text, c.created_at, u.is_bot FROM chat_messages c JOIN users u ON u.id = c.user_id WHERE c.city_id = ? AND c.deleted = 0 AND c.created_at > NOW() - INTERVAL 20 MINUTE ORDER BY c.id DESC LIMIT 14', [ps.city_id]);
   const myFirst = (ps.name || '').split(' ')[0];
+  const world = await worldSvc.get(); const cityObj = world.city(ps.city_id); const cityName = cityObj ? cityObj.name : '';
   // 1) auf echte Spieler reagieren
   const real = recent.find((m) => !m.is_bot && !answered.has(m.id) && (Date.now() - new Date(m.created_at).getTime()) > (25 + (m.id * 31) % 150) * 1000);
   if (real) {
     answered.add(real.id); if (answered.size > 2000) answered.clear();
-    const reply = T.chatReply(P, real.text, { myFirst, theirFirst: String(real.name || '').split(' ')[0], username: bot.username });
+    const reply = T.chatReply(P, real.text, { myFirst, theirFirst: String(real.name || '').split(' ')[0], username: bot.username, city: cityName, botId: bot.id });
     if (reply && chance(reply.p)) { try { await social.chatSend(bot.id, ps.city_id, reply.text); await patch(bot.id, (b) => { b.chatNext = Date.now() + rnd(20, 90) * 60000; }); } catch (_) { /* Limits */ } return; }
   }
   // 2) gelegentlich selbst etwas sagen
@@ -270,8 +271,8 @@ async function handleChat(bot, P, bm, c) {
   const botsLately = recent.slice(0, 4).filter((m) => m.is_bot).length;
   if (botsLately >= 2 || !chance(P.chatty)) { await patch(bot.id, (b) => { b.chatNext = Date.now() + rnd(20, 70) * 60000; }); return; }
   const st = await db.one('SELECT year FROM player_stats WHERE user_id = ?', [bot.id]);
-  const city = (await worldSvc.get()).city(ps.city_id);
-  try { await social.chatSend(bot.id, ps.city_id, T.idle(P, { city: city ? city.name : 'der Stadt', year: st ? st.year : 1950, hour: berlinHour() })); } catch (_) { /* Limits */ }
+  const prof = ps.pkey && world.prof(ps.pkey) ? world.prof(ps.pkey).name : null;
+  try { await social.chatSend(bot.id, ps.city_id, T.idle(P, { city: cityName || 'der Stadt', year: st ? st.year : 1950, hour: berlinHour(), prof, botId: bot.id })); } catch (_) { /* Limits */ }
   await patch(bot.id, (b) => { b.chatNext = Date.now() + rnd(40, 180) * 60000 / (0.4 + P.chatty); });
 }
 
@@ -302,7 +303,7 @@ async function handleMarket(bot, P, c) {
   if (chance(0.025 + P.ambition * 0.02)) {
     try {
       const f = await db.one("SELECT f.user_id, f.company_id, f.value_real, f.abandoned FROM player_firms f JOIN users u ON u.id = f.user_id WHERE f.city_id = ? AND f.user_id <> ? AND u.is_bot = 0 AND u.social_public = 1 AND u.banned = 0 AND f.ask_real IS NULL AND (f.distress = 1 OR f.abandoned = 1) ORDER BY RAND() LIMIT 1", [ps.city_id, bot.id]);
-      if (f) await market.makeOffer(bot.id, { kind: 'firm', ownerId: f.user_id, itemId: f.company_id, priceReal: Math.round(Number(f.value_real) * (0.72 + Math.random() * 0.18)), message: T.offerText(P) });
+      if (f) await market.makeOffer(bot.id, { kind: 'firm', ownerId: f.user_id, itemId: f.company_id, priceReal: Math.round(Number(f.value_real) * (0.72 + Math.random() * 0.18)), message: T.offerText(P, bot.id) });
     } catch (_) { /* Geld, Qualifikation, Limits */ }
   }
 }

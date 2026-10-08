@@ -27,6 +27,42 @@ function fairPerShare(valueReal, profitRealPerDay, shares) {
   return Math.max(1, Math.round(total / shares));
 }
 
+/* ---- Marktteilnehmer-Grenzen (reine Funktionen, in test/exchange.test.js geprüft) ---- */
+
+/** Spread (Prozent) des Marktteilnehmers: Grundspread plus Zuschlag je Geschäft, das dieser Nutzer heute schon mit ihm gemacht hat, gedeckelt. */
+function makerSpreadPct(X, tradesToday) {
+  const base = Number(X.makerSpreadPct) || 0; const step = Number(X.makerSpreadStepPct) || 0;
+  const max = Math.max(base, Number(X.makerSpreadMaxPct) || base);
+  return Math.min(max, base + step * Math.max(0, tradesToday | 0));
+}
+/** Wie viele Anteile zum Kurs `price` (real, Cent) passen noch in das Tageslimit des Nutzers beim Marktteilnehmer (Gesamtwert real, Cent)? */
+function capShares(X, usedReal, price) {
+  const cap = Number(X.makerUserDailyReal); if (!(cap > 0)) return Infinity; // 0 = kein Limit
+  return Math.max(0, Math.floor((cap - Math.max(0, usedReal)) / Math.max(1, price)));
+}
+/** Anteile, die der Nutzer dem Marktteilnehmer anbieten darf: Frisch gekaufte (innerhalb der Haltefrist) sind gesperrt. */
+function sellableToMaker(held, boughtRecently) { return Math.max(0, (held | 0) - Math.max(0, boughtRecently | 0)); }
+/** Orders von Konten mit derselben Internetverbindung (Scheinhandel) fallen aus dem Abgleich. */
+function dropWash(orders, blockedUserIds) { const b = blockedUserIds instanceof Set ? blockedUserIds : new Set(blockedUserIds); return orders.filter((o) => !b.has(o.user_id)); }
+
+async function makerUsage(conn, userId) {
+  const r = await conn.one('SELECT COUNT(*) n, COALESCE(SUM(shares * price_real), 0) v FROM stock_trades WHERE ((buyer = ? AND seller = 0) OR (seller = ? AND buyer = 0)) AND created_at > NOW() - INTERVAL 1 DAY', [userId, userId]);
+  return { trades: Number(r.n) || 0, valueReal: Number(r.v) || 0 };
+}
+async function boughtRecently(conn, stockId, userId, minutes) {
+  if (!(minutes > 0)) return 0;
+  const r = await conn.one('SELECT COALESCE(SUM(shares), 0) n FROM stock_trades WHERE stock_id = ? AND buyer = ? AND created_at > NOW() - INTERVAL ? MINUTE', [stockId, userId, Math.round(minutes)]);
+  return Number(r.n) || 0;
+}
+/** Konten mit gleicher IP wie `userId` unter den Gegenparteien (Orderbuch-Abgleich). */
+async function washSet(userId, orders, X) {
+  if (!X.blockSameIp) return new Set();
+  const social = require('./social'); const out = new Set();
+  for (const id of new Set(orders.map((o) => o.user_id))) if (id && id !== userId && await social.sameIp(userId, id)) out.add(id);
+  if (out.size) { try { require('./anticheat').flag(userId, 'gift_ring', `Börsenorder gegen Konto gleicher IP (Nutzer ${[...out].join(', ')})`); } catch (_) { /* Zugabe */ } }
+  return out;
+}
+
 async function holding(conn, stockId, userId) { return (await conn.one('SELECT shares, avg_real FROM stock_holdings WHERE stock_id = ? AND user_id = ?', [stockId, userId])) || { shares: 0, avg_real: 0 }; }
 async function addHolding(conn, stockId, userId, n, price) {
   const h = await holding(conn, stockId, userId); const total = h.shares + n;
@@ -60,12 +96,13 @@ async function place(userId, stockId, side, shares, limitReal) {
     const { conn, state: s } = ctx; if (!s || s.status !== 'alive') fail('Du brauchst einen lebenden Charakter.');
     const st = await conn.one("SELECT * FROM stocks WHERE id = ? AND status = 'active' FOR UPDATE", [stockId]); if (!st) fail('Diese Aktie gibt es nicht (mehr).');
     const open = (await conn.one("SELECT COUNT(*) n FROM stock_orders WHERE user_id = ? AND status = 'open'", [userId])).n; if (open >= X.openOrdersMax) fail(`Du hast schon ${X.openOrdersMax} offene Orders.`);
-    const idx = idxOf(world, s); let left = shares; let moved = 0; let sumReal = 0;
+    const idx = idxOf(world, s); let left = shares; let moved = 0; let sumReal = 0; const limits = [];
     if (side === 'buy') {
       const cost = Math.round(limitReal * shares * idx); if (s.money < cost) fail('Dafür reicht dein Geld nicht (das Gebot wird vorab reserviert).');
       s.money -= cost; s.stats.spent = (s.stats.spent || 0) + cost;
       const ord = (await conn.query("INSERT INTO stock_orders (stock_id, user_id, side, shares, left_shares, limit_real) VALUES (?,?,'buy',?,?,?)", [stockId, userId, shares, shares, limitReal])).insertId;
-      const asks = await conn.query("SELECT * FROM stock_orders WHERE stock_id = ? AND status = 'open' AND side = 'sell' AND limit_real <= ? AND user_id <> ? ORDER BY limit_real ASC, id ASC FOR UPDATE", [stockId, limitReal, userId]);
+      const asksAll = await conn.query("SELECT * FROM stock_orders WHERE stock_id = ? AND status = 'open' AND side = 'sell' AND limit_real <= ? AND user_id <> ? ORDER BY limit_real ASC, id ASC FOR UPDATE", [stockId, limitReal, userId]);
+      const asks = dropWash(asksAll, await washSet(userId, asksAll, X));
       for (const a of asks) {
         if (!left) break; const n = Math.min(left, a.left_shares); const p = Number(a.limit_real);
         await fill(conn, st, userId, a.user_id, n, p);
@@ -74,8 +111,10 @@ async function place(userId, stockId, side, shares, limitReal) {
         left -= n; moved += n; sumReal += p * n; s.money += Math.round((limitReal - p) * n * idx);
       }
       if (left > 0) {
-        const ask = Math.ceil(Number(st.price_real) * (1 + X.makerSpreadPct / 100));
-        const n = Math.min(left, (await holding(conn, stockId, MAKER)).shares, await makerCapLeft(conn, st));
+        const use = await makerUsage(conn, userId);
+        const ask = Math.ceil(Number(st.price_real) * (1 + makerSpreadPct(X, use.trades) / 100));
+        const n = Math.min(left, (await holding(conn, stockId, MAKER)).shares, await makerCapLeft(conn, st), capShares(X, use.valueReal, ask));
+        if (capShares(X, use.valueReal, ask) === 0) limits.push('Dein Tageslimit beim Marktteilnehmer der Börse ist ausgeschöpft.');
         if (n > 0 && ask <= limitReal) { await fill(conn, st, userId, MAKER, n, ask); left -= n; moved += n; sumReal += ask * n; s.money += Math.round((limitReal - ask) * n * idx); }
       }
       await conn.query('UPDATE stock_orders SET left_shares = ?, status = ? WHERE id = ?', [left, left > 0 ? 'open' : 'filled', ord]);
@@ -84,7 +123,8 @@ async function place(userId, stockId, side, shares, limitReal) {
       const h = await holding(conn, stockId, userId); if (h.shares < shares) fail(`Du besitzt nur ${h.shares} Anteile.`);
       await conn.query('UPDATE stock_holdings SET shares = shares - ? WHERE stock_id = ? AND user_id = ?', [shares, stockId, userId]);
       const ord = (await conn.query("INSERT INTO stock_orders (stock_id, user_id, side, shares, left_shares, limit_real) VALUES (?,?,'sell',?,?,?)", [stockId, userId, shares, shares, limitReal])).insertId;
-      const bids = await conn.query("SELECT * FROM stock_orders WHERE stock_id = ? AND status = 'open' AND side = 'buy' AND limit_real >= ? AND user_id <> ? ORDER BY limit_real DESC, id ASC FOR UPDATE", [stockId, limitReal, userId]);
+      const bidsAll = await conn.query("SELECT * FROM stock_orders WHERE stock_id = ? AND status = 'open' AND side = 'buy' AND limit_real >= ? AND user_id <> ? ORDER BY limit_real DESC, id ASC FOR UPDATE", [stockId, limitReal, userId]);
+      const bids = dropWash(bidsAll, await washSet(userId, bidsAll, X));
       for (const b of bids) {
         if (!left) break; const n = Math.min(left, b.left_shares); const p = Number(b.limit_real);
         await fill(conn, st, b.user_id, userId, n, p);
@@ -93,14 +133,20 @@ async function place(userId, stockId, side, shares, limitReal) {
         left -= n; moved += n; sumReal += p * n;
       }
       if (left > 0) {
-        const bid = Math.floor(Number(st.price_real) * (1 - X.makerSpreadPct / 100)); const n = Math.min(left, await makerCapLeft(conn, st));
+        const use = await makerUsage(conn, userId);
+        const bid = Math.floor(Number(st.price_real) * (1 - makerSpreadPct(X, use.trades) / 100));
+        const sellable = sellableToMaker(h.shares, await boughtRecently(conn, stockId, userId, X.makerMinHoldMinutes));
+        const room = capShares(X, use.valueReal, Math.max(1, bid));
+        const n = Math.min(left, await makerCapLeft(conn, st), sellable, room);
+        if (sellable < left && sellable < h.shares) limits.push(`Frisch gekaufte Anteile kann der Marktteilnehmer erst nach ${X.makerMinHoldMinutes} Minuten zurücknehmen.`);
+        if (room === 0) limits.push('Dein Tageslimit beim Marktteilnehmer der Börse ist ausgeschöpft.');
         if (n > 0 && bid >= limitReal && bid >= 1) { await fill(conn, st, MAKER, userId, n, bid); left -= n; moved += n; sumReal += bid * n; }
       }
       if (moved) { const got = Math.round(sumReal * idx); s.money += got; s.stats.earned = (s.stats.earned || 0) + got; notice(s, { level: 'good', title: `Aktien verkauft: ${st.name}`, text: `${moved} Anteile für durchschnittlich ${Math.round(sumReal / moved / 100)} (Wert 1945).`, tab: 'social' }); }
       await conn.query('UPDATE stock_orders SET left_shares = ?, status = ? WHERE id = ?', [left, left > 0 ? 'open' : 'filled', ord]);
     }
     await syncOutside(conn, st, ctx);
-    return { moved, left };
+    return { moved, left, limits };
   });
 }
 
@@ -262,4 +308,4 @@ function start() {
   setInterval(() => { refresh().catch((e) => log.warn(`[exchange] ${e.message}`)); }, 3600000).unref();
 }
 
-module.exports = { fairPerShare, place, cancel, ipo, delist, takeover, flushDividends, dividend, reconcile, refresh, overview, history, start };
+module.exports = { fairPerShare, makerSpreadPct, capShares, sellableToMaker, dropWash, place, cancel, ipo, delist, takeover, flushDividends, dividend, reconcile, refresh, overview, history, start };

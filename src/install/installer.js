@@ -53,7 +53,7 @@ async function seed(conn) {
     await conn.query('INSERT IGNORE INTO cities (slug, name, state, lat, lon, size_tier, price_factor, description) VALUES (?,?,?,?,?,?,?,?)', [c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7]]);
   }
   // alle weiteren deutschen Orte (idempotent, ergänzt die Kernstädte)
-  await require('../db/places').seed({ query: async (sql, params) => (await conn.query(sql, params))[0] });
+  await require('../db/places').seed(conn); // conn kommt aus db.tx und liefert bereits Zeilen
   for (const p of PROFESSIONS) {
     await conn.query(
       'INSERT IGNORE INTO professions (pkey, name, category, icon, era_from, era_to, base_wage, training_days, tuition_day, academic, replaces, lodging, unlocks, description) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)', p,
@@ -170,4 +170,4 @@ function friendlyDbError(e) {
   return m;
 }
 
-module.exports = { createInstallerApp, systemCheck };
+module.exports = { createInstallerApp, systemCheck, seed };

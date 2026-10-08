@@ -11,6 +11,14 @@ const anticheat = require('../lib/anticheat');
 
 const router = express.Router();
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 25, standardHeaders: true, legacyHeaders: false, message: 'Zu viele Versuche. Bitte warte einige Minuten.' });
+// Zweite Bremse je Konto (nicht nur je IP): verteilte Passwort-Versuche gegen denselben Namen werden ebenfalls gestoppt. Zählt nur Fehlversuche.
+const accountLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: true, legacyHeaders: false, skipSuccessfulRequests: true,
+  keyGenerator: (req) => `acct:${String((req.body && req.body.login) || '').trim().toLowerCase().slice(0, 190)}`, validate: { keyGeneratorIpFallback: false },
+  message: 'Zu viele Fehlversuche für dieses Konto. Bitte warte einige Minuten.',
+});
+// Fester Hash, damit auch bei unbekanntem Konto gleich lange gerechnet wird (kein Zeitunterschied → keine Konto-Erkennung)
+const DUMMY_HASH = bcrypt.hashSync('turning-point-dummy-password', 11);
 const NAME_RE = /^[\p{L}\p{N}_.-]{3,24}$/u;
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/;
 
@@ -37,13 +45,13 @@ router.get('/login', (req, res) => {
   res.render('auth/login', { error: null, notice: req.query.registered ? 'Fast geschafft: Bitte bestätige deine E-Mail-Adresse über den Link, den wir dir geschickt haben.' : req.query.reset ? 'Passwort geändert. Du kannst dich jetzt anmelden.' : null, values: {}, next: safeNext(req.query.next) });
 });
 
-router.post('/login', authLimiter, async (req, res, next) => {
+router.post('/login', authLimiter, accountLimiter, async (req, res, next) => {
   try {
     const id = String(req.body.login || '').trim();
     const pw = String(req.body.password || '');
     const u = await db.one('SELECT * FROM users WHERE email = ? OR username = ? LIMIT 1', [id.toLowerCase(), id]);
     const fail = (m) => res.status(401).render('auth/login', { error: m, notice: null, values: { login: id }, next: safeNext(req.body.next) });
-    if (!u || !(await bcrypt.compare(pw, u.password_hash))) { await audit(req, 'login_failed', id); return fail('Benutzername oder Passwort stimmt nicht.'); }
+    if (!(await bcrypt.compare(pw, u ? u.password_hash : DUMMY_HASH)) || !u) { await audit(req, 'login_failed', id); return fail('Benutzername oder Passwort stimmt nicht.'); }
     if (u.banned) return fail(`Dieses Konto ist gesperrt${u.ban_reason ? ': ' + u.ban_reason : '.'}`);
     if (!u.email_verified && settings.get('site.require_email_verification')) return fail('Bitte bestätige zuerst deine E-Mail-Adresse.');
     login(req, u, async (err) => {
@@ -135,6 +143,8 @@ router.post('/reset/:token', authLimiter, async (req, res, next) => {
     if (!u) return res.status(400).render('error', { code: 400, title: 'Link ungültig', message: 'Dieser Link ist abgelaufen.' });
     if (pw.length < 8) return res.status(400).render('auth/reset', { token: req.params.token, error: 'Mindestens 8 Zeichen.' });
     await db.query('UPDATE users SET password_hash = ?, reset_token = NULL, reset_expires = NULL WHERE id = ?', [await bcrypt.hash(pw, 11), u.id]);
+    // alle bestehenden Sitzungen dieses Kontos beenden (gestohlene Sitzung / vergessenes Gerät)
+    await db.query('DELETE FROM sessions WHERE data LIKE ? OR data LIKE ?', [`%"userId":${u.id},%`, `%"userId":${u.id}}%`]);
     res.redirect('/login?reset=1');
   } catch (e) { next(e); }
 });

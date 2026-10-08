@@ -2,7 +2,7 @@
 const { rngFor, int, pick, shuffle, chance } = require('./rng');
 const press = require('./press');
 const { yearOf } = require('./calendar');
-const { scale, formatMoney, currencyOf } = require('./economy');
+const { scale, formatMoney, currencyOf, isEuroDay } = require('./economy');
 const { notice, chronicle, isLearned, levelIndex } = require('./core');
 const { LAST } = require('./content');
 const EVD = require('./event-defaults');
@@ -122,7 +122,9 @@ function businessDaily(ctx) {
   const { world, state } = ctx;
   if (!state.companies || !state.companies.length) return;
   const year = yearOf(state.day, state.startYear);
+  const euro = isEuroDay(state.day, state.startYear, world.econ);
   for (const c of state.companies) {
+    if (euro) c.cash = Math.round(c.cash / 2); // Firmenkasse wird mit der Währung 2:1 umgestellt (Preise und Löhne tun es über den Index)
     if (state.day % 30 === 0) {
       const q = qualification(world, state, c.pkey, c.tier);
       if (!c.abandoned && !q.ok) {
@@ -173,6 +175,20 @@ function bizListings(world, state, city, week) {
       qualified: qualification(world, state, p.pkey, tier).ok,
       comp: require('./competition').info(world, city.id, p.pkey, t.rooms),
     });
+  }
+  // Einstiegsstufen bleiben käuflich: Wer die höhere Stufe beherrscht, kann für die erste Sparte auch den kleineren Betrieb nehmen
+  // (sonst wäre der Kleinbetrieb nach wenigen Berufsjahren nie mehr im Angebot und die Preisspirale nicht einzuholen).
+  if (out.length) {
+    const top = out[0]; const pk = top.pkey;
+    for (let t = top.tier - 1; t >= 0; t--) {
+      const tt = tiers[t]; const names = chainNames(world, pk);
+      const base = Math.round(tt.price * city.price_factor * (0.85 + r() * 0.35));
+      out.push({
+        id: `biz:${city.id}:${week}:${10 + t}`, type: 'biz', pkey: pk, tier: t, tierName: names[t], name: `${names[t]} ${pick(r, LAST)}`, cityId: city.id,
+        base, price: Math.round(base * idx), rooms: tt.rooms, minLevel: tt.minLevel, profession: top.profession, icon: top.icon,
+        qualified: qualification(world, state, pk, t).ok, comp: require('./competition').info(world, city.id, pk, tt.rooms),
+      });
+    }
   }
   return out;
 }

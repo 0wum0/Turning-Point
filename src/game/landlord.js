@@ -8,7 +8,7 @@ const { rngFor } = require('./rng');
 const { scale } = require('./economy');
 const { yearOf } = require('./calendar');
 
-const YIELD = { flat: 0.05, house_small: 0.045, house_large: 0.04, villa: 0.032 };
+const YIELD = { flat: 0.055, house_small: 0.05, house_large: 0.044, villa: 0.035 };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const MIN_MULT = 0.5; const MAX_MULT = 2;
 
@@ -50,8 +50,22 @@ function demand(world, p) {
   return 0.03 * price * cond * tier;
 }
 
+/**
+ * Tagesabrechnung der Posten, die dailyFlows ausweist, die aber nirgends sonst verbucht wurden:
+ * Mieteinnahmen (gutschreiben) und Einkommensteuer auf Lohn, Amtsbezüge und Miete (abbuchen).
+ * Der Kredit wird in credit.creditDaily bezahlt. Aufruf einmal je Spieltag aus dem Engine-Tick.
+ */
+function settleIncome(ctx) {
+  const { world, state } = ctx; const core = require('./core');
+  const f = core.dailyFlows(world, state);
+  if (f.inc.rent > 0) { state.money += f.inc.rent; state.stats.earned += f.inc.rent; }
+  if (f.exp.tax > 0) { const t = ctx.offline ? Math.min(f.exp.tax, Math.max(0, state.money)) : f.exp.tax; state.money -= t; state.stats.spent += t; }
+}
+
 function landlordDaily(ctx) {
-  const { world, state } = ctx; if (!state.properties.length) return;
+  const { world, state } = ctx;
+  settleIncome(ctx);
+  if (!state.properties.length) return;
   const { notice } = require('./core');
   const { randomFirstName } = require('./content');
   const year = yearOf(state.day, state.startYear);
@@ -103,4 +117,4 @@ function viewOf(world, state, p, year) {
   };
 }
 
-module.exports = { tenantRent, cycleRent, marketBase, marketPerDay, rentPerDay, incomeToday, landlordDaily, viewOf, isResidence, MIN_MULT, MAX_MULT, clamp };
+module.exports = { settleIncome, tenantRent, cycleRent, marketBase, marketPerDay, rentPerDay, incomeToday, landlordDaily, viewOf, isResidence, MIN_MULT, MAX_MULT, clamp };

@@ -15,6 +15,12 @@ function priceIndex(year, econ) {
   return t[t.length - 1][1];
 }
 
+/** Erster Tag des Euro-Jahres (Umstellung 2:1). Nennwert-Beträge im Spielstand (Kredite, Firmenkassen) werden an diesem Tag halbiert. */
+function isEuroDay(day, startYear, econ) {
+  const y = Math.floor(day / 365);
+  return startYear + y === ((econ && econ.euroYear) || 2002) && day - y * 365 === 0;
+}
+
 const currencyOf = (year, econ) => (year >= (econ.euroYear || 2002) ? 'EUR' : 'DM');
 
 /** Betrag in Cent (ganzzahlig) */
@@ -57,4 +63,4 @@ function realEstateFactor(year) {
   return t[t.length - 1][1];
 }
 
-module.exports = { realEstateFactor, priceIndex, currencyOf, scale, formatMoney, compact, haversineKm };
+module.exports = { isEuroDay, realEstateFactor, priceIndex, currencyOf, scale, formatMoney, compact, haversineKm };
