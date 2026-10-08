@@ -13,6 +13,7 @@ const { companyValue } = require('../game/business');
 const { parseState } = require('../game/state');
 const { ActionError } = require('../game/actions');
 const anticheat = require('./anticheat');
+const push = require('./push');
 
 const cfg = () => settings.get('social');
 const fail = (m) => { throw new ActionError(m); };
@@ -243,8 +244,14 @@ async function friendRemove(me, other, block) {
 /* =============================== Briefe =============================== */
 const clean = (s, max) => String(s == null ? '' : s).replace(/\r\n?/g, '\n').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '').trim().slice(0, max);
 async function accountAgeHours(userId) { const u = await db.one('SELECT created_at, mute_until FROM users WHERE id = ?', [userId]); return u ? { h: (Date.now() - new Date(u.created_at).getTime()) / 3600000, mute: Number(u.mute_until || 0) } : { h: 0, mute: 0 }; }
-async function sendSystemLetter(to, subject, body, fromUser = null) { await db.query("INSERT INTO messages (from_user, to_user, kind, subject, body) VALUES (?,?,?,?,?)", [fromUser, to, 'system', subject, body]); }
+async function sendSystemLetter(to, subject, body, fromUser = null) {
+  await db.query("INSERT INTO messages (from_user, to_user, kind, subject, body) VALUES (?,?,?,?,?)", [fromUser, to, 'system', subject, body]);
+  const cat = push.categoryFor(subject); push.fire(to, { title: subject, body, cat, tag: cat }); // Web-Push (nie blockierend, nie Fehler)
+}
 
+function notifyLetter(from, to) {
+  db.one('SELECT ps.name FROM player_stats ps WHERE ps.user_id = ?', [from]).then((ps) => push.fire(to, { title: 'Neuer Brief', body: ps && ps.name ? `Von ${ps.name}` : 'Du hast Post bekommen.', cat: 'letters', tab: 'letters', tag: 'letter', en: { title: 'New letter', body: ps && ps.name ? `From ${ps.name}` : 'You have new mail.' } })).catch(() => {});
+}
 async function sendLetter(from, to, subject, body) {
   const c = cfg().messages; if (!cfg().enabled) fail('Die Gemeinschaftsfunktionen sind gerade abgeschaltet.');
   if (from === to) fail('Briefe an dich selbst sind nicht nötig.');
@@ -258,6 +265,7 @@ async function sendLetter(from, to, subject, body) {
   const text = clean(body, c.maxLen); if (text.length < 2) fail('Der Brief ist leer.');
   const r = await db.query("INSERT INTO messages (from_user, to_user, kind, subject, body) VALUES (?,?,'letter',?,?)", [from, to, clean(subject, 120) || '(ohne Betreff)', text]);
   if (n >= Math.floor(c.perDay * 0.8)) anticheat.flag(from, 'chat_spam', `${n + 1} Briefe in 24 Stunden`);
+  notifyLetter(from, to); // Inhalt bleibt aus dem Push (Spielereingabe, Datenschutz auf dem Sperrbildschirm)
   return r.insertId;
 }
 async function inbox(userId, box = 'in', page = 1) {
@@ -346,6 +354,14 @@ async function chatList(userId, cityId, after = 0) {
   const online = await db.query(`SELECT ps.user_id userId, ps.name, ps.occupation, u.role FROM player_stats ps JOIN users u ON u.id = ps.user_id WHERE ps.city_id = ? AND u.banned = 0 AND u.social_public = 1 AND u.last_seen_at > NOW() - INTERVAL ? MINUTE ORDER BY u.last_seen_at DESC LIMIT 40`, [cityId, cfg().onlineMinutes]);
   return { messages: rows.reverse().map((r) => ({ id: r.id, userId: r.user_id, name: r.name, username: r.username, role: r.role !== 'player' ? r.role : undefined, text: r.text, at: r.created_at, mine: r.user_id === userId })), online };
 }
+/** „@spielername“ im Stadtplatz-Chat: Erwähnte Spieler derselben Stadt bekommen einen Push (höchstens 3 je Nachricht). */
+const mentionsIn = (text) => [...new Set((String(text).match(/@([\p{L}\p{N}_.-]{2,40})/gu) || []).map((m) => m.slice(1).toLowerCase()))].slice(0, 3);
+function notifyMentions(cityId, fromId, fromName, text) {
+  const names = mentionsIn(text); if (!names.length) return;
+  db.query(`SELECT u.id FROM users u JOIN player_stats ps ON ps.user_id = u.id WHERE ps.city_id = ? AND u.id <> ? AND u.banned = 0 AND LOWER(u.username) IN (${names.map(() => '?').join(',')})`, [cityId, fromId, ...names])
+    .then((rows) => rows.forEach((r) => push.fire(r.id, { title: `${fromName} im Stadtplatz-Chat`, body: text, cat: 'chat', tab: 'plaza', tag: 'chat', en: { title: `${fromName} in the town square chat`, body: text } })))
+    .catch(() => {});
+}
 async function chatSend(userId, cityId, text) {
   const c = cfg().chat; if (!cfg().enabled || !c.enabled) fail('Der Stadtplatz ist gerade geschlossen.');
   const home = await myCity(userId); if (!home || home !== cityId) fail('Du bist nicht in dieser Stadt.');
@@ -359,6 +375,7 @@ async function chatSend(userId, cityId, text) {
   lastChat.set(userId, { t: now, text: t.toLowerCase(), n: 0 });
   const ps = await db.one('SELECT name FROM player_stats WHERE user_id = ?', [userId]);
   const r = await db.query('INSERT INTO chat_messages (city_id, user_id, name, text) VALUES (?,?,?,?)', [cityId, userId, ps ? ps.name : 'Unbekannt', mask(t)]);
+  notifyMentions(cityId, userId, ps ? ps.name : 'Jemand', t);
   return r.insertId;
 }
 
@@ -469,5 +486,5 @@ module.exports = {
   notifications, directory, refreshAll,
   lockPair, sameIp, accountAgeHours, relation: relation,
   myProfile, search, CATS, statsOf, upsertStats, publishNews, backfillStats, leaderboard, profile, setProfile, listFriends, friendRequest, friendRespond, friendRemove, relation,
-  sendLetter, inbox, readLetter, deleteLetter, report, summary, chatList, chatSend, gift, visit, firmsInCity, publicNews, prune, start, mask, clean, sendSystemLetter, friendIds,
+  sendLetter, inbox, readLetter, deleteLetter, report, summary, chatList, chatSend, gift, visit, firmsInCity, publicNews, prune, start, mask, clean, sendSystemLetter, friendIds, mentionsIn,
 };

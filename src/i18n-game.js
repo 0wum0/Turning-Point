@@ -87,9 +87,16 @@ function applyEntry(e, m) {
   return e.order.map((t) => (t.g !== undefined ? tr(m[t.g + 1]) : t.lit)).join('');
 }
 
-function tr(s) {
+/**
+ * Übersetzt einen Spieltext. Eigennamen (Betriebe, Personen, Städte, Chat, Briefe) werden nie nach dem
+ * Kopfwort-Muster („Großbäckerei Koch“ → „Large bakery Koch“) verändert; das geschieht nur mit opts.head
+ * (allgemeine Listen wie Anzeigen). Platzhalter-Teile in Vorlagen werden nur bei exaktem Treffer übersetzt.
+ */
+function tr(s, opts) {
   if (typeof s !== 'string' || s.length < 2) return s;
-  if (CACHE.has(s)) return CACHE.get(s);
+  const head = !!(opts && opts.head);
+  const ck = head ? '\u0001' + s : s;
+  if (CACHE.has(ck)) return CACHE.get(ck);
   load();
   let r = EXACT.get(s);
   if (r === undefined) {
@@ -97,12 +104,12 @@ function tr(s) {
     if (lst) for (const e of lst) { const m = e.re.exec(s); if (m) { r = applyEntry(e, m); break; } }
     if (r === undefined) for (const e of GENERAL) { const m = e.re.exec(s); if (m) { r = applyEntry(e, m); break; } }
   }
-  if (r === undefined && s.length <= 60) { // „Bäckerei Peters“ → „Bakery Peters“
+  if (r === undefined && s.length <= 60) { // Kopfwort-Regel nur für allgemeine Listen; Kölner Tageblatt immer
     const sp = s.indexOf(' ');
     if (sp > 3) {
       const h0 = s.slice(0, sp); const tail = s.slice(sp + 1);
-      const head = EXACT.get(h0);
-      if (head) r = `${head} ${tail}`;
+      const hw = head ? EXACT.get(h0) : undefined;
+      if (head && hw) r = `${hw} ${tail}`;
       else if (/er$/.test(h0) && EXACT.has(tail) && /^(Tageblatt|Anzeiger|Kurier|Nachrichten|Zeitung)$/.test(tail)) { // „Kölner Tageblatt“
         const city = DEMONYMS[h0] || h0.replace(/er$/, '');
         r = `${city} ${EXACT.get(tail)}`;
@@ -110,7 +117,7 @@ function tr(s) {
     }
   }
   if (r === undefined && s.length <= 140 && /(: |, )/.test(s)) { // „Sturmschaden: Großes Haus, Lindenallee 12“
-    const parts = s.split(/(: |, )/); const out = parts.map((x) => (x === ': ' || x === ', ' ? x : tr(x)));
+    const parts = s.split(/(: |, )/); const out = parts.map((x) => (x === ': ' || x === ', ' ? x : tr(x, opts)));
     if (out.some((x, i) => x !== parts[i])) r = out.join('');
   }
   if (r === undefined) r = s;
@@ -118,24 +125,46 @@ function tr(s) {
   if (r !== s) r = r.replace(/\d{1,3}(?:\.\d{3})*(?:,\d{1,2})?(?=\s?(?:DM|€|k|m|b|t)\b| \(1945 value\))/g, (x) => (/[.,]/.test(x) ? x.replace(/[.,]/g, (c) => (c === '.' ? ',' : '.')) : x)); // englische Zahlenschreibweise
   if (r !== s) r = r.replace(/(\d),(\d{1,2})(?= ?%)/g, '$1.$2');
   if (CACHE.size > 20000) CACHE.clear();
-  CACHE.set(s, r);
+  CACHE.set(ck, r);
   return r;
 }
 
+/* Spielereingaben: nie übersetzen. Namen von Betrieben/Personen/Orten: nur exakte Treffer (z. B. „München“ → „Munich“). */
 const SKIP_KEYS = new Set(['username', 'bio', 'sid']);
-function deep(v, key) {
-  if (typeof v === 'string') return SKIP_KEYS.has(key) ? v : tr(v);
-  if (Array.isArray(v)) return v.map((x) => deep(x, key));
+const NAME_KEYS = new Set(['name', 'firm', 'firmName', 'company', 'companyName', 'owner', 'ownerName', 'other', 'from', 'to', 'charName', 'char_name', 'proposerName', 'sellerName', 'buyerName', 'bidder', 'leader', 'employer', 'employee', 'partner', 'spouse']);
+const SOCIAL_FREE = new Set(['text', 'body', 'message', 'msg', 'title']); // nur unter /social
+const LETTER_KEYS = new Set(['subject', 'body', 'preview', 'text']);
+function exactOnly(s) {
+  if (typeof s !== 'string' || s.length < 2) return s;
+  load();
+  const r = EXACT.get(s);
+  if (r === undefined) return s;
+  return /^[A-ZÄÖÜ]/.test(s) && /^[a-z]/.test(r) ? r[0].toUpperCase() + r.slice(1) : r;
+}
+function deep(v, key, ctx) {
+  if (typeof v === 'string') {
+    if (SKIP_KEYS.has(key) || (ctx && ctx.verbatim && ctx.verbatim.has(key))) return v;
+    if (NAME_KEYS.has(key)) return exactOnly(v);
+    return tr(v);
+  }
+  if (Array.isArray(v)) return v.map((x) => deep(x, key, ctx));
   if (v && typeof v === 'object' && !(v instanceof Date) && !Buffer.isBuffer(v)) {
-    const o = {}; for (const k of Object.keys(v)) o[k] = deep(v[k], k); return o;
+    const o = {};
+    // Briefe von Spielern: Betreff/Text sind Spielereingaben; Systembriefe sind Vorlagen und werden übersetzt
+    const own = ctx && ctx.social && v.kind === 'letter' ? LETTER_KEYS : null;
+    for (const k of Object.keys(v)) o[k] = own && own.has(k) ? v[k] : deep(v[k], k, ctx);
+    return o;
   }
   return v;
 }
 
 /** Middleware: übersetzt JSON-Antworten der API für englische Spieler. */
 function apiMiddleware(req, res, next) {
-  if (req.lang === 'en') { const j = res.json.bind(res); res.json = (body) => j(deep(body)); }
+  if (req.lang === 'en') {
+    const ctx = /^\/social\b/.test(req.path) ? { social: true, verbatim: SOCIAL_FREE } : {};
+    const j = res.json.bind(res); res.json = (body) => j(deep(body, undefined, ctx));
+  }
   next();
 }
 
-module.exports = { tr, deep, apiMiddleware, load, _stats: () => ({ exact: EXACT.size, buckets: BUCKETS.size, general: GENERAL.length }) };
+module.exports = { tr, deep, exactOnly, apiMiddleware, load, _stats: () => ({ exact: EXACT.size, buckets: BUCKETS.size, general: GENERAL.length }) };

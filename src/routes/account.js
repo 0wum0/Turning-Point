@@ -20,7 +20,7 @@ router.use((req, res, next) => (req.user ? next() : res.redirect('/login?next=/a
 const render = async (req, res, extra = {}) => {
   const u = await db.one('SELECT id, email, username, role, created_at, last_login_at, email_verified, lang FROM users WHERE id = ?', [req.user.id]);
   const chars = await db.one('SELECT COUNT(*) n FROM characters WHERE user_id = ?', [req.user.id]);
-  res.render('account', { title: 'Mein Konto', u, characters: chars.n, impersonating: !!req.session.impersonator, error: null, notice: null, ...extra });
+  res.render('account', { title: 'Mein Konto', u, characters: chars.n, impersonating: !!req.session.impersonator, error: null, notice: null, pushEnabled: !!(settings.get('push') || {}).enabled, ...extra });
 };
 
 router.get('/', wrap((req, res) => render(req, res, { notice: req.query.pw ? 'Passwort geändert.' : req.query.mail ? 'E-Mail-Adresse geändert.' : null })));

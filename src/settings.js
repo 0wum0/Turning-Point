@@ -59,6 +59,12 @@ const DEFAULTS = {
     couples: { enabled: true, minAge: 18, minAccountHours: 12, requireSameCity: true, weddingSharePct: 50, spouseSharePct: 30, divorceSettlementPct: 20, blockSameIp: false },
     news: { publicEvents: true, keepDays: 5, types: ['business_open', 'business_expand', 'couple', 'marriage', 'birth', 'elected', 'lotto', 'death', 'heir', 'study_done'] },
   },
+  push: {
+    enabled: true,         // Web-Push (Handy-Benachrichtigungen) global an/aus
+    perHour: 6,            // max. Pushes je Spieler und Stunde
+    quietEnabled: true,    // Ruhezeiten als Vorgabe (Spieler können sie ändern)
+    quietFrom: 22, quietTo: 7,
+  },
   landing: {
     eyebrow: 'Eine Lebenssimulation über Generationen',
     title: 'Ein Leben.\nEin Vermächtnis.',

@@ -13,7 +13,7 @@ export function chatUnread(social) {
   return c.last > chatSeen(c.cityId) && c.last > (c.lastMine || 0);
 }
 
-const line = (m) => `<div class="cl ${m.mine ? 'mine' : ''}" data-id="${m.id}"><span class="t">${hhmm(m.at)}</span> <a href="#/social" class="who" data-profile="${m.userId}">${esc(m.name)}</a>${roleBadgeStr(m.role)} <span class="msg">${esc(m.text)}</span></div>`;
+const line = (m) => `<div class="cl ${m.mine ? 'mine' : ''}" data-id="${m.id}"><span class="t">${hhmm(m.at)}</span> <a href="#/social" class="who" data-i18n-skip data-profile="${m.userId}">${esc(m.name)}</a>${roleBadgeStr(m.role)} <span class="msg" data-i18n-skip>${esc(m.text)}</span></div>`;
 
 export async function openChatModal(ctx) {
   let d;
@@ -56,7 +56,7 @@ export async function openBell(ctx) {
   let d;
   try { d = await api('GET', '/api/social/notifications'); } catch (err) { toast(err.message, 'warn'); return; }
   const m = modal(html`<div class="row spread nowrap"><h3 style="margin:0">${icon('bell')} Benachrichtigungen</h3><button class="btn ghost sm" data-close="x" aria-label="Schließen">${icon('x')}</button></div>
-    <div class="stack mt" style="--gap:.4rem">${d.items.map((n, i) => { const k = KIND[n.kind] || KIND.letter; return html`<button class="notif" data-n="${i}"><span class="ni">${icon(k[0])}</span><span class="grow"><b>${n.from}</b><span class="subj">${n.subject}</span></span><span class="dim small">${ago(n.at)}</span></button>`; })}
+    <div class="stack mt" style="--gap:.4rem">${d.items.map((n, i) => { const k = KIND[n.kind] || KIND.letter; return html`<button class="notif" data-n="${i}"><span class="ni">${icon(k[0])}</span><span class="grow"><b data-i18n-skip>${n.from}</b><span class="subj">${n.subject}</span></span><span class="dim small">${ago(n.at)}</span></button>`; })}
     ${d.items.length ? '' : html`<div class="dim">Alles gelesen – keine neuen Nachrichten.</div>`}</div>
     <div class="row end mt"><button class="btn sm" data-all>${icon('mail')} Alle Briefe</button></div>`);
   const go = (tab) => { const so = ctx.ui.soc = ctx.ui.soc || { cat: 'wealth', scope: 'all', box: 'in', page: 1 }; so.tab = tab; m.close(); ctx.go('social'); };

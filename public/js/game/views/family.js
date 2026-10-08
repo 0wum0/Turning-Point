@@ -5,7 +5,7 @@ const STATUS = { home: 'zu Hause', runaway: 'weggelaufen', care: 'Jugendhilfe', 
 function childCard(c, v) {
   const cur = v.currency;
   return html`<article class="card child ${c.status}">
-    <div class="row nowrap spread"><div class="row nowrap"><div class="avatar ${c.gender}">${c.name.slice(0, 1)}</div><div><h4 class="mb0">${c.name}</h4><div class="dim small">${c.age} Jahre · ${c.city || ''}</div></div></div>
+    <div class="row nowrap spread"><div class="row nowrap"><div class="avatar ${c.gender}">${c.name.slice(0, 1)}</div><div><h4 class="mb0" data-i18n-skip>${c.name}</h4><div class="dim small">${c.age} Jahre · ${c.city || ''}</div></div></div>
       <span class="chip ${c.status === 'home' ? 'good' : 'bad'}">${STATUS[c.status] || c.status}</span></div>
     ${c.status === 'home' ? html`<div class="mt small">Zufriedenheit ${c.sat} %</div>${bar(c.sat, c.sat < 40 ? 'bad' : 'good')}
       <div class="small mt dim">${c.school ? html`${icon('school')} ${c.schoolName}` : c.path === 'training' ? html`${icon('hammer')} Ausbildung: ${c.profession} (noch ${yearsText(c.daysLeft)})` : c.path === 'study' ? html`${icon('graduation-cap')} Studium: ${c.profession} (noch ${yearsText(c.daysLeft)})` : c.path === 'done' ? html`${icon('badge-check')} ${c.profession}` : c.age < 6 ? 'noch zu klein für die Schule' : c.pendingSchool ? '' : c.path === 'none' ? 'ohne weitere Ausbildung' : ''}</div>
@@ -27,7 +27,7 @@ export default {
 
     <section class="card ${p && p.sat < 45 ? '' : 'glow'}">
       <div class="card-title">${icon('heart')} Partnerschaft</div>
-      ${p ? html`<div class="row nowrap spread"><div class="row nowrap"><div class="avatar ${p.gender}">${p.name.slice(0, 1)}</div><div><h3 class="mb0">${p.name}</h3><div class="dim small">${p.age} Jahre · ${p.profession} · ${p.married ? 'verheiratet' : 'Partner(in)'} · ${p.cohabit ? 'wohnt bei dir' : 'wohnt woanders'}</div></div></div></div>
+      ${p ? html`<div class="row nowrap spread"><div class="row nowrap"><div class="avatar ${p.gender}">${p.name.slice(0, 1)}</div><div><h3 class="mb0" data-i18n-skip>${p.name}</h3><div class="dim small">${p.age} Jahre · ${p.profession} · ${p.married ? 'verheiratet' : 'Partner(in)'} · ${p.cohabit ? 'wohnt bei dir' : 'wohnt woanders'}</div></div></div></div>
         <div class="mt small">Zufriedenheit ${p.sat} %</div>${bar(p.sat, p.sat < 45 ? 'bad' : 'good')}
         <div class="row mt">
           <button class="btn sm" data-p="gift">${icon('gift')} Geschenk · ${money(Math.round(400 * v.idx), cur)}</button>

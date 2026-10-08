@@ -25,14 +25,14 @@ export async function openProfile(ctx, userId) {
   const rel = { none: html`<button class="btn sm primary" data-f="request">${icon('plus')} Freund hinzufügen</button>`, pending_out: html`<span class="chip">Anfrage gesendet</span>`, pending_in: html`<button class="btn sm primary" data-f="accept">Anfrage annehmen</button>`, friend: html`<button class="btn sm ghost" data-f="remove">Freundschaft beenden</button>`, self: '', blocked: html`<span class="chip bad">blockiert</span>`, blocked_by: '' }[p.relation] || '';
   const m = modal(html`<div class="profile">
     <div class="row spread"><div><h3 class="serif" style="margin:0">${s ? s.name : p.username} ${roleBadge(p.role)} ${dot(p.online)}</h3><div class="dim small">@${p.username}${s ? ` · ${cityName(ctx, s.cityId)} · ${s.year}` : ''}</div></div><button class="btn ghost sm" data-close="x" aria-label="Schließen">${icon('x')}</button></div>
-    ${p.bio ? html`<p class="bio">${p.bio}</p>` : ''}
+    ${p.bio ? html`<p class="bio" data-i18n-skip>${p.bio}</p>` : ''}
     ${!p.visible || !s ? html`<div class="alert info">${icon('lock')}<div>Dieses Profil ist privat.</div></div>` : html`
       <div class="pgrid">
         <div><small>Beruf</small><b>${s.occupation || '–'}</b></div><div><small>Generation</small><b>${s.generation}</b></div>
         <div><small>Vermögen</small><b>${num(s.wealth / 100)} <span class="dim small">'45</span></b></div><div><small>Kinder</small><b>${s.children}</b></div>
         <div><small>Betriebe</small><b>${s.companies}</b></div><div><small>Immobilien</small><b>${s.properties}</b></div>
         <div><small>Einfluss</small><b>${s.influence}${s.office ? ' · ' + s.office : ''}</b></div><div><small>Platz Vermögen</small><b>#${p.ranks.wealth}</b></div></div>
-      ${p.firms.length ? html`<div class="card-title mt">${icon('store')} Betriebe</div><div class="stack" style="--gap:.4rem">${p.firms.map((f) => html`<div class="row spread small"><span>${icon('store')} ${f.name}</span><span class="dim">${cityName(ctx, f.cityId)}</span></div>`)}</div>` : ''}`}
+      ${p.firms.length ? html`<div class="card-title mt">${icon('store')} Betriebe</div><div class="stack" style="--gap:.4rem">${p.firms.map((f) => html`<div class="row spread small"><span>${icon('store')} <span data-i18n-skip>${f.name}</span></span><span class="dim">${cityName(ctx, f.cityId)}</span></div>`)}</div>` : ''}`}
     ${me ? '' : html`<div class="row wrap mt" style="gap:.5rem">${rel}<button class="btn sm" data-a="letter">${icon('mail')} Brief schreiben</button>${p.visible && s ? html`<button class="btn sm" data-a="couple">${icon('heart')} Beziehung anfragen</button><button class="btn sm" data-a="invite">${icon('briefcase')} Zum Job einladen</button>` : ''}${p.visible && s ? html`<button class="btn sm" data-a="gift">${icon('gift')} Geschenk</button>` : ''}<button class="btn sm ghost" data-a="report" title="Spieler melden">${icon('flag')}</button>${p.relation === 'friend' || p.relation === 'none' ? html`<button class="btn sm ghost" data-a="block" title="Blockieren">${icon('ban')}</button>` : ''}</div>`}
   </div>`, {});
   const act = async (fn) => { try { await fn(); m.close(); } catch (e) { toast(e.message, 'bad'); } };
@@ -77,7 +77,7 @@ async function inviteDialog(ctx, userId, name) {
   let mine; try { mine = await api('GET', '/api/social/jobs/mine'); } catch (e) { toast(e.message, 'bad'); return; }
   if (!mine.offers.length) { toast('Du hast keine offene Stellenanzeige. Lege unter „Arbeit“ zuerst eine an.', 'warn'); return; }
   const m = modal(html`<h3>${icon('briefcase')} ${name} einladen</h3><p class="dim small">Wähle die Stelle. ${name} bekommt eine Einladung und kann annehmen.</p>
-    <div class="stack" style="--gap:.5rem">${mine.offers.map((o) => html`<button class="linkrow" data-o="${o.id}"><span class="grow"><b>${o.title}</b><div class="dim small">${o.firm} · ${money(o.wage, ctx.view.currency)} pro Tag</div></span>${roleChip(o.role)}</button>`)}</div>`);
+    <div class="stack" style="--gap:.5rem">${mine.offers.map((o) => html`<button class="linkrow" data-o="${o.id}"><span class="grow"><b data-i18n-skip>${o.title}</b><div class="dim small"><span data-i18n-skip>${o.firm}</span> · ${money(o.wage, ctx.view.currency)} pro Tag</div></span>${roleChip(o.role)}</button>`)}</div>`);
   m.el.addEventListener('click', async (e) => { const b = e.target.closest('[data-o]'); if (!b) return; try { await api('POST', '/api/social/jobs/invite', { offerId: Number(b.dataset.o), userId }); toast('Einladung verschickt.'); m.close(); } catch (err) { toast(err.message, 'bad'); } });
 }
 
@@ -86,14 +86,14 @@ const views = {
     const { market: mk, mine: mi } = d; const c = ctx.view.currency;
     return html`<div class="grid c2" style="--gap:1rem">
       <div class="stack" style="--gap:1rem">
-        ${mi.employment ? html`<section class="card glow"><div class="card-title">${icon('briefcase')} Dein Spielerjob</div><h3 class="serif" style="margin:0">${mi.employment.firm}</h3><div class="dim">bei <a href="#/social" data-profile="${mi.employment.ownerId}">${mi.employment.owner}</a> · ${mi.employment.roleName}</div>
+        ${mi.employment ? html`<section class="card glow"><div class="card-title">${icon('briefcase')} Dein Spielerjob</div><h3 class="serif" style="margin:0" data-i18n-skip>${mi.employment.firm}</h3><div class="dim">bei <a href="#/social" data-profile="${mi.employment.ownerId}">${mi.employment.owner}</a> · ${mi.employment.roleName}</div>
           <div class="row spread mt"><div><small class="dim">Tageslohn</small><div><b class="serif" style="font-size:1.4rem">${money(mi.employment.wage, c)}</b></div></div><button class="btn danger sm" id="jquit">Kündigen</button></div>
           <p class="dim small mt">Du arbeitest, sammelst Berufserfahrung und der Betrieb wird produktiver. Der Lohn kommt täglich automatisch.</p></section>` : ''}
         <section class="card"><div class="card-title">${icon('newspaper')} Stellen in ${cityName(ctx, ctx.view.city.id)} ${infoBtn(['Andere Spieler suchen Verstärkung für ihre Betriebe – echte Menschen als Chef und als Kollegen.', 'Du verdienst den vereinbarten Lohn jeden Spieltag und sammelst Erfahrung im Beruf des Betriebs. Der Chef zahlt den Lohn aus seiner Firmenkasse.', 'Du kannst jederzeit kündigen; ein Umzug beendet das Arbeitsverhältnis.'], 'Spielerjobs')}</div>
-          <div class="stack" style="--gap:.6rem">${mk.offers.map((o) => html`<div class="firm" style="align-items:flex-start"><div class="grow"><b>${o.title}</b> ${roleChip(o.role)}<div class="dim small">${o.firm} · <a href="#/social" data-profile="${o.ownerId}">${o.owner}</a> · ${o.slotsLeft} frei</div>${o.text ? html`<div class="small mt-s">${o.text}</div>` : ''}</div>
+          <div class="stack" style="--gap:.6rem">${mk.offers.map((o) => html`<div class="firm" style="align-items:flex-start"><div class="grow"><b data-i18n-skip>${o.title}</b> ${roleChip(o.role)}<div class="dim small"><span data-i18n-skip>${o.firm}</span> · <a href="#/social" data-profile="${o.ownerId}">${o.owner}</a> · ${o.slotsLeft} frei</div>${o.text ? html`<div class="small mt-s">${o.text}</div>` : ''}</div>
             <div class="right"><b>${money(o.wage, c)}</b><div class="dim small">pro Tag</div>${o.myStatus === 'pending' ? (o.myKind === 'invite' ? html`<button class="btn sm primary" data-accept-app="${o.myApp}">Einladung annehmen</button>` : html`<span class="chip">beworben</span>`) : mi.employment ? '' : html`<button class="btn sm primary" data-apply="${o.id}">Bewerben</button>`}</div></div>`)}
             ${mk.offers.length ? '' : html`<div class="dim small">Zurzeit sucht kein Spieler in deiner Stadt Personal. Schau später wieder vorbei – oder eröffne selbst einen Betrieb und stelle andere Spieler ein.</div>`}</div>
-          ${mi.applications.length ? html`<div class="card-title mt">Meine Bewerbungen</div><div class="stack" style="--gap:.3rem">${mi.applications.map((a) => html`<div class="row spread small"><span>${a.title} · ${a.firm}</span>${a.kind === 'invite' ? html`<span class="row nowrap"><button class="btn sm primary" data-accept-app="${a.id}">Annehmen</button><button class="btn sm ghost" data-reject-app="${a.id}">Ablehnen</button></span>` : html`<button class="btn sm ghost" data-withdraw="${a.id}">zurückziehen</button>`}</div>`)}</div>` : ''}</section></div>
+          ${mi.applications.length ? html`<div class="card-title mt">Meine Bewerbungen</div><div class="stack" style="--gap:.3rem">${mi.applications.map((a) => html`<div class="row spread small"><span data-i18n-skip>${a.title} · ${a.firm}</span>${a.kind === 'invite' ? html`<span class="row nowrap"><button class="btn sm primary" data-accept-app="${a.id}">Annehmen</button><button class="btn sm ghost" data-reject-app="${a.id}">Ablehnen</button></span>` : html`<button class="btn sm ghost" data-withdraw="${a.id}">zurückziehen</button>`}</div>`)}</div>` : ''}</section></div>
       <div class="stack" style="--gap:1rem">
         <section class="card"><div class="card-title">${icon('store')} Als Chef: Spieler einstellen</div>
           ${mi.firms.length ? html`<div class="field"><label>Betrieb</label><select id="ofirm">${mi.firms.map((f) => html`<option value="${f.id}">${f.name}</option>`)}</select></div>
@@ -101,26 +101,26 @@ const views = {
           <div class="field"><label>Titel (optional)</label><input id="otitle" type="text" maxlength="80" placeholder="z. B. Bäcker-Geselle gesucht"></div><div class="field"><label>Beschreibung</label><textarea id="otext" maxlength="300" style="min-height:70px"></textarea></div>
           <div class="row end"><button class="btn primary" id="oadd">${icon('plus')} Stelle ausschreiben</button></div>` : html`<div class="dim">Du besitzt noch keinen aktiven Betrieb. Kaufe einen unter „Zeitung → Gewerbe“ – dann kannst du hier andere Spieler einstellen.</div>`}
           <p class="dim small mt">Der Lohn wird täglich aus deiner Firmenkasse bezahlt. Mehr Mitarbeiter steigern den Umsatz; eine Spieler-Betriebsleitung ersetzt den Manager.</p></section>
-        ${mi.offers.map((o) => html`<section class="card"><div class="row spread"><div><b>${o.title}</b> ${roleChip(o.role)}<div class="dim small">${o.firm} · ${money(o.wage, c)} pro Tag · ${o.slots} Stelle(n)</div></div><button class="btn sm danger" data-close-offer="${o.id}">schließen</button></div>
-          ${o.apps.length ? html`<div class="stack mt" style="--gap:.5rem">${o.apps.map((a) => html`<div class="firm"><div class="grow"><a href="#/social" data-profile="${a.userId}"><b>${a.name}</b></a> <span class="dim small">${a.kind === 'invite' ? '(eingeladen)' : ''} ${a.occupation || ''}</span>${a.message ? html`<div class="small dim">„${a.message}“</div>` : ''}</div>${a.kind === 'apply' ? html`<button class="btn sm primary" data-accept-app="${a.id}">Einstellen</button><button class="btn sm ghost" data-reject-app="${a.id}">Ablehnen</button>` : html`<span class="chip">wartet</span>`}</div>`)}</div>` : html`<div class="dim small mt">Noch keine Bewerbungen. Tipp: Lade Spieler über ihr Profil ein.</div>`}</section>`)}
-        ${mi.staff.length ? html`<section class="card"><div class="card-title">${icon('users')} Deine Spieler-Mitarbeiter</div><div class="stack" style="--gap:.5rem">${mi.staff.map((p) => html`<div class="firm"><div class="grow"><a href="#/social" data-profile="${p.userId}"><b>${p.name}</b></a><div class="dim small">${p.firm} · ${p.roleName} · ${money(p.wage, c)}/Tag</div></div><button class="btn sm danger" data-fire="${p.id}">Entlassen</button></div>`)}</div></section>` : ''}
+        ${mi.offers.map((o) => html`<section class="card"><div class="row spread"><div><b data-i18n-skip>${o.title}</b> ${roleChip(o.role)}<div class="dim small"><span data-i18n-skip>${o.firm}</span> · ${money(o.wage, c)} pro Tag · ${o.slots} Stelle(n)</div></div><button class="btn sm danger" data-close-offer="${o.id}">schließen</button></div>
+          ${o.apps.length ? html`<div class="stack mt" style="--gap:.5rem">${o.apps.map((a) => html`<div class="firm"><div class="grow"><a href="#/social" data-profile="${a.userId}"><b data-i18n-skip>${a.name}</b></a> <span class="dim small">${a.kind === 'invite' ? '(eingeladen)' : ''} ${a.occupation || ''}</span>${a.message ? html`<div class="small dim" data-i18n-skip>„${a.message}“</div>` : ''}</div>${a.kind === 'apply' ? html`<button class="btn sm primary" data-accept-app="${a.id}">Einstellen</button><button class="btn sm ghost" data-reject-app="${a.id}">Ablehnen</button>` : html`<span class="chip">wartet</span>`}</div>`)}</div>` : html`<div class="dim small mt">Noch keine Bewerbungen. Tipp: Lade Spieler über ihr Profil ein.</div>`}</section>`)}
+        ${mi.staff.length ? html`<section class="card"><div class="card-title">${icon('users')} Deine Spieler-Mitarbeiter</div><div class="stack" style="--gap:.5rem">${mi.staff.map((p) => html`<div class="firm"><div class="grow"><a href="#/social" data-profile="${p.userId}"><b data-i18n-skip>${p.name}</b></a><div class="dim small">${p.firm} · ${p.roleName} · ${money(p.wage, c)}/Tag</div></div><button class="btn sm danger" data-fire="${p.id}">Entlassen</button></div>`)}</div></section>` : ''}
       </div></div>`;
   },
   love(ctx, d) {
     const cp = d.couple; const o = cp && cp.other; const R = d.rules;
-    const person = (p) => html`<button class="linkrow" data-profile="${p.userId}"><span class="grow"><b>${p.name}</b> ${roleBadge(p.role)} <span class="dim small">@${p.username}</span><div class="dim small">${p.occupation || ''}${p.year ? ' · ' + p.year : ''}</div></span></button>`;
+    const person = (p) => html`<button class="linkrow" data-profile="${p.userId}"><span class="grow"><b data-i18n-skip>${p.name}</b> ${roleBadge(p.role)} <span class="dim small">@${p.username}</span><div class="dim small">${p.occupation || ''}${p.year ? ' · ' + p.year : ''}</div></span></button>`;
     return html`<div class="grid c2" style="--gap:1rem">
       <section class="card ${cp ? 'glow' : ''}"><div class="card-title">${icon('heart')} Deine Beziehung ${infoBtn(['Hier verbindest du dein Leben mit dem eines anderen Spielers – echte Partnerschaft statt Computer-Partner.', 'Beide müssen zustimmen: erst eine Beziehung, dann ein Heiratsantrag, den der andere annehmen muss. Die Hochzeitskosten teilt ihr euch.', 'Gemeinsame Kinder erscheinen bei beiden. Der Beruf des Partners qualifiziert für Betriebe. Stirbt ein Ehepartner, erbt der andere einen Anteil am Bargeld; bei einer Scheidung zahlt, wer sie beendet, eine Abfindung.'], 'Beziehung')}</div>
         ${!cp ? html`<p class="dim">Du bist Single. Wähle rechts jemanden aus deiner Stadt${R.sameCity ? '' : ''} oder öffne ein Profil und sende eine Anfrage. Mindestalter: ${R.minAge} Jahre.</p>`
-          : html`<div class="row spread"><div><span class="chip ${cp.status === 'married' ? 'good' : 'accent'}">${{ dating: 'Paar', engaged: 'Verlobt', married: 'Verheiratet' }[cp.status]}</span><h3 class="serif" style="margin:.4rem 0 0">${o.name}</h3><div class="dim small">@${o.username} · ${o.occupation || ''}</div></div><button class="btn sm" data-profile="${o.userId}">Profil</button></div>
+          : html`<div class="row spread"><div><span class="chip ${cp.status === 'married' ? 'good' : 'accent'}">${{ dating: 'Paar', engaged: 'Verlobt', married: 'Verheiratet' }[cp.status]}</span><h3 class="serif" style="margin:.4rem 0 0" data-i18n-skip>${o.name}</h3><div class="dim small">@${o.username} · ${o.occupation || ''}</div></div><button class="btn sm" data-profile="${o.userId}">Profil</button></div>
             <div class="row wrap mt" style="gap:.5rem">
               ${cp.status === 'dating' ? html`<button class="btn primary" id="lpropose">${icon('heart')} Heiratsantrag machen</button>` : ''}
               ${cp.status === 'engaged' && !cp.engagedByMe ? html`<button class="btn primary" id="lyes">Antrag annehmen &amp; heiraten</button><button class="btn" id="lno">Noch nicht</button>` : ''}
-              ${cp.status === 'engaged' && cp.engagedByMe ? html`<span class="chip">Antrag gesendet – ${o.name} überlegt noch</span>` : ''}
+              ${cp.status === 'engaged' && cp.engagedByMe ? html`<span class="chip">Antrag gesendet – <span data-i18n-skip>${o.name}</span> überlegt noch</span>` : ''}
               <button class="btn danger" id="lend">${cp.status === 'married' ? 'Scheidung einreichen' : 'Beziehung beenden'}</button></div>
             <p class="dim small mt">${cp.status === 'married' ? `Bei einer Scheidung zahlt, wer sie einreicht, ${R.divorce} % seines Bargelds als Abfindung. Stirbt ein Ehepartner, erbt der andere ${R.spouseShare} % des Bargelds.` : 'Die Hochzeit kostet beide je die Hälfte der üblichen Hochzeitskosten.'}</p>`}
         ${d.incoming.length ? html`<div class="card-title mt">${icon('bell')} Anfragen an dich</div><div class="stack" style="--gap:.5rem">${d.incoming.map((r) => html`<div class="firm"><div class="grow">${person(r.other)}</div><button class="btn sm primary" data-cr="${r.id}:1">Ja</button><button class="btn sm ghost" data-cr="${r.id}:0">Nein</button></div>`)}</div>` : ''}
-        ${d.outgoing.length ? html`<div class="card-title mt">Deine offenen Anfragen</div><div class="stack" style="--gap:.4rem">${d.outgoing.map((r) => html`<div class="row spread small"><span>${r.other.name}</span><button class="btn sm ghost" data-ccancel="${r.id}">zurückziehen</button></div>`)}</div>` : ''}</section>
+        ${d.outgoing.length ? html`<div class="card-title mt">Deine offenen Anfragen</div><div class="stack" style="--gap:.4rem">${d.outgoing.map((r) => html`<div class="row spread small"><span data-i18n-skip>${r.other.name}</span><button class="btn sm ghost" data-ccancel="${r.id}">zurückziehen</button></div>`)}</div>` : ''}</section>
       <section class="card"><div class="card-title">${icon('users')} Singles in ${cityName(ctx, d.me && d.me.cityId)}</div>
         ${cp ? html`<div class="dim small">Du bist vergeben – andere Singles siehst du hier erst wieder, wenn du allein bist.</div>` : html`<div class="stack" style="--gap:.3rem">${d.singles.map((p) => html`<div class="friend">${person(p)}<button class="btn sm" data-cask="${p.userId}">${icon('heart')} Kennenlernen</button></div>`)}${d.singles.length ? '' : html`<div class="dim small">Gerade sind keine anderen Singles in deiner Stadt sichtbar.</div>`}</div>`}</section></div>`;
   },
@@ -131,7 +131,7 @@ const views = {
     <div class="row spread wrap" style="margin-bottom:.8rem"><div class="seg">${[['all', 'Alle'], ['city', 'Meine Stadt'], ['friends', 'Freunde']].map((x) => html`<a href="#/social" data-scope="${x[0]}" class="${d.scope === x[0] ? 'on' : ''}">${x[1]}</a>`)}</div><span class="dim small">${d.total} Spieler · ${d.hint}</span></div>
     ${me ? html`<div class="card me-card ${me.hidden ? 'dim' : ''}"><div class="row spread"><div><div class="dim small">Dein Platz</div><b class="serif" style="font-size:2rem">#${me.rank}</b> <span class="dim small">von ${d.total}</span></div><div class="right"><div class="dim small">${d.label}</div><b>${fmtScore(d.unit, me, ctx)}</b>${d.unit === 'money' && ctx.view ? html`<div class="dim small">Echtes Vermögen heute: <b>${moneyShort(ctx.view.worth, ctx.view.currency)}</b></div>` : ''}</div></div>${me.hidden ? html`<div class="small dim mt">Dein Profil ist privat – du erscheinst nicht in der Liste. Ändern unter „Mein Profil“.</div>` : ''}</div>` : html`<div class="alert info">${icon('info')}<div>Starte ein Leben, um in der Rangliste zu erscheinen.</div></div>`}
     <div class="table-wrap mt"><table class="table rank"><tbody>${d.rows.map((r) => html`<tr class="${r.me ? 'me' : ''}" data-profile="${r.userId}" tabindex="0">
-      <td class="rkc">${medal(r.rank)}</td><td><b>${r.name}</b> ${roleBadge(r.role)} ${dot(r.online)}<div class="dim small">@${r.username} · ${r.occupation || 'ohne Beruf'}</div></td>
+      <td class="rkc">${medal(r.rank)}</td><td><b data-i18n-skip>${r.name}</b> ${roleBadge(r.role)} ${dot(r.online)}<div class="dim small">@${r.username} · ${r.occupation || 'ohne Beruf'}</div></td>
       <td class="dim small hide-sm">${cityName(ctx, r.cityId)} · ${r.year}</td><td class="num"><b>${fmtScore(d.unit, r, ctx)}</b></td></tr>`)}
       ${d.rows.length ? '' : html`<tr><td class="dim">Noch niemand hier – sei der Erste!</td></tr>`}</tbody></table></div>`;
   },
@@ -143,9 +143,9 @@ const views = {
         <form class="row nowrap" id="chatform"><input id="chatin" type="text" maxlength="${d.chat.maxLen}" placeholder="Nachricht an die Stadt …" autocomplete="off"><button class="btn primary">${icon('send')}</button></form></section>
       <aside class="stack" style="--gap:1rem">
         <section class="card"><div class="card-title">${icon('users')} Gerade hier <span class="chip">${d.online.length}</span></div>
-          <div class="stack" style="--gap:.3rem" id="onl">${d.online.map((o) => html`<button class="linkrow" data-profile="${o.userId}"><i class="odot on"></i><span class="grow">${o.name} ${roleBadge(o.role)}</span><span class="dim small">${o.occupation || ''}</span></button>`)}${d.online.length ? '' : html`<div class="dim small">Niemand sonst online.</div>`}</div></section>
+          <div class="stack" style="--gap:.3rem" id="onl">${d.online.map((o) => html`<button class="linkrow" data-profile="${o.userId}"><i class="odot on"></i><span class="grow" data-i18n-skip>${o.name} ${roleBadge(o.role)}</span><span class="dim small">${o.occupation || ''}</span></button>`)}${d.online.length ? '' : html`<div class="dim small">Niemand sonst online.</div>`}</div></section>
         <section class="card"><div class="card-title">${icon('store')} Betriebe anderer Spieler</div>
-          ${(d.firms || []).length ? html`<div class="stack" style="--gap:.5rem">${d.firms.map((f) => html`<div class="firm"><div class="grow"><b>${f.name}</b><div class="dim small">${tierName[Math.min(2, f.tier)]} · <a href="#/social" data-profile="${f.userId}">${f.owner}</a></div></div>
+          ${(d.firms || []).length ? html`<div class="stack" style="--gap:.5rem">${d.firms.map((f) => html`<div class="firm"><div class="grow"><b data-i18n-skip>${f.name}</b><div class="dim small">${tierName[Math.min(2, f.tier)]} · <a href="#/social" data-profile="${f.userId}">${f.owner}</a></div></div>
             ${v.enabled ? html`<button class="btn sm primary" data-visit="${f.userId}:${f.id}" title="+${v.wellbeing[Math.min(2, f.tier)]} Wohlbefinden">${icon('utensils')} ${money(v.price[Math.min(2, f.tier)], ctx.view.currency)}</button>` : ''}</div>`)}</div><p class="dim small mt">Ein Besuch kostet etwas, hebt deine Stimmung – und der Umsatz landet in der Firmenkasse des Besitzers.</p>`
             : html`<div class="dim small">Noch keine Spielerbetriebe in ${cityName(ctx, d.cityId)}. Eröffne selbst eines – andere Spieler können dich dann besuchen!</div>`}</section>
       </aside></div>`;
@@ -155,7 +155,7 @@ const views = {
   elections(ctx, d) { return renderElections(ctx, d); },
   letters(ctx, d) {
     return html`<div class="row spread wrap" style="margin-bottom:.8rem"><div class="seg">${[['in', 'Posteingang'], ['out', 'Gesendet']].map((x) => html`<a href="#/social" data-box="${x[0]}" class="${d.box === x[0] ? 'on' : ''}">${x[1]}</a>`)}</div><button class="btn primary sm" id="newletter">${icon('pencil')} Neuer Brief</button></div>
-    <div class="table-wrap"><table class="table letters"><tbody>${d.items.map((m) => html`<tr data-letter="${m.id}" class="${m.unread ? 'unread' : ''}" tabindex="0"><td style="width:28px">${m.kind === 'system' ? icon('bell') : icon('mail')}</td><td><b>${m.other}</b> <span class="dim small">${m.kind === 'system' ? '· Mitteilung' : ''}</span><div class="subj">${m.subject}</div><div class="dim small ellip">${m.preview}</div></td><td class="num dim small">${dt(m.at)}</td></tr>`)}
+    <div class="table-wrap"><table class="table letters"><tbody>${d.items.map((m) => html`<tr data-letter="${m.id}" class="${m.unread ? 'unread' : ''}" tabindex="0"><td style="width:28px">${m.kind === 'system' ? icon('bell') : icon('mail')}</td><td><b data-i18n-skip>${m.other}</b> <span class="dim small">${m.kind === 'system' ? '· Mitteilung' : ''}</span><div class="subj" ${m.kind === 'system' ? '' : 'data-i18n-skip'}>${m.subject}</div><div class="dim small ellip" ${m.kind === 'system' ? '' : 'data-i18n-skip'}>${m.preview}</div></td><td class="num dim small">${dt(m.at)}</td></tr>`)}
       ${d.items.length ? '' : html`<tr><td class="dim">Keine Briefe.</td></tr>`}</tbody></table></div>
     ${d.pages > 1 ? html`<div class="row center mt">${d.page > 1 ? html`<button class="btn sm" data-pg="${d.page - 1}">←</button>` : ''}<span class="dim small">Seite ${d.page}/${d.pages}</span>${d.page < d.pages ? html`<button class="btn sm" data-pg="${d.page + 1}">→</button>` : ''}</div>` : ''}`;
   },
@@ -191,12 +191,17 @@ function rivalBox(r) {
         <div class="hint">Teilnehmer können gegenseitig Betriebe ausspionieren, im Preis unterbieten, Mitarbeiter abwerben oder sabotieren (mit Risiko und Strafe). Nur wer selbst teilnimmt, kann Ziel werden. Nach der Anmeldung bleibst du mindestens ${7} Tage dabei.${locked ? ` Ausstieg möglich ab ${new Date(r.lockUntil).toLocaleDateString('de-DE')}.` : ''}${r.banUntil ? ' Du bist derzeit gesperrt.' : ''}</div>`}</div>`;
 }
 
-function chatLine(m) { return `<div class="cl ${m.mine ? 'mine' : ''}" data-id="${m.id}"><span class="t">${hhmm(m.at)}</span> <a href="#/social" class="who" data-profile="${m.userId}">${esc(m.name)}</a>${roleBadgeStr(m.role)} <span class="msg">${esc(m.text)}</span>${m.mine ? '' : `<button class="rep" data-rep="${m.id}" title="Melden" aria-label="Melden">⚑</button>`}</div>`; }
+/** Push-Benachrichtigung öffnet /play?stab=letters#/social – einmalig den passenden Reiter wählen. */
+function openTab() {
+  try { const t = new URLSearchParams(location.search).get('stab'); return ['letters', 'plaza', 'friends', 'jobs', 'market', 'love'].includes(t) ? t : 'rank'; } catch (e) { return 'rank'; }
+}
+
+function chatLine(m) { return `<div class="cl ${m.mine ? 'mine' : ''}" data-id="${m.id}"><span class="t">${hhmm(m.at)}</span> <a href="#/social" class="who" data-i18n-skip data-profile="${m.userId}">${esc(m.name)}</a>${roleBadgeStr(m.role)} <span class="msg" data-i18n-skip>${esc(m.text)}</span>${m.mine ? '' : `<button class="rep" data-rep="${m.id}" title="Melden" aria-label="Melden">⚑</button>`}</div>`; }
 
 export default {
   id: 'social', label: 'Spieler', icon: 'users',
   async load(ctx) {
-    const s = ctx.ui.soc = ctx.ui.soc || { tab: 'rank', cat: 'wealth', scope: 'all', box: 'in', page: 1 };
+    const s = ctx.ui.soc = ctx.ui.soc || { tab: openTab(), cat: 'wealth', scope: 'all', box: 'in', page: 1 };
     const tab = s.tab;
     if (tab === 'rank') return { tab, ...(await api('GET', `/api/social/leaderboard?cat=${s.cat}&scope=${s.scope}`)) };
     if (tab === 'plaza') return { tab, ...(await api('GET', '/api/social/chat')) };
@@ -204,12 +209,12 @@ export default {
     if (tab === 'friends') return { tab, ...(await api('GET', '/api/social/friends')) };
     if (tab === 'jobs') { const [market, mine] = await Promise.all([api('GET', '/api/social/jobs/market'), api('GET', '/api/social/jobs/mine')]); return { tab, market, mine }; }
     if (tab === 'market') { const [mk, au] = await Promise.all([api('GET', '/api/social/market'), api('GET', `/api/social/market/auctions?cityId=${ctx.view.city.id}`)]); return { tab, ...mk, auctions: au.auctions }; }
+    if (tab === 'elections') return { tab, ...(await api('GET', '/api/social/elections')) };
     if (tab === 'exchange') return { tab, ...(await api('GET', '/api/social/exchange')) };
     if (tab === 'love') return { tab, ...(await api('GET', '/api/social/couple')) };
     return { tab: 'me', ...(await api('GET', '/api/social/me')), rival: await api('GET', '/api/social/rivalry').catch(() => null) };
   },
   render(ctx, d) {
-    if (tab === 'elections') return { tab, ...(await api('GET', '/api/social/elections')) };
     const tab = d.tab;
     return html`<div class="panel-head"><div><h2>Spieler</h2><p>Messe dich mit anderen, triff Menschen, handle und plaudere – die Welt ist nicht allein deine.</p></div>${infoBtn(['Alle Spieler leben in derselben Welt: Du siehst ihre Betriebe in deiner Stadt, liest über sie in der Zeitung und kannst mit ihnen schreiben, Geschenke tauschen und einander besuchen.', 'Die Rangliste ist inflationsbereinigt, damit 1960 und 2040 vergleichbar bleiben.', 'Du entscheidest selbst, ob du sichtbar bist (Mein Profil).'], 'Spieler')}</div>
     <div class="tabs soc-tabs">${TABS.map((t) => html`<a href="#/social" data-tab="${t[0]}" class="${tab === t[0] ? 'on' : ''}">${icon(t[2])} ${t[1]}${t[0] === 'letters' && ctx.social && ctx.social.unread ? html`<i class="dot">${ctx.social.unread}</i>` : ''}${t[0] === 'friends' && ctx.social && ctx.social.requests ? html`<i class="dot">${ctx.social.requests}</i>` : ''}</a>`)}</div>
@@ -221,12 +226,12 @@ export default {
     const ro = root.querySelector('#rivopt'); if (ro) ro.addEventListener('change', async () => { try { await api('POST', '/api/social/rivalry/optin', { on: ro.checked }); toast(ro.checked ? 'Du nimmst jetzt am Wettbewerb teil.' : 'Du bist ausgestiegen.'); go(); } catch (e) { toast(e.message, 'warn'); ro.checked = !ro.checked; } });
     if (d.tab === 'market') bindMarket(root, ctx, d, go);
     if (d.tab === 'exchange') bindExchange(root, ctx, d, go);
+    if (d.tab === 'elections') bindElections(root, ctx, d, go);
     if (s.openLetter) { const id = s.openLetter; s.openLetter = null; setTimeout(() => { const row = root.querySelector(`[data-letter="${id}"]`); if (row) row.click(); }, 60); }
     if (s.openProfile) { const uid = s.openProfile; s.openProfile = null; setTimeout(() => openProfile(ctx, uid), 60); }
     on(root, 'click', '[data-tab]', (e, t) => { e.preventDefault(); s.tab = t.dataset.tab; s.page = 1; go(); });
     on(root, 'click', '[data-cat]', (e, t) => { e.preventDefault(); s.cat = t.dataset.cat; go(); });
     on(root, 'click', '[data-scope]', (e, t) => { e.preventDefault(); s.scope = t.dataset.scope; go(); });
-    if (d.tab === 'elections') bindElections(root, ctx, d, go);
     on(root, 'click', '[data-box]', (e, t) => { e.preventDefault(); s.box = t.dataset.box; s.page = 1; go(); });
     on(root, 'click', '[data-pg]', (e, t) => { s.page = Number(t.dataset.pg); go(); });
     on(root, 'click', '[data-profile]', (e, t) => { e.preventDefault(); openProfile(ctx, Number(t.dataset.profile)); });
@@ -236,7 +241,7 @@ export default {
     on(root, 'click', '[data-letter]', async (e, t) => {
       try {
         const { letter } = await api('GET', `/api/social/letter/${t.dataset.letter}`);
-        const m = modal(html`<h3>${icon('mail')} ${letter.subject}</h3><div class="dim small">${letter.mine ? 'An ' + letter.to : 'Von ' + letter.from} · ${new Date(letter.at).toLocaleString('de-DE')}</div><div class="letter-body">${letter.body}</div>
+        const m = modal(html`<h3 ${letter.kind === 'system' ? '' : 'data-i18n-skip'}>${icon('mail')} ${letter.subject}</h3><div class="dim small">${letter.mine ? 'An ' + letter.to : 'Von ' + letter.from} · ${new Date(letter.at).toLocaleString('de-DE')}</div><div class="letter-body" ${letter.kind === 'system' ? '' : 'data-i18n-skip'}>${letter.body}</div>
           <div class="row end mt">${letter.kind !== 'system' && !letter.mine ? html`<button class="btn ghost sm" data-x="report">${icon('flag')} Melden</button>` : ''}<button class="btn ghost sm" data-x="del">${icon('x')} Löschen</button>${letter.kind !== 'system' && !letter.mine && letter.fromId ? html`<button class="btn primary sm" data-x="reply">${icon('send')} Antworten</button>` : ''}<button class="btn sm" data-close="x">Schließen</button></div>`, { onClose: () => { refreshBadge(ctx); } });
         m.el.addEventListener('click', async (ev) => {
           const x = ev.target.closest('[data-x]'); if (!x) return;

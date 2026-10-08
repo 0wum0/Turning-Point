@@ -33,6 +33,26 @@
     </form>
   </section>
 
+  <section class="card stack mt" id="pushcard" data-enabled="<%= pushEnabled ? 1 : 0 %>">
+    <div class="card-title"><%- icon('bell') %> Benachrichtigungen auf dem Handy</div>
+    <p class="dim small mb0">Wenn du Turning Point als App installiert hast, kann dich das Spiel per Push benachrichtigen – auch bei geschlossener App: neue Briefe, Erwähnungen im Stadtplatz-Chat, Kaufangebote, Überbieten bei Versteigerungen, Beziehungsanfragen und Jobangebote. Du kannst das jederzeit ausschalten; jedes Gerät meldest du einzeln an.</p>
+    <div class="alert info" id="push-unsupported" style="display:none"><%- icon('info') %><div>Dieses Gerät oder dieser Browser unterstützt keine Push-Benachrichtigungen. Auf dem iPhone muss die App zuerst über „Zum Home-Bildschirm“ installiert werden.</div></div>
+    <div class="alert warn" id="push-off" style="display:none"><%- icon('info') %><div>Push-Benachrichtigungen sind derzeit vom Betreiber abgeschaltet.</div></div>
+    <div class="row"><button type="button" class="btn primary" id="push-toggle" disabled>Benachrichtigungen einschalten</button><button type="button" class="btn ghost" id="push-test" style="display:none">Testnachricht senden</button><span class="dim small" id="push-state"></span></div>
+    <div id="push-opts" class="stack" style="--gap:.6rem;display:none">
+      <div class="card-title" style="font-size:1rem">Worüber möchtest du informiert werden?</div>
+      <label class="check"><input type="checkbox" data-pcat="letters"> Neue Briefe und Freundschaftsanfragen</label>
+      <label class="check"><input type="checkbox" data-pcat="chat"> Erwähnungen im Stadtplatz-Chat (@Spielername)</label>
+      <label class="check"><input type="checkbox" data-pcat="offers"> Kauf- und Gegenangebote</label>
+      <label class="check"><input type="checkbox" data-pcat="auctions"> Überboten bei Versteigerungen</label>
+      <label class="check"><input type="checkbox" data-pcat="couples"> Beziehungs- und Heiratsanfragen</label>
+      <label class="check"><input type="checkbox" data-pcat="jobs"> Bewerbungen und Jobangebote</label>
+      <label class="check"><input type="checkbox" id="push-quiet"> Ruhezeit: keine Benachrichtigungen von <input type="number" id="push-qfrom" min="0" max="23" style="width:4.2rem"> bis <input type="number" id="push-qto" min="0" max="23" style="width:4.2rem"> Uhr (Ortszeit deines Geräts)</label>
+      <div class="row end"><button type="button" class="btn" id="push-save">Auswahl speichern</button></div>
+    </div>
+  </section>
+  <script src="/js/push-settings.js" defer></script>
+
   <section class="card stack mt">
     <div class="card-title"><%- icon('database') %> Meine Daten (Auskunft &amp; Export)</div>
     <p class="dim small mb0">Du erhältst alle zu deinem Konto gespeicherten Daten als JSON-Datei: Kontodaten, Charaktere und Spielstände, Rangliste, Freunde, Briefe, Chat-Beiträge, Beziehungen, Jobs, IP-Adressen, Käufe und Meldungen. Passwort-Hash und Sicherheits-Token sind nicht enthalten.</p>

@@ -22,6 +22,7 @@
     "helmet": "^8.3.0",
     "multer": "^2.4.0",
     "mysql2": "^3.24.5",
-    "nodemailer": "^10.0.15"
+    "nodemailer": "^10.0.15",
+    "web-push": "^3.6.7"
   }
 }

@@ -26,6 +26,7 @@ router.use(rateLimit({ windowMs: 60 * 1000, limit: Number(process.env.TP_API_RAT
 
 router.use(anticheat.middleware);
 router.use('/social', require('./social'));
+router.use('/push', require('./push'));
 
 router.get('/state', wrap(async (req, res) => {
   const r = await service.getView(req.user.id);

@@ -17,7 +17,7 @@ const SERVER = [
   ['Du hast Villa Sonne für 1.200,00 DM (plus 60,50 DM Gebühren) erworben.', 'You acquired Villa Sonne for 1,200.00 DM (plus 60.50 DM fees).'],
   ['Die Börse ist geschlossen.', 'The stock exchange is closed.'],
   ['Du besitzt nur 3 Anteile.', 'You only own 3 shares.'],
-  ['Börsengang: Bäckerei Koch', 'IPO: Bakery Koch'],
+  ['Börsengang: Bäckerei Koch', 'IPO: Bäckerei Koch'],
   ['Für die Übernahme brauchst du mindestens 50 Prozent der Anteile.', 'For the takeover you need at least 50 percent of the shares.'],
   ['Du wohnst jetzt zur Miete bei Karl Becker.', 'You now rent from Karl Becker.'],
   ['Du kannst nicht bei dir selbst mieten.', 'You cannot rent from yourself.'],

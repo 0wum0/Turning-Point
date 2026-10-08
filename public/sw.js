@@ -25,3 +25,28 @@ self.addEventListener('fetch', (e) => {
     try { const r = await fetch(req); if (r.ok) c.put(req, r.clone()); return r; } catch (err) { const hit = await c.match(req); if (hit) return hit; throw err; }
   }));
 });
+
+/* ---------- Web-Push: Benachrichtigungen aus dem Spiel (Briefe, Chat-Erwähnungen, Angebote …) ---------- */
+self.addEventListener('push', (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (err) { d = { title: 'Turning Point', body: e.data ? e.data.text() : '' }; }
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((cl) => {
+    // Ist das Spiel gerade sichtbar im Vordergrund, zeigt die Glocke im Spiel den Hinweis – keine doppelte Meldung
+    if (cl.some((c) => c.visibilityState === 'visible' && c.focused)) return null;
+    return self.registration.showNotification(String(d.title || 'Turning Point'), {
+      body: String(d.body || ''), tag: String(d.tag || 'tp'), renotify: true,
+      icon: '/img/icon-192.png', badge: '/img/icon-192.png', data: { url: String(d.url || '/play#/social'), tab: d.tab || '' },
+    });
+  }));
+});
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const raw = (e.notification.data && e.notification.data.url) || '/play#/social';
+  const url = new URL(raw, self.location.origin);
+  if (url.origin !== self.location.origin || !url.pathname.startsWith('/play')) return; // nur interne Ziele
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (cl) => {
+    const open = cl.find((c) => new URL(c.url).pathname.startsWith('/play'));
+    if (open) { try { await open.focus(); if (open.navigate) return open.navigate(url.href); } catch (err) { /* neu öffnen */ } }
+    return self.clients.openWindow(url.href);
+  }));
+});
