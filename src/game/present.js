@@ -12,6 +12,7 @@ const { lifespanDays } = require('./engine');
 const { mediumFor } = require('./newspaper');
 const biz = require('./business');
 const society = require('./society');
+const onboarding = require('./onboarding');
 
 const round = (n) => Math.round(n);
 
@@ -173,6 +174,8 @@ function present(world, state, user, now) {
     legacy: { target: settings.get('game.legacy_year'), progress: Math.max(0, Math.min(1, (year - state.startYear) / (settings.get('game.legacy_year') - state.startYear))) },
     death: state.death,
   };
+
+  view.onboarding = onboarding.view(world, state, user, view);
 
   if (state.status === 'dead') {
     const est = estateShare(world, state);

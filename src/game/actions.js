@@ -288,6 +288,8 @@ A.butler = ({ world, state, input }) => {
 };
 
 A.tutorial = ({ state, input }) => { state.flags.tutorial = !!input.on; return { msg: 'ok' }; };
+/** Einsteiger-Hilfen: die Oberfläche meldet Gesehenes (Willkommensdialog, besuchte Seiten); ohne Wirkung auf das Spiel. */
+A.seen = ({ state, input, user }) => { require('./onboarding').markSeen(state, user, String(input.key || '')); return { msg: '' }; };
 
 /* ---------------- Umzug ---------------- */
 A.move = ({ world, state, input, user }) => {

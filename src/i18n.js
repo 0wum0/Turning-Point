@@ -36,6 +36,8 @@ function dictScript(req, res) {
   try { gg = require('./i18n-data/client-G'); } catch (_) { /* optional */ }
   let hh = { exact: {}, patterns: [] };
   try { hh = require('./i18n-data/client-H'); } catch (_) { /* optional */ }
-  res.type('application/javascript').set('Cache-Control', 'public, max-age=300').send('window.TP_I18N=' + JSON.stringify({ exact: Object.assign({}, hh.exact, gg.exact, fx.exact, phase.exact, extra.exact, more.exact, EN.EXACT), patterns: hh.patterns.concat(EN.PATTERNS, extra.patterns || [], more.patterns, phase.patterns, fx.patterns) }) + ';');
+  let ii = { exact: {}, patterns: [] };
+  try { ii = require('./i18n-data/client-I'); } catch (_) { /* optional */ }
+  res.type('application/javascript').set('Cache-Control', 'public, max-age=300').send('window.TP_I18N=' + JSON.stringify({ exact: Object.assign({}, ii.exact, hh.exact, gg.exact, fx.exact, phase.exact, extra.exact, more.exact, EN.EXACT), patterns: ii.patterns.concat(hh.patterns, EN.PATTERNS, extra.patterns || [], more.patterns, phase.patterns, fx.patterns) }) + ';');
 }
 module.exports = { middleware, setLang, dictScript, detect };

@@ -16,6 +16,7 @@ import city from './views/city.js';
 import shop from './views/shop.js';
 import { renderCreate, renderHeir, renderGameOver } from './screens.js';
 import * as audio from './audio.js';
+import { maybeWelcome, openHelp } from './onboarding.js';
 
 const PAGES = [overview, newspaper, map, city, work, business, society, socialView, housing, household, family, legacy, shop];
 const byId = Object.fromEntries(PAGES.map((p) => [p.id, p]));
@@ -122,6 +123,7 @@ function renderHud() {
     <div class="hud-meters">
       ${[['fridge', 'Kühlschrank', 'refrigerator'], ['wellbeing', 'Wohlbefinden', 'smile'], ['rest', 'Erholung', 'moon'], ['health', 'Gesundheit', 'heart-pulse']].map((x) => html`<button class="meter" data-meter="${x[0]}" aria-label="${x[1]}: ${m[x[0]]} %">${ring(m[x[0]], x[1], x[2], { size: 44 })}<span class="mlabel">${x[1]}</span></button>`)}
     </div>
+    <button class="btn ghost sm hud-help" data-help aria-label="Hilfe" title="Hilfe und Einführung"><b>?</b></button>
     <a class="btn ghost sm" href="/account" aria-label="Mein Konto" title="Mein Konto">${icon('user')}</a>
     <button class="btn ghost sm hud-bell" data-chat aria-label="Stadtplatz-Chat" title="Stadtplatz-Chat">${icon('message-circle')}${chatUnread(ctx.social) ? html`<i class="bdot"></i>` : ''}</button>
     <button class="btn ghost sm hud-bell" data-bell aria-label="Benachrichtigungen" title="Benachrichtigungen">${icon('bell')}${ctx.social && ctx.social.total ? html`<i class="bcount">${ctx.social.total > 9 ? '9+' : ctx.social.total}</i>` : ''}</button>
@@ -257,6 +259,7 @@ document.addEventListener('click', (e) => {
   if (mt) { const k = mt.dataset.meter; const lab = { fridge: 'Kühlschrank', wellbeing: 'Wohlbefinden', rest: 'Erholung', health: 'Gesundheit' }[k]; modal(html`<h3>${icon('info')} ${lab}: ${ctx.view.meters[k]} %</h3><ol class="info-steps">${['Was ist das?', 'Warum ist das wichtig?', 'Was kann ich tun?'].map((t, i) => html`<li><div><b>${t}</b>${METER_INFO[k][i]}</div></li>`)}</ol><div class="row end mt"><button class="btn primary" data-close="1">Verstanden</button></div>`); }
   if (e.target.closest('#hud [data-chat]')) openChatModal(ctx);
   if (e.target.closest('#hud [data-bell]')) openBell(ctx);
+  if (e.target.closest('#hud [data-help]')) openHelp(ctx);
   if (e.target.closest('#hud [data-sound]')) { audio.toggle(); renderHud(); }
   const th = e.target.closest('#hud [data-theme-toggle]');
   if (th) { const c = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light'; document.documentElement.setAttribute('data-theme', c); try { localStorage.setItem('tp-theme', c); } catch (_) {} }
@@ -306,6 +309,7 @@ audio.resumeOnGesture();
     setView(st.view);
     render();
     showSync(st.sync);
+    maybeWelcome(ctx);
   } catch (e) {
     app.innerHTML = `<div class="boot-error card"><h2>Das Spiel konnte nicht geladen werden</h2><p class="dim">${esc(e.message)}</p><button class="btn primary" onclick="location.reload()">Neu laden</button></div>`;
   }

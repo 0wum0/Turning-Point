@@ -343,3 +343,17 @@ html { scroll-padding-top: calc(var(--hud-h, 62px) + 10px); }
 .dir-row .grow { min-width: 0; } .dir-row .right { text-align: right; flex: none; } .dir-ic { width: 2.2rem; height: 2.2rem; border-radius: 10px; display: grid; place-items: center; background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent-2); flex: none; }
 .dir-row .linkrow { background: none; border: 0; padding: 0; text-align: left; color: inherit; font: inherit; display: flex; gap: .5rem; align-items: center; cursor: pointer; }
 @media (max-width: 560px) { .dir-row { flex-wrap: wrap; } .dir-row .right { width: 100%; text-align: left; display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; } }
+
+/* ---------- Einsteiger-Erlebnis ---------- */
+.hud-help b { font-family: var(--font-display); font-size: 1.05rem; line-height: 1; }
+.modal.welcome { text-align: center; }
+.wl-top { display: flex; justify-content: space-between; align-items: center; margin: -.4rem -.4rem .2rem 0; }
+.wl-step { font-size: .72rem; letter-spacing: .14em; text-transform: uppercase; color: var(--text-faint); }
+.wl-ic { width: 64px; height: 64px; margin: .4rem auto .8rem; border-radius: 20px; display: grid; place-items: center; background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent-2); border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); }
+.wl-ic .i { width: 30px; height: 30px; }
+.wl-title { justify-content: center; font-family: var(--font-display); font-size: 1.55rem; margin: 0 0 .7rem; }
+.wl-body { text-align: left; line-height: 1.55; } .wl-body p { margin: 0 0 .7rem; }
+.wl-list { list-style: none; padding: 0; margin: 0 0 .8rem; display: grid; gap: .6rem; }
+.wl-list li { display: flex; gap: .7rem; align-items: flex-start; padding: .6rem .75rem; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--border); }
+.wl-list li > .i { width: 22px; height: 22px; flex: none; margin-top: .1rem; color: var(--accent-2); }
+.wl-dots { display: flex; gap: .4rem; justify-content: center; margin-top: .6rem; } .wl-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--border-strong); } .wl-dots i.on { background: var(--accent); width: 22px; border-radius: 99px; }
