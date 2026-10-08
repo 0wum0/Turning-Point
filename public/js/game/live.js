@@ -16,7 +16,7 @@ export function startLive(ctx, hooks) {
         else if (type === 'market' || type === 'exchange') hooks.refreshHud();
       });
     }
-    es.onerror = () => { fails++; if (fails > 6) { es.close(); setTimeout(open, 30000); fails = 0; } };
+    es.onerror = () => { fails++; if (fails > 6 || es.readyState === 2) { es.close(); setTimeout(open, 30000); fails = 0; } }; // CLOSED = Browser versucht es nicht mehr selbst
   }
   ctx.__live = true; open();
 }

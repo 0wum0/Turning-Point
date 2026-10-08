@@ -15,14 +15,15 @@ export async function openInterior(ctx, b, data) {
   const canvas = root.querySelector('canvas'); const tip = root.querySelector('.int-tip'); const panel = root.querySelector('.int-panel'); const mini = root.querySelector('.int-mini');
   let renderer; let alive = true; let rafId = 0; let needs = true; let minigame = null;
   const cleanup = () => {
-    alive = false; cancelAnimationFrame(rafId); window.removeEventListener('resize', onResize); document.removeEventListener('keydown', onKey);
+    alive = false; cancelAnimationFrame(rafId); window.removeEventListener('resize', onResize); document.removeEventListener('keydown', onKey); window.removeEventListener('hashchange', onHash);
     if (renderer) { renderer.dispose(); }
     root.remove(); document.body.style.overflow = '';
   };
   const close = () => { cleanup(); ctx.rerender(); };
   root.querySelector('#intBack').onclick = close;
-  const onKey = (e) => { if (e.key === 'Escape') { if (minigame) stopMini(); else close(); } };
+  const onKey = (e) => { if (e.key === 'Escape' && !document.querySelector('.modal-backdrop')) { if (minigame) stopMini(); else close(); } };
   document.addEventListener('keydown', onKey);
+  const onHash = () => cleanup(); window.addEventListener('hashchange', onHash); // Zurück-Taste / Menü: Innenansicht schließen
 
   const here = data.here;
   // ---- Aufgabenliste (links)

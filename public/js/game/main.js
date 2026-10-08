@@ -37,8 +37,9 @@ function scheduleClock() {
 async function clockTick() {
   if (document.hidden || !ctx.view || ctx.view.status !== 'alive') { clockTimer = setTimeout(clockTick, 15000); return; }
   if (document.querySelector('.modal-backdrop')) { clockTimer = setTimeout(clockTick, 5000); return; }
-  const before = ctx.view.date.day; const r = await refresh();
-  if (r && r.view && r.view.date.day !== before) {
+  const before = ctx.view.date.day; const r = await refresh(true);
+  if (!r) { clockTimer = setTimeout(clockTick, 30000); return; } // offline o. Ä.: ruhig warten statt sekündlich neu zu versuchen
+  if (r.view && r.view.date.day !== before) {
     if (r.view.status !== 'alive') { render(); return; }
     renderHud(); await renderPage(false);
     const fresh = (r.view.notices || []).filter((n) => !n.seen && (n.interrupt || n.level === 'bad'));
@@ -187,7 +188,7 @@ async function act(name, input = {}, opts = {}) {
     if (r.view.status !== 'alive') { render(); return r; }
     if (opts.noRender) renderHud(); else await rerender();
     return r;
-  } catch (e) { toast(e.message, 'bad'); throw e; }
+  } catch (e) { toast(e.message, 'bad'); e.toasted = true; throw e; }
 }
 
 async function advance(days, btn) {
@@ -245,6 +246,11 @@ async function watchAd(purpose) {
 }
 
 /* ---------- Ereignisse ---------- */
+/* Fehlgeschlagene Server-Aufrufe in Klick-Handlern: Meldung wurde bereits gezeigt (act) bzw. wird hier gezeigt – keine „unbehandelte Ablehnung“ */
+window.addEventListener('unhandledrejection', (ev) => {
+  const e = ev.reason; if (!e || !(e.toasted || e.api)) return;
+  ev.preventDefault(); if (!e.toasted) toast(e.message, 'bad');
+});
 document.addEventListener('click', (e) => {
   const g = e.target.closest('[data-go]'); if (g && g.closest('#hud')) { e.preventDefault(); go(g.dataset.go); }
   const mt = e.target.closest('[data-meter]');
@@ -270,13 +276,13 @@ function showSync(sync) {
   }
 }
 
-async function refresh() {
+async function refresh(quiet) {
   try {
     const r = await api('GET', '/api/state');
     ctx.coins = r.coins; ctx.efsPool = r.efsPool;
     setView(r.view);
     return r;
-  } catch (e) { toast(e.message, 'bad'); return null; }
+  } catch (e) { if (!quiet) toast(e.message, 'bad'); return null; }
 }
 
 document.addEventListener('visibilitychange', async () => {
@@ -287,7 +293,7 @@ document.addEventListener('visibilitychange', async () => {
 });
 setInterval(async () => {
   if (document.visibilityState !== 'visible' || !ctx.view || ctx.view.status !== 'alive' || document.querySelector('.modal-backdrop')) return;
-  const r = await refresh(); if (r && r.view) renderHud();
+  const r = await refresh(true); if (r && r.view) renderHud();
 }, 60000);
 
 /* ---------- Start ---------- */

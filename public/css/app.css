@@ -176,7 +176,7 @@ input[type=checkbox], input[type=radio] { accent-color: var(--accent); width: 1.
 .bar { height: 8px; background: var(--surface-2); border-radius: 99px; overflow: hidden; border: 1px solid var(--border); }
 .bar > i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width .8s var(--ease); }
 .bar.good > i { background: linear-gradient(90deg, #36b387, var(--good)); } .bar.bad > i { background: linear-gradient(90deg, #d84a4a, var(--bad)); }
-.kv { display: grid; grid-template-columns: auto 1fr; gap: .35rem 1rem; font-size: .92rem; } .kv dt { color: var(--text-dim); } .kv dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.kv { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .35rem 1rem; font-size: .92rem; } .kv dt { color: var(--text-dim); } .kv dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
 .pos { color: var(--good); } .neg { color: var(--bad); }
 .table { width: 100%; border-collapse: collapse; font-size: .9rem; } .table th { text-align: left; font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; color: var(--text-faint); padding: .6rem .8rem; border-bottom: 1px solid var(--border); white-space: nowrap; }
 .table td { padding: .7rem .8rem; border-bottom: 1px solid var(--border); vertical-align: middle; } .table tr:hover td { background: var(--surface); } .table .num { text-align: right; font-variant-numeric: tabular-nums; }

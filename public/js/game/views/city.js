@@ -50,7 +50,8 @@ export default {
     const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reduce && svg.pauseAnimations) svg.pauseAnimations();
     const vis = () => { if (!svg.isConnected) { document.removeEventListener('visibilitychange', vis); return; } if (svg.pauseAnimations && svg.unpauseAnimations) { if (document.hidden || reduce) svg.pauseAnimations(); else svg.unpauseAnimations(); } };
-    document.addEventListener('visibilitychange', vis);
+    if (window.__cityVis) document.removeEventListener('visibilitychange', window.__cityVis); // keine Ansammlung bei jedem Nachladen
+    window.__cityVis = vis; document.addEventListener('visibilitychange', vis);
     const ptrs = new Map(); let dragged = false; let pinch = 0;
     svg.addEventListener('pointerdown', (e) => { svg.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, [e.clientX, e.clientY]); dragged = false; if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = Math.hypot(a[0] - b[0], a[1] - b[1]); } });
     svg.addEventListener('pointermove', (e) => {

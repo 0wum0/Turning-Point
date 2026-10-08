@@ -39,8 +39,9 @@ export async function openChatModal(ctx) {
       const on_ = m.el.querySelector('#cm-online'); if (on_) on_.textContent = r.online.length;
     } catch (_) { /* nächster Versuch */ }
   }
-  window.addEventListener('tp-live-chat', () => { if (log.isConnected && !document.hidden) poll(); });
-  const iv = setInterval(() => { if (!log.isConnected) { clearInterval(iv); return; } if (!document.hidden) poll(); }, 4000);
+  const onLive = () => { if (!log.isConnected) { window.removeEventListener('tp-live-chat', onLive); return; } if (!document.hidden) poll(); };
+  window.addEventListener('tp-live-chat', onLive);
+  const iv = setInterval(() => { if (!log.isConnected) { clearInterval(iv); window.removeEventListener('tp-live-chat', onLive); return; } if (!document.hidden) poll(); }, 4000);
   form.addEventListener('submit', async (e) => {
     e.preventDefault(); const text = input.value.trim(); if (!text) return; input.disabled = true;
     try { await api('POST', '/api/social/chat', { cityId: d.cityId, text }); input.value = ''; await poll(); } catch (err) { toast(err.message, 'warn'); } finally { input.disabled = false; input.focus(); }

@@ -8,7 +8,8 @@
   var csrf = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
   function api(method, url, body) {
     return fetch(url, { method: method, credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf }, body: body ? JSON.stringify(body) : undefined })
-      .then(function (r) { return r.json().catch(function () { return { ok: false, error: 'HTTP ' + r.status }; }); });
+      .then(function (r) { return r.json().catch(function () { return { ok: false, error: 'HTTP ' + r.status }; }); })
+      .catch(function () { return { ok: false, error: 'network' }; }); // keine Verbindung: Fehlermeldung statt unbehandelter Ablehnung
   }
   var btn = $('push-toggle'), stateEl = $('push-state'), opts = $('push-opts'), testBtn = $('push-test');
   var supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;

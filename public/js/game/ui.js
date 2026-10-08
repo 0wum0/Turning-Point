@@ -58,12 +58,12 @@ export async function api(method, url, body) {
   let res;
   try {
     res = await fetch(url, { method, headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf() }, body: body ? JSON.stringify(body) : undefined, credentials: 'same-origin' });
-  } catch (e) { throw new Error('Keine Verbindung zum Server.'); }
+  } catch (e) { const err = new Error('Keine Verbindung zum Server.'); err.api = true; throw err; }
   let data = null;
   try { data = await res.json(); } catch (_) { /* leer */ }
   if (res.status === 503 && data && data.retry && !api._retried) { api._retried = true; await new Promise((r) => setTimeout(r, 2500)); try { return await api(method, url, body); } finally { api._retried = false; } }
   if (res.status === 401) { location.href = '/login?next=/play'; throw new Error('Bitte anmelden.'); }
-  if (!res.ok || !data || data.ok === false) throw new Error((data && data.error) || `Fehler ${res.status}`);
+  if (!res.ok || !data || data.ok === false) { const err = new Error((data && data.error) || `Fehler ${res.status}`); err.api = true; throw err; }
   return data;
 }
 
@@ -81,14 +81,32 @@ export function toast(msg, level = 'good') {
 }
 
 /* ---------- Modal ---------- */
+let modalSeq = 0;
 export function modal(content, { wide = false, dismissable = true, onClose } = {}) {
   const back = document.createElement('div'); back.className = 'modal-backdrop';
   const box = document.createElement('div'); box.className = `card modal${wide ? ' wide' : ''}`; box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true');
   box.innerHTML = toStr(content);
   back.appendChild(box); document.body.appendChild(back);
   document.body.style.overflow = 'hidden';
-  const close = (v) => { back.remove(); if (!document.querySelector('.modal-backdrop')) document.body.style.overflow = ''; document.removeEventListener('keydown', onKey); if (onClose) onClose(v); };
-  const onKey = (e) => { if (e.key === 'Escape' && dismissable) close(); };
+  const opener = document.activeElement; let closed = false;
+  const h = box.querySelector('h1, h2, h3, h4'); if (h) { if (!h.id) h.id = `mh${++modalSeq}`; box.setAttribute('aria-labelledby', h.id); }
+  const close = (v) => {
+    if (closed) return; closed = true; back.remove(); if (!document.querySelector('.modal-backdrop')) document.body.style.overflow = ''; document.removeEventListener('keydown', onKey);
+    if (opener && opener.isConnected && typeof opener.focus === 'function' && !document.querySelector('.modal-backdrop')) { try { opener.focus({ preventScroll: true }); } catch (_) { /* egal */ } }
+    if (onClose) onClose(v);
+  };
+  const onKey = (e) => {
+    const top = [...document.querySelectorAll('.modal-backdrop')].pop(); if (top !== back) return; // nur das oberste Fenster reagiert
+    if (e.key === 'Escape' && dismissable) { close(); return; }
+    if (e.key === 'Tab') { // Fokus bleibt im Dialog
+      const f = [...box.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]):not([type=hidden]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')].filter((x) => x.offsetParent !== null);
+      if (!f.length) { e.preventDefault(); return; }
+      const first = f[0]; const last = f[f.length - 1];
+      if (!box.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+      else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  };
   document.addEventListener('keydown', onKey);
   if (dismissable) back.addEventListener('mousedown', (e) => { if (e.target === back) close(); });
   box.addEventListener('click', (e) => { const c = e.target.closest('[data-close]'); if (c) close(c.dataset.close); });
