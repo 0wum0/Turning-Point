@@ -109,6 +109,10 @@ const pageFresh = (pl) => pl.page.waitForFunction(() => { const p = document.get
 
 async function nav(pl, id) {
   await closeModals(pl);
+  if (await pl.page.evaluate((x) => location.hash === `#/${x}`, id)) { // schon dort: kein hashchange, also neu laden über Wechsel
+    await pl.page.waitForFunction(() => !document.querySelector('#page .skel'));
+    return;
+  }
   await pageMarkOld(pl);
   await pl.page.click(`#side a[data-nav=${id}]`);
   await pageFresh(pl);
@@ -117,9 +121,10 @@ async function nav(pl, id) {
 /** Tab im Bereich „Spieler“ öffnen. */
 async function socialTab(pl, tab) {
   await nav(pl, 'social');
-  await pageMarkOld(pl);
   await pl.page.click(`.soc-tabs [data-tab=${tab}]`);
-  await pageFresh(pl);
+  await pl.page.waitForSelector(`.soc-tabs [data-tab=${tab}].on`);
+  await pl.page.waitForFunction(() => !document.querySelector('#page .skel'));
+  await sleep(250);
 }
 
 async function toastText(pl) { return pl.page.locator('.toasts .toast').last().innerText().catch(() => ''); }
@@ -141,3 +146,5 @@ async function api(pl, method, url, body) {
 }
 
 module.exports = { pageMarkOld, pageFresh, closeModals, ROOT, BASE, PORT, DBX, loadPlaywright, startApp, newPlayer, register, login, logout, createCharacter, nav, socialTab, toastText, setMoney, userId, api, sleep };
+
+module.exports.json = (v) => (typeof v === 'string' ? JSON.parse(v) : v);

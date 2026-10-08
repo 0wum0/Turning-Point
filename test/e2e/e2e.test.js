@@ -227,7 +227,7 @@ describe('E2E Turning Point', { concurrency: false }, () => {
         await confirmYes(a);
         await a.page.waitForFunction((n) => document.querySelectorAll('.toasts .toast').length >= n, i);
       }
-      const props = JSON.parse((await app.sql('SELECT JSON_EXTRACT(state, "$.properties") p FROM characters WHERE user_id = ?', [aId]))[0].p);
+      const props = L.json((await app.sql('SELECT JSON_EXTRACT(state, "$.properties") p FROM characters WHERE user_id = ?', [aId]))[0].p);
       assert.equal(props.length, 4);
       noErrors(a);
     });
@@ -262,7 +262,7 @@ describe('E2E Turning Point', { concurrency: false }, () => {
     });
 
     it('Erneut mieten und von der Eigentümerin kündigen lassen', async () => {
-      await L.nav(a, 'housing'); await a.page.waitForSelector('[data-lplayers="1"]:not([disabled])');
+      await a.page.reload(); await a.page.waitForSelector('#page'); await L.nav(a, 'housing'); await a.page.waitForSelector('[data-lplayers="1"]:not([disabled])');
       await L.nav(b, 'city'); await b.page.click('[data-dtab=houses]');
       await b.page.click(`[data-rentp$=":1"]`); await confirmYes(b);
       await b.page.waitForFunction(() => /eingezogen/.test(document.body.innerText));
@@ -292,7 +292,7 @@ describe('E2E Turning Point', { concurrency: false }, () => {
       await a.page.waitForFunction(() => /angenommen|Abgeschlossen/.test(document.body.innerText) || !document.querySelector('[data-moff=accept]'));
       const [o] = await app.sql("SELECT status FROM market_offers WHERE seller_id = ? ORDER BY id DESC LIMIT 1", [aId]);
       assert.equal(o.status, 'accepted');
-      const bProps = JSON.parse((await app.sql('SELECT JSON_EXTRACT(state, "$.properties") p FROM characters WHERE user_id = ?', [bId]))[0].p);
+      const bProps = L.json((await app.sql('SELECT JSON_EXTRACT(state, "$.properties") p FROM characters WHERE user_id = ?', [bId]))[0].p);
       assert.equal(bProps.length, 1);
       noErrors(a, b);
     });
@@ -320,14 +320,13 @@ describe('E2E Turning Point', { concurrency: false }, () => {
       await a.page.waitForSelector('[data-act=buyBiz]:not([disabled])');
       await a.page.click('[data-act=buyBiz]:not([disabled]) >> nth=0');
       if (await a.page.locator('.modal [data-close=yes]').count()) await confirmYes(a);
-      await a.page.waitForFunction(() => /Gekauft|Eröffnet|gekauft|übernimmst|kaufst/i.test(document.body.innerText));
+      for (let i = 0; i < 30; i++) { const [{ c }] = await app.sql("SELECT JSON_LENGTH(JSON_EXTRACT(state, '$.companies')) c FROM characters WHERE user_id = ?", [aId]); if (Number(c) > 0) break; await L.sleep(300); }
       await L.nav(a, 'business');
       await a.page.waitForSelector('[data-ipo]');
       await a.page.click('[data-ipo]');
       await a.page.click('#ip-go');
-      await a.page.waitForFunction(() => /Börse|Börsengang/.test(document.body.innerText));
-      const [{ n }] = await app.sql("SELECT COUNT(*) n FROM stocks WHERE user_id = ? AND status = 'active'", [aId]);
-      assert.equal(n, 1);
+      let n = 0; for (let i = 0; i < 30 && !n; i++) { n = (await app.sql("SELECT COUNT(*) n FROM stocks WHERE user_id = ? AND status = 'active'", [aId]))[0].n; if (!n) await L.sleep(300); }
+      assert.equal(n, 1, `Börsengang: ${await L.toastText(a)}`);
       await L.socialTab(b, 'exchange');
       await b.page.reload(); await b.page.waitForSelector('#hud .hud-id'); await L.socialTab(b, 'exchange');
       await b.page.waitForSelector('[data-xbuy]');
@@ -338,6 +337,97 @@ describe('E2E Turning Point', { concurrency: false }, () => {
       const [{ sh }] = await app.sql('SELECT COALESCE(SUM(shares),0) sh FROM stock_holdings WHERE user_id = ?', [bId]);
       assert.ok(Number(sh) > 0 || (await app.sql("SELECT COUNT(*) n FROM stock_orders WHERE user_id = ? AND status = 'open'", [bId]))[0].n > 0);
       noErrors(a, b);
+    });
+  });
+
+  describe('Familie: Adoption', () => {
+    it('Adoptions-Schaltfläche erscheint für ein verheiratetes, zusammenlebendes Paar (mit Grund, wenn gesperrt)', async () => {
+      const aId = await L.userId(app, A.username);
+      const none = await L.api(a, 'POST', '/api/action/adopt', {});
+      assert.equal(none.status, 400, 'ohne Partner nicht möglich');
+      const partner = { personId: 'p-e2e', name: 'Paul Partner', gender: 'm', born: -9000, pkey: 'baecker', profession: 'Bäcker', sat: 80, married: true, cohabit: true, giftBoost: 0, unhappyDays: 0, since: 0 };
+      await app.sql("UPDATE characters SET state = JSON_SET(state, '$.partner', JSON_COMPACT(?)) WHERE user_id = ? AND status = 'alive'", [JSON.stringify(partner), aId]);
+      await a.page.reload(); await a.page.waitForSelector('#hud .hud-id');
+      await L.nav(a, 'family');
+      await a.page.waitForSelector('[data-p=adopt], [data-p=adoptCancel]');
+      assert.match(await text(a), /Kind adoptieren|Adoption läuft/);
+      noErrors(a);
+    });
+  });
+
+  describe('Sicherheit (live)', () => {
+    it('POST ohne CSRF-Token wird abgelehnt, mit Token nicht', async () => {
+      const r = await a.page.evaluate(async () => (await fetch('/api/social/profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })).status);
+      assert.equal(r, 403);
+      const ok = await L.api(a, 'POST', '/api/social/profile', { bio: 'Hallo', public: true });
+      assert.equal(ok.status, 200);
+    });
+
+    it('Fremde Orders, Angebote, Mieter und Briefe lassen sich nicht anfassen (IDOR)', async () => {
+      const aId = await L.userId(app, A.username);
+      const [ord] = await app.sql("SELECT id FROM stock_orders WHERE user_id = ? AND status = 'open' LIMIT 1", [aId]);
+      if (ord) { const r = await L.api(b, 'POST', '/api/social/exchange/cancel', { id: ord.id }); assert.equal(r.status, 400); }
+      const w = await L.api(a, 'POST', '/api/social/market/withdraw', { id: 1 }); // Angebot 1 stammt von Bernd
+      assert.equal(w.status, 400, 'fremdes Angebot nicht zurückziehbar');
+      const ev = await L.api(b, 'POST', '/api/social/lease/evict', { propId: 1 });
+      assert.equal(ev.status, 400);
+      const [m] = await app.sql("SELECT id FROM messages WHERE kind = 'letter' LIMIT 1");
+      const c = await L.api(a, 'GET', `/api/social/letter/${m.id}`);
+      assert.equal(c.status, 200); // eigener Brief
+      const other = await L.newPlayer(browser, app, 'carol');
+      await L.register(other, { username: 'carol_e2e', email: 'carol@e2e.test', password: 'carol-pass-123' });
+      const x = await L.api(other, 'GET', `/api/social/letter/${m.id}`);
+      assert.equal(x.status, 400, 'Brief eines Dritten darf nicht lesbar sein');
+      await other.ctx.close();
+    });
+
+    it('Links im Chat und Spielernamen mit Sonderzeichen werden abgelehnt', async () => {
+      const r = await L.api(a, 'POST', '/api/social/chat', { cityId: 0, text: 'Besuche www.spam-seite.de jetzt' });
+      assert.equal(r.status, 400);
+      const p = await L.newPlayer(browser, app, 'evil');
+      await p.page.goto(`${app.base}/register`);
+      await p.page.fill('#username', '<script>x'); await p.page.fill('#email', 'evil@e2e.test'); await p.page.fill('#password', 'passwort-123');
+      await p.page.check('input[name=terms]'); await p.page.click('button[type=submit]');
+      assert.match(await text(p, '.auth-card'), /3–24 Zeichen/);
+      await p.ctx.close();
+    });
+
+    it('Sitzungs-Cookie: HttpOnly und SameSite', async () => {
+      const cookies = await a.ctx.cookies();
+      const c = cookies.find((x) => x.name === 'tp.sid');
+      assert.ok(c.httpOnly); assert.equal(c.sameSite, 'Lax');
+    });
+
+    it('Anmeldeversuche werden gebremst (429)', async () => {
+      const p = await L.newPlayer(browser, app, 'brute');
+      let last = 0;
+      for (let i = 0; i < 14; i++) {
+        const r = await p.ctx.request.post(`${app.base}/login`, { form: { login: 'gibt_es_nicht', password: 'x' + i }, failOnStatusCode: false, headers: {} });
+        last = r.status(); if (last === 429) break;
+        if (last === 403) { // CSRF: Token holen
+          await p.page.goto(`${app.base}/login`); const t = await p.page.getAttribute('input[name=_csrf]', 'value');
+          const r2 = await p.ctx.request.post(`${app.base}/login`, { form: { _csrf: t, login: 'gibt_es_nicht', password: 'x' + i }, failOnStatusCode: false }); last = r2.status(); if (last === 429) break;
+        }
+      }
+      assert.equal(last, 429);
+      await p.ctx.close();
+    });
+  });
+
+  describe('Englische Oberfläche', () => {
+    it('Registrieren, Charakter anlegen, Navigation und Texte auf Englisch', async () => {
+      const e = await L.newPlayer(browser, app, 'erin', 'en');
+      await e.page.goto(`${app.base}/lang/en?next=/register`);
+      await L.register(e, { username: 'erin_e2e', email: 'erin@e2e.test', password: 'erin-pass-1234' });
+      await L.createCharacter(e, { first: 'Erin', last: 'Evans', city: 'Hamburg', gender: 'f' });
+      await e.page.waitForFunction(() => document.documentElement.lang === 'en');
+      await e.page.waitForFunction(() => /Newspaper|Overview/.test(document.querySelector('#side').innerText));
+      await L.nav(e, 'newspaper');
+      assert.match(await text(e), /Jobs|Housing|News/i);
+      await L.nav(e, 'household');
+      assert.doesNotMatch(await text(e), /Kühlschrank/);
+      noErrors(e);
+      await e.ctx.close();
     });
   });
 });

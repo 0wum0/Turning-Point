@@ -122,6 +122,19 @@ npm test                                           # Engine-Tests (ohne Datenban
 
 Benötigt MySQL ≥ 5.7 oder MariaDB ≥ 10.3 (utf8mb4).
 
+## 3b. Tests
+
+- `npm test` – schnelle Unit-Tests (ohne Datenbank), inkl. `test/security.test.js` und `test/maintenance.test.js`.
+- `npm run test:e2e` – Browser-Rundgang mit zwei frischen Spielern (Registrieren, Charakter, Essen, Wohnen, Job, Vorspulen, Karte, Zeitung, Stadtplatz-Chat, Briefe, Glocke, Vermieten an Spieler, Marktangebot, Auktion, Börsengang und Aktienkauf, Adoption, Sicherheitsprüfungen, englische Oberfläche). Nicht Teil von `npm test`.
+  - Voraussetzungen: laufende MariaDB/MySQL, [Playwright](https://playwright.dev) mit Chromium (`TP_PLAYWRIGHT_PATH` zeigt auf das Paket, falls es nicht im Modulpfad liegt; `PLAYWRIGHT_BROWSERS_PATH` für den Browser-Ordner).
+  - Die Suite legt eine **eigene** Datenbank an (Standard `tp_e2e`, wird jedes Mal gelöscht und neu erzeugt) und startet die App selbst auf Port 3290 mit eigenem Daten-Ordner – ein laufender Entwicklungsserver bleibt unberührt.
+  - Einstellungen per Umgebung: `TP_E2E_PORT`, `TP_E2E_DB_NAME`, `TP_E2E_DB_USER`/`TP_E2E_DB_PASS`/`TP_E2E_DB_HOST`; für das Anlegen der Datenbank `TP_E2E_ADMIN_USER`/`TP_E2E_ADMIN_PASS` (Standard: `root` über `/run/mysqld/mysqld.sock`, sonst zusätzlich `TP_E2E_ADMIN_HOST`). `TP_E2E_HEADED=1` zeigt den Browser.
+  - Für die Tests sind Alters- und IP-Sperren zwischen den Testkonten gelockert (siehe `test/e2e/prepare-db.js`).
+
+## 3c. Aufräumen alter Daten
+
+`src/lib/maintenance.js` löscht täglich (in kleinen `DELETE … LIMIT`-Schritten) alte Chat-Nachrichten (30 Tage), gelesene Briefe (180), Zeitungsmeldungen (90), Weltereignisse (60), beendete Angebote/Versteigerungen/Gebote (30), erledigte Börsenorders (30), Börsengeschäfte (180), beendete Mietverträge (90) sowie abgelaufene und anonyme Sitzungen. Die Fristen stehen unter Admin → Einstellungen → „Aufräumen“.
+
 ## 4. Architektur in Kürze
 
 ```
