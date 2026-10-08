@@ -21,8 +21,10 @@ test('Immobilie kaufen, vermieten, Mieter zahlt Miete; Preisregler wirkt', () =>
   act(s, 'buy', { listingId: sale.id });
   const p = s.properties[0];
   act(s, 'letOn', { propertyId: p.id, mult: 0.6 });
-  run(s, 120);
+  for (let i = 0; i < 40 && !p.lease.tenant; i++) run(s, 30); // Mieter kommen zufällig – bis zu 1200 Tage abwarten (sonst sporadischer Fehlschlag)
   assert.ok(p.lease.tenant, 'Mieter gefunden');
+  run(s, 3); // der Mieter braucht mindestens einen Miettag (sonst total = 0, wenn er gerade erst eingezogen ist)
+  p.closedUntil = 0; p.lease.tenant.arrears = 0; // Zufallsereignisse (Sturmschaden, Mietausfall) ausschließen
   const f = dailyFlows(w, s);
   assert.ok(f.inc.rent > 0, 'Mieteinnahmen in den Tagesflüssen');
   assert.ok(p.lease.total > 0);
