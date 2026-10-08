@@ -250,11 +250,13 @@ const LINK_RE = /(?:https?:\/\/|www\.|\b[a-z0-9-]{2,}\.(?:com|net|org|de|info|bi
 const hasLink = (t) => LINK_RE.test(String(t == null ? '' : t));
 async function accountAgeHours(userId) { const u = await db.one('SELECT created_at, mute_until FROM users WHERE id = ?', [userId]); return u ? { h: (Date.now() - new Date(u.created_at).getTime()) / 3600000, mute: Number(u.mute_until || 0) } : { h: 0, mute: 0 }; }
 async function sendSystemLetter(to, subject, body, fromUser = null) {
+  require('./live').publish('social', {}, to);
   await db.query("INSERT INTO messages (from_user, to_user, kind, subject, body) VALUES (?,?,?,?,?)", [fromUser, to, 'system', subject, body]);
   const cat = push.categoryFor(subject); push.fire(to, { title: subject, body, cat, tag: cat }); // Web-Push (nie blockierend, nie Fehler)
 }
 
 function notifyLetter(from, to) {
+  require('./live').publish('social', {}, to);
   db.one('SELECT ps.name FROM player_stats ps WHERE ps.user_id = ?', [from]).then((ps) => push.fire(to, { title: 'Neuer Brief', body: ps && ps.name ? `Von ${ps.name}` : 'Du hast Post bekommen.', cat: 'letters', tab: 'letters', tag: 'letter', en: { title: 'New letter', body: ps && ps.name ? `From ${ps.name}` : 'You have new mail.' } })).catch(() => {});
 }
 async function sendLetter(from, to, subject, body) {
@@ -388,6 +390,7 @@ async function chatSend(userId, cityId, text) {
   const ps = await db.one('SELECT name FROM player_stats WHERE user_id = ?', [userId]);
   const r = await db.query('INSERT INTO chat_messages (city_id, user_id, name, text) VALUES (?,?,?,?)', [cityId, userId, ps ? ps.name : 'Unbekannt', mask(t)]);
   notifyMentions(cityId, userId, ps ? ps.name : 'Jemand', t);
+  require("./live").publish("chat", { cityId });
   return r.insertId;
 }
 

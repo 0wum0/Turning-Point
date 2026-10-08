@@ -308,4 +308,5 @@ function start() {
   setInterval(() => { refresh().catch((e) => log.warn(`[exchange] ${e.message}`)); }, 3600000).unref();
 }
 
-module.exports = { fairPerShare, makerSpreadPct, capShares, sellableToMaker, dropWash, place, cancel, ipo, delist, takeover, flushDividends, dividend, reconcile, refresh, overview, history, start };
+const live = require('./live');
+module.exports = live.announce({ fairPerShare, makerSpreadPct, capShares, sellableToMaker, dropWash, place, cancel, ipo, delist, takeover, flushDividends, dividend, reconcile, refresh, overview, history, start }, ['place', 'cancel', 'ipo', 'delist', 'takeover'], 'exchange');

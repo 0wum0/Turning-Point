@@ -351,4 +351,5 @@ function start() {
   setInterval(() => { expire().catch(() => {}); }, 3600000).unref();
 }
 
-module.exports = { refreshSupply, start, makeOffer, respondOffer, withdrawOffer, setAsk, buyNow, startAuction, bid, settleAuctions, estate, overview, auctions, executeSale, detach, attach, valueReal };
+const live = require('./live');
+module.exports = live.announce({ refreshSupply, start, makeOffer, respondOffer, withdrawOffer, setAsk, buyNow, startAuction, bid, settleAuctions, estate, overview, auctions, executeSale, detach, attach, valueReal }, ['makeOffer', 'respondOffer', 'withdrawOffer', 'setAsk', 'buyNow', 'startAuction', 'bid', 'settleAuctions'], 'market');

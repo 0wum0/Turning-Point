@@ -102,4 +102,4 @@ async function reconcile(conn, user, state, world) {
   }
 }
 
-module.exports = { take, leave, evict, reconcile };
+module.exports = require('./live').announce({ take, leave, evict, reconcile }, ['take', 'leave', 'evict'], 'directory');

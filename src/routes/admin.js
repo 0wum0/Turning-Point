@@ -230,7 +230,7 @@ const GROUPS = [
     ['site.contact_email', 'Kontakt-E-Mail', 'text'], ['site.legal_name', 'Betreiber (Name/Firma)', 'text'], ['site.legal_address', 'Betreiber-Anschrift', 'textarea'],
   ] },
   { id: 'efs', title: 'Spiel & EFS', icon: 'zap', fields: [
-    ['efs.daily_auto', 'EFS pro realem Tag (automatisch)', 'int', 'Standard: 50. Ein EFS = ein Spieltag.'], ['efs.login_bonus', 'EFS-Bonus beim ersten Login des Tages', 'int', 'Standard: 50.'],
+    ['efs.daily_auto', 'EFS pro realem Tag (automatisch)', 'int', 'Standard: 365 (ein realer Tag = ein Spieljahr). Ein EFS = ein Spieltag.'], ['efs.login_bonus', 'EFS-Bonus beim ersten Login des Tages', 'int', 'Standard: 50.'],
     ['efs.active_daily_cap', 'Max. Sammel-EFS (Karte) pro Tag', 'int'], ['efs.awards', 'EFS-Belohnungen für Lebensfortschritte (JSON)', 'json'],
     ['game.start_year', 'Startjahr der Simulation', 'int', 'Standard: 1945'], ['game.start_age', 'Startalter des Charakters', 'int', 'Standard: 20'],
     ['game.start_money_cents', 'Startkapital in Cent', 'int', '4000 = 40,00 DM'], ['game.max_children', 'Maximale Kinderzahl', 'int'],

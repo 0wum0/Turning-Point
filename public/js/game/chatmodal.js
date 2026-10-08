@@ -39,6 +39,7 @@ export async function openChatModal(ctx) {
       const on_ = m.el.querySelector('#cm-online'); if (on_) on_.textContent = r.online.length;
     } catch (_) { /* nächster Versuch */ }
   }
+  window.addEventListener('tp-live-chat', () => { if (log.isConnected && !document.hidden) poll(); });
   const iv = setInterval(() => { if (!log.isConnected) { clearInterval(iv); return; } if (!document.hidden) poll(); }, 4000);
   form.addEventListener('submit', async (e) => {
     e.preventDefault(); const text = input.value.trim(); if (!text) return; input.disabled = true;

@@ -135,7 +135,7 @@ const DEFAULTS = {
   'site.legal_name': LEGAL.BETREIBER,
   'site.legal_address': LEGAL.ANSCHRIFT,
 
-  'efs.daily_auto': 50,          // automatisch pro realem Tag
+  'efs.daily_auto': 365,         // automatisch pro realem Tag (1 realer Tag = 1 Spieljahr)
   'efs.login_bonus': 50,         // zusätzlich beim ersten Login des Tages
   'efs.active_daily_cap': 220,   // max. Sammel-EFS (Karte/Funde) pro realem Tag
   'efs.awards': {                // einmalige Fortschrittsbelohnungen

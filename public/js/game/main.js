@@ -39,6 +39,7 @@ function go(route) {
   if (!shellActive()) { history.replaceState(null, '', `#/${route}`); render(); return; }
   if (location.hash === `#/${route}`) rerender(); else location.hash = `#/${route}`;
 }
+import { startLive } from './live.js';
 window.addEventListener('hashchange', () => { ctx.route = routeFromHash(); if (shellActive()) { renderHud(); renderPage(true); } });
 const shellActive = () => !!document.getElementById('page');
 
@@ -54,6 +55,7 @@ function render() {
   }
   renderHud(); trackHud(); renderPage(true);
   startSocialPoll();
+  startLive(ctx, { pollSocial, softRefresh: () => renderPage(false), refreshHud: async () => { const r = await refresh(); if (r && r.view) renderHud(); } });
 }
 
 let socialTimer = 0;
@@ -125,17 +127,21 @@ function showAnnouncement(root) {
 let pageSeq = 0;
 async function renderPage(animate) {
   let root = document.getElementById('page'); if (!root) return;
-  // Frisches Element, damit Event-Listener früherer Renderings nicht kumulieren
-  const fresh = root.cloneNode(false); root.replaceWith(fresh); root = fresh;
   const page = byId[ctx.route]; const my = ++pageSeq;
   const scroll = animate ? 0 : window.scrollY;
   let data = null;
+  // Seitenwechsel: sofort leeres Gerüst mit Platzhaltern. Aktualisierung derselben Seite: alter Inhalt bleibt stehen, bis der neue fertig ist (kein Flackern).
+  if (animate) { const f0 = root.cloneNode(false); root.replaceWith(f0); root = f0; if (page.load) root.innerHTML = '<div class="skel" style="height:220px"></div><div class="skel" style="height:320px;margin-top:1rem"></div>'; }
   if (page.load) {
-    if (animate) root.innerHTML = '<div class="skel" style="height:220px"></div><div class="skel" style="height:320px;margin-top:1rem"></div>';
-    try { data = await page.load(ctx); } catch (e) { if (my !== pageSeq) return; mount(root, html`<div class="alert bad">${icon('circle-alert')}<div>${e.message}</div></div>`); return; }
+    try { data = await page.load(ctx); } catch (e) { if (my !== pageSeq) return; mount(document.getElementById('page') || root, html`<div class="alert bad">${icon('circle-alert')}<div>${e.message}</div></div>`); return; }
     if (my !== pageSeq) return;
   }
+  // Fokus und Eingaben merken, damit ein Nachladen nichts unterbricht
+  const ae = document.activeElement; const keep = ae && ae.id && root.contains(ae) ? { id: ae.id, s: ae.selectionStart, e: ae.selectionEnd, v: ae.value } : null;
+  // Frisches Element, damit Event-Listener früherer Renderings nicht kumulieren
+  const cur = document.getElementById('page') || root; const fresh = cur.cloneNode(false); cur.replaceWith(fresh); root = fresh;
   mount(root, page.render(ctx, data));
+  if (keep) { const el = document.getElementById(keep.id); if (el) { if (keep.v != null && 'value' in el && !el.value) el.value = keep.v; el.focus({ preventScroll: true }); try { el.setSelectionRange(keep.s, keep.e); } catch (_) { /* kein Textfeld */ } } }
   root.classList.remove('enter'); void root.offsetWidth; if (animate) root.classList.add('enter');
   page.bind(root, ctx, data);
   showAnnouncement(root);
@@ -260,7 +266,7 @@ document.addEventListener('visibilitychange', async () => {
 setInterval(async () => {
   if (document.visibilityState !== 'visible' || !ctx.view || ctx.view.status !== 'alive' || document.querySelector('.modal-backdrop')) return;
   const r = await refresh(); if (r && r.view) renderHud();
-}, 120000);
+}, 60000);
 
 /* ---------- Start ---------- */
 audio.resumeOnGesture();

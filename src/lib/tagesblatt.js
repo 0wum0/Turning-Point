@@ -8,7 +8,7 @@ const db = require('../db');
 const log = require('./log');
 
 async function post(kind, title, text, cityId = 0, conn = db) {
-  try { await conn.query('INSERT INTO world_events (kind, city_id, title, text) VALUES (?,?,?,?)', [kind, cityId || 0, String(title).slice(0, 200), String(text)]); } catch (e) { log.warn(`[tagesblatt] ${e.message}`); }
+  try { await conn.query('INSERT INTO world_events (kind, city_id, title, text) VALUES (?,?,?,?)', [kind, cityId || 0, String(title).slice(0, 200), String(text)]); require('./live').publish('news', {}); } catch (e) { log.warn(`[tagesblatt] ${e.message}`); }
 }
 
 async function stats() {

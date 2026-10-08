@@ -25,6 +25,7 @@ router.use((req, res, next) => (req.user ? next() : res.status(401).json({ ok: f
 router.use(rateLimit({ windowMs: 60 * 1000, limit: Number(process.env.TP_API_RATE) || 180, standardHeaders: true, legacyHeaders: false, keyGenerator: (req) => `u${req.user ? req.user.id : req.ip}`, validate: { keyGeneratorIpFallback: false }, message: { ok: false, error: 'Zu viele Anfragen – bitte kurz warten.' } }));
 
 router.use(anticheat.middleware);
+router.get('/live', (req, res) => require('../lib/live').connect(req, res));
 router.use('/social', require('./social'));
 router.use('/push', require('./push'));
 
