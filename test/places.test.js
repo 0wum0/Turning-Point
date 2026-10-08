@@ -29,12 +29,12 @@ test('Aufgabe: Start nötig, Mindestdauer, Belohnung, Abkühlzeit, Tageslimit', 
   assert.throws(() => run(s, 'taskFinish', { building: 'rathaus', task: 'forms' }, user, t0 + 1000), /nicht abgeschlossen/);
   const r = run(s, 'taskFinish', { building: 'rathaus', task: 'forms' }, user, t0 + 7000);
   assert.ok(/EFS/.test(r.msg));
-  assert.strictEqual(s.fx.efs, 10); assert.strictEqual(s.fx.influence, 1);
+  assert.strictEqual(s.fx.efs, 70); assert.strictEqual(s.fx.influence, 1);
   assert.throws(() => run(s, 'taskStart', { building: 'rathaus', task: 'forms' }, user, t0 + 8000), /erst wieder/);
   run(s, 'taskStart', { building: 'rathaus', task: 'forms' }, user, t0 + 121 * 60000);
-  user.meta.activeEfs = { date: new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Berlin' }).format(new Date(t0 + 121 * 60000 + 8000)), amount: 220 };
+  user.meta.activeEfs = { date: new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Berlin' }).format(new Date(t0 + 121 * 60000 + 8000)), amount: require('../src/settings').get('efs.active_daily_cap') };
   const r2 = run(s, 'taskFinish', { building: 'rathaus', task: 'forms' }, user, t0 + 121 * 60000 + 8000);
-  assert.ok(/Tageslimit/.test(r2.msg)); assert.strictEqual(s.fx.efs, 10);
+  assert.ok(/Tageslimit/.test(r2.msg)); assert.strictEqual(s.fx.efs, 70);
 });
 
 test('Sofort-Aufgabe (Ausruhen) wirkt auf die Erholung; fremde Stadt/Kinder-Aufgabe gesperrt', () => {

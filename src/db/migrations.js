@@ -629,6 +629,22 @@ const MIGRATIONS = [
     let v = 0; try { v = Number(JSON.parse(r[0].value)); } catch (_) { v = 0; }
     if (v < 365) await db.query("UPDATE settings SET value = '365' WHERE `key` = 'efs.daily_auto'");
   }] },
+  { id: '024_game_clock', up: [async (db) => {
+    // Spieluhr statt EFS-Einkommen: automatisches EFS aus, Login-Bonus und Sammel-Limit proportional zum Tempo (365 Tage/Tag).
+    const set = async (key, fn) => {
+      const r = await db.query('SELECT value FROM settings WHERE `key` = ?', [key]); if (!r.length) return;
+      let v = 0; try { v = Number(JSON.parse(r[0].value)); } catch (_) { v = 0; }
+      const nv = fn(v); if (nv !== v) await db.query('UPDATE settings SET value = ? WHERE `key` = ?', [String(nv), key]);
+    };
+    await set('efs.daily_auto', () => 0);
+    await set('efs.login_bonus', (v) => Math.max(v, 365));
+    await set('efs.active_daily_cap', (v) => Math.max(v, 1600));
+    const aw = await db.query("SELECT value FROM settings WHERE `key` = 'efs.awards'");
+    if (aw.length) {
+      let o = null; try { o = JSON.parse(aw[0].value); } catch (_) { o = null; }
+      if (o && Number(o.study_finish) <= 150) { for (const k of Object.keys(o)) o[k] = Math.round(Number(o[k]) * 7); await db.query("UPDATE settings SET value = ? WHERE `key` = 'efs.awards'", [JSON.stringify(o)]); }
+    }
+  }] },
 ];
 
 async function ensureTable(db) {

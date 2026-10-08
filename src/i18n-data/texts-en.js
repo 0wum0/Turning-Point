@@ -393,7 +393,7 @@ module.exports = {
   {
    "id": "t5",
    "title": "EFS – your time",
-   "text": "Every day brings you 50 EFS, and a login another 50. One EFS equals one game day; 365 EFS make a year. You decide when to “fast-forward” time. Even when you are away, life goes on.",
+   "text": "Game time runs with the real clock: 24 hours make one game year. One EFS equals one game day; with your stock you can also “fast-forward”. A login brings you EFS, and even when you are away, life goes on.",
    "info": [
     "EFS are experience, progress and time all in one.",
     "More EFS = growing older faster, but also earning more.",

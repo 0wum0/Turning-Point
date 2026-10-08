@@ -27,31 +27,42 @@ function flush(user, state) {
   }
 }
 
-/** EFS-Zufluss: 50/Tag laufend, 50 beim ersten Login des Tages, Offline-Zeit läuft automatisch. */
+/**
+ * Spieluhr und EFS: Die Spielzeit läuft automatisch mit der echten Uhr (game.clock_days_per_day Spieltage je 24 Stunden,
+ * Standard 365 = 1 Spieljahr). Bei längerer Abwesenheit läuft sie im Offline-Schutz (kein Verhungern/Insolvenz),
+ * sonst wie beim aktiven Spielen. EFS sind ein Vorrat zum zusätzlichen Vorspulen (Login-Bonus, Sammeln, Käufe).
+ */
 function syncEfs(user, state, now, w) {
-  const rate = settings.get('efs.daily_auto') / 86400000;
+  const perMs = settings.get('game.clock_days_per_day') / 86400000;
   const last = user.efs_accrued_at || now;
   const elapsed = Math.max(0, now - last);
-  const accrued = elapsed * rate + (user.efs_carry || 0);
+  const accrued = elapsed * perMs + (user.efs_carry || 0);
   const whole = Math.floor(accrued);
   user.efs_carry = accrued - whole;
   user.efs_accrued_at = now;
+  // optionales EFS-Einkommen (Standard aus)
+  const eRate = settings.get('efs.daily_auto') / 86400000;
+  if (eRate > 0) { const e = elapsed * eRate + (user.meta.efsCarry || 0); const ew = Math.floor(e); user.meta.efsCarry = e - ew; user.efs_pool += ew; }
   const awayMin = elapsed / 60000;
-  let offline = null;
-  if (state && state.status === 'alive' && awayMin >= settings.get('game.offline_after_minutes') && whole > 0) {
+  let offline = null; let clock = null;
+  if (state && state.status === 'alive' && whole > 0) {
     const n = Math.min(whole, 3650);
     const before = { day: state.day, money: state.money, year: yearOf(state.day, state.startYear) };
-    const res = advance(w, state, n, { mode: 'offline' });
-    user.efs_pool += whole - n;
-    flush(user, state);
-    offline = { days: res.advanced, awayMinutes: Math.round(awayMin), fromYear: before.year, toYear: yearOf(state.day, state.startYear), moneyDelta: state.money - before.money, status: state.status };
-    notice(state, {
-      level: 'info', title: 'Während du weg warst …',
-      text: `${res.advanced} Spieltage sind vergangen (${before.year} → ${offline.toYear}). Gehalt, Miete und Alltag liefen automatisch weiter.`,
-      info: ['Das Leben geht auch ohne dich weiter.', 'Pro realem Tag laufen 50 Spieltage; Einnahmen und Fixkosten werden verbucht. Offline kannst du weder verhungern noch insolvent werden.', 'Schau, was sich verändert hat.'],
-    });
-  } else {
-    user.efs_pool += whole;
+    if (awayMin >= settings.get('game.offline_after_minutes')) {
+      const res = advance(w, state, n, { mode: 'offline' });
+      flush(user, state);
+      offline = { days: res.advanced, awayMinutes: Math.round(awayMin), fromYear: before.year, toYear: yearOf(state.day, state.startYear), moneyDelta: state.money - before.money, status: state.status };
+      notice(state, {
+        level: 'info', title: 'Während du weg warst …',
+        text: `${res.advanced} Spieltage sind vergangen (${before.year} → ${offline.toYear}). Gehalt, Miete und Alltag liefen automatisch weiter.`,
+        info: ['Das Leben geht auch ohne dich weiter: Die Spielzeit läuft mit der echten Uhr.', 'Einnahmen und Fixkosten werden verbucht. Während du länger weg bist, kannst du weder verhungern noch insolvent werden.', 'Schau, was sich verändert hat.'],
+      });
+    } else {
+      let left = n; let adv = 0;
+      while (left > 0 && state.status === 'alive') { const r = advance(w, state, left, { mode: 'online' }); if (r.advanced < 1) break; left -= r.advanced; adv += r.advanced; }
+      flush(user, state);
+      clock = { days: adv, fromYear: before.year, toYear: yearOf(state.day, state.startYear), moneyDelta: state.money - before.money, status: state.status };
+    }
   }
   const today = actions.berlinDay(now);
   let bonus = 0; let perks = null;
@@ -67,7 +78,7 @@ function syncEfs(user, state, now, w) {
     }
   }
   if (state && state.status === 'alive' && user.meta.pendingMoney) { state.money += user.meta.pendingMoney; user.meta.pendingMoney = 0; }
-  return { offline, bonus, perks };
+  return { offline, clock, bonus, perks };
 }
 
 async function loadUser(conn, userId) {

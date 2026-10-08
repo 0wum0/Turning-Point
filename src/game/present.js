@@ -160,6 +160,7 @@ function present(world, state, user, now) {
     })),
     maxChildren: settings.get('game.max_children'),
     rooms: { have: roomsAvailable(state), need: roomsNeeded(state) },
+    clock: { perMs: settings.get('game.clock_days_per_day') / 86400000, carry: user.efs_carry || 0, at: now },
     efs: { pool: user.efs_pool, daily: settings.get('efs.daily_auto'), login: settings.get('efs.login_bonus') },
     coins: user.coins,
     notices: state.notices.slice(0, 40),

@@ -247,6 +247,14 @@ patterns.push(['^Baufirma beauftragen · (.+)$', 'Hire a construction firm · $1
 
 patterns.push(['^auffüllen · ≈ (.+) / Tag · hält ca\\. (\\d+) Tage$', 'refill · ≈ $1 / day · lasts about $2 days']);
 
+X([
+  ['Die Spielzeit läuft von selbst mit der echten Uhr: 24 Stunden sind ein Spieljahr.', 'Game time runs by itself with the real clock: 24 hours are one game year.'],
+  ['Sammle auf der Karte mehr EFS – oder spule die Zeit vor, wenn du bereit bist.', 'Collect more EFS on the map – or fast-forward time when you are ready.'],
+  ['Kein EFS-Vorrat', 'No EFS stock'], ['Das Leben ruft dich', 'Life is calling you'],
+]);
+patterns.push(['^Mit dem EFS-Vorrat kannst du zusätzlich vorspulen\\. Das erste Login des Tages bringt (\\d+) EFS\\.$', 'With your EFS stock you can also fast-forward. The first login of the day brings $1 EFS.']);
+patterns.push(['^Die Uhr läuft: ein Spieltag alle ([\\d.,]+) Min\\.$', 'The clock is running: one game day every $1 min.']);
+
 // Negative Beträge in „Wert 1945“
 patterns.push(['^([−-][\\d.,kmbt]+) DM \\(Wert 1945\\)$', '$1 DM (1945 value)']);
 

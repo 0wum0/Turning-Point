@@ -71,14 +71,15 @@ export default {
       </section>
 
       <section class="card time-card">
-        <div class="card-title">${icon('zap')} EFS – deine Zeit ${infoBtn(['EFS sind Erfahrung, Fortschritt und Zeit in einem: 1 EFS = 1 Spieltag, 365 EFS = 1 Jahr.', `Pro Tag kommen ${v.efs.daily} EFS automatisch, ${v.efs.login} weitere beim ersten Login. Auch offline läuft das Leben weiter.`, 'Spule die Zeit vor, wenn du bereit bist – oder sammle auf der Karte mehr EFS.'], 'EFS')}</div>
+        <div class="card-title">${icon('zap')} EFS – deine Zeit ${infoBtn(['EFS sind Erfahrung, Fortschritt und Zeit in einem: 1 EFS = 1 Spieltag, 365 EFS = 1 Jahr.', `Die Spielzeit läuft von selbst mit der echten Uhr: 24 Stunden sind ein Spieljahr.`, `Mit dem EFS-Vorrat kannst du zusätzlich vorspulen. Das erste Login des Tages bringt ${v.efs.login} EFS.`, 'Sammle auf der Karte mehr EFS – oder spule die Zeit vor, wenn du bereit bist.'], 'EFS')}</div>
         <div class="big-money" style="color:var(--accent-2)">${num(pool)} <small>EFS</small></div>
         <div class="dim small">entspricht ${yearsText(pool)} Lebenszeit</div>
         <div class="adv-grid mt">
           ${[1, 7, 30, 365].map((d) => html`<button class="btn" data-advance="${d}" ${pool < d ? 'disabled' : ''}>${icon('fast-forward')} ${d === 365 ? '1 Jahr' : d === 1 ? '1 Tag' : d + ' Tage'}</button>`)}
         </div>
         <button class="btn primary block mt" data-advance="max" ${pool < 1 ? 'disabled' : ''}>${icon('play')} Alles vorspulen</button>
-        ${pool < 1 ? html`<div class="dim small mt">Nächstes EFS in ca. ${Math.max(1, Math.round(86400 / v.efs.daily / 60))} Min. · <a href="#/map" data-go="map">Karte</a> · <a href="#/shop" data-go="shop">Werbung ansehen</a></div>` : ''}
+        <div class="dim small mt">${icon('hourglass')} Die Uhr läuft: ein Spieltag alle ${v.clock && v.clock.perMs ? Math.max(1, Math.round(1 / v.clock.perMs / 60000 * 10) / 10) : 4} Min.</div>
+        ${pool < 1 ? html`<div class="dim small mt">Kein EFS-Vorrat · <a href="#/map" data-go="map">Karte</a> · <a href="#/shop" data-go="shop">Werbung ansehen</a></div>` : ''}
       </section>
     </div>
 

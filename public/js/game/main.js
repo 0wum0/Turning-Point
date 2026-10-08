@@ -26,11 +26,33 @@ const ctx = {
   setView, render, rerender, go, act, advance, watchAd, confirm: confirmBox, hud: renderHud,
 };
 
+/* Spieluhr: Die Spielzeit läuft mit der echten Uhr. Zum nächsten Tageswechsel wird der Spielstand still abgeglichen. */
+let clockTimer = 0;
+function scheduleClock() {
+  clearTimeout(clockTimer);
+  const c = ctx.view && ctx.view.clock; if (!c || !c.perMs || ctx.view.status !== 'alive') return;
+  const msLeft = Math.max(1000, (1 - c.carry) / c.perMs - (Date.now() - ctx.__viewAt));
+  clockTimer = setTimeout(clockTick, Math.min(msLeft + 300, 600000));
+}
+async function clockTick() {
+  if (document.hidden || !ctx.view || ctx.view.status !== 'alive') { clockTimer = setTimeout(clockTick, 15000); return; }
+  if (document.querySelector('.modal-backdrop')) { clockTimer = setTimeout(clockTick, 5000); return; }
+  const before = ctx.view.date.day; const r = await refresh();
+  if (r && r.view && r.view.date.day !== before) {
+    if (r.view.status !== 'alive') { render(); return; }
+    renderHud(); await renderPage(false);
+    const fresh = (r.view.notices || []).filter((n) => !n.seen && (n.interrupt || n.level === 'bad'));
+    if (fresh.length) modal(html`<h3>${icon('hourglass')} Das Leben ruft dich</h3><ul class="notices">${fresh.slice(0, 6).map((n) => html`<li class="notice ${n.level}"><span class="nic">${icon(n.level === 'good' ? 'circle-check' : n.level === 'bad' ? 'circle-alert' : n.level === 'warn' ? 'triangle-alert' : 'info')}</span><div><b>${n.title}</b><div class="dim small">${n.text}</div></div></li>`)}</ul><div class="row end mt"><button class="btn primary" data-close="1">Weiter</button></div>`, { onClose: () => { act('readNotices', {}, { silent: true, noRender: true }).then(() => rerender()).catch(() => {}); } });
+  }
+  scheduleClock();
+}
+
 function setView(view) {
-  ctx.view = view;
+  ctx.view = view; ctx.__viewAt = Date.now();
   if (view) {
     ctx.coins = view.coins; ctx.efsPool = view.efs.pool;
     document.documentElement.dataset.era = String(view.date.eraKey); audio.setEra(view.date.eraKey);
+    scheduleClock();
   }
 }
 
