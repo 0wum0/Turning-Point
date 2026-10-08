@@ -306,6 +306,19 @@ async function handleMarket(bot, P, c) {
   }
 }
 
+/** Börse: Bots kaufen gelegentlich wenige Anteile unter dem fairen Wert und verkaufen mit Gewinn – zurückhaltend, damit echte Spieler den Kurs prägen. */
+async function handleExchange(bot, P) {
+  const ex = require('./exchange'); if (!require('../settings').get('exchange').enabled) return;
+  if (!chance(0.06 + P.ambition * 0.05)) return;
+  try {
+    const o = await ex.overview(bot.id); const list = o.stocks.filter((s) => !s.mine);
+    const sell = o.holdings.find((h) => !h.owner && h.price > h.avg * 1.12 && chance(0.5));
+    if (sell) { await ex.place(bot.id, sell.stockId, 'sell', Math.max(1, Math.floor(sell.shares / 2)), Math.round(sell.price * 1.02)); return; }
+    const s = list.filter((x) => x.price < x.fair * 0.97 && x.held < 60)[0]; if (!s) return;
+    await ex.place(bot.id, s.id, 'buy', 5 + Math.floor(Math.random() * 15), Math.round(s.price * 1.03));
+  } catch (_) { /* Geld, Limits */ }
+}
+
 /* ============================== Takt ============================== */
 async function session(bot) {
   const meta = parse(bot.meta); const bm = meta.bot || {}; const P = bm.persona || makePersona('de'); const c = cfg();
@@ -317,7 +330,7 @@ async function session(bot) {
   const state = await lifeCycle(bot.id);
   if (state === 'alive' || state === 'new' || state === 'heir') {
     if (chance(0.55)) await playGameSafe(bot.id, {});
-    await handleLetters(bot, P, c); await handleFriends(bot, P, c); await handleJobs(bot, P, c); await handleVisit(bot, P, c); await handleMarket(bot, P, c); await handleChat(bot, P, bm, c);
+    await handleLetters(bot, P, c); await handleFriends(bot, P, c); await handleJobs(bot, P, c); await handleVisit(bot, P, c); await handleMarket(bot, P, c); await handleExchange(bot, P); await handleChat(bot, P, bm, c);
   }
   await patch(bot.id, (b) => { b.next = nextIn(7, 38); });
 }

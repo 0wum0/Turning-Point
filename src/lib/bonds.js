@@ -280,6 +280,7 @@ async function reconcile(conn, user, row, state, world) {
   try {
     await reconcileCredits(conn, user, state, world);
     await require('./leases').reconcile(conn, user, state, world);
+    await require('./exchange').reconcile(conn, user, state);
     if (state.status !== 'alive') return;
     await reconcileOwner(conn, user, state, world);
     await reconcileEmployee(conn, user, state, world);

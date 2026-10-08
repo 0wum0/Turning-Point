@@ -196,7 +196,7 @@ async function flushDividends(conn, state) {
   const list = state.pending && state.pending.div; if (!list || !list.length) return;
   state.pending.div = [];
   for (const d of list) {
-    const st = await conn.one('SELECT id, name, shares FROM stocks WHERE id = ?', [d.stockId]); if (!st) continue;
+    const st = await conn.one("SELECT id, name, shares FROM stocks WHERE id = ? AND status = 'active'", [d.stockId]); if (!st) continue;
     const hs = await conn.query('SELECT user_id, shares FROM stock_holdings WHERE stock_id = ? AND shares > 0', [st.id]);
     for (const h of hs) if (h.user_id !== MAKER) await credit(conn, h.user_id, d.real * h.shares / st.shares, `Dividende „${st.name}“ (${h.shares} Anteile).`);
   }
@@ -220,6 +220,16 @@ async function refresh() {
     const last = await db.one('SELECT COUNT(*) n FROM stock_trades WHERE stock_id = ? AND created_at > NOW() - INTERVAL 1 DAY', [st.id]);
     const drift = last.n ? 0.03 : 0.12; const price = Math.max(1, Math.round(Number(st.price_real) + (fair - Number(st.price_real)) * drift));
     await db.query('UPDATE stocks SET fair_real = ?, price_real = ? WHERE id = ?', [fair, price, st.id]);
+  }
+}
+
+/** Beim Laden: Notierungsmarke und Streubesitz im Spielstand mit der Börse abgleichen (Ausbuchung durch Admin, Insolvenz). */
+async function reconcile(conn, user, state) {
+  for (const c of state.companies || []) {
+    if (!c.stock) continue;
+    const st = await conn.one("SELECT id, user_id, shares FROM stocks WHERE id = ? AND status = 'active'", [c.stock.id]);
+    if (!st || st.user_id !== user.id) { delete c.stock; continue; }
+    const own = await holding(conn, st.id, user.id); c.stock.outside = st.shares - own.shares;
   }
 }
 
@@ -250,4 +260,4 @@ function start() {
   setInterval(() => { refresh().catch((e) => log.warn(`[exchange] ${e.message}`)); }, 3600000).unref();
 }
 
-module.exports = { fairPerShare, place, cancel, ipo, delist, takeover, flushDividends, dividend, refresh, overview, history, start };
+module.exports = { fairPerShare, place, cancel, ipo, delist, takeover, flushDividends, dividend, reconcile, refresh, overview, history, start };

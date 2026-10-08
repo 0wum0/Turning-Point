@@ -15,6 +15,10 @@
 <div class="table-wrap"><table class="table small"><thead><tr><th>Gegenstand</th><th>Käufer</th><th>Verkäufer</th><th class="num">Preis</th><th>Status</th><th>Zeit</th><th></th></tr></thead><tbody>
 <% offers.forEach(function(o){ %><tr><td><b><%= o.item_name %></b></td><td><%= o.buyer %></td><td><%= o.seller %></td><td class="num"><%= nf(Math.round(o.price_real / 100)) %></td><td><%= o.status %></td><td class="dim"><%= when(o.created_at) %></td><td class="num"><% if (o.status === 'open') { %><form method="post" action="/admin/market/offer/<%= o.id %>/void"><%- csrf %><button class="btn sm ghost">Löschen</button></form><% } %></td></tr>
 <% }) %><% if (!offers.length) { %><tr><td colspan="7" class="dim">Keine Angebote.</td></tr><% } %></tbody></table></div>
+<h3 class="mt">Börse</h3>
+<div class="table-wrap"><table class="table small"><thead><tr><th>Aktie</th><th>Eigentümer</th><th class="num">Kurs (1945)</th><th class="num">Fair</th><th class="num">Umsatz 24 h</th><th class="num">Bestand Börse</th><th></th></tr></thead><tbody>
+<% stocks.forEach(function(s){ %><tr><td><b><%= s.name %></b></td><td><%= s.owner || '–' %></td><td class="num"><%= nf(Math.round(s.price_real / 100)) %></td><td class="num"><%= nf(Math.round(s.fair_real / 100)) %></td><td class="num"><%= nf(s.vol) %></td><td class="num"><%= nf(s.maker) %></td><td class="num"><form method="post" action="/admin/market/stock/<%= s.id %>/delist"><%- csrf %><button class="btn sm danger" data-confirm="Aktie ausbuchen?">Ausbuchen</button></form></td></tr>
+<% }) %><% if (!stocks.length) { %><tr><td colspan="7" class="dim">Keine börsennotierten Betriebe.</td></tr><% } %></tbody></table></div>
 <h3 class="mt">Handelsprotokoll</h3>
 <div class="table-wrap"><table class="table small"><thead><tr><th>Zeit</th><th>Käufer</th><th>Verkäufer</th><th>Gegenstand</th><th class="num">Preis (1945)</th></tr></thead><tbody>
 <% trades.forEach(function(t){ %><tr><td class="dim"><%= when(t.created_at) %></td><td><%= t.from_name %></td><td><%= t.to_name || 'Versteigerung' %></td><td><%= t.ref %></td><td class="num"><%= nf(Math.round(t.amount / 100)) %></td></tr>
