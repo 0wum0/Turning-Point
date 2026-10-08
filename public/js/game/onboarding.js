@@ -80,8 +80,10 @@ export function openHelp(ctx) {
   const m = modal(html`<h3>${icon('lightbulb')} Hilfe</h3>
     <div class="stack" style="--gap:.5rem">
       <button class="linkrow" data-help-do="welcome">${icon('play')}<span class="grow"><b>Einführung ansehen</b><div class="dim small">Die vier Folien zum Spielstart – in einer Minute gelesen.</div></span></button>
+      <label class="check linkrow"><input type="checkbox" id="helpShowAll" ${ctx.view.onboarding && ctx.view.onboarding.showAll ? 'checked' : ''}><span class="grow"><b>Alle Funktionen anzeigen</b><div class="dim small">Zeigt auch Bereiche, die sich sonst erst nach und nach freischalten.</div></span></label>
     </div>
     <div class="row end mt"><button class="btn primary" data-close="x">Schließen</button></div>`);
+  m.el.querySelector('#helpShowAll').addEventListener('change', async (e) => { await setShowAll(ctx, e.target.checked); });
   m.el.addEventListener('click', (e) => {
     const b = e.target.closest('[data-help-do]'); if (!b) return;
     const k = b.dataset.helpDo; m.close();
@@ -112,13 +114,27 @@ export const SPOTS = {
 let spotTimer = 0; let spotEls = [];
 export function clearSpot() {
   clearInterval(spotTimer); spotEls.forEach((e) => e.classList.remove('spot')); spotEls = [];
-  const t = document.getElementById('spotTip'); if (t) t.remove();
+  const t = document.getElementById('spotTip'); if (t) { if (t._off) t._off(); t.remove(); }
+}
+/* Sprechblase direkt an der hervorgehobenen Schaltfläche (ein Toast würde auf dem Handy die untere Leiste verdecken) */
+function tip(el, text) {
+  const b = document.createElement('div'); b.id = 'spotTip'; b.className = 'spot-tip'; b.setAttribute('role', 'status'); b.textContent = text;
+  document.body.appendChild(b);
+  const place = () => {
+    if (!el.isConnected) { b.remove(); return; }
+    const r = el.getBoundingClientRect(); const bh = b.offsetHeight; const above = r.top > bh + 20 && (r.top > window.innerHeight / 2 || r.bottom + bh + 20 > window.innerHeight);
+    b.style.top = `${Math.max(8, above ? r.top - bh - 12 : Math.min(window.innerHeight - bh - 8, r.bottom + 12))}px`;
+    b.style.left = `${Math.max(8, Math.min(window.innerWidth - b.offsetWidth - 8, r.left + r.width / 2 - b.offsetWidth / 2))}px`;
+    b.classList.toggle('up', above);
+  };
+  place(); setTimeout(place, 400); window.addEventListener('scroll', place, { passive: true }); window.addEventListener('resize', place);
+  b._off = () => { window.removeEventListener('scroll', place); window.removeEventListener('resize', place); };
 }
 function spotOn(els, text) {
   clearSpot();
   spotEls = els; els.forEach((e) => e.classList.add('spot'));
   const first = els[0]; try { first.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (_) { /* alt */ }
-  if (text) toast(text, 'good');
+  if (text) tip(first, text);
   const off = () => { clearSpot(); document.removeEventListener('click', off, true); };
   setTimeout(() => document.addEventListener('click', off, true), 400);
   setTimeout(clearSpot, 20000);
@@ -208,4 +224,23 @@ export function celebrateQuests(prev, next) {
   const gain = (next.efs.pool > prev.efs.pool || next.coins > prev.coins) ? rewardText(x.reward) : '';
   toast(`Schritt geschafft: ${x.title}${gain ? ' · ' + gain : ''}`, 'good');
   if (window.TPMotion) window.TPMotion.confetti();
+}
+
+/* ---------- Schrittweises Freischalten (nur Anzeige, der Server sperrt nichts) ---------- */
+const unlockOf = (ctx, key) => { const u = ctx.view && ctx.view.onboarding && ctx.view.onboarding.unlocks; return u && u[key] ? u[key] : null; };
+export const isOpen = (ctx, key) => { const u = unlockOf(ctx, key); return !u || u.open; };
+export const lockHint = (ctx, key) => { const u = unlockOf(ctx, key); return u && !u.open ? u.hint : ''; };
+/** Platzhalter anstelle eines noch verschlossenen Bereichs. */
+export function lockCard(ctx, key) {
+  const u = unlockOf(ctx, key) || { label: '', hint: '' };
+  return html`<section class="card lock-card"><div class="lock-ic">${icon('lock')}</div>
+    <h3 class="serif">${u.label}</h3><p class="dim">${u.hint}</p>
+    <div class="row wrap center"><button class="btn primary" data-showall="1">${icon('eye')} Alle Funktionen anzeigen</button></div>
+    <p class="dim small mb0">Nichts geht verloren: Der Bereich öffnet sich von selbst, sobald du so weit bist.</p></section>`;
+}
+/** Kleines Schloss-Etikett für Reiter und Schaltflächen. */
+export const lockMark = (ctx, key) => (isOpen(ctx, key) ? '' : html`<span class="lockmark" title="${lockHint(ctx, key)}">${icon('lock')}</span>`);
+/** Schalter „Alle Funktionen anzeigen“ setzen (Konto-Einstellung) und neu zeichnen. */
+export async function setShowAll(ctx, on) {
+  try { await ctx.act('uiPrefs', { showAll: !!on }); } catch (_) { /* Meldung kam bereits */ }
 }

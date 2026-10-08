@@ -381,3 +381,13 @@ html { scroll-padding-top: calc(var(--hud-h, 62px) + 10px); }
 @keyframes spotpulse { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); } 50% { box-shadow: 0 0 0 12px transparent; } }
 @media (prefers-reduced-motion: reduce) { .spot { animation: none; } }
 .qhead .card-title { flex: 1 1 auto; min-width: 0; } .qhead .chip, .quest-card .chip { white-space: nowrap; }
+
+/* Gesperrte (noch nicht freigeschaltete) Bereiche */
+.nav.locked, .soc-tabs a.locked, .btn.locked, .rival-locked [data-rival] { opacity: .6; }
+.nav.locked .i:first-child { color: var(--text-faint); }
+.lock-card { text-align: center; display: grid; gap: .6rem; justify-items: center; padding: 2rem 1.2rem; }
+.lock-card h3 { justify-content: center; margin: 0; } .lock-card p { max-width: 46ch; margin: 0; }
+.lock-ic { width: 56px; height: 56px; border-radius: 18px; display: grid; place-items: center; background: var(--surface-2); border: 1px solid var(--border-strong); color: var(--text-dim); } .lock-ic .i { width: 26px; height: 26px; }
+.card .lock-card { box-shadow: none; padding: 1rem; }
+.lockmark .i { width: 13px; height: 13px; }
+.spot-tip { position: fixed; z-index: 120; max-width: min(300px, calc(100vw - 16px)); padding: .55rem .8rem; border-radius: 12px; background: var(--accent); color: var(--accent-ink); font-size: .88rem; font-weight: 600; line-height: 1.35; box-shadow: 0 12px 30px -10px rgba(0, 0, 0, .5); pointer-events: none; animation: fade .25s var(--ease); }

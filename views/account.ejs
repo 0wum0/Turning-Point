@@ -33,6 +33,13 @@
     </form>
   </section>
 
+  <section class="card stack mt" id="uicard">
+    <div class="card-title"><%- icon('layers') %> Anzeige im Spiel</div>
+    <label class="check"><input type="checkbox" id="showall" disabled> Alle Funktionen anzeigen</label>
+    <p class="dim small mb0">Standardmäßig schalten sich fortgeschrittene Bereiche (Unternehmen, Gesellschaft, Börse, Wahlen, Markt, Bank) nach und nach frei, damit der Einstieg übersichtlich bleibt. Mit diesem Schalter ist von Anfang an alles sichtbar. Es wird nichts entfernt oder gesperrt.</p>
+  </section>
+  <script src="/js/account-ui.js" defer></script>
+
   <section class="card stack mt" id="pushcard" data-enabled="<%= pushEnabled ? 1 : 0 %>">
     <div class="card-title"><%- icon('bell') %> Benachrichtigungen auf dem Handy</div>
     <p class="dim small mb0">Wenn du Turning Point als App installiert hast, kann dich das Spiel per Push benachrichtigen – auch bei geschlossener App: neue Briefe, Erwähnungen im Stadtplatz-Chat, Kaufangebote, Überbieten bei Versteigerungen, Beziehungsanfragen und Jobangebote. Du kannst das jederzeit ausschalten; jedes Gerät meldest du einzeln an.</p>

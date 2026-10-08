@@ -1,9 +1,11 @@
 import { renderMarket, bindMarket } from '../market.js';
 import { renderExchange, bindExchange } from '../exchange.js';
 import { renderElections, bindElections } from '../elections.js';
+import { isOpen, lockCard, lockMark, lockHint } from '../onboarding.js';
 import { html, raw, icon, api, on, toast, modal, money, moneyShort, num, esc, infoBtn, roleBadge, roleBadgeStr } from '../ui.js';
 
 const TABS = [['rank', 'Rangliste', 'crown'], ['plaza', 'Stadtplatz', 'landmark'], ['jobs', 'Arbeit', 'briefcase'], ['love', 'Beziehung', 'heart'], ['market', 'Markt', 'handshake'], ['exchange', 'Börse', 'trending-up'], ['elections', 'Wahlen', 'landmark'], ['letters', 'Briefe', 'mail'], ['friends', 'Freunde', 'users'], ['me', 'Mein Profil', 'user']];
+const GATE = { market: 'market', exchange: 'exchange', elections: 'elections' };
 const hhmm = (d) => new Date(d).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
 const dt = (d) => new Date(d).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' });
 const cityName = (ctx, id) => { const c = ctx.world && ctx.world.cityById && ctx.world.cityById.get(id); return c ? c.label : '–'; };
@@ -175,7 +177,7 @@ const views = {
         <div class="field"><label>Über mich (max. 240 Zeichen)</label><textarea id="bio" maxlength="240" style="min-height:90px">${d.bio || ''}</textarea></div>
         <label class="check"><input type="checkbox" id="pub" ${d.public ? 'checked' : ''}> Öffentlich sichtbar (Rangliste, Profil, Stadtplatz, Zeitungsmeldungen)</label>
         <div class="hint">Privat heißt: Du erscheinst nirgends – andere können dir aber weiterhin Briefe schreiben.</div>
-        ${rivalBox(d.rival)}
+        ${isOpen(ctx, 'rivalry') ? rivalBox(d.rival) : (d.rival && d.rival.mode !== 'off' ? lockCard(ctx, 'rivalry') : '')}
         <div class="row end mt"><button class="btn primary" id="savebio">Speichern</button></div></section>
       <section class="card"><div class="card-title">${icon('crown')} Deine Platzierungen</div>${s ? html`<div class="pgrid">${Object.entries({ wealth: 'Vermögen', business: 'Unternehmer', politics: 'Politik', dynasty: 'Dynastie', family: 'Familie', time: 'Zeitreise' }).map(([k, l]) => html`<div><small>${l}</small><b>#${p.ranks[k]}</b></div>`)}</div>` : html`<div class="dim">Noch keine Platzierung.</div>`}
         <p class="dim small mt">Die Rangliste vergleicht inflationsbereinigt: 1 DM von 1945 ist die Maßeinheit – so konkurrieren Spieler aus allen Epochen fair.</p></section></div>`;
@@ -203,6 +205,7 @@ export default {
   async load(ctx) {
     const s = ctx.ui.soc = ctx.ui.soc || { tab: openTab(), cat: 'wealth', scope: 'all', box: 'in', page: 1 };
     const tab = s.tab;
+    if (GATE[tab] && !isOpen(ctx, GATE[tab])) return { tab, locked: GATE[tab] };
     if (tab === 'rank') return { tab, ...(await api('GET', `/api/social/leaderboard?cat=${s.cat}&scope=${s.scope}`)) };
     if (tab === 'plaza') return { tab, ...(await api('GET', '/api/social/chat')) };
     if (tab === 'letters') return { tab, ...(await api('GET', `/api/social/inbox?box=${s.box}&page=${s.page}`)) };
@@ -217,13 +220,14 @@ export default {
   render(ctx, d) {
     const tab = d.tab;
     return html`<div class="panel-head"><div><h2>Spieler</h2><p>Messe dich mit anderen, triff Menschen, handle und plaudere – die Welt ist nicht allein deine.</p></div>${infoBtn(['Alle Spieler leben in derselben Welt: Du siehst ihre Betriebe in deiner Stadt, liest über sie in der Zeitung und kannst mit ihnen schreiben, Geschenke tauschen und einander besuchen.', 'Die Rangliste ist inflationsbereinigt, damit 1960 und 2040 vergleichbar bleiben.', 'Du entscheidest selbst, ob du sichtbar bist (Mein Profil).'], 'Spieler')}</div>
-    <div class="tabs soc-tabs">${TABS.map((t) => html`<a href="#/social" data-tab="${t[0]}" class="${tab === t[0] ? 'on' : ''}">${icon(t[2])} ${t[1]}${t[0] === 'letters' && ctx.social && ctx.social.unread ? html`<i class="dot">${ctx.social.unread}</i>` : ''}${t[0] === 'friends' && ctx.social && ctx.social.requests ? html`<i class="dot">${ctx.social.requests}</i>` : ''}</a>`)}</div>
-    ${views[tab](ctx, d)}`;
+    <div class="tabs soc-tabs">${TABS.map((t) => html`<a href="#/social" data-tab="${t[0]}" class="${tab === t[0] ? 'on' : ''} ${GATE[t[0]] && !isOpen(ctx, GATE[t[0]]) ? 'locked' : ''}" ${GATE[t[0]] && !isOpen(ctx, GATE[t[0]]) ? html`title="${lockHint(ctx, GATE[t[0]])}"` : ''}>${icon(GATE[t[0]] && !isOpen(ctx, GATE[t[0]]) ? 'lock' : t[2])} ${t[1]}${t[0] === 'letters' && ctx.social && ctx.social.unread ? html`<i class="dot">${ctx.social.unread}</i>` : ''}${t[0] === 'friends' && ctx.social && ctx.social.requests ? html`<i class="dot">${ctx.social.requests}</i>` : ''}</a>`)}</div>
+    ${d.locked ? lockCard(ctx, d.locked) : views[tab](ctx, d)}`;
   },
   bind(root, ctx, d) {
     const s = ctx.ui.soc;
     const go = () => ctx.rerender();
     const ro = root.querySelector('#rivopt'); if (ro) ro.addEventListener('change', async () => { try { await api('POST', '/api/social/rivalry/optin', { on: ro.checked }); toast(ro.checked ? 'Du nimmst jetzt am Wettbewerb teil.' : 'Du bist ausgestiegen.'); go(); } catch (e) { toast(e.message, 'warn'); ro.checked = !ro.checked; } });
+    if (d.locked) return void on(root, 'click', '[data-tab]', (e, t) => { e.preventDefault(); s.tab = t.dataset.tab; s.page = 1; go(); });
     if (d.tab === 'market') bindMarket(root, ctx, d, go);
     if (d.tab === 'exchange') bindExchange(root, ctx, d, go);
     if (d.tab === 'elections') bindElections(root, ctx, d, go);

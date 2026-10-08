@@ -1,3 +1,4 @@
+import { isOpen, lockHint } from './onboarding.js';
 import { html, raw, icon, api, on, money, mount, esc, roleBadge, toast } from './ui.js';
 import { openProfile } from './views/social.js';
 
@@ -50,7 +51,8 @@ export function bindDirectory(root, ctx, cityId) {
   });
   on(root, 'click', '[data-offer]', (e, t) => { import('./market.js').then((mod) => mod.openOffer(ctx, t.dataset.offer, () => load())); });
   on(root, 'click', '[data-sellmine]', (e, t) => { const [kind, id] = t.dataset.sellmine.split(':'); import('./market.js').then((mod) => mod.openSell(ctx, kind, Number(id), t.dataset.name, Number(t.dataset.value), t.dataset.ask ? Number(t.dataset.ask) : null, () => load())); });
-  on(root, 'click', '[data-rival]', (e, t) => { const [uid, id] = t.dataset.rival.split(':'); import('./rivalry.js').then((mod) => mod.openRival(ctx, Number(uid), Number(id), t.dataset.name, () => load())); });
+  root.classList.toggle('rival-locked', !isOpen(ctx, 'rivalry'));
+  on(root, 'click', '[data-rival]', (e, t) => { if (!isOpen(ctx, 'rivalry')) { toast(lockHint(ctx, 'rivalry'), 'warn'); return; } const [uid, id] = t.dataset.rival.split(':'); import('./rivalry.js').then((mod) => mod.openRival(ctx, Number(uid), Number(id), t.dataset.name, () => load())); });
   const q = root.querySelector('#dirq'); let tm; q.addEventListener('input', () => { clearTimeout(tm); tm = setTimeout(() => { d.q = q.value.trim(); d.page = 1; load(); }, 280); });
   load();
 }

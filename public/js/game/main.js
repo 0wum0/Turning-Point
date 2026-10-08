@@ -16,10 +16,13 @@ import city from './views/city.js';
 import shop from './views/shop.js';
 import { renderCreate, renderHeir, renderGameOver } from './screens.js';
 import * as audio from './audio.js';
-import { maybeWelcome, openHelp, celebrateQuests, clearSpot } from './onboarding.js';
+import { maybeWelcome, openHelp, celebrateQuests, clearSpot, isOpen, lockCard, lockMark, lockHint, setShowAll } from './onboarding.js';
 
 const PAGES = [overview, newspaper, map, city, work, business, society, socialView, housing, household, family, legacy, shop];
 const byId = Object.fromEntries(PAGES.map((p) => [p.id, p]));
+/* Reiter, die sich erst nach und nach freischalten (Schlüssel der Freischaltungen) */
+const GATES = { business: 'business', society: 'society' };
+const gated = (id) => !!GATES[id] && !isOpen(ctx, GATES[id]);
 const app = document.getElementById('app');
 
 const ctx = {
@@ -148,7 +151,7 @@ function renderHud() {
   v.hints.forEach((h) => { if (hintLevel[h.target] !== 'bad') hintLevel[h.target] = h.level; });
   const unseen = v.notices.filter((n) => !n.seen).length;
   const label = (p) => (p.id === 'newspaper' && v.date.medium === 'web' ? 'Web' : p.label);
-  mount(side, html`${PAGES.map((p) => html`<a href="#/${p.id}" class="nav ${ctx.route === p.id ? 'on' : ''} ${hintLevel[p.id] ? 'hint-' + hintLevel[p.id] : ''}" data-nav="${p.id}">${icon(p.icon)}<span>${label(p)}</span>${p.id === 'overview' && unseen ? html`<i class="dot">${unseen}</i>` : p.id === 'social' && ctx.social && ctx.social.total ? html`<i class="dot">${ctx.social.total}</i>` : hintLevel[p.id] ? html`<i class="dot soft"></i>` : ''}</a>`)}`);
+  mount(side, html`${PAGES.map((p) => html`<a href="#/${p.id}" class="nav ${ctx.route === p.id ? 'on' : ''} ${hintLevel[p.id] ? 'hint-' + hintLevel[p.id] : ''} ${gated(p.id) ? 'locked' : ''}" data-nav="${p.id}" ${gated(p.id) ? html`title="${lockHint(ctx, GATES[p.id])}"` : ''}>${icon(gated(p.id) ? 'lock' : p.icon)}<span>${label(p)}</span>${p.id === 'overview' && unseen ? html`<i class="dot">${unseen}</i>` : p.id === 'social' && ctx.social && ctx.social.total ? html`<i class="dot">${ctx.social.total}</i>` : hintLevel[p.id] ? html`<i class="dot soft"></i>` : ''}</a>`)}`);
   const on = side.querySelector('.nav.on'); if (on && on.scrollIntoView) { try { on.scrollIntoView({ inline: 'center', block: 'nearest' }); } catch (_) { /* ältere Browser */ } }
 }
 
@@ -165,6 +168,8 @@ let pageSeq = 0;
 async function renderPage(animate) {
   let root = document.getElementById('page'); if (!root) return;
   const page = byId[ctx.route]; const my = ++pageSeq;
+  if (animate && ctx.route === 'newspaper') markSeen('newspaper');
+  if (gated(ctx.route)) { const r0 = root.cloneNode(false); root.replaceWith(r0); mount(r0, html`<div class="panel-head"><div><h2>${page.label}</h2></div></div>${lockCard(ctx, GATES[ctx.route])}`); if (animate) document.title = `${page.label} · ${document.title.split(' · ').pop()}`; return; }
   const scroll = animate ? 0 : window.scrollY;
   let data = null;
   // Seitenwechsel: sofort leeres Gerüst mit Platzhaltern. Aktualisierung derselben Seite: alter Inhalt bleibt stehen, bis der neue fertig ist (kein Flackern).
@@ -181,8 +186,6 @@ async function renderPage(animate) {
   if (keep) { const el = document.getElementById(keep.id); if (el) { if (keep.v != null && 'value' in el && !el.value) el.value = keep.v; el.focus({ preventScroll: true }); try { el.setSelectionRange(keep.s, keep.e); } catch (_) { /* kein Textfeld */ } } }
   root.classList.remove('enter'); void root.offsetWidth; if (animate) root.classList.add('enter');
   page.bind(root, ctx, data);
-  if (animate) clearSpot();
-  if (ctx.route === 'newspaper') markSeen('newspaper');
   showAnnouncement(root);
   window.scrollTo(0, scroll);
   if (ctx.route === 'legacy' && ctx.view.status === 'gameover') {
@@ -274,6 +277,7 @@ document.addEventListener('click', (e) => {
   if (e.target.closest('#hud [data-chat]')) openChatModal(ctx);
   if (e.target.closest('#hud [data-bell]')) openBell(ctx);
   if (e.target.closest('#hud [data-help]')) openHelp(ctx);
+  if (e.target.closest('[data-showall]')) setShowAll(ctx, true);
   if (e.target.closest('#hud [data-sound]')) { audio.toggle(); renderHud(); }
   const th = e.target.closest('#hud [data-theme-toggle]');
   if (th) { const c = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light'; document.documentElement.setAttribute('data-theme', c); try { localStorage.setItem('tp-theme', c); } catch (_) {} }

@@ -1,6 +1,6 @@
 import { html, icon, money, moneyShort, signed, infoBtn, bar, on, num, yearsText } from '../ui.js';
 import { cityScene } from '../scene.js';
-import { advisorCard, questCard, bindGuide } from '../onboarding.js';
+import { advisorCard, questCard, bindGuide, isOpen, lockHint } from '../onboarding.js';
 
 const LEVEL_ICON = { good: 'circle-check', warn: 'triangle-alert', bad: 'circle-alert', info: 'info' };
 
@@ -57,7 +57,7 @@ export default {
           <dt>Essen / Tag (~)</dt><dd class="neg">${money(v.food.tiers[1].perDay, cur)}</dd>
           <dt><b>Bilanz / Tag</b></dt><dd class="${f.net - v.food.tiers[1].perDay >= 0 ? 'pos' : 'neg'}">${signed(f.net - v.food.tiers[1].perDay, cur)}</dd>
         </dl>
-        <div class="row mt"><button class="btn sm" data-bank="1">${icon('landmark')} Bank &amp; Kredite</button></div>
+        <div class="row mt"><button class="btn sm ${isOpen(ctx, 'bank') ? '' : 'locked'}" data-bank="1" ${isOpen(ctx, 'bank') ? '' : html`title="${lockHint(ctx, 'bank')}"`}>${icon(isOpen(ctx, 'bank') ? 'landmark' : 'lock')} Bank &amp; Kredite</button>${isOpen(ctx, 'bank') ? '' : html`<div class="dim small mt">${lockHint(ctx, 'bank')}</div>`}</div>
         ${runway !== null && runway < 40 ? html`<div class="alert warn mt small">${icon('triangle-alert')}<div>Bei diesem Tempo reicht dein Geld nur noch ca. ${runway} Tage.</div></div>` : ''}
       </section>
 
@@ -103,7 +103,7 @@ export default {
   bind(root, ctx) {
     bindGuide(root, ctx);
     root.querySelectorAll('[data-social]').forEach((a) => a.addEventListener('click', () => { const so = ctx.ui.soc = ctx.ui.soc || { cat: 'wealth', scope: 'all', box: 'in', page: 1 }; so.tab = a.dataset.social; }));
-    on(root, 'click', '[data-bank]', () => import('../bank.js').then((m) => m.openBank(ctx)));
+    on(root, 'click', '[data-bank]', () => { if (!isOpen(ctx, 'bank')) return; import('../bank.js').then((m) => m.openBank(ctx)); });
     on(root, 'click', '[data-go]', (e, t) => { e.preventDefault(); ctx.go(t.dataset.go); });
     on(root, 'click', '[data-advance]', (e, t) => ctx.advance(t.dataset.advance === 'max' ? 'max' : Number(t.dataset.advance), t));
     const ra = root.querySelector('#readAll'); if (ra) ra.addEventListener('click', () => ctx.act('readNotices', {}, { silent: true }));

@@ -209,6 +209,7 @@ async function create(userId, input) {
 
 async function doAction(userId, name, input) {
   return withCharacter(userId, async (ctx) => {
+    if (name === 'uiPrefs') { ctx.user.meta.showAll = !!(input && input.showAll); return { ok: true, message: ctx.user.meta.showAll ? 'Alle Funktionen sind jetzt sichtbar.' : 'Fortgeschrittene Bereiche werden schrittweise freigeschaltet.', level: 'good' }; }
     if (!ctx.state) throw new actions.ActionError('Du hast noch keinen Charakter.');
     const needAlive = !['readNotices', 'tutorial'].includes(name);
     if (needAlive && ctx.state.status !== 'alive') throw new actions.ActionError('Dein Charakter lebt nicht mehr.');
