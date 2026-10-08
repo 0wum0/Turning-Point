@@ -16,7 +16,7 @@ import city from './views/city.js';
 import shop from './views/shop.js';
 import { renderCreate, renderHeir, renderGameOver } from './screens.js';
 import * as audio from './audio.js';
-import { maybeWelcome, openHelp } from './onboarding.js';
+import { maybeWelcome, openHelp, celebrateQuests, clearSpot } from './onboarding.js';
 
 const PAGES = [overview, newspaper, map, city, work, business, society, socialView, housing, household, family, legacy, shop];
 const byId = Object.fromEntries(PAGES.map((p) => [p.id, p]));
@@ -25,6 +25,7 @@ const app = document.getElementById('app');
 const ctx = {
   world: null, view: null, coins: 0, efsPool: 0, ui: {}, route: 'overview',
   setView, render, rerender, go, act, advance, watchAd, confirm: confirmBox, hud: renderHud,
+  welcome: () => maybeWelcome(ctx),
 };
 
 /* Spieluhr: Die Spielzeit läuft mit der echten Uhr. Zum nächsten Tageswechsel wird der Spielstand still abgeglichen. */
@@ -50,7 +51,9 @@ async function clockTick() {
 }
 
 function setView(view) {
+  const prev = ctx.view;
   ctx.view = view; ctx.__viewAt = Date.now();
+  try { celebrateQuests(prev, view); } catch (_) { /* Hinweis ist nur Zugabe */ }
   if (view) {
     ctx.coins = view.coins; ctx.efsPool = view.efs.pool;
     document.documentElement.dataset.era = String(view.date.eraKey); audio.setEra(view.date.eraKey);
@@ -58,6 +61,15 @@ function setView(view) {
   }
 }
 
+/* Einsteiger-Marken: besuchte Seiten und Aktionen außerhalb des Spielstands dem Server melden (nur einmal je Marke) */
+const seenSent = new Set();
+function markSeen(key) {
+  const o = ctx.view && ctx.view.onboarding; if (!o || !o.quests || ctx.view.status !== 'alive') return;
+  if ((o.seen && o.seen[key]) || seenSent.has(key)) return;
+  seenSent.add(key);
+  act('seen', { key }, { silent: true, noRender: true }).catch(() => { seenSent.delete(key); });
+}
+window.addEventListener('tp-seen', (e) => markSeen(e.detail));
 const routeFromHash = () => { const r = (location.hash || '').replace(/^#\/?/, ''); return byId[r] ? r : 'overview'; };
 function go(route) {
   if (!shellActive()) { history.replaceState(null, '', `#/${route}`); render(); return; }
@@ -169,6 +181,8 @@ async function renderPage(animate) {
   if (keep) { const el = document.getElementById(keep.id); if (el) { if (keep.v != null && 'value' in el && !el.value) el.value = keep.v; el.focus({ preventScroll: true }); try { el.setSelectionRange(keep.s, keep.e); } catch (_) { /* kein Textfeld */ } } }
   root.classList.remove('enter'); void root.offsetWidth; if (animate) root.classList.add('enter');
   page.bind(root, ctx, data);
+  if (animate) clearSpot();
+  if (ctx.route === 'newspaper') markSeen('newspaper');
   showAnnouncement(root);
   window.scrollTo(0, scroll);
   if (ctx.route === 'legacy' && ctx.view.status === 'gameover') {

@@ -1,5 +1,5 @@
 /* Einsteiger-Erlebnis (Oberfläche): Willkommensdialog, Hilfe-Menü, später Aufgabenreihe, „Was jetzt?“, Freischaltungen. */
-import { html, icon, modal, money, num } from './ui.js';
+import { html, icon, modal, money, num, bar, on, toast } from './ui.js';
 
 /** Tempo der Spielzeit aus der Uhr der Ansicht (Standard: 24 Std. = 1 Jahr, ein Tag ≈ 4 Min.). */
 export function pace(v) {
@@ -88,4 +88,124 @@ export function openHelp(ctx) {
     if (k === 'welcome') openWelcome(ctx, {});
   });
   return m;
+}
+
+/* ---------- „Zeig mir’s“: Seite öffnen und die richtige Schaltfläche hervorheben ---------- */
+const soc = (ctx, tab) => { ctx.ui.soc = Object.assign(ctx.ui.soc || { cat: 'wealth', scope: 'all', box: 'in', page: 1 }, { tab }); };
+const news = (tabName) => (ctx) => { ctx.ui.newsTab = tabName; };
+/* spot -> { sel: CSS-Auswahl der Schaltfläche(n), pre: Vorbereitung vor dem Öffnen, text: Hinweis im Hinweisfeld } */
+export const SPOTS = {
+  'nav:newspaper': { nav: 'newspaper', text: 'Tippe auf „Zeitung“.' },
+  food: { sel: '[data-food]', text: 'Wähle eine Qualität und kaufe Essen.' },
+  'listing:home': { pre: news('housing'), sel: '[data-act="rent"]:not([disabled]), [data-act="buy"]:not([disabled])', text: 'Such dir eine Unterkunft aus und tippe auf „Beziehen“.' },
+  'listing:job': { pre: news('jobs'), sel: '[data-act="apply"]:not([disabled])', text: 'Such dir eine Stelle aus und bewirb dich.' },
+  'listing:contact': { pre: news('partners'), sel: '[data-act="meet"]:not([disabled])', text: 'Triff jemanden – ob es funkt, hängt von deiner Lage ab.' },
+  'listing:biz': { pre: news('biz'), sel: '[data-act="buyBiz"]:not([disabled])', text: 'Such dir einen Betrieb aus, der zu deinem Beruf passt.' },
+  time: { sel: '.time-card', text: 'Hier läuft die Zeit. Der Lohn kommt automatisch, sobald ein Tag vergeht.' },
+  money: { sel: '.big-money', text: 'Das ist dein Geld. Spare es auf!' },
+  course: { sel: '[data-course]:not([disabled])', text: 'Hier kannst du einen weiteren Beruf lernen.' },
+  hire: { sel: '[data-b="bizHire"]', text: 'Tippe auf „+“, um jemanden einzustellen.' },
+  lease: { sel: '[data-lease="on"]', text: 'Tippe auf „Vermieten“.' },
+  market: { pre: (ctx) => soc(ctx, 'market'), sel: '.soc-tabs [data-tab="market"]', text: 'Im Stadtverzeichnis kannst du Eigentümern ein Angebot machen.' },
+  elections: { pre: (ctx) => soc(ctx, 'elections'), sel: '[data-evote], [data-erun]', text: 'Wähle jemanden oder kandidiere selbst.' },
+};
+let spotTimer = 0; let spotEls = [];
+export function clearSpot() {
+  clearInterval(spotTimer); spotEls.forEach((e) => e.classList.remove('spot')); spotEls = [];
+  const t = document.getElementById('spotTip'); if (t) t.remove();
+}
+function spotOn(els, text) {
+  clearSpot();
+  spotEls = els; els.forEach((e) => e.classList.add('spot'));
+  const first = els[0]; try { first.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (_) { /* alt */ }
+  if (text) toast(text, 'good');
+  const off = () => { clearSpot(); document.removeEventListener('click', off, true); };
+  setTimeout(() => document.addEventListener('click', off, true), 400);
+  setTimeout(clearSpot, 20000);
+}
+/** Öffnet die Seite zu einer Aufgabe bzw. Empfehlung und lässt die passende Schaltfläche pulsieren. */
+export function showMe(ctx, { tab, spot }) {
+  clearSpot();
+  const def = SPOTS[spot] || {};
+  if (def.nav) { const el = document.querySelector(`#side [data-nav="${def.nav}"]`); if (el) spotOn([el], def.text); else ctx.go(tab); return; }
+  if (def.pre) def.pre(ctx);
+  if (tab && ctx.route !== tab) ctx.go(tab); else if (def.pre) ctx.rerender();
+  if (!def.sel) return;
+  let tries = 0;
+  spotTimer = setInterval(() => {
+    if (++tries > 30) { clearInterval(spotTimer); return; }
+    if (ctx.route !== tab) return;
+    const els = [...document.querySelectorAll(`#page ${def.sel.split(',').map((x) => x.trim()).join(', #page ')}`)];
+    if (els.length) { clearInterval(spotTimer); spotOn(els.slice(0, 6), def.text); }
+  }, 200);
+}
+
+/* ---------- Aufgabenkarte „Deine ersten Schritte“ ---------- */
+const readMode = () => { try { return localStorage.getItem('tp-quests') || ''; } catch (_) { return ''; } };
+const saveMode = (m) => { try { localStorage.setItem('tp-quests', m); } catch (_) { /* ohne Speicher */ } };
+const rewardText = (r) => [r && r.efs ? `+${r.efs} EFS` : '', r && r.coins ? `+${r.coins} Coin` : ''].filter(Boolean).join(' ');
+
+export function questCard(ctx) {
+  const o = ctx.view.onboarding; if (!o || !o.quests) return '';
+  const all = o.quests; const finished = o.doneCount >= o.total;
+  const mode = readMode() || (finished ? 'min' : 'open');
+  const cur = all.find((x) => x.current);
+  const item = (x) => html`<li class="q ${x.done ? 'done' : ''} ${x.current ? 'cur' : ''}">
+    <span class="qck">${x.done ? icon('check') : all.indexOf(x) + 1}</span>
+    <div class="grow"><b>${x.title}</b>${x.done ? '' : html`<div class="dim small">${x.why}</div>`}</div>
+    ${x.done ? '' : html`<div class="qside">${rewardText(x.reward) && !x.paid ? html`<span class="chip accent" title="Belohnung, einmalig">${rewardText(x.reward)}</span>` : ''}<button class="btn sm ${x.current ? 'primary' : ''}" data-quest-show="${x.id}">Zeig mir’s</button></div>`}</li>`;
+  const shown = mode === 'all' ? all : mode === 'min' ? [] : all.filter((x) => x.current || (!x.done && all.indexOf(x) > all.indexOf(cur) && all.indexOf(x) <= all.indexOf(cur) + 2));
+  return html`<section class="card quest-card" id="questCard">
+    <div class="row spread wrap qhead"><div class="card-title" style="margin:0">${icon('flag')} Deine ersten Schritte <span class="chip ${finished ? 'good' : ''}">${o.doneCount} / ${o.total}</span></div>
+      <div class="row nowrap">${mode === 'all' ? '' : html`<button class="btn sm ghost" data-qmode="all">Alle anzeigen</button>`}<button class="btn sm ghost" data-qmode="${mode === 'min' ? 'open' : 'min'}" aria-label="${mode === 'min' ? 'Aufklappen' : 'Einklappen'}" aria-expanded="${mode !== 'min'}">${icon(mode === 'min' ? 'chevron-down' : 'x')}</button></div></div>
+    ${bar(o.doneCount / o.total * 100, 'good')}
+    ${finished ? html`<div class="alert good mt">${icon('trophy')}<div>Alle Einstiegsschritte geschafft – du kennst jetzt die wichtigsten Bereiche. Der Rest ist dein Lebenswerk.</div></div>`
+      : mode === 'min' && cur ? html`<div class="row spread nowrap mt"><span class="small"><b>Als Nächstes:</b> ${cur.title}</span><button class="btn sm primary" data-quest-show="${cur.id}">Zeig mir’s</button></div>` : ''}
+    ${shown.length ? html`<ol class="quests mt">${shown.map(item)}</ol>` : ''}
+  </section>`;
+}
+
+/* ---------- „Was jetzt?“ ---------- */
+function advItem(a, big) {
+  const cta = a.cta || {};
+  return html`<div class="adv-main">
+    <div class="adv-ic">${icon(a.icon || 'lightbulb')}</div>
+    <div class="grow"><b class="adv-title">${a.title}</b><div class="dim">${a.why}</div></div>
+    <button class="btn ${big ? 'primary' : ''}" data-adv="${big ? 'top' : 'more'}" data-adv-i="${a.__i == null ? '' : a.__i}">${cta.label || 'Los'}</button></div>`;
+}
+export function advisorCard(ctx) {
+  const a = ctx.view.onboarding && ctx.view.onboarding.advisor; if (!a || !a.top) return '';
+  const t = a.top; ctx.__adv = [t].concat(a.more || []);
+  return html`<section class="card advisor lvl-${t.level}" id="advisor" aria-label="Was jetzt?">
+    <div class="card-title">${icon('lightbulb')} Was jetzt?</div>
+    ${advItem({ ...t, __i: 0 }, true)}
+    ${(a.more || []).length ? html`<div class="adv-more"><span class="dim small">Danach:</span> ${a.more.map((m, i) => html`<button class="chip" data-adv="more" data-adv-i="${i + 1}">${icon(m.icon || 'lightbulb')} ${m.title}</button>`)}</div>` : ''}
+  </section>`;
+}
+
+/** Führt die Handlung einer Empfehlung aus. */
+export async function runCta(ctx, a) {
+  const c = a && a.cta; if (!c) return;
+  if (c.kind === 'act') { try { await ctx.act(c.name, c.input || {}); } catch (_) { /* Meldung kam bereits */ } return; }
+  if (c.kind === 'bank') { const m = await import('./bank.js'); m.openBank(ctx); return; }
+  if (c.kind === 'advance') { ctx.advance(c.days || 7); return; }
+  showMe(ctx, { tab: c.tab, spot: c.spot });
+}
+
+export function bindGuide(root, ctx) {
+  on(root, 'click', '[data-quest-show]', (e, t) => { const q = ctx.view.onboarding.quests.find((x) => x.id === t.dataset.questShow); if (q) showMe(ctx, q); });
+  on(root, 'click', '[data-qmode]', (e, t) => { saveMode(t.dataset.qmode); ctx.rerender(); });
+  on(root, 'click', '[data-adv]', (e, t) => { const a = (ctx.__adv || [])[Number(t.dataset.advI) || 0]; if (a) runCta(ctx, a); });
+}
+
+/** Meldet neu erledigte Aufgaben (Vergleich zweier Ansichten) mit kleiner Feier. */
+export function celebrateQuests(prev, next) {
+  const p = prev && prev.onboarding; const n = next && next.onboarding; if (!p || !n || !p.quests || !n.quests) return;
+  const was = new Set(p.quests.filter((x) => x.done).map((x) => x.id));
+  const fresh = n.quests.filter((x) => x.done && !was.has(x.id));
+  if (!fresh.length) return;
+  const x = fresh[fresh.length - 1];
+  const gain = (next.efs.pool > prev.efs.pool || next.coins > prev.coins) ? rewardText(x.reward) : '';
+  toast(`Schritt geschafft: ${x.title}${gain ? ' · ' + gain : ''}`, 'good');
+  if (window.TPMotion) window.TPMotion.confetti();
 }

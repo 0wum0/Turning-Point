@@ -64,7 +64,13 @@ export async function api(method, url, body) {
   if (res.status === 503 && data && data.retry && !api._retried) { api._retried = true; await new Promise((r) => setTimeout(r, 2500)); try { return await api(method, url, body); } finally { api._retried = false; } }
   if (res.status === 401) { location.href = '/login?next=/play'; throw new Error('Bitte anmelden.'); }
   if (!res.ok || !data || data.ok === false) { const err = new Error((data && data.error) || `Fehler ${res.status}`); err.api = true; throw err; }
+  if (method === 'POST') seenHook(url);
   return data;
+}
+/* Einsteiger-Aufgaben, die nur außerhalb des Spielstands sichtbar sind (Markt, Wahl, Freunde): erfolgreiche Aufrufe der Oberfläche melden */
+function seenHook(url) {
+  const k = /\/api\/social\/market\//.test(url) ? 'marketOffer' : /\/api\/social\/elections\/(vote|run)/.test(url) ? 'vote' : /\/api\/social\/friends\/(request|respond)/.test(url) ? 'friend' : '';
+  if (k) window.dispatchEvent(new CustomEvent('tp-seen', { detail: k }));
 }
 
 import { ping } from './audio.js';

@@ -159,6 +159,7 @@ async function withCharacter(userId, fn, { needAlive = false } = {}) {
     else if (wasAlive && state && state.status === 'dead' && user.social_public) { await require('../lib/tagesblatt').post('life', 'Todesfall', `${state.person.first} ${state.person.last} ist verstorben.`, state.cityId, conn); }
     if (state && row) {
       if (state.status === 'gameover' && ((state.properties || []).length || (state.companies || []).length)) { try { await require('../lib/market').estate(conn, user, state, w); } catch (e) { require('../lib/log').warn(`[market] Insolvenzmasse: ${e.message}`); } }
+      try { require('./onboarding').tick(state, user); } catch (e) { require('../lib/log').warn(`[onboarding] ${e.message}`); }
       flush(user, state); await bonds.beforeSave(conn, user, state, w);
       // Gutschriften an andere Spieler (Bauaufträge, Dividenden) VOR dem Speichern verbuchen: Die Listen werden dabei geleert,
       // und das muss im gespeicherten Stand ankommen – sonst würden sie bei jedem weiteren Aufruf erneut ausgezahlt.
@@ -212,6 +213,7 @@ async function doAction(userId, name, input) {
     const needAlive = !['readNotices', 'tutorial'].includes(name);
     if (needAlive && ctx.state.status !== 'alive') throw new actions.ActionError('Dein Charakter lebt nicht mehr.');
     const out = await withSold(ctx, () => actions.run(name, { world: ctx.world, state: ctx.state, input: input || {}, user: ctx.user, now: ctx.now }));
+    if (!['seen', 'readNotices', 'tutorial'].includes(name)) require('./onboarding').noteAct(ctx.state, name);
     return { ok: true, message: out.msg || '', level: out.level || 'good' };
   });
 }

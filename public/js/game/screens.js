@@ -47,7 +47,7 @@ export function renderCreate(root, ctx) {
     const b = e.currentTarget; b.disabled = true; b.innerHTML = '<span class="spin"></span>';
     try {
       const r = await api('POST', '/api/create', { gender: st.gender, firstName: st.firstName, lastName: st.lastName, birthCityId: st.birthCityId, professionKey: st.professionKey, fatherName: st.fatherName, fatherJob: st.fatherJob, motherName: st.motherName, motherJob: st.motherJob });
-      ctx.ui.create = null; ctx.setView(r.view); ctx.go('newspaper');
+      ctx.ui.create = null; ctx.setView(r.view); ctx.go('overview'); if (ctx.welcome) ctx.welcome();
     } catch (er) { toast(er.message, 'bad'); b.disabled = false; b.innerHTML = 'Leben beginnen'; }
   };
 }

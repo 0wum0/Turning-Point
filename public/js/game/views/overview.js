@@ -1,5 +1,6 @@
 import { html, icon, money, moneyShort, signed, infoBtn, bar, on, num, yearsText } from '../ui.js';
 import { cityScene } from '../scene.js';
+import { advisorCard, questCard, bindGuide } from '../onboarding.js';
 
 const LEVEL_ICON = { good: 'circle-check', warn: 'triangle-alert', bad: 'circle-alert', info: 'info' };
 
@@ -27,7 +28,8 @@ export default {
     const pool = v.efs.pool;
     const unseen = v.notices.filter((n) => !n.seen).length;
     return html`
-    <section class="card scene-card">
+    ${advisorCard(ctx)}${questCard(ctx)}
+    <section class="card scene-card mt">
       ${sceneFor(ctx, v.city.id, here)}
       <div class="scene-overlay">
         <div>
@@ -99,6 +101,7 @@ export default {
     </section>`;
   },
   bind(root, ctx) {
+    bindGuide(root, ctx);
     root.querySelectorAll('[data-social]').forEach((a) => a.addEventListener('click', () => { const so = ctx.ui.soc = ctx.ui.soc || { cat: 'wealth', scope: 'all', box: 'in', page: 1 }; so.tab = a.dataset.social; }));
     on(root, 'click', '[data-bank]', () => import('../bank.js').then((m) => m.openBank(ctx)));
     on(root, 'click', '[data-go]', (e, t) => { e.preventDefault(); ctx.go(t.dataset.go); });

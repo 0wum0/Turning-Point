@@ -357,3 +357,27 @@ html { scroll-padding-top: calc(var(--hud-h, 62px) + 10px); }
 .wl-list li { display: flex; gap: .7rem; align-items: flex-start; padding: .6rem .75rem; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--border); }
 .wl-list li > .i { width: 22px; height: 22px; flex: none; margin-top: .1rem; color: var(--accent-2); }
 .wl-dots { display: flex; gap: .4rem; justify-content: center; margin-top: .6rem; } .wl-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--border-strong); } .wl-dots i.on { background: var(--accent); width: 22px; border-radius: 99px; }
+
+/* Aufgabenkarte, „Was jetzt?“ und „Zeig mir’s“ */
+.advisor, .quest-card { margin-bottom: 1rem; }
+.advisor { border-left: 4px solid var(--accent); }
+.advisor.lvl-bad { border-left-color: var(--bad); } .advisor.lvl-warn { border-left-color: var(--warn); } .advisor.lvl-good { border-left-color: var(--good); }
+.adv-main { display: flex; gap: .9rem; align-items: center; }
+.adv-ic { width: 46px; height: 46px; flex: none; border-radius: 14px; display: grid; place-items: center; background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent-2); }
+.advisor.lvl-bad .adv-ic { background: color-mix(in srgb, var(--bad) 16%, transparent); color: var(--bad); } .advisor.lvl-warn .adv-ic { background: color-mix(in srgb, var(--warn) 16%, transparent); color: var(--warn); }
+.adv-title { display: block; font-family: var(--font-display); font-size: 1.25rem; line-height: 1.25; margin-bottom: .15rem; }
+.adv-more { display: flex; gap: .4rem; flex-wrap: wrap; align-items: center; margin-top: .8rem; }
+.adv-more .chip { cursor: pointer; }
+@media (max-width: 640px) { .adv-main { flex-wrap: wrap; } .adv-main > .grow { flex-basis: calc(100% - 70px); } .adv-main > .btn { width: 100%; } }
+.quests { list-style: none; padding: 0; margin: 0; display: grid; gap: .5rem; }
+.quests .q { display: flex; gap: .75rem; align-items: center; padding: .65rem .8rem; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); }
+.quests .q.cur { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
+.quests .q.done { opacity: .6; }
+.qck { width: 28px; height: 28px; flex: none; border-radius: 50%; display: grid; place-items: center; font-size: .8rem; font-weight: 700; background: var(--surface-2); border: 1px solid var(--border-strong); }
+.q.done .qck { background: var(--good); color: #fff; border-color: transparent; } .qck .i { width: 15px; height: 15px; }
+.qside { display: flex; gap: .5rem; align-items: center; flex: none; }
+@media (max-width: 640px) { .quests .q { flex-wrap: wrap; } .qside { width: 100%; justify-content: space-between; } }
+.spot { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 12px; animation: spotpulse 1.3s ease-in-out infinite; position: relative; z-index: 3; }
+@keyframes spotpulse { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); } 50% { box-shadow: 0 0 0 12px transparent; } }
+@media (prefers-reduced-motion: reduce) { .spot { animation: none; } }
+.qhead .card-title { flex: 1 1 auto; min-width: 0; } .qhead .chip, .quest-card .chip { white-space: nowrap; }
