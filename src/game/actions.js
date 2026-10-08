@@ -194,7 +194,7 @@ A.maintain = ({ world, state, input, user }) => {
   const p = state.properties.find((x) => x.id === Number(input.propertyId));
   if (!p) fail('Immobilie nicht gefunden.');
   const v = propertyValue(world, state, p, yr(state));
-  const cost = Math.round(v * ((100 - p.condition) / 100) * 0.08);
+  const cost = Math.round(v * ((100 - p.condition) / 100) * 0.5);
   if (cost <= 0) fail('Die Immobilie ist in bestem Zustand.');
   if (state.money < cost) fail('Dir fehlt das Geld für die Instandhaltung.');
   pay(state, cost);
