@@ -387,8 +387,14 @@ async function reconcileCouple(conn, user, state, world) {
       let hs; try { hs = require('../game/state').parseState(hr.state); } catch (_) { hs = null; }
       for (const c of (hs ? hs.children : []).filter((x) => x.sid && x.status === 'home')) {
         if (state.children.some((m) => m.sid === c.sid)) continue;
-        const person = addPerson(state, { name: c.name, gender: c.gender, born: c.born, bornCity: c.cityId, role: 'child', parents: [state.person.id, p.personId] });
-        state.children.push({ ...c, id: state.nextChildId++, personId: person.id, shared: true });
+        // Das Alter bleibt erhalten, auch wenn die Spieluhren der Partner weit auseinanderliegen (sonst wäre das Kind „aus der Zukunft“ oder schon erwachsen)
+        const born = state.day - Math.max(0, hs.day - c.born);
+        const person = addPerson(state, { name: c.name, gender: c.gender, born, bornCity: c.cityId, role: 'child', parents: [state.person.id, p.personId] });
+        const rel = (d) => (d == null ? d : state.day - Math.max(0, hs.day - d)); // Tagesstempel des Kindes in die eigene Spielzeit übertragen
+        const imported = { ...c, id: state.nextChildId++, personId: person.id, shared: true, born };
+        if (c.pendingSince != null) imported.pendingSince = rel(c.pendingSince);
+        if (c.lastWarn != null) imported.lastWarn = rel(c.lastWarn);
+        state.children.push(imported);
         chronicle(state, `${c.name.split(' ')[0]} wird geboren.`, 'birth');
         press.story(world, state, 'birth', { child: c.name.split(' ')[0] });
         notice(state, { level: 'good', title: `Ein Kind ist geboren: ${c.name.split(' ')[0]}`, text: `${p.name} und du freut euch über ${c.name.split(' ')[0]}.`, tab: 'family', interrupt: true });

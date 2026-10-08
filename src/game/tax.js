@@ -8,6 +8,7 @@ const cfg = () => settings.get('tax');
 function annual(realYear) {
   const B = cfg().brackets; let tax = 0; let from = 0;
   for (const [upTo, rate] of B) { const part = Math.min(realYear, upTo) - from; if (part > 0) tax += part * rate; from = upTo; if (realYear <= upTo) break; }
+  if (B.length && realYear > from) tax += (realYear - from) * B[B.length - 1][1]; // Einkommen über der letzten Stufe (vom Admin geändert) wird mit dem Höchstsatz besteuert, nicht gar nicht
   return tax;
 }
 

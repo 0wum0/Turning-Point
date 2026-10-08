@@ -84,7 +84,7 @@ async function perform(attackerId, targetId, companyId, action) {
       else if (action === 'poach') { c.staff = Math.max(0, c.staff - 1); effectTxt = 'ein Mitarbeiter wechselt zu dir'; }
       else if (action === 'sabotage') {
         c.outageUntil = sB.day + A.outageDays; const repair = Math.round(biz.companyValue(world, sB, c, year) * A.repairPct / 100);
-        if (!sB.insurance || !sB.insurance.gebaeude) { const fromCash = Math.min(c.cash || 0, repair); c.cash = (c.cash || 0) - fromCash; sB.money -= repair - fromCash; }
+        if (!sB.insurance || !sB.insurance.gebaeude) { const fromCash = Math.min(c.cash || 0, repair); c.cash = (c.cash || 0) - fromCash; sB.money -= Math.min(Math.max(0, sB.money), repair - fromCash); } // nie unter null: ein Anschlag soll kosten, aber nicht die Insolvenz des Opfers auslösen
         effectTxt = `Produktionsausfall ${A.outageDays} Tage`;
       }
     }

@@ -179,3 +179,13 @@ test('Spieluhr: Obergrenze 3650 Tage und Offline-Schutz ab der Abwesenheitsschwe
   const s3 = mk(); const r3 = service.syncEfs(clockUser(t0), s3, t0 + (away + 1) * 60000, w);
   assert.ok(r3.offline);
 });
+
+test('Steuer: Einkommen oberhalb der letzten Stufe wird nicht steuerfrei', () => {
+  const tax = require('../src/game/tax');
+  const t = settings.get('tax'); const saved = t.brackets;
+  try {
+    t.brackets = [[1000, 0], [5000, 0.2]]; // Admin hat die Endstufe auf einen endlichen Wert gesetzt
+    assert.strictEqual(Math.round(tax.annual(5000)), 800);
+    assert.strictEqual(Math.round(tax.annual(15000)), Math.round(800 + 10000 * 0.2));
+  } finally { t.brackets = saved; }
+});

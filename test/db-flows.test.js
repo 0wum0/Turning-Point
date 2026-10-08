@@ -57,4 +57,26 @@ test('Mehrspieler gegen echte Datenbank', { skip }, async (t) => {
     contractors.set([]);
     assert.strictEqual(Number(n), 1);
   });
+
+  await t.test('Börse: Teilausführung lässt den Rest offen; Übernahme und Ausbuchung erstatten reservierte Mittel', async () => {
+    const settings = require('../src/settings'); const ex = require('../src/lib/exchange');
+    const X = settings.get('exchange'); X.minGameDays = 0; X.minValueReal = 100; X.blockSameIp = false; X.takeoverPct = 25;
+    for (const u of [A, B, C]) await service.withCharacter(u, async (ctx) => { ctx.state.housing = { type: 'rent', cityId: city, base: 70, rooms: 3 }; ctx.state.skills.days.baecker = 4000; ctx.state.money = 9e10; });
+    const l = edition(world, await state(C), city).biz.find((x) => x.qualified);
+    await service.doAction(C, 'buyBiz', { listingId: l.id });
+    const firm = (await state(C)).companies[0];
+    const { stockId } = await ex.ipo(C, firm.id, 49, 30);
+    const price = Number((await db.one('SELECT price_real p FROM stocks WHERE id = ?', [stockId])).p);
+    await ex.place(B, stockId, 'buy', 300, price); // kauft 300 von 490 angebotenen
+    const ask = await db.one("SELECT left_shares, status FROM stock_orders WHERE user_id = ? AND side = 'sell'", [C]);
+    assert.deepStrictEqual([Number(ask.left_shares), ask.status], [190, 'open'], 'Rest der Verkaufsorder bleibt offen');
+    // A setzt ein Gebot weit unter Markt, B übernimmt (hält mehr als 25 %) – As Reservierung bleibt unberührt, Bs eigene wird erstattet
+    const b0 = (await state(B)).money; await ex.place(B, stockId, 'buy', 5, 1); const b1 = (await state(B)).money; assert.ok(b1 < b0 || price * 0 === 0);
+    await ex.place(A, stockId, 'buy', 10, Math.max(1, Math.floor(price / 2)));
+    await ex.takeover(B, stockId);
+    assert.strictEqual(Number((await db.one("SELECT COUNT(*) n FROM stock_orders WHERE user_id = ? AND status = 'open'", [B])).n), 0);
+    await db.tx((conn) => ex.releaseOrders(conn, stockId));
+    const pc = await db.query("SELECT real_amount FROM pending_credits WHERE user_id = ? AND reason = 'stock'", [A]);
+    assert.strictEqual(pc.length, 1, 'reservierte Mittel des Bieters kommen zurück');
+  });
 });

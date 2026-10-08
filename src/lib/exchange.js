@@ -71,6 +71,7 @@ async function addHolding(conn, stockId, userId, n, price) {
 }
 const credit = (conn, userId, real, text) => (userId && real > 0 ? conn.query("INSERT INTO pending_credits (user_id, real_amount, reason, text) VALUES (?,?,'stock',?)", [userId, Math.round(real), text]) : null);
 
+// Achtung (MySQL): In UPDATE werden Zuweisungen von links nach rechts ausgewertet – `status` muss VOR `left_shares` stehen, sonst wird der Rest doppelt abgezogen.
 /** Alle offenen Orders einer Aktie stornieren (Ausbuchung): reservierte Kaufmittel kommen als Gutschrift zurück, verkaufte Anteile zurück ins Depot. */
 async function releaseOrders(conn, stockId) {
   for (const o of await conn.query("SELECT * FROM stock_orders WHERE stock_id = ? AND status = 'open' FOR UPDATE", [stockId])) {
@@ -116,7 +117,7 @@ async function place(userId, stockId, side, shares, limitReal) {
         if (!left) break; const n = Math.min(left, a.left_shares); const p = Number(a.limit_real);
         await fill(conn, st, userId, a.user_id, n, p);
         await credit(conn, a.user_id, p * n, `Verkauf von ${n} Anteilen „${st.name}“.`);
-        await conn.query("UPDATE stock_orders SET left_shares = left_shares - ?, status = IF(left_shares - ? <= 0, 'filled', 'open') WHERE id = ?", [n, n, a.id]);
+        await conn.query("UPDATE stock_orders SET status = IF(left_shares - ? <= 0, 'filled', 'open'), left_shares = left_shares - ? WHERE id = ?", [n, n, a.id]);
         left -= n; moved += n; sumReal += p * n; s.money += Math.round((limitReal - p) * n * idx);
       }
       if (left > 0) {
@@ -138,7 +139,7 @@ async function place(userId, stockId, side, shares, limitReal) {
         if (!left) break; const n = Math.min(left, b.left_shares); const p = Number(b.limit_real);
         await fill(conn, st, b.user_id, userId, n, p);
         await credit(conn, b.user_id, (Number(b.limit_real) - p) * n, `Preisvorteil beim Kauf von „${st.name}“.`);
-        await conn.query("UPDATE stock_orders SET left_shares = left_shares - ?, status = IF(left_shares - ? <= 0, 'filled', 'open') WHERE id = ?", [n, n, b.id]);
+        await conn.query("UPDATE stock_orders SET status = IF(left_shares - ? <= 0, 'filled', 'open'), left_shares = left_shares - ? WHERE id = ?", [n, n, b.id]);
         left -= n; moved += n; sumReal += p * n;
       }
       if (left > 0) {

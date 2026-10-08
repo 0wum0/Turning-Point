@@ -168,14 +168,14 @@ async function playGame(userId, { budget, rounds = 8 } = {}) {
     const s = ctx.state; if (!s || s.status !== 'alive') return;
     let left = Math.min(ctx.user.efs_pool, budget || rnd(8, 50));
     for (let round = 0; round < rounds && s.status === 'alive'; round++) {
-      decide(ctx, P);
+      await service.withSold(ctx, () => decide(ctx, P));
       const step = Math.min(left, rnd(3, 16)); if (step < 1) break;
       s.interrupts = [];
       const res = advance(ctx.world, s, step, { mode: 'online' });
       ctx.user.efs_pool -= res.advanced; left -= res.advanced; service.flush(ctx.user, s);
       if (res.advanced < 1) break;
     }
-    if (s.status === 'alive') decide(ctx, P);
+    if (s.status === 'alive') await service.withSold(ctx, () => decide(ctx, P));
   });
 }
 async function playGameSafe(userId, opts) { try { await playGame(userId, opts); } catch (e) { log.warn(`[bots] Spiel von ${userId}: ${e.message}`); } }

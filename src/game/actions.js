@@ -137,8 +137,8 @@ A.moveIn = ({ state, input }) => {
   const p = state.properties.find((x) => x.id === Number(input.propertyId));
   if (!p) fail('Immobilie nicht gefunden.');
   if (p.lease && p.lease.on && p.lease.tenant) fail('Die Immobilie ist vermietet. Beende zuerst die Vermietung.');
-  if (p.lease) p.lease.on = false;
   if (p.cityId !== state.cityId) fail('Diese Immobilie steht in einer anderen Stadt.');
+  if (p.lease) p.lease.on = false;
   state.housing = { type: 'own', cityId: p.cityId, propertyId: p.id };
   return { msg: `Du ziehst in ${p.name} ein.` };
 };

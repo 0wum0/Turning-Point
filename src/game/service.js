@@ -100,6 +100,15 @@ async function recordSold(conn, listingId, userId) {
   if (!r || !r.affectedRows) throw new actions.ActionError('Dieses Angebot ist nicht mehr aktuell – jemand war schneller.');
 }
 
+/** Führt fn mit der aktuellen Liste gekaufter Anzeigen aus und hält neu gekaufte fest (auch für Bots, die Aktionen direkt ausführen). */
+async function withSold(ctx, fn) {
+  await loadSold(ctx.conn, ctx.state);
+  const before = new Set(ctx.state.soldListings || []);
+  const out = fn();
+  for (const id of ctx.state.soldListings || []) if (!before.has(id)) await recordSold(ctx.conn, id, ctx.user.id);
+  return out;
+}
+
 async function loadUser(conn, userId) {
   const u = await conn.one('SELECT * FROM users WHERE id = ? FOR UPDATE', [userId]);
   if (!u) return null;
@@ -202,10 +211,7 @@ async function doAction(userId, name, input) {
     if (!ctx.state) throw new actions.ActionError('Du hast noch keinen Charakter.');
     const needAlive = !['readNotices', 'tutorial'].includes(name);
     if (needAlive && ctx.state.status !== 'alive') throw new actions.ActionError('Dein Charakter lebt nicht mehr.');
-    await loadSold(ctx.conn, ctx.state);
-    const soldBefore = new Set(ctx.state.soldListings || []);
-    const out = actions.run(name, { world: ctx.world, state: ctx.state, input: input || {}, user: ctx.user, now: ctx.now });
-    for (const id of ctx.state.soldListings || []) if (!soldBefore.has(id)) await recordSold(ctx.conn, id, ctx.user.id);
+    const out = await withSold(ctx, () => actions.run(name, { world: ctx.world, state: ctx.state, input: input || {}, user: ctx.user, now: ctx.now }));
     return { ok: true, message: out.msg || '', level: out.level || 'good' };
   });
 }
@@ -271,4 +277,4 @@ async function peek(userId) {
   return { w, user, row, state };
 }
 
-module.exports = { activeRow, saveCharacter, peek, withCharacter, getView, create, doAction, doAdvance, chooseHeir, previewHeir, flush, syncEfs, loadUser, saveUser, parseMeta };
+module.exports = { withSold, activeRow, saveCharacter, peek, withCharacter, getView, create, doAction, doAdvance, chooseHeir, previewHeir, flush, syncEfs, loadUser, saveUser, parseMeta };
