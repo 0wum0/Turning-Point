@@ -3,7 +3,7 @@ const settings = require('../settings');
 const { dateOf, formatDate, yearOf, ageYears } = require('./calendar');
 const { scale } = require('./economy');
 const {
-  dailyFlows, propertyValue, netWorth, roomsAvailable, roomsNeeded, effectiveHousing, levelIndex, foodCostPerDay,
+  dailyFlows, propertyValue, netWorth, roomsAvailable, roomsNeeded, effectiveHousing, levelIndex, foodCostPerDay, satiety,
   consumption, kidsAtHome, isLearned,
 } = require('./core');
 const { HOUSING, LEVELS, SCHOOLS } = require('./content');
@@ -107,8 +107,8 @@ function present(world, state, user, now) {
     })(),
     flows: { income: flows.income, expense: flows.expense, net: flows.net, inc: flows.inc, exp: flows.exp },
     food: {
-      consumption: consumption(state),
-      tiers: econ.food.map((t, i) => ({ key: t.key, name: t.name, cost: round(t.perPct * Math.max(0, 100 - state.meters.fridge) * idx * curCityFactor), perDay: foodCostPerDay(world, state, i) })),
+      consumption: Math.round(consumption(state) * satiety(state.meters.fridgeQ) * 10) / 10,
+      tiers: econ.food.map((t, i) => ({ key: t.key, name: t.name, cost: round(t.perPct * Math.max(0, 100 - state.meters.fridge) * idx * curCityFactor), perDay: foodCostPerDay(world, state, i), lasts: Math.round(100 / (consumption(state) * satiety(i + 1))) })),
     },
     learned,
     credit: require('./credit').view(world, state),

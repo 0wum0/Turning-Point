@@ -16,7 +16,7 @@ export default {
       <div class="fridge-bar mt">${bar(m.fridge, m.fridge < 25 ? 'bad' : 'good')}<div class="row spread small dim"><span>${m.fridge} % gefüllt</span><span>Qualität Ø ${m.fridgeQ} / 4</span></div></div>
       <div class="grid c4 mt" style="--gap:.7rem">
         ${v.food.tiers.map((t, i) => html`<button class="tier" data-food="${i}" ${full || v.money < t.cost ? 'disabled' : ''}>
-          ${icon(TIER_ICONS[i], 'lg')}<b>${t.name}</b><span class="mono">${money(t.cost, cur)}</span><small class="dim">auffüllen · ≈ ${money(t.perDay, cur)} / Tag</small></button>`)}
+          ${icon(TIER_ICONS[i], 'lg')}<b>${t.name}</b><span class="mono">${money(t.cost, cur)}</span><small class="dim">auffüllen · ≈ ${money(t.perDay, cur)} / Tag · hält ca. ${t.lasts} Tage</small></button>`)}
       </div>
       ${full ? html`<div class="dim small mt">Der Kühlschrank ist voll.</div>` : ''}
     </section>

@@ -147,13 +147,15 @@ function dailyFlows(world, state) {
 function consumption(state) {
   return 7 + (state.partner && state.partner.cohabit ? 3 : 0) + 1.5 * minors(state).length;
 }
+/** Sättigung: Hochwertiges Essen hält länger vor. q = Qualität 1 (günstig) bis 4 (Gourmet); Faktor auf den täglichen Verbrauch. */
+const satiety = (q) => Math.max(0.6, 1.25 - 0.17 * (Math.max(1, Math.min(4, q || 2)) - 1));
 /** Kosten (Cent) des täglichen Essens in einer Qualitätsstufe. */
 function foodCostPerDay(world, state, tierIdx = 1) {
   const year = yearOf(state.day, state.startYear);
-  return Math.round(world.econ.food[tierIdx].perPct * consumption(state) * world.idx(year));
+  return Math.round(world.econ.food[tierIdx].perPct * consumption(state) * satiety(tierIdx + 1) * world.idx(year));
 }
 
 module.exports = {
   clamp, notice, chronicle, award, isLearned, learn, levelIndex, propertyValue, netWorth, kidsAtHome, minors,
-  residenceProperty, effectiveHousing, roomsAvailable, roomsNeeded, foodMods, dailyFlows, foodCostPerDay, consumption, SCHOOL_COST,
+  residenceProperty, effectiveHousing, roomsAvailable, roomsNeeded, foodMods, dailyFlows, foodCostPerDay, consumption, satiety, SCHOOL_COST,
 };

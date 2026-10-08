@@ -51,3 +51,10 @@ test('Reparatur beauftragt eine Baufirma der Stadt, die Rechnung geht an ihre Fi
   s2.properties = [{ id: 1, kind: 'house_large', name: 'Haus', cityId: s2.cityId, rooms: 8, base: 4500000, condition: 80, closedUntil: s2.day + 100, bought: 0 }];
   assert.match(act(s2, 'repair', { propertyId: 1 }, u(2)).msg, /städtischer/);
 });
+
+test('Hochwertiges Essen sättigt länger als minderwertiges', () => {
+  const { satiety } = require('../src/game/core');
+  assert.ok(satiety(1) > satiety(2) && satiety(2) > satiety(3) && satiety(3) > satiety(4));
+  const lasts = (q) => 100 / (10 * satiety(q));
+  assert.ok(lasts(4) > lasts(1) * 1.5);
+});

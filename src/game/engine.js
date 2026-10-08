@@ -6,7 +6,7 @@ const { yearOf, dateOf } = require('./calendar');
 const { scale } = require('./economy');
 const {
   clamp, notice, chronicle, award, learn, levelIndex, dailyFlows, effectiveHousing, foodMods, consumption,
-  roomsAvailable, roomsNeeded, kidsAtHome, foodCostPerDay,
+  roomsAvailable, roomsNeeded, kidsAtHome, foodCostPerDay, satiety,
 } = require('./core');
 const { LEVELS, ILLNESSES } = require('./content');
 const { applyTownEvents, rollPrivateEvent } = require('./events');
@@ -106,7 +106,7 @@ function dayStep(ctx) {
   }
 
   // ---- Essen & Meter ----
-  const eatCost = consumption(state);
+  const eatCost = consumption(state) * satiety(m.fridgeQ);
   m.fridge -= eatCost;
   if (m.fridge <= 0) {
     m.fridge = 0;
