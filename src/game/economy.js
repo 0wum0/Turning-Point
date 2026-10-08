@@ -49,4 +49,12 @@ function haversineKm(a, b) {
   return 2 * R * Math.asin(Math.sqrt(x)) * 1.25; // 1,25 = Straßenumweg
 }
 
-module.exports = { priceIndex, currencyOf, scale, formatMoney, compact, haversineKm };
+/** Immobilienzyklus: Faktor auf Preise und Mieten je Jahr (Tabelle in den Einstellungen, linear interpoliert). */
+function realEstateFactor(year) {
+  const t = require('../settings').get('cycles').realEstate;
+  if (year <= t[0][0]) return t[0][1];
+  for (let i = 1; i < t.length; i++) if (year <= t[i][0]) { const [y0, f0] = t[i - 1]; const [y1, f1] = t[i]; return f0 + ((f1 - f0) * (year - y0)) / Math.max(1, y1 - y0); }
+  return t[t.length - 1][1];
+}
+
+module.exports = { realEstateFactor, priceIndex, currencyOf, scale, formatMoney, compact, haversineKm };

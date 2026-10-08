@@ -20,10 +20,11 @@ const isResidence = (state, p) => state.housing && state.housing.type === 'own' 
 const active = (state, p) => !!(p.lease && p.lease.on) && !isResidence(state, p);
 
 /** Miete pro Tag (Cent, heutige Preise), wenn ein Mieter einzahlt. */
+const cycleRent = (year) => Math.pow(require('./economy').realEstateFactor(year), 0.6); // Mieten schwanken schwächer als Preise
 function rentPerDay(world, state, p, year) {
-  return scale(Math.round(marketBase(p) * clamp((p.lease && p.lease.mult) || 1, MIN_MULT, MAX_MULT)), world.idx(year));
+  return Math.round(scale(Math.round(marketBase(p) * clamp((p.lease && p.lease.mult) || 1, MIN_MULT, MAX_MULT)), world.idx(year)) * cycleRent(year));
 }
-const marketPerDay = (world, state, p, year) => scale(marketBase(p), world.idx(year));
+const marketPerDay = (world, state, p, year) => Math.round(scale(marketBase(p), world.idx(year)) * cycleRent(year));
 
 /** Einnahmen heute (für dailyFlows). */
 function incomeToday(world, state, year) {
@@ -95,4 +96,4 @@ function viewOf(world, state, p, year) {
   };
 }
 
-module.exports = { marketBase, marketPerDay, rentPerDay, incomeToday, landlordDaily, viewOf, isResidence, MIN_MULT, MAX_MULT, clamp };
+module.exports = { cycleRent, marketBase, marketPerDay, rentPerDay, incomeToday, landlordDaily, viewOf, isResidence, MIN_MULT, MAX_MULT, clamp };

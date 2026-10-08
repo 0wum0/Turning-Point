@@ -14,6 +14,7 @@ function card(c, v) {
     <div class="row nowrap spread"><h3>${c.name}</h3><span class="chip accent">${c.tierName}</span></div>
     <div class="dim small">${c.city} · ${c.profession}${c.owner ? ' · du arbeitest hier' : ''}${c.manager ? ' · Manager' : ''}</div>
     <div class="grid c2 mt small" style="--gap:.6rem"><div><div class="dim">Räume</div><b>${c.rooms} / ${c.maxRooms}</b></div><div><div class="dim">Mitarbeiter</div><b>${c.staff} / ${c.needed}</b></div></div>
+    ${c.comp ? html`<div class="small mt ${c.comp.factor < 0.9 ? 'neg' : 'dim'}">${icon('users')} Konkurrenz: ${c.comp.firms} Betriebe dieser Art in ${c.city}, ${c.comp.total} von ${c.comp.cap} Räumen Nachfrage${c.comp.factor < 1 ? html` – Umsatz ×${String(Math.round(c.comp.factor * 100) / 100).replace('.', ',')}` : ''}</div>` : ''}
     <div class="mt small">Auslastung ${Math.round(f.efficiency * 100)} %</div>${bar(f.efficiency * 100, f.efficiency < 0.5 ? 'bad' : 'good')}
     <dl class="kv small mt"><dt>Umsatz / Tag</dt><dd>${money(f.income, cur)}</dd><dt>Löhne + Unterhalt</dt><dd class="neg">${money(f.wages + f.upkeep, cur)}</dd><dt><b>Gewinn / Tag</b></dt><dd class="${f.profit >= 0 ? 'pos' : 'neg'}">${signed(f.profit, cur)}</dd><dt>Firmenkasse</dt><dd>${money(c.cash, cur)}</dd><dt>Wert</dt><dd>${money(c.value, cur)}</dd></dl>
     <div class="row mt">

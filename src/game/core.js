@@ -44,12 +44,12 @@ function levelIndex(state, key) {
 
 function propertyValue(world, state, p, year) {
   const idx = world.idx(year);
-  return Math.round(p.base * idx * (0.2 + 0.8 * (p.condition / 100)));
+  return Math.round(p.base * idx * (0.2 + 0.8 * (p.condition / 100)) * require('./economy').realEstateFactor(year));
 }
 function netWorth(world, state) {
   const year = yearOf(state.day, state.startYear);
   const biz = (state.companies || []).reduce((s, c) => s + require('./business').companyValue(world, state, c, year) + c.cash, 0);
-  return state.money + biz + state.properties.reduce((s, p) => s + propertyValue(world, state, p, year), 0);
+  return state.money + biz + state.properties.reduce((s, p) => s + propertyValue(world, state, p, year), 0) - require('./credit').debt(state);
 }
 
 const kidsAtHome = (state) => state.children.filter((c) => c.status === 'home');
@@ -91,7 +91,7 @@ function dailyFlows(world, state) {
   const idx = world.idx(year);
   const econ = world.econ;
   const inc = { wage: 0, kindergeld: 0, office: 0, rent: 0 };
-  const exp = { lodging: 0, insurance: 0, upkeep: 0, children: 0, support: 0, butler: 0, tuition: 0 };
+  const exp = { lodging: 0, insurance: 0, upkeep: 0, children: 0, support: 0, butler: 0, tuition: 0, tax: 0, loan: 0 };
   const occ = state.occupation;
   if (occ) {
     const p = world.prof(occ.pkey);
@@ -137,6 +137,8 @@ function dailyFlows(world, state) {
     exp.upkeep += Math.round((v * (econ.upkeepYearPct + (state.flags.autoMaintain ? 1 : 0))) / 100 / 365);
   }
   if (state.butler) exp.butler = scale(state.butler.perDay, idx);
+  exp.loan = require('./credit').dailyPay(state);
+  exp.tax = require('./tax').incomeTaxPerDay(idx, inc.wage + inc.office + inc.rent);
   const income = Object.values(inc).reduce((a, b) => a + b, 0);
   const expense = Object.values(exp).reduce((a, b) => a + b, 0);
   return { inc, exp, income, expense, net: income - expense };

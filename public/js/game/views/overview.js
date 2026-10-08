@@ -50,10 +50,12 @@ export default {
         <dl class="kv small">
           <dt>Einnahmen / Tag</dt><dd class="pos">${money(f.income, cur)}</dd>
           ${f.inc.rent ? html`<dt class="dim">davon Mieteinnahmen</dt><dd class="pos">${money(f.inc.rent, cur)}</dd>` : ''}
+          ${f.exp.tax ? html`<dt class="dim">davon Steuern</dt><dd class="neg">${money(f.exp.tax, cur)}</dd>` : ''}${f.exp.loan ? html`<dt class="dim">davon Kreditrate</dt><dd class="neg">${money(f.exp.loan, cur)}</dd>` : ''}
           <dt>Ausgaben / Tag</dt><dd class="neg">${money(f.expense, cur)}</dd>
           <dt>Essen / Tag (~)</dt><dd class="neg">${money(v.food.tiers[1].perDay, cur)}</dd>
           <dt><b>Bilanz / Tag</b></dt><dd class="${f.net - v.food.tiers[1].perDay >= 0 ? 'pos' : 'neg'}">${signed(f.net - v.food.tiers[1].perDay, cur)}</dd>
         </dl>
+        <div class="row mt"><button class="btn sm" data-bank="1">${icon('landmark')} Bank &amp; Kredite</button></div>
         ${runway !== null && runway < 40 ? html`<div class="alert warn mt small">${icon('triangle-alert')}<div>Bei diesem Tempo reicht dein Geld nur noch ca. ${runway} Tage.</div></div>` : ''}
       </section>
 
@@ -97,6 +99,7 @@ export default {
   },
   bind(root, ctx) {
     root.querySelectorAll('[data-social]').forEach((a) => a.addEventListener('click', () => { const so = ctx.ui.soc = ctx.ui.soc || { cat: 'wealth', scope: 'all', box: 'in', page: 1 }; so.tab = a.dataset.social; }));
+    on(root, 'click', '[data-bank]', () => import('../bank.js').then((m) => m.openBank(ctx)));
     on(root, 'click', '[data-go]', (e, t) => { e.preventDefault(); ctx.go(t.dataset.go); });
     on(root, 'click', '[data-advance]', (e, t) => ctx.advance(t.dataset.advance === 'max' ? 'max' : Number(t.dataset.advance), t));
     const ra = root.querySelector('#readAll'); if (ra) ra.addEventListener('click', () => ctx.act('readNotices', {}, { silent: true }));

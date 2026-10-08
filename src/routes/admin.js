@@ -260,6 +260,7 @@ const GROUPS = [
     ['packages', 'Pakete (JSON)', 'json'], ['subscription', 'Dauerkarte (JSON)', 'json'],
   ] },
   { id: 'mail', title: 'E-Mail (SMTP)', icon: 'mail', fields: [['mail.smtp', 'SMTP', 'smtp']] },
+  { id: 'finance', title: 'Steuern, Kredit & Konkurrenz', icon: 'landmark', fields: [['tax', 'Steuern (Stufen: [bis Jahreseinkommen (Wert 1945), Satz], Gewerbesteuer %)', 'json'], ['credit', 'Bank: Zins-Aufschlag, Kreditrahmen, Laufzeit', 'json'], ['competition', 'Konkurrenz: Nachfrage (Räume je Stadtstufe), Mindestfaktor', 'json'], ['cycles', 'Immobilienzyklus (Jahr → Faktor auf Preise)', 'json']] },
   { id: 'market', title: 'Markt', icon: 'handshake', fields: [['market', 'Spielermarkt: Gebühren, Fristen, Limits', 'json']] },
   { id: 'legal', title: 'Rechtliches', icon: 'scale', fields: [['legal.impressum', 'Impressum', 'textarea', 'Pflicht in Deutschland (§ 5 DDG).'], ['legal.datenschutz', 'Datenschutzerklärung', 'textarea'], ['legal.agb', 'Nutzungsbedingungen (AGB)', 'textarea'], ['legal.widerruf', 'Widerrufsbelehrung (nur nötig, wenn Käufe aktiv sind)', 'textarea']] },
 ];

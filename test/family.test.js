@@ -89,7 +89,7 @@ test('Pflichtanteil: gleiche Anteile, Erbe bekommt zugedachte Immobilie wenn sie
   const { state: h } = createHeirState(w, s, 1, [1]);
   assert.strictEqual(h.properties.length, 1);
   assert.strictEqual(h.housing.type, 'own');
-  const total = h.money + 2000000;
+  const total = h.money + require('../src/game/core').propertyValue(w, h, h.properties[0], require('../src/game/calendar').yearOf(h.day, h.startYear));
   assert.ok(Math.abs(total - est.share) < 5, 'Gesamterbe entspricht Pflichtanteil');
 });
 

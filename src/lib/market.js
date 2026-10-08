@@ -331,9 +331,17 @@ async function expire() {
   await db.query("DELETE FROM market_bids WHERE auction_id IN (SELECT id FROM market_auctions WHERE status <> 'open' AND ends_at < NOW() - INTERVAL 14 DAY)");
 }
 
+/** Konkurrenz: Angebot (Räume je Stadt und Betriebsart) aus den veröffentlichten Betrieben neu berechnen. */
+async function refreshSupply() {
+  const rows = await db.query('SELECT city_id, pkey, SUM(rooms) rooms, COUNT(*) firms FROM player_firms WHERE abandoned = 0 GROUP BY city_id, pkey');
+  require('../game/competition').setSupply(rows);
+}
+
 function start() {
+  refreshSupply().catch(() => {});
+  setInterval(() => { refreshSupply().catch(() => {}); }, 120000).unref();
   setInterval(() => { settleAuctions().catch((e) => log.warn(`[market] ${e.message}`)); }, 60000).unref();
   setInterval(() => { expire().catch(() => {}); }, 3600000).unref();
 }
 
-module.exports = { start, makeOffer, respondOffer, withdrawOffer, setAsk, buyNow, startAuction, bid, settleAuctions, estate, overview, auctions, executeSale, detach, attach, valueReal };
+module.exports = { refreshSupply, start, makeOffer, respondOffer, withdrawOffer, setAsk, buyNow, startAuction, bid, settleAuctions, estate, overview, auctions, executeSale, detach, attach, valueReal };

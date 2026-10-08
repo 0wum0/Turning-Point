@@ -158,6 +158,17 @@ A.letPrice = ({ state, input }) => {
   return { msg: `Neuer Mietpreis: ${Math.round(p.lease.mult * 100)} % der Marktmiete.` };
 };
 
+/* ---------------- Bank ---------------- */
+A.loanTake = ({ world, state, input }) => {
+  const credit = require('./credit');
+  try { const r = credit.take(world, state, Number(input.amount), Number(input.years)); return { msg: `Kredit bewilligt: ${r.rate} % p. a., Rate ${require('./economy').formatMoney(r.pay, world.currency(yr(state)))} pro Tag.` }; } catch (e) { fail(e.message); }
+};
+A.loanRepay = ({ world, state, input }) => {
+  const credit = require('./credit');
+  const l = (state.loans || []).find((x) => x.id === Number(input.id)); if (!l) fail('Kredit nicht gefunden.');
+  try { const a = credit.repay(state, Number(input.id), input.all ? l.left : Number(input.amount)); return { msg: `${require('./economy').formatMoney(a, world.currency(yr(state)))} zurückgezahlt.` }; } catch (e) { fail(e.message); }
+};
+
 A.maintain = ({ world, state, input }) => {
   const p = state.properties.find((x) => x.id === Number(input.propertyId));
   if (!p) fail('Immobilie nicht gefunden.');

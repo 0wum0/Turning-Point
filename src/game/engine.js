@@ -165,6 +165,7 @@ function dayStep(ctx) {
   }
 
   require('./landlord').landlordDaily(ctx);
+  require('./credit').creditDaily(ctx);
 
   // Familie, Ereignisse
   familyDaily(ctx, flows);

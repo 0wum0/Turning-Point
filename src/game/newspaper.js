@@ -86,10 +86,10 @@ function housingListings(world, state, city, week) {
     const def = econ.property[kind];
     const base = Math.round(def.price * pf * (0.85 + r() * 0.4));
     const condition = int(r, 45, 95);
-    const price = Math.round(base * idx * (0.2 + 0.8 * (condition / 100)));
+    const price = Math.round(base * idx * (0.2 + 0.8 * (condition / 100)) * require('./economy').realEstateFactor(year));
     out.sale.push({
       id: `sale:${city.id}:${week}:${i}`, type: 'sale', kind, name: `${def.name}, ${pick(r, txt(world).paper.streets)} ${int(r, 1, 60)}`, rooms: def.rooms, base, condition, price, rest: def.rest, cityId: city.id,
-      rentPerDay: scale(require('./landlord').marketBase({ base, kind, condition }), idx),
+      rentPerDay: Math.round(scale(require('./landlord').marketBase({ base, kind, condition }), idx) * require('./landlord').cycleRent(year)),
     });
   }
   return out;

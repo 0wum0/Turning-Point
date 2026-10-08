@@ -81,7 +81,7 @@ function bizCard(b, v, here) {
   return html`<article class="listing"><div class="lic">${icon('store', 'lg')}</div>
     <div class="grow"><div class="row nowrap spread"><h4>${b.name}</h4><span class="chip accent">${b.tierName}</span></div>
       <div class="dim small">${b.rooms} Räume · benötigt: ${b.profession}${b.minLevel ? ' (Stufe ' + ['Anfänger', 'Geselle', 'Fachkraft', 'Meister', 'Altmeister'][b.minLevel] + ')' : ''}</div>
-      <div class="row small" style="margin-top:.4rem"><b class="mono">${money(b.price, v.currency)}</b>${!b.qualified ? html`<span class="chip bad">Qualifikation fehlt</span>` : ''}${!afford ? html`<span class="chip bad">${money(b.price - v.money, v.currency)} fehlen</span>` : ''}</div></div>
+      <div class="row small" style="margin-top:.4rem"><b class="mono">${money(b.price, v.currency)}</b>${!b.qualified ? html`<span class="chip bad">Qualifikation fehlt</span>` : ''}${b.comp ? html`<span class="chip ${b.comp.factor < 0.9 ? 'warn' : ''}" title="Betriebe dieser Art in der Stadt (Spieler)">Konkurrenz: ${b.comp.firms} · Nachfrage ${b.comp.total}/${b.comp.cap}</span>` : ''}${!afford ? html`<span class="chip bad">${money(b.price - v.money, v.currency)} fehlen</span>` : ''}</div></div>
     <button class="btn primary sm" data-act="buyBiz" data-id="${b.id}" ${(!here || !afford || !b.qualified) ? 'disabled' : ''}>Kaufen</button></article>`;
 }
 

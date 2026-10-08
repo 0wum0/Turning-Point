@@ -59,10 +59,12 @@ function companyFlows(world, state, c, year) {
   const ps = c.playerStaff || [];
   const eff = Math.max(0.2, Math.min(1, (c.staff + ps.length + ownerHere) / needed)) * (c.manager || c.playerManager || ownerHere ? 1 : 0.6);
   const strike = c.strikeUntil && state.day < c.strikeUntil ? 0 : 1;
-  const income = Math.round(c.rooms * t.incomePerRoom * idx * cityMult(world.city(c.cityId)) * eff * marketPhase(year).factor * strike);
+  const comp = require('./competition').info(world, c.cityId, c.pkey, c.rooms);
+  const income = Math.round(c.rooms * t.incomePerRoom * idx * cityMult(world.city(c.cityId)) * eff * marketPhase(year).factor * strike * comp.factor);
   const wages = Math.round(c.staff * econ.staffWage * idx + (c.manager ? econ.managerWage * idx : 0) + ps.reduce((s, x) => s + x.wage * idx, 0) + (c.playerManager ? c.playerManager.wage * idx : 0));
   const upkeep = Math.round((companyValue(world, state, c, year) * econ.upkeepYearPct) / 100 / 365);
-  return { income, wages, upkeep, profit: income - wages - upkeep, efficiency: eff, needed };
+  const pretax = income - wages - upkeep; const tax = require('./tax').corporateTax(pretax);
+  return { income, wages, upkeep, tax, pretax, profit: pretax - tax, efficiency: eff, needed, comp };
 }
 
 function netBusinessValue(world, state, year) {
@@ -167,6 +169,7 @@ function bizListings(world, state, city, week) {
       id: `biz:${city.id}:${week}:${i}`, type: 'biz', pkey: p.pkey, tier, tierName: names[tier], name: `${names[tier]} ${pick(r, LAST)}`, cityId: city.id,
       base, price: Math.round(base * idx), rooms: t.rooms, minLevel: t.minLevel, profession: p.name, icon: p.icon,
       qualified: qualification(world, state, p.pkey, tier).ok,
+      comp: require('./competition').info(world, city.id, p.pkey, t.rooms),
     });
   }
   return out;
