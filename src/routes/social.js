@@ -1,6 +1,7 @@
 'use strict';
 const express = require('express');
 const social = require('../lib/social');
+const exchange = require('../lib/exchange');
 const service = require('../game/service');
 const actions = require('../game/actions');
 const settings = require('../settings');
@@ -85,6 +86,13 @@ router.post('/jobs/fire', wrap(async (req, res) => { await bonds.fire(uid(req), 
 
 /* ---------- Spielermarkt ---------- */
 const market = require('../lib/market');
+router.get('/exchange', wrap(async (req, res) => res.json({ ok: true, ...(await exchange.overview(uid(req))) })));
+router.get('/exchange/history/:id', wrap(async (req, res) => res.json({ ok: true, history: await exchange.history(int(req.params.id)) })));
+router.post('/exchange/order', wrap(async (req, res) => { const r = await exchange.place(uid(req), int(req.body.stockId), String(req.body.side), req.body.shares, req.body.priceReal); res.json({ ok: true, ...r, view: r.view }); }));
+router.post('/exchange/cancel', wrap(async (req, res) => { await exchange.cancel(uid(req), int(req.body.id)); res.json({ ok: true }); }));
+router.post('/exchange/ipo', wrap(async (req, res) => { const r = await exchange.ipo(uid(req), int(req.body.companyId), req.body.floatPct, req.body.divPct); res.json({ ok: true, ...r }); }));
+router.post('/exchange/delist', wrap(async (req, res) => { await exchange.delist(uid(req), int(req.body.companyId)); res.json({ ok: true }); }));
+router.post('/exchange/takeover', wrap(async (req, res) => { await exchange.takeover(uid(req), int(req.body.stockId)); await fresh(req, res); }));
 router.get('/market', wrap(async (req, res) => res.json({ ok: true, ...(await market.overview(uid(req))) })));
 router.get('/market/auctions', wrap(async (req, res) => res.json({ ok: true, auctions: await market.auctions(uid(req), int(req.query.cityId)) })));
 router.post('/market/offer', wrap(async (req, res) => { const id = await market.makeOffer(uid(req), { kind: String(req.body.kind), ownerId: int(req.body.ownerId), itemId: int(req.body.itemId), priceReal: req.body.priceReal, message: req.body.message }); res.json({ ok: true, id }); }));

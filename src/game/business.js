@@ -142,6 +142,7 @@ function businessDaily(ctx) {
     const f = companyFlows(world, state, c, year);
     c.cash += f.profit;
     c.lastProfit = f.profit;
+    if (c.stock) require('../lib/exchange').dividend(ctx, c, f.profit);
     if (c.cash < 0) {
       state.money += c.cash; state.stats.spent += -c.cash; c.cash = 0;
       if (ctx.offline) { c.staff = Math.max(0, c.staff - 1); }

@@ -107,7 +107,7 @@ function present(world, state, user, now) {
       return {
         id: c.id, name: c.name, pkey: c.pkey, profession: (world.prof(c.pkey) || {}).name, tier: c.tier, tierName: biz.tierName(world, c), cityId: c.cityId, city: city && city.name,
         rooms: c.rooms, maxRooms: t.maxRooms, staff: c.staff, needed: f.needed || biz.staffNeeded(world, c), manager: c.manager, cash: c.cash, abandoned: !!c.abandoned,
-        value: biz.companyValue(world, state, c, year), flows: f, comp: f.comp, security: !!c.security, hit: c.hit && state.day < c.hit.until ? { days: c.hit.until - state.day, pct: Math.round((1 - c.hit.factor) * 100) } : null, outage: c.outageUntil && state.day < c.outageUntil ? c.outageUntil - state.day : 0, owner: !!(state.occupation && state.occupation.ownCompanyId === c.id),
+        value: biz.companyValue(world, state, c, year), flows: f, comp: f.comp, security: !!c.security, stock: c.stock ? { id: c.stock.id, div: c.stock.divPct, outside: c.stock.outside || 0 } : null, hit: c.hit && state.day < c.hit.until ? { days: c.hit.until - state.day, pct: Math.round((1 - c.hit.factor) * 100) } : null, outage: c.outageUntil && state.day < c.outageUntil ? c.outageUntil - state.day : 0, owner: !!(state.occupation && state.occupation.ownCompanyId === c.id),
         roomCost, roomCoins: biz.tiersOf(world)[c.tier].roomCoins, roomStep: state.discounts[`room:${c.id}`] || 0,
         qualified: biz.qualification(world, state, c.pkey, c.tier).ok,
         next: nt ? { name: biz.chainNames(world, c.pkey)[c.tier + 1], cost: Math.max(0, Math.round((nt.price - t.price) * idx * (city ? city.price_factor : 1))), minLevel: nt.minLevel, qualified: biz.qualification(world, state, c.pkey, c.tier + 1).ok } : null,

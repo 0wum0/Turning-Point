@@ -501,6 +501,52 @@ const MIGRATIONS = [
       KEY idx_rl_att (attacker, created_at), KEY idx_rl_tgt (target, company_id, created_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
   ] },
+  { id: '017_exchange', up: [
+    `CREATE TABLE IF NOT EXISTS stocks (
+      id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      user_id INT UNSIGNED NOT NULL,
+      company_id INT NOT NULL,
+      name VARCHAR(120) NOT NULL,
+      city_id INT UNSIGNED NOT NULL,
+      pkey VARCHAR(40) NOT NULL,
+      shares INT NOT NULL DEFAULT 1000,
+      price_real BIGINT NOT NULL,
+      fair_real BIGINT NOT NULL,
+      div_pct TINYINT NOT NULL DEFAULT 30,
+      status ENUM('active','delisted') NOT NULL DEFAULT 'active',
+      listed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      KEY idx_st_user (user_id, company_id), KEY idx_st_status (status)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    `CREATE TABLE IF NOT EXISTS stock_holdings (
+      stock_id INT UNSIGNED NOT NULL,
+      user_id INT UNSIGNED NOT NULL,
+      shares INT NOT NULL DEFAULT 0,
+      avg_real BIGINT NOT NULL DEFAULT 0,
+      PRIMARY KEY (stock_id, user_id), KEY idx_sh_user (user_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    `CREATE TABLE IF NOT EXISTS stock_orders (
+      id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      stock_id INT UNSIGNED NOT NULL,
+      user_id INT UNSIGNED NOT NULL,
+      side ENUM('buy','sell') NOT NULL,
+      shares INT NOT NULL,
+      left_shares INT NOT NULL,
+      limit_real BIGINT NOT NULL,
+      status ENUM('open','filled','cancelled') NOT NULL DEFAULT 'open',
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      KEY idx_so_book (stock_id, status, side, limit_real), KEY idx_so_user (user_id, status)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    `CREATE TABLE IF NOT EXISTS stock_trades (
+      id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      stock_id INT UNSIGNED NOT NULL,
+      buyer INT UNSIGNED NOT NULL DEFAULT 0,
+      seller INT UNSIGNED NOT NULL DEFAULT 0,
+      shares INT NOT NULL,
+      price_real BIGINT NOT NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      KEY idx_stt (stock_id, id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+  ] },
 ];
 
 async function ensureTable(db) {

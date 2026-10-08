@@ -527,6 +527,7 @@ A.bizCollect = ({ state, input }) => {
 };
 A.bizSell = ({ world, state, input }) => {
   const c = company(state, input.id);
+  if (c.stock) fail('Ein börsennotierter Betrieb kann nicht einfach verkauft werden. Ziehe ihn zuerst von der Börse zurück.');
   const v = biz.companyValue(world, state, c, yr(state)) + c.cash;
   const got = Math.round(v * (c.abandoned ? 1 : 0.9));
   state.money += got;

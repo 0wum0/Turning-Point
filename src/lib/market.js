@@ -34,6 +34,7 @@ function valueReal(world, state, kind, item) {
 /** Entnimmt einen Gegenstand dem Spielstand und gibt eine zeitunabhängige Momentaufnahme zurück. */
 function detach(world, state, kind, id) {
   const item = findItem(state, kind, id); if (!item) fail('Diesen Gegenstand besitzt du nicht (mehr).');
+  if (kind === 'firm' && item.stock && !detach.allowListed) fail('Ein börsennotierter Betrieb kann nur über die Börse den Besitzer wechseln.');
   const snap = JSON.parse(JSON.stringify(item));
   snap.rel = {};
   if (kind === 'prop') {
@@ -303,7 +304,10 @@ async function estate(conn, user, state, world) {
     await conn.query("INSERT INTO market_auctions (kind, seller_id, city_id, item, name, reason, min_real, value_real, ends_at) VALUES (?,?,?,?,?,'estate',?,?, DATE_ADD(NOW(), INTERVAL ? HOUR))", [kind, null, snap.cityId, JSON.stringify(snap), snap.name, Math.max(100, Math.round(val * 0.5)), val, cfg().auctionHours]);
   };
   for (const p of state.properties.slice()) await make('prop', p);
-  for (const c of (state.companies || []).slice()) await make('firm', c);
+  for (const c of (state.companies || []).slice()) {
+    if (c.stock) { await conn.query("UPDATE stocks SET status = 'delisted' WHERE id = ?", [c.stock.id]); await conn.query("UPDATE stock_orders SET status = 'cancelled' WHERE stock_id = ? AND status = 'open'", [c.stock.id]); delete c.stock; }
+    await make('firm', c);
+  }
 }
 
 /* ---------------------------- Übersicht für die Oberfläche ---------------------------- */
