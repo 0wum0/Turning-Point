@@ -1,4 +1,4 @@
-import { html, icon, money, infoBtn, bar, on, api, num } from '../ui.js';
+import { html, icon, money, infoBtn, bar, on, api, num, toast } from '../ui.js';
 
 const LADDER = [['street', 'Straße', 'tree-pine'], ['workplace', 'Arbeitgeber', 'briefcase'], ['pension', 'Pension', 'hotel'], ['rent', 'Miete', 'house'], ['own', 'Eigentum', 'castle']];
 
@@ -10,7 +10,8 @@ const leaseBox = (p, cur) => {
     <label class="small dim" for="lm${p.id}">Mietpreis: <b class="lval">${Math.round(L.mult * 100)} %</b> der Marktmiete</label>
     <input type="range" id="lm${p.id}" class="lrange" min="50" max="200" step="5" value="${Math.round(L.mult * 100)}" data-lprice="${p.id}">
     <div class="hint">Günstiger = schneller ein Mieter, teurer = mehr Ertrag, aber längerer Leerstand.</div>
-    <button class="btn sm ghost mt" data-lease="off" data-id="${p.id}">Vermietung beenden</button></div>`;
+    <label class="check mt"><input type="checkbox" data-lplayers="${p.id}" ${L.players ? 'checked' : ''} ${L.playerTenant ? 'disabled' : ''}> Auch an Spieler vermieten ${L.open ? html`<span class="chip accent">im Stadtverzeichnis</span>` : ''}</label>
+    ${L.playerTenant ? html`<button class="btn sm danger mt" data-evict="${p.id}">Spieler-Mieter kündigen</button> ` : ''}<button class="btn sm ghost mt" data-lease="off" data-id="${p.id}">Vermietung beenden</button></div>`;
 };
 const saleSection = (ctx, ed) => {
   const v = ctx.view; const cur = v.currency;
@@ -41,6 +42,7 @@ export default {
         <div><div class="dim small">Kosten / Tag</div><b class="serif" style="font-size:1.3rem">${h.perDay ? money(h.perDay, cur) : 'keine Miete'}</b></div>
         <div><div class="dim small">Zimmer</div><b class="serif" style="font-size:1.3rem" class="${h.rooms < h.needed ? 'neg' : ''}">${h.rooms} / ${h.needed}</b>${h.rooms < h.needed && v.children.length ? html`<div class="small neg">Kinder brauchen mehr Platz</div>` : ''}</div>
       </div>
+      ${h.lessor ? html`<div class="alert mt">${icon('key')}<div class="grow">Du wohnst zur Miete bei einem anderen Spieler. Der Vermieter kann kündigen; du kannst jederzeit ausziehen.</div><button class="btn sm" data-leave="1">Ausziehen</button></div>` : ''}
       ${h.closed ? html`<div class="alert bad mt">${icon('triangle-alert')}<div>Dein Zuhause ist beschädigt und nur eingeschränkt nutzbar.</div></div>` : ''}
       <div class="row mt">
         ${o && o.lodging && h.type !== 'workplace' ? html`<button class="btn" data-act="sleepAtWork">${icon('bed')} Beim Arbeitgeber schlafen (${money(Math.round(25 * v.idx), cur)} / Tag)</button>` : ''}
@@ -68,6 +70,9 @@ export default {
     on(root, 'click', '[data-go]', (e, t) => ctx.go(t.dataset.go));
     on(root, 'click', '[data-psell]', (e, t) => import('../market.js').then((mod) => mod.openSell(ctx, 'prop', Number(t.dataset.psell), t.dataset.name, Number(t.dataset.value), null, () => ctx.rerender())));
     on(root, 'click', '[data-buy]', (e, t) => ctx.act('buy', { listingId: t.dataset.buy }));
+    on(root, 'change', '[data-lplayers]', (e, t) => ctx.act('letPlayers', { propertyId: t.dataset.lplayers, on: t.checked }));
+    on(root, 'click', '[data-evict]', async (e, t) => { if (await ctx.confirm({ title: 'Mieter kündigen?', text: 'Der Spieler verliert sofort seine Wohnung.', ok: 'Kündigen', danger: true })) { try { const r = await api('POST', '/api/social/lease/evict', { propId: Number(t.dataset.evict) }); ctx.setView(r.view); ctx.hud(); ctx.rerender(); } catch (er) { toast(er.message, 'bad'); } } });
+    on(root, 'click', '[data-leave]', async () => { if (await ctx.confirm({ title: 'Ausziehen?', text: 'Du beendest den Mietvertrag und wohnst danach auf der Straße, bis du etwas Neues findest.', ok: 'Ausziehen', danger: true })) { try { const r = await api('POST', '/api/social/lease/leave', {}); ctx.setView(r.view); ctx.hud(); ctx.rerender(); } catch (er) { toast(er.message, 'bad'); } } });
     on(root, 'click', '[data-lease]', (e, t) => ctx.act(t.dataset.lease === 'on' ? 'letOn' : 'letOff', { propertyId: t.dataset.id, mult: 1 }));
     root.querySelectorAll('[data-lprice]').forEach((r) => {
       r.addEventListener('input', () => { const l = r.parentNode.querySelector('.lval'); if (l) l.textContent = `${r.value} %`; });

@@ -26,12 +26,18 @@ function rentPerDay(world, state, p, year) {
 }
 const marketPerDay = (world, state, p, year) => Math.round(scale(marketBase(p), world.idx(year)) * cycleRent(year));
 
+/** Miete eines Mieters: Spieler zahlen den bei Einzug vereinbarten Preis (in Wert von 1945), NPC-Mieter die Marktmiete des Reglers. */
+function tenantRent(world, state, p, year) {
+  const T = p.lease && p.lease.tenant;
+  return T && T.contractReal ? Math.round(scale(T.contractReal, world.idx(year))) : rentPerDay(world, state, p, year);
+}
+
 /** Einnahmen heute (für dailyFlows). */
 function incomeToday(world, state, year) {
   let sum = 0;
   for (const p of state.properties) {
     if (!active(state, p) || !p.lease.tenant || p.lease.tenant.arrears > 0 || p.closedUntil > state.day) continue;
-    sum += rentPerDay(world, state, p, year);
+    sum += tenantRent(world, state, p, year);
   }
   return sum;
 }
@@ -55,6 +61,7 @@ function landlordDaily(ctx) {
     if (p.closedUntil > state.day) continue; // beschädigt: kein neuer Mieter, keine Miete
     const r = rngFor('tenant', state.seed, p.id, state.day);
     const T = L.tenant;
+    if (T && T.userId) { p.condition = Math.max(5, p.condition - 3 / 365); L.total = (L.total || 0) + tenantRent(world, state, p, year); continue; }
     if (T) {
       p.condition = Math.max(5, p.condition - 3 / 365); // Mieter nutzen ab
       if (T.arrears > 0) {
@@ -84,11 +91,11 @@ function viewOf(world, state, p, year) {
   const market = marketPerDay(world, state, p, year);
   const L = p.lease;
   const on = active(state, p);
-  const perDay = on ? rentPerDay(world, state, p, year) : market;
+  const perDay = on ? tenantRent(world, state, p, year) : market;
   const T = on ? L.tenant : null;
   const val = Math.max(1, Math.round(p.base * world.idx(year) * (0.2 + 0.8 * (p.condition / 100))));
   return {
-    on, mult: L ? clamp(L.mult || 1, MIN_MULT, MAX_MULT) : 1, market, perDay,
+    open: !!(on && L.players && !L.tenant), players: !!(L && L.players), playerTenant: !!(on && L.tenant && L.tenant.userId), on, mult: L ? clamp(L.mult || 1, MIN_MULT, MAX_MULT) : 1, market, perDay,
     yieldPct: Math.round(((perDay * 365) / val) * 1000) / 10,
     tenant: T ? { name: T.name, since: state.day - T.since, until: T.until - state.day, arrears: T.arrears || 0 } : null,
     vacantDays: on && !T ? state.day - (L.vacantSince == null ? state.day : L.vacantSince) : 0,
@@ -96,4 +103,4 @@ function viewOf(world, state, p, year) {
   };
 }
 
-module.exports = { cycleRent, marketBase, marketPerDay, rentPerDay, incomeToday, landlordDaily, viewOf, isResidence, MIN_MULT, MAX_MULT, clamp };
+module.exports = { tenantRent, cycleRent, marketBase, marketPerDay, rentPerDay, incomeToday, landlordDaily, viewOf, isResidence, MIN_MULT, MAX_MULT, clamp };

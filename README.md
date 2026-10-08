@@ -177,3 +177,8 @@ Schriften: Inter, Fraunces (SIL OFL 1.1, via Fontsource) · Icons: Lucide (ISC).
 - **Dividende:** Ein börsennotierter Betrieb schüttet täglich `divPct` des Gewinns aus der Firmenkasse aus; die Verteilung an alle Anteilseigner geschieht nach dem Speichern (`exchange.flushDividends`).
 - **Übernahme:** Wer ≥ `takeoverPct` % hält, kann den Betrieb übernehmen (Betrieb wechselt per `market.detach/attach`, der bisherige Eigentümer bleibt Minderheitsaktionär). Börsennotierte Betriebe lassen sich nicht über Angebote/Auktionen/`bizSell` verkaufen; bei Insolvenz wird die Notierung gelöscht.
 - Code: `src/lib/exchange.js`, Routen `/api/social/exchange/*`, Oberfläche `public/js/game/exchange.js`, Admin: Gruppe „Markt“ → `exchange`.
+
+### Spieler als Mieter
+- Eigentümer: unter *Wohnen* bei einer vermieteten Immobilie „Auch an Spieler vermieten“ ankreuzen (Aktion `letPlayers`). Sie erscheint im Stadtverzeichnis (Tab *Häuser*) mit „Mieten“; ein Mieter kann gekündigt werden.
+- Mieter (gleiche Stadt, Rücklagen für 30 Tage): Die Tagesmiete wird bei Einzug in „Wert von 1945“ festgeschrieben, er zahlt sie als Wohnkosten, der Eigentümer erhält sie als `inc.rent`. Auszug, Kündigung, Verkauf oder Tod beenden den Vertrag.
+- Code: `src/lib/leases.js` (Tabelle `player_leases`, Abgleich über `bonds.reconcile`), `landlord.tenantRent`.

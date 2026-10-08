@@ -547,6 +547,20 @@ const MIGRATIONS = [
       KEY idx_stt (stock_id, id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
   ] },
+  { id: '018_player_leases', up: [
+    `CREATE TABLE IF NOT EXISTS player_leases (
+      id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      owner_id INT UNSIGNED NOT NULL,
+      prop_id INT NOT NULL,
+      tenant_id INT UNSIGNED NOT NULL,
+      rent_real BIGINT NOT NULL,
+      status ENUM('active','ended') NOT NULL DEFAULT 'active',
+      ended_by VARCHAR(12) NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      KEY idx_pl_owner (owner_id, status), KEY idx_pl_tenant (tenant_id, status)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    'ALTER TABLE player_props ADD COLUMN rent_open TINYINT NOT NULL DEFAULT 0',
+  ] },
 ];
 
 async function ensureTable(db) {

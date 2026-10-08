@@ -80,6 +80,7 @@ function present(world, state, user, now) {
     },
     hunger: state.hunger,
     housing: {
+      lessor: state.housing.lessor || null,
       type: state.housing.type, name: state.housing.name || h.name, label: h.name, icon: h.icon, closed: h === HOUSING.damaged,
       rooms: roomsAvailable(state), needed: roomsNeeded(state), propertyId: state.housing.propertyId || null,
       perDay: flows.exp.lodging,

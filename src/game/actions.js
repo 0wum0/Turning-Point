@@ -145,6 +145,13 @@ A.letOn = ({ state, input }) => {
   p.lease = { on: true, mult, tenant: null, vacantSince: state.day, total: (p.lease && p.lease.total) || 0 };
   return { msg: `${p.name} wird vermietet. Mieter melden sich, sobald Preis und Zustand passen.` };
 };
+A.letPlayers = ({ state, input }) => {
+  const p = propOf(state, input);
+  if (!p.lease || !p.lease.on) fail('Vermiete die Immobilie zuerst.');
+  if (p.lease.tenant && p.lease.tenant.userId && !input.on) fail('Ein Spieler wohnt hier. Kündige ihm zuerst über das Stadtverzeichnis oder „Vermietung beenden“.');
+  p.lease.players = !!input.on;
+  return { msg: p.lease.players ? `${p.name} ist jetzt auch für Spieler zur Miete ausgeschrieben.` : 'Die Ausschreibung für Spieler wurde beendet.' };
+};
 A.letOff = ({ state, input }) => {
   const p = propOf(state, input);
   if (!p.lease || !p.lease.on) fail('Die Immobilie ist nicht vermietet.');

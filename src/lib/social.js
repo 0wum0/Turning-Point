@@ -62,8 +62,8 @@ async function upsertStats(conn, user, charRow, state, world) {
     const { propertyValue } = require('../game/core');
     for (const p of (state.properties || [])) {
       const L = lord.viewOf(world, state, p, year);
-      await conn.query('INSERT INTO player_props (user_id, prop_id, city_id, name, kind, rooms, cond_pct, value_real, rent_real, tenant, residence, ask_real) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
-        [user.id, p.id, p.cityId, p.name, p.kind, p.rooms, Math.round(p.condition), Math.round(propertyValue(world, state, p, year) / idx), L.on ? Math.round(L.perDay / idx) : null, L.tenant ? 1 : 0, state.housing.type === 'own' && state.housing.propertyId === p.id ? 1 : 0, askP.get(p.id) || null]);
+      await conn.query('INSERT INTO player_props (user_id, prop_id, city_id, name, kind, rooms, cond_pct, value_real, rent_real, tenant, residence, ask_real, rent_open) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
+        [user.id, p.id, p.cityId, p.name, p.kind, p.rooms, Math.round(p.condition), Math.round(propertyValue(world, state, p, year) / idx), L.on ? Math.round(L.perDay / idx) : null, L.tenant ? 1 : 0, state.housing.type === 'own' && state.housing.propertyId === p.id ? 1 : 0, askP.get(p.id) || null, L.open ? 1 : 0]);
     }
   } catch (e) { log.error('[social] Statistik', e); }
 }
@@ -105,7 +105,7 @@ async function directory(userId, { cityId, tab = 'people', q = '', page = 1 }) {
     const w = `pp.city_id = ? AND ${vis}${hasQ ? ' AND (pp.name LIKE ? OR ps.name LIKE ? OR ps.username LIKE ?)' : ''}`; const prm = hasQ ? [cityId, like, like, like] : [cityId];
     const total = (await db.one(`SELECT COUNT(*) n FROM player_props pp JOIN users u ON u.id = pp.user_id JOIN player_stats ps ON ps.user_id = pp.user_id WHERE ${w}`, prm)).n;
     const rows = await db.query(`SELECT pp.*, ps.name owner, ps.username, u.role FROM player_props pp JOIN users u ON u.id = pp.user_id JOIN player_stats ps ON ps.user_id = pp.user_id WHERE ${w} ORDER BY pp.value_real DESC LIMIT ? OFFSET ?`, [...prm, per, off]);
-    return { tab, total, page: Math.max(1, int(page, 1)), pages: Math.max(1, Math.ceil(total / per)), items: rows.map((r) => ({ userId: r.user_id, propId: r.prop_id, owner: r.owner, username: r.username, role: r.role !== 'player' ? r.role : undefined, name: r.name, kind: r.kind, rooms: r.rooms, cond: r.cond_pct, value: Number(r.value_real), rent: r.rent_real == null ? null : Number(r.rent_real), tenant: !!r.tenant, residence: !!r.residence, ask: r.ask_real == null ? null : Number(r.ask_real), mine: r.user_id === userId })) };
+    return { tab, total, page: Math.max(1, int(page, 1)), pages: Math.max(1, Math.ceil(total / per)), items: rows.map((r) => ({ userId: r.user_id, propId: r.prop_id, owner: r.owner, username: r.username, role: r.role !== 'player' ? r.role : undefined, name: r.name, kind: r.kind, rooms: r.rooms, cond: r.cond_pct, value: Number(r.value_real), rent: r.rent_real == null ? null : Number(r.rent_real), tenant: !!r.tenant, open: !!r.rent_open, residence: !!r.residence, ask: r.ask_real == null ? null : Number(r.ask_real), mine: r.user_id === userId })) };
   }
   if (tab === 'firms') {
     const w = `f.city_id = ? AND ${vis}${hasQ ? ' AND (f.name LIKE ? OR ps.name LIKE ? OR ps.username LIKE ?)' : ''}`; const prm = hasQ ? [cityId, like, like, like] : [cityId];
