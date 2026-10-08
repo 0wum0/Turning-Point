@@ -622,6 +622,13 @@ const MIGRATIONS = [
       KEY idx_push_user (user_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
   ] },
+  { id: '023_game_speed', up: [async (db) => {
+    // Spieltempo: 1 realer Tag = 1 Spieljahr (365 EFS). Ein früher gespeicherter niedrigerer Wert wird angehoben.
+    const r = await db.query("SELECT value FROM settings WHERE `key` = 'efs.daily_auto'");
+    if (!r.length) return;
+    let v = 0; try { v = Number(JSON.parse(r[0].value)); } catch (_) { v = 0; }
+    if (v < 365) await db.query("UPDATE settings SET value = '365' WHERE `key` = 'efs.daily_auto'");
+  }] },
 ];
 
 async function ensureTable(db) {
