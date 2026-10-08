@@ -7,7 +7,7 @@ const esc = (s) => s.replace(/[.*+?^$()|[\]\\]/g, '\\$&');
 const T = (de, en) => patterns.push(['^' + esc(de).replace(/\{n\}/g, '(\\d+)').replace(/\{\}/g, '([^·]+?)') + '$', en]);
 
 X([
-  ['Unterkunft suchen', 'Find accommodation'], ['Arbeit suchen', 'Look for work'], ['Spielen', 'Play'],
+  ['Unterkunft suchen', 'Find accommodation'], ['Arbeit suchen', 'Look for work'], ['Spielen', 'Play'], ['Aufgaben hier', 'Tasks here'], ['Aufgaben', 'Tasks'], ['bereit', 'ready'], ['gesperrt', 'locked'], ['nicht vor Ort', 'not on site'], ['← Verlassen', '← Leave'], ['Verlassen', 'Leave'],
   ['Ziehen = umsehen', 'Drag = look around'], ['Rad = Zoom', 'Wheel = zoom'], ['Klick auf Gegenstände', 'Click objects'], ['Dein Besitz', 'Your property'],
   ['verheiratet', 'married'], ['wohnt bei dir', 'lives with you'], ['wohnt woanders', 'lives elsewhere'], ['Partner(in)', 'Partner'],
   ['Hier gibt es keine Aufgaben – aber vielleicht etwas anderes zu entdecken.', 'There are no tasks here – but perhaps something else to discover.'],
@@ -63,6 +63,12 @@ T('{}: die {} repariert den Schaden in etwa zehn Tagen.', '$1: $2 will repair th
 T('Fortbildung: Gebühr und {n} Tage Kurs bringen Berufserfahrung (ein Jahr) und können eine höhere Berufsstufe bedeuten.', 'Training: the fee and a {n}-day course give work experience (one year) and can mean a higher career level.'.replace('{n}', '$1'));
 T('Umschulung: Gebühr und {n} Tage Kurs schalten einen neuen Beruf frei.', 'Retraining: the fee and a $1-day course unlock a new profession.');
 T('Pro Jahr sind {n} Kurse möglich.', '$1 courses are possible per year.');
+T('in {n} Min.', 'in $1 min.');
+patterns.push(['^(\\d+)-Zimmer-Wohnung, (.+)$', '$1-room apartment, $2']);
+patterns.push(['^Großes Haus, (.+)$', 'Large house, $1']);
+patterns.push(['^Kleines Haus, (.+)$', 'Small house, $1']);
+patterns.push(['^Villa, (.+)$', 'Villa, $1']);
+patterns.push(['^Während eines Kurses sinkt täglich die Erholung\\. Pro Jahr sind (\\d+) Kurse möglich\\.$', 'Rest drops daily during a course. $1 courses are possible per year.']);
 T('Wahlkampf {}', 'Campaign $1');
 for (const [inc, incEn, ng] of [['Einkommen ([^·]+?) / Tag', 'Income $2 / day', 3], ['Einkommen unbezahlt', 'Income unpaid', 2]]) {
   const k = ng; // Gruppe der Kraft-Angabe
