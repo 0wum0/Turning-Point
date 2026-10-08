@@ -242,6 +242,9 @@ X([
 X([['Kind adoptieren', 'Adopt a child'], ['Ein Kind adoptieren (Verfahren dauert etwa fünf Monate)', 'Adopt a child (the procedure takes about five months)'], ['Antrag zurückziehen', 'Withdraw application']]);
 patterns.push(['^Adoption läuft · noch ca\\. (\\d+) Mon\\.$', 'Adoption pending · about $1 mo.']);
 
+X([['Baufirma beauftragen', 'Hire a construction firm'], ['Eine Baufirma aus der Stadt wird beauftragt und bezahlt', 'A construction firm from the city is hired and paid']]);
+patterns.push(['^Baufirma beauftragen · (.+)$', 'Hire a construction firm · $1']);
+
 // Negative Beträge in „Wert 1945“
 patterns.push(['^([−-][\\d.,kmbt]+) DM \\(Wert 1945\\)$', '$1 DM (1945 value)']);
 

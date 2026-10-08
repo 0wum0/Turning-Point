@@ -49,4 +49,16 @@ module.exports = [
   ['${state.person.first} und ${state.partner.name} adoptieren ${first}.', '${state.person.first} and ${state.partner.name} adopt ${first}.'],
   ['Adoption: ${first} ist da', 'Adoption: ${first} has arrived'],
   ['${first} (${Math.floor((state.day - born) / 365)} Jahre) zieht bei euch ein – du erhältst einmalig ${coins} Coins.', '${first} (${Math.floor((state.day - born) / 365)} years old) moves in with you – you receive ${coins} coins once.'],
+  // ---- Butler, Reparatur, Baufirma
+  ['Der Butler kann nicht einkaufen', 'The butler cannot shop'],
+  ['Dein Konto reicht nicht für Lebensmittel. Der Butler füllt den Kühlschrank wieder auf, sobald Geld da ist.', 'Your account does not cover groceries. The butler will refill the fridge as soon as money is available.'],
+  ['Hier ist nichts beschädigt.', 'Nothing is damaged here.'],
+  ['Die Instandsetzung ist ohnehin bald fertig.', 'The repair will be done soon anyway.'],
+  ['Dir fehlt das Geld für die Reparatur.', 'You lack the money for the repair.'],
+  ['Dir fehlt das Geld für die Instandhaltung.', 'You lack the money for the maintenance.'],
+  ['Instandsetzung ${p.name}', 'Repair of ${p.name}'], ['Reparatur ${p.name}', 'Repair of ${p.name}'],
+  ['${p.name} wurde instand gesetzt – ${c ? `die ${c.name} hat den Auftrag bekommen` : \'ein städtischer Handwerksbetrieb hat die Arbeiten übernommen\'}.', '${p.name} was restored – ${c ? `${c.name} got the contract` : \'a municipal contractor took over the work\'}.'],
+  ['${p.name}: ${c ? `die ${c.name}` : \'ein städtischer Handwerksbetrieb\'} repariert den Schaden in etwa zehn Tagen.', '${p.name}: ${c ? c.name : \'a municipal contractor\'} will repair the damage in about ten days.'],
+  ['Bauauftrag: ${j.what}.', 'Construction job: ${j.what}.'],
+  ['Auftrag für ${firm.name}', 'Contract for ${firm.name}'],
 ];
