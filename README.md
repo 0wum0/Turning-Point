@@ -115,6 +115,21 @@ Im Spiel unter **Spieler**: inflationsbereinigte **Ranglisten** (Vermögen, Unte
 
 Startseite, Anmeldung, Spiel und Admin sind durchgehend animiert (`public/js/motion.js`, `public/css/motion.css`): Aurora-Hintergrund mit Partikeln, Wort-für-Wort-Überschrift mit Goldglanz, Scroll-Reveal, hochzählende Zahlen (Geld/EFS/Coins mit Aufleuchten), füllende Meter-Ringe, Spotlight und 3D-Tilt auf Karten, Ripple auf Buttons, Konfetti bei Erfolgen, Seitenblättern im Zeitungs-Leser, gezeichnete Charts im Admin. Im Spiel schaltet der Funken-Knopf in der Kopfzeile alles ab; „Bewegung reduzieren“ des Betriebssystems wird respektiert.
 
+## 2e. Einsteiger-Erlebnis
+
+Ziel: Wer das Spiel zum ersten Mal öffnet, soll in etwa fünf Minuten wissen, was zu tun ist – ohne dass eine Funktion entfällt. Alles ist reine Oberfläche: Der Server sperrt nichts.
+
+| Baustein | Was es tut | Wo es liegt |
+|---|---|---|
+| **Willkommensdialog** | Vier kurze Folien beim ersten Start (Ausgangslage, Echtzeit-Uhr und EFS, die vier Anzeigen, wo man klickt). Jederzeit über den „?“-Knopf im Kopfbereich erneut zu öffnen. „Gesehen“ steht in `users.meta.welcomed`. | `public/js/game/onboarding.js` |
+| **„Deine ersten Schritte“** | 15 geordnete Aufgaben als einklappbare Karte oben in der Übersicht, mit Fortschrittsbalken. Sie erfüllen sich selbst aus dem Spielstand (Wohnung, Arbeit, Lohn, gefüllter Kühlschrank …). Pro Aufgabe ein Satz „Warum?“, ein Knopf **Zeig mir’s** (öffnet die richtige Seite und lässt die passende Schaltfläche pulsieren, mit Sprechblase) und eine kleine einmalige Belohnung (EFS bzw. 1 Coin, höchstens einmal pro Konto in `users.meta.questRewarded`). | `src/game/onboarding.js` (`QUESTS`), Fortschritt in `state.flags.quests` |
+| **„Was jetzt?“** | Berechnet aus dem Spielstand die eine wichtigste nächste Handlung (Hunger, keine Unterkunft, keine Arbeit, beschädigtes Haus, offene Entscheidung bei Kindern, Kredit, brachliegendes Geld …), mit Begründung in einfacher Sprache und Ein-Klick-Knopf (z. B. Essen kaufen). Daneben die nächsten zwei Empfehlungen. | `advise()` in `src/game/onboarding.js` |
+| **Schrittweises Freischalten** | Unternehmen, Gesellschaft, Markt, Börse, Wahlen, Bank und Wettbewerb erscheinen zunächst mit Schloss und dem Hinweis „Wird freigeschaltet, wenn …“. Sie öffnen sich durch die passende Aufgabe, durch vorhandenen Besitz oder nach 6 Spieljahren. Schalter **„Alle Funktionen anzeigen“** im Hilfe-Menü und unter *Konto → Anzeige im Spiel* (`users.meta.showAll`). | `UNLOCKS` / `unlocks()` |
+| **Glossar** | Antippbare Begriffe (`term('EFS')` in `ui.js`) mit kurzer Erklärung, dazu eine Glossar-Seite mit Suche (Hilfe-Menü). | `public/js/game/glossary.js` |
+| **„Worum geht es hier?“** | Auf jeder Seite ein bis zwei Sätze mit Knopf „Zeig mir den wichtigsten Knopf“; ausblendbar, im Hilfe-Menü wieder einblendbar. | `INTROS` in `onboarding.js` |
+
+**Technik.** Neue Charaktere starten mit leerem `flags.quests`. Ältere Spielstände und Erben haben das Feld nicht: `upgradeState` legt es mit `legacy: true` an, und der nächste Abgleich übernimmt bereits Erfüllbares **still** (ohne Belohnung). Aktionen, die der Spielstand nicht selbst festhält (Zeitung geöffnet, Markt-Angebot, Wahl, Freundschaft), meldet die Oberfläche über die Aktion `seen` (Liste der erlaubten Schlüssel in `SEEN_KEYS`); jede ausgeführte Spielaktion wird in `flags.quests.acts` vermerkt. Aufgaben, Berater und Freischaltungen sind reine Funktionen und in `test/onboarding.test.js` getestet. Englische Texte: `src/i18n-data/client-I.js` (Oberfläche) und `src/i18n-data/messages-I.js` (Server-Texte).
+
 ## 3. Lokale Entwicklung
 
 ```bash
