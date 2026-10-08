@@ -381,6 +381,22 @@ A.together = ({ state }) => {
   return { msg: 'Ein schöner gemeinsamer Tag.' };
 };
 
+A.adopt = ({ world, state }) => {
+  const family = require('./family');
+  if (state.pending.adopt) fail('Ein Adoptionsantrag läuft bereits.');
+  const block = family.adoptionBlock(state, settings.get('game.max_children')); if (block) fail(block);
+  const cost = scale(world.econ.marriageCost * 2, world.idx(yr(state)));
+  if (state.money < cost) fail('Die Kosten des Verfahrens (Gebühren, Gutachten) kannst du dir noch nicht leisten.');
+  pay(state, cost);
+  state.pending.adopt = { day: state.day + 150 };
+  chronicle(state, `${state.person.first} und ${state.partner.name} beantragen eine Adoption.`, 'family');
+  return { msg: 'Der Adoptionsantrag ist gestellt. Das Jugendamt meldet sich in etwa fünf Monaten.' };
+};
+A.adoptCancel = ({ state }) => {
+  if (!state.pending.adopt) fail('Es läuft kein Adoptionsantrag.');
+  delete state.pending.adopt;
+  return { msg: 'Der Adoptionsantrag wurde zurückgezogen (die Gebühren sind verloren).', level: 'warn' };
+};
 A.plan = ({ state, input }) => {
   const max = settings.get('game.max_children');
   const t = clamp(Math.floor(Number(input.target)), 0, max);

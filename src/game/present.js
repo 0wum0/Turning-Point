@@ -136,6 +136,7 @@ function present(world, state, user, now) {
       sat: round(state.partner.sat), linked: !!state.partner.linked, userId: state.partner.userId || null, married: state.partner.married, cohabit: state.partner.cohabit, canTogether: state.day - (state.partner.lastTogether || -99) >= 5,
     } : null,
     plan: state.plan,
+    adoption: (() => { const fam = require('./family'); const block = fam.adoptionBlock(state, settings.get('game.max_children')); return { block, pending: state.pending.adopt ? Math.max(0, state.pending.adopt.day - state.day) : null, cost: Math.round(world.econ.marriageCost * 2 * world.idx(yearOf(state.day, state.startYear))) }; })(),
     children: state.children.map((c) => ({
       id: c.id, name: c.name, gender: c.gender, age: ageOfChild(state, c), status: c.status, sat: round(c.sat), school: c.school, schoolName: c.school ? SCHOOLS[c.school].name : null,
       schoolDone: c.schoolDone || null, pendingSchool: !!c.pendingSchool, pendingPath: !!c.pendingPath, path: c.path, pkey: c.pkey, profession: c.pkey ? (world.prof(c.pkey) || {}).name : null,

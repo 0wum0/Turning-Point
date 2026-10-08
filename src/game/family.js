@@ -22,6 +22,7 @@ function familyDaily(ctx, flows) {
   const hunger = state.hunger > 0;
 
   if (state.partner) partnerDaily(ctx, { runway, h, fm, hunger, year });
+  if (state.pending.adopt) adoptionDaily(ctx);
   childrenDaily(ctx, { runway, h, fm, hunger, year });
 }
 
@@ -63,19 +64,47 @@ function partnerDaily(ctx, env) {
   }
 }
 
-function bornChild(ctx, r) {
+/** Adoption: Eignung prüfen (verheiratetes, zusammenlebendes Paar, Platz, Einkommen). Gibt null oder den Grund zurück. */
+function adoptionBlock(state, max) {
+  const p = state.partner;
+  if (!p) return 'Für eine Adoption braucht ihr ein Paar.';
+  if (p.linked) return 'Mit einem Spieler als Partner entscheidet ihr über Kinder gemeinsam im Spiel.';
+  if (!p.married || !p.cohabit) return 'Adoptiveltern müssen verheiratet sein und zusammenwohnen.';
+  if (p.gender === state.person.gender) return 'Eine Adoption ist nur für ein verheiratetes Paar aus Mann und Frau möglich.';
+  if (state.children.length >= max) return 'Ihr habt schon die höchste Kinderzahl.';
+  const age = Math.floor((state.day - state.person.birthDay) / 365);
+  if (age < 25 || partnerAge(state) < 25) return 'Beide Eltern müssen mindestens 25 Jahre alt sein.';
+  if (age > 50 || partnerAge(state) > 50) return 'Bei Adoptiveltern über 50 Jahren lehnt das Jugendamt ab.';
+  if (roomsAvailable(state) < roomsNeeded(state) + 1) return 'Für ein weiteres Kind fehlt der Platz (ein Zimmer pro Kind).';
+  if (!state.occupation && !(state.companies || []).length) return 'Das Jugendamt verlangt ein gesichertes Einkommen.';
+  if (state.hunger > 0) return 'Erst muss die eigene Versorgung stimmen.';
+  return null;
+}
+
+function adoptionDaily(ctx) {
+  const { state } = ctx; const a = state.pending.adopt;
+  if (!a || state.day < a.day) return;
+  const block = adoptionBlock(state, settings.get('game.max_children'));
+  delete state.pending.adopt;
+  if (block) { notice(state, { level: 'warn', title: 'Adoption abgelehnt', tab: 'family', text: `Das Jugendamt hat den Antrag abgelehnt: ${block}` }); return; }
+  const r = rngFor('adopt', state.seed, state.day);
+  bornChild(ctx, r, { adopt: true });
+}
+
+function bornChild(ctx, r, opts = {}) {
   const { world, state } = ctx;
   const gender = r() < 0.5 ? 'm' : 'f';
   const year = yearOf(state.day, state.startYear);
   const first = randomFirstName(r, year, gender);
   const id = state.nextChildId++;
   const city = world.city(state.cityId);
+  const born = opts.adopt ? state.day - Math.floor(r() * 6 * 365) - 90 : state.day;
   const person = addPerson(state, {
-    name: `${first} ${state.person.last}`, gender, born: state.day, bornCity: state.cityId, role: 'child',
+    name: `${first} ${state.person.last}`, gender, born, bornCity: state.cityId, role: 'child',
     parents: [state.person.id, state.partner ? state.partner.personId : null].filter(Boolean),
   });
   const child = {
-    id, personId: person.id, name: first, gender, born: state.day, cityId: state.cityId, status: 'home', sat: 75, school: null,
+    id, personId: person.id, name: first, gender, born, cityId: state.cityId, status: 'home', sat: 75, school: null,
     pendingSchool: false, path: null, pendingPath: false, pkey: null, daysLeft: 0, giftBoost: 0, unhappy: 0, coinsGranted: true,
   };
   if (state.partner && state.partner.linked) { child.shared = true; child.sid = `${state.seed}-${id}`; }
@@ -265,4 +294,4 @@ function estateShare(world, state) {
   return { n, total, share: Math.floor(total / n), props, money: Math.max(0, state.money) };
 }
 
-module.exports = { familyDaily, endLife, eligibleHeirs, estateShare, bornChild, ageOfChild, separate };
+module.exports = { adoptionBlock, familyDaily, endLife, eligibleHeirs, estateShare, bornChild, ageOfChild, separate };
