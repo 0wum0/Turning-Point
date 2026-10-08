@@ -67,6 +67,7 @@ require('./admin-players')(router, H);
 require('./admin-tools')(router, H);
 require('./admin-insights')(router, H);
 require('./admin-community')(router, H);
+require('./admin-bots')(router, H);
 
 router.post('/users/:id/:action', wrap(async (req, res) => {
   const id = int(req.params.id);

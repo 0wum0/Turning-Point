@@ -115,7 +115,7 @@ async function distributions() {
 async function retention(weeks = 8) {
   const rows = await db.query(`SELECT YEARWEEK(created_at, 3) wk, MIN(DATE(created_at)) start, COUNT(*) n,
       SUM(last_seen_at >= created_at + INTERVAL 1 DAY) d1, SUM(last_seen_at >= created_at + INTERVAL 7 DAY) d7, SUM(last_seen_at >= created_at + INTERVAL 14 DAY) d14, SUM(last_seen_at >= created_at + INTERVAL 30 DAY) d30
-    FROM users WHERE role = 'player' AND created_at > NOW() - INTERVAL ? WEEK GROUP BY wk ORDER BY wk`, [weeks]);
+    FROM users WHERE role = 'player' AND is_bot = 0 AND created_at > NOW() - INTERVAL ? WEEK GROUP BY wk ORDER BY wk`, [weeks]);
   return rows.map((r) => ({ week: iso(r.start), n: Number(r.n), d1: Number(r.d1 || 0), d7: Number(r.d7 || 0), d14: Number(r.d14 || 0), d30: Number(r.d30 || 0) }));
 }
 

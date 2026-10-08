@@ -420,6 +420,7 @@ const MIGRATIONS = [
   { id: '010_roles', up: ["ALTER TABLE users MODIFY role ENUM('player','moderator','coadmin','admin') NOT NULL DEFAULT 'player'"] },
   { id: '011_places', up: ['ALTER TABLE cities ADD COLUMN pop INT NOT NULL DEFAULT 0', 'ALTER TABLE cities ADD COLUMN since SMALLINT NOT NULL DEFAULT 1945', async (db) => { const n = (await db.query('SELECT COUNT(*) n FROM cities'))[0].n; if (n > 0) await require('./places').seed(db); }] },
   { id: '012_user_lang', up: ["ALTER TABLE users ADD COLUMN lang CHAR(2) NOT NULL DEFAULT 'de'"] },
+  { id: '013_bots', up: ['ALTER TABLE users ADD COLUMN is_bot TINYINT(1) NOT NULL DEFAULT 0', 'ALTER TABLE users ADD KEY idx_users_bot (is_bot)'] },
 ];
 
 async function ensureTable(db) {

@@ -105,6 +105,9 @@ Diese Bedingungen gelten für die Nutzung des Browserspiels TURNING POINT. Anbie
 2. Leistung
 TURNING POINT ist ein kostenlos spielbares Simulationsspiel. Es besteht kein Anspruch auf eine bestimmte Spieldauer, einen bestimmten Funktionsumfang oder ständige Verfügbarkeit. Das Spiel kann weiterentwickelt, verändert, zeitweise abgeschaltet oder eingestellt werden; Spielbalance, Preise und Regeln dürfen angepasst werden.
 
+2a. Computergesteuerte Spielfiguren
+In der Mehrspielerwelt können einzelne Spielfiguren computergesteuert sein (Bots). Sie dienen dazu, die Spielwelt zu beleben, spielen nach denselben Regeln, bitten nie um Geld oder Käufe und gehen keine Beziehungen mit Spielern ein. Wer ernsthaft fragt, ob eine Figur ein Bot ist, bekommt eine ehrliche Antwort.
+
 3. Registrierung und Konto
 Die Nutzung setzt ein Konto voraus. Du musst mindestens 16 Jahre alt sein und wahrheitsgemäße Angaben machen. Pro Person ist ein Konto vorgesehen. Halte deine Zugangsdaten geheim; für Handlungen unter deinem Konto bist du verantwortlich, sofern du den Missbrauch zu vertreten hast.
 

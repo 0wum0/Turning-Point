@@ -87,7 +87,7 @@ module.exports = function mount(router, H) {
     const order = { coins: 'u.coins DESC', efs: 'u.efs_pool DESC', seen: 'u.last_seen_at DESC', name: 'u.username ASC', money: 'cm DESC' }[sort] || 'u.id DESC';
     const total = (await db.one(`SELECT COUNT(*) n FROM users u ${where}`, params)).n;
     const rows = await db.query(
-      `SELECT u.id, u.username, u.email, u.role, u.banned, u.coins, u.efs_pool, u.sub_until, u.created_at, u.last_seen_at, u.email_verified,
+      `SELECT u.id, u.username, u.email, u.role, u.is_bot, u.banned, u.coins, u.efs_pool, u.sub_until, u.created_at, u.last_seen_at, u.email_verified,
         (SELECT COUNT(*) FROM characters c WHERE c.user_id = u.id) chars,
         (SELECT c.money FROM characters c WHERE c.user_id = u.id ORDER BY (c.status = 'gameover'), c.id DESC LIMIT 1) cm,
         (SELECT c.name FROM characters c WHERE c.user_id = u.id ORDER BY (c.status = 'gameover'), c.id DESC LIMIT 1) cname,

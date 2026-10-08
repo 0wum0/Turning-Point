@@ -1,0 +1,29 @@
+<%- include('_top', { actions: '' }) %>
+<% var csrf = '<input type="hidden" name="_csrf" value="' + csrfToken + '">'; const nf = (n) => Number(n || 0).toLocaleString('de-DE'); %>
+<div class="alert info"><%- icon('info') %><div><b>So funktionieren Bots:</b> Es sind echte Konten mit Charakteren, die nach denselben Regeln spielen wie Spieler (Wohnung, Arbeit, Betriebe, Immobilien, Politik), im Stadtplatz-Chat plaudern, Briefe beantworten, Freundschaften annehmen und Spielerbetriebe besuchen. Sie erscheinen in der Rangliste, <b>nicht</b> in der Singles-Liste (keine Beziehungen mit Spielern), fragen nie nach Geld und antworten auf die direkte Frage „Bist du ein Bot?“ ehrlich. Anti-Cheat und Statistiken ignorieren sie. Dieser Hinweis steht auch in den Nutzungsbedingungen.</div></div>
+<div class="grid c2 mt">
+  <form class="card stack" method="post" action="/admin/bots/settings"><%- csrf %>
+    <div class="card-title"><%- icon('cpu') %> Einstellungen</div>
+    <label class="check"><input type="checkbox" name="enabled" value="1" <%= cfg.enabled ? 'checked' : '' %>> Bots aktiv</label>
+    <div class="grid c2"><div class="field"><label>Anzahl Bots (0–60)</label><input type="number" name="target" min="0" max="60" value="<%= cfg.target %>"></div>
+    <div class="field"><label>Aktivität</label><select name="activity"><option value="1" <%= cfg.activity == 1 ? 'selected' : '' %>>niedrig</option><option value="2" <%= cfg.activity == 2 ? 'selected' : '' %>>normal</option><option value="3" <%= cfg.activity == 3 ? 'selected' : '' %>>hoch</option></select></div></div>
+    <label class="check"><input type="checkbox" name="chat" value="1" <%= cfg.chat ? 'checked' : '' %>> im Stadtplatz-Chat schreiben</label>
+    <label class="check"><input type="checkbox" name="letters" value="1" <%= cfg.letters ? 'checked' : '' %>> Briefe beantworten</label>
+    <label class="check"><input type="checkbox" name="friends" value="1" <%= cfg.friends ? 'checked' : '' %>> Freundschaftsanfragen annehmen</label>
+    <label class="check"><input type="checkbox" name="jobs" value="1" <%= cfg.jobs ? 'checked' : '' %>> sich auf Spieler-Stellen bewerben</label>
+    <label class="check"><input type="checkbox" name="visits" value="1" <%= cfg.visits ? 'checked' : '' %>> Spielerbetriebe besuchen</label>
+    <div class="row end"><button class="btn primary"><%- icon('check') %> Speichern</button></div>
+  </form>
+  <section class="card stack"><div class="card-title"><%- icon('wrench') %> Aktionen</div>
+    <form class="row nowrap" method="post" action="/admin/bots/add"><%- csrf %><input type="number" name="n" min="1" max="10" value="1" style="width:90px"><button class="btn"><%- icon('plus') %> Bots anlegen</button></form>
+    <form method="post" action="/admin/bots/run"><%- csrf %><button class="btn"><%- icon('play') %> Jetzt eine Runde ausführen</button></form>
+    <form method="post" action="/admin/bots/remove-all"><%- csrf %><button class="btn danger" data-confirm="Alle Bots samt Spielständen endgültig löschen und Bots ausschalten?"><%- icon('trash-2') %> Alle Bots löschen</button></form>
+    <p class="dim small mb0">Neue Bots werden bei aktiver Funktion automatisch (ca. einer pro Minute) bis zur eingestellten Anzahl angelegt. Sie starten wie echte Spieler im Jahr <%= startYear %> und spielen dann in eigenem Tempo.</p></section>
+</div>
+<div class="table-wrap mt"><table class="table small"><thead><tr><th>Bot</th><th>Figur</th><th>Stadt</th><th class="num">Jahr</th><th class="num">Vermögen (1945)</th><th>Beruf</th><th>Zuletzt aktiv</th><th>Typ</th><th></th></tr></thead><tbody>
+<% list.forEach(function(b){ %><tr><td><b><%= b.username %></b> <span class="chip accent">BOT</span></td><td><%= b.name || '–' %> <span class="dim"><%= b.status === 'dead' ? '†' : '' %></span></td><td><%= b.city %></td><td class="num"><%= b.year || '–' %></td><td class="num"><%= nf(Math.round((b.wealth || 0) / 100)) %></td><td class="dim"><%= b.occupation || '–' %></td>
+  <td class="dim"><%= b.last_seen_at ? new Date(b.last_seen_at).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '–' %></td>
+  <td class="dim"><%= b.lang.toUpperCase() %> · <%= b.persona.tone || '' %> · Chat <%= Math.round((b.persona.chatty || 0) * 100) %> %</td>
+  <td class="num"><div class="row nowrap"><form method="post" action="/admin/bots/<%= b.id %>/play"><%- csrf %><button class="btn sm">Spielen</button></form><form method="post" action="/admin/bots/<%= b.id %>/delete"><%- csrf %><button class="btn sm danger" data-confirm="Bot „<%= b.username %>“ löschen?">✕</button></form></div></td></tr>
+<% }) %><% if (!list.length) { %><tr><td colspan="9" class="dim">Noch keine Bots. Schalte „Bots aktiv“ ein und lege die Anzahl fest.</td></tr><% } %></tbody></table></div>
+<%- include('_bottom') %>

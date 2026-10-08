@@ -19,8 +19,8 @@ const adminCache = new Map(); // userId -> {admin, at}
 async function isAdmin(userId) {
   const hit = adminCache.get(userId);
   if (hit && Date.now() - hit.at < 300000) return hit.admin;
-  const u = await db.one('SELECT role FROM users WHERE id = ?', [userId]);
-  const admin = !!u && u.role !== 'player';
+  const u = await db.one('SELECT role, is_bot FROM users WHERE id = ?', [userId]);
+  const admin = !!u && (u.role !== 'player' || !!u.is_bot);
   adminCache.set(userId, { admin, at: Date.now() });
   return admin;
 }
@@ -223,7 +223,7 @@ async function scanAll({ recentMinutes = null, limit = 1500 } = {}) {
   try {
     const world = await require('../game/world').get();
     const where = recentMinutes ? 'AND c.updated_at > NOW() - INTERVAL ? MINUTE' : '';
-    const rows = await db.query(`SELECT c.state, c.user_id, u.coins, u.efs_pool, u.username, u.created_at u_created FROM characters c JOIN users u ON u.id = c.user_id WHERE c.status = 'alive' AND u.role <> 'admin' ${where} ORDER BY c.updated_at DESC LIMIT ?`, recentMinutes ? [recentMinutes, limit] : [limit]);
+    const rows = await db.query(`SELECT c.state, c.user_id, u.coins, u.efs_pool, u.username, u.created_at u_created FROM characters c JOIN users u ON u.id = c.user_id WHERE c.status = 'alive' AND u.role <> 'admin' AND u.is_bot = 0 ${where} ORDER BY c.updated_at DESC LIMIT ?`, recentMinutes ? [recentMinutes, limit] : [limit]);
     let flagged = 0;
     for (const r of rows) flagged += (await scanUser(r, world)) ? 1 : 0;
     return { users: rows.length, flagged };

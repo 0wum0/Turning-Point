@@ -176,7 +176,7 @@ async function coupleView(world, userId) {
   const incoming = await db.query("SELECT * FROM couples WHERE status = 'request' AND initiator <> ? AND (user_a = ? OR user_b = ?) ORDER BY id DESC", [userId, userId, userId]);
   const outgoing = await db.query("SELECT * FROM couples WHERE status = 'request' AND initiator = ? ORDER BY id DESC", [userId]);
   const other = (r) => (r.user_a === userId ? r.user_b : r.user_a);
-  const singles = ps && !cp && !ps.partnered ? await db.query("SELECT ps.user_id userId, ps.name, ps.username, ps.occupation, ps.year FROM player_stats ps JOIN users u ON u.id = ps.user_id WHERE ps.city_id = ? AND ps.user_id <> ? AND ps.status = 'alive' AND ps.partnered = 0 AND u.social_public = 1 AND u.banned = 0 AND NOT EXISTS (SELECT 1 FROM couples c WHERE (c.user_a = ps.user_id OR c.user_b = ps.user_id) AND c.status IN ('dating','engaged','married')) ORDER BY u.last_seen_at DESC LIMIT 30", [ps.city_id, userId]) : [];
+  const singles = ps && !cp && !ps.partnered ? await db.query("SELECT ps.user_id userId, ps.name, ps.username, ps.occupation, ps.year FROM player_stats ps JOIN users u ON u.id = ps.user_id WHERE u.is_bot = 0 AND ps.city_id = ? AND ps.user_id <> ? AND ps.status = 'alive' AND ps.partnered = 0 AND u.social_public = 1 AND u.banned = 0 AND NOT EXISTS (SELECT 1 FROM couples c WHERE (c.user_a = ps.user_id OR c.user_b = ps.user_id) AND c.status IN ('dating','engaged','married')) ORDER BY u.last_seen_at DESC LIMIT 30", [ps.city_id, userId]) : [];
   return {
     singles,
     me: ps ? { cityId: ps.city_id } : null,
@@ -195,6 +195,7 @@ async function request(world, from, to) {
   if (!me || me.status !== 'alive') fail('Du brauchst einen lebenden Charakter.'); if (!you || you.status !== 'alive' || you.banned) fail('Dieser Spieler hat keinen lebenden Charakter.');
   const rel = await social.relation(from, to); if (rel === 'blocked' || rel === 'blocked_by') fail('Dieser Spieler ist nicht erreichbar.');
   if (C.requireSameCity && me.city_id !== you.city_id) fail('Ihr müsst in derselben Stadt wohnen, um euch näherzukommen.');
+  { const bt = await db.one('SELECT is_bot FROM users WHERE id = ?', [to]); if (bt && bt.is_bot) fail('Diese Person ist bereits vergeben.'); }
   if (me.partnered || await activeCouple(db, from)) fail('Du bist bereits in einer Beziehung oder verheiratet.'); if (you.partnered || await activeCouple(db, to)) fail('Diese Person ist bereits vergeben.');
   const [ua, ub] = pair(from, to); const dup = await db.one("SELECT id FROM couples WHERE user_a = ? AND user_b = ? AND status = 'request'", [ua, ub]); if (dup) fail('Es gibt schon eine offene Anfrage.');
   const n = (await db.one("SELECT COUNT(*) n FROM couples WHERE initiator = ? AND created_at > NOW() - INTERVAL 1 DAY", [from])).n; if (n >= 3) fail('Heute hast du schon genug Anfragen gestellt.');

@@ -85,6 +85,7 @@ const DEFAULTS = {
     ],
     quote: '“A small event can change a great life.”', ctaBottom: 'Begin your first life', ctaBottomPlay: 'Back to the game',
   },
+  bots: { enabled: false, target: 8, max: 60, activity: 2, chat: true, letters: true, friends: true, jobs: true, visits: true },
   'site.announcement': { active: false, id: 1, level: 'info', title: '', text: '' },
   'site.contact_email': LEGAL.EMAIL,
   'site.legal_name': LEGAL.BETREIBER,

@@ -165,3 +165,8 @@ Schriften: Inter, Fraunces (SIL OFL 1.1, via Fontsource) · Icons: Lucide (ISC).
 - **Orte:** rund 9.000 Orte (Gemeindesitze und größere Dörfer) aus `src/db/places-de.json` (GeoNames-Daten, CC BY 4.0 – Quellenangabe: geonames.org). Migration `011_places` legt sie an; `since` (Jahr) steuert, ab wann ein Ort existiert (z. B. Eisenhüttenstadt 1950, Norderstedt 1970). Die Karte zeichnet je nach Zoom nur sichtbare Orte, die Suche findet jeden Ort. Im Admin unter Städte mit Suche, Filter und Seiten.
 - **Berufe:** über 130 Berufe mit Zeitfenster (`era_from`/`era_to`), Migration `009_professions_era`.
 - **Kurzzahlen:** große Beträge erscheinen als 1k, 12k, 999k, 1m, 5b … (`compact()` in `ui.js` und `economy.js`).
+
+## Immobilien vermieten & Bots
+
+- **Vermieten:** Eigene Immobilien, die man nicht selbst bewohnt, lassen sich unter *Wohnen* vermieten. Marktmiete aus Wert und Zustand, Preisregler 50–200 %, Mieter kommen je nach Preis/Zustand/Stadtgröße, wechseln nach einigen Monaten bis Jahren, selten gibt es Mietausfall. Einnahmen stehen in den Tagesflüssen (`inc.rent`). Code: `src/game/landlord.js`. Immobilien kann man auf *Wohnen* und in der Zeitung (auch in anderen Städten) kaufen.
+- **Bots:** Admin → Spieler → *Bots* (standardmäßig aus). Echte Konten (`users.is_bot`) mit Charakteren, die nach den Spielregeln leben, im Stadtplatz-Chat plaudern, Briefe beantworten, Freundschaften annehmen und Spielerbetriebe besuchen (`src/lib/bots.js`, Texte in `bot-texts.js`). Leitplanken: nicht in der Singles-Liste, keine Beziehungen mit Spielern, nie Geld-/Kaufbitten, ehrliche Antwort auf die ernste Frage „Bist du ein Bot?“, Hinweis in den Nutzungsbedingungen (Abschnitt 2a), im Admin gekennzeichnet; Anti-Cheat und Statistiken ignorieren Bots.

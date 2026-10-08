@@ -10,7 +10,7 @@ module.exports = function mount(router, H) {
 
   router.get('/community', wrap(async (req, res) => {
     const tab = ['chat', 'reports', 'letters', 'log', 'board', 'bonds'].includes(req.query.t) ? req.query.t : 'reports';
-    const [k] = await db.query("SELECT (SELECT COUNT(*) FROM users WHERE social_public = 1 AND role = 'player') pub, (SELECT COUNT(*) FROM users WHERE social_public = 0 AND role = 'player') priv, (SELECT COUNT(*) FROM chat_messages WHERE created_at > NOW() - INTERVAL 1 DAY) chat, (SELECT COUNT(*) FROM messages WHERE kind = 'letter' AND created_at > NOW() - INTERVAL 1 DAY) letters, (SELECT COUNT(*) FROM reports WHERE status = 'open') reports, (SELECT COALESCE(SUM(amount),0) FROM social_log WHERE kind = 'gift' AND created_at > NOW() - INTERVAL 7 DAY) gifts, (SELECT COUNT(*) FROM social_log WHERE kind = 'visit' AND created_at > NOW() - INTERVAL 7 DAY) visits, (SELECT COUNT(*) FROM friendships WHERE status = 'accepted') friends, (SELECT COUNT(*) FROM users WHERE mute_until > ?) muted", [Date.now()]);
+    const [k] = await db.query("SELECT (SELECT COUNT(*) FROM users WHERE social_public = 1 AND role = 'player' AND is_bot = 0) pub, (SELECT COUNT(*) FROM users WHERE social_public = 0 AND role = 'player') priv, (SELECT COUNT(*) FROM chat_messages WHERE created_at > NOW() - INTERVAL 1 DAY) chat, (SELECT COUNT(*) FROM messages WHERE kind = 'letter' AND created_at > NOW() - INTERVAL 1 DAY) letters, (SELECT COUNT(*) FROM reports WHERE status = 'open') reports, (SELECT COALESCE(SUM(amount),0) FROM social_log WHERE kind = 'gift' AND created_at > NOW() - INTERVAL 7 DAY) gifts, (SELECT COUNT(*) FROM social_log WHERE kind = 'visit' AND created_at > NOW() - INTERVAL 7 DAY) visits, (SELECT COUNT(*) FROM friendships WHERE status = 'accepted') friends, (SELECT COUNT(*) FROM users WHERE mute_until > ?) muted", [Date.now()]);
     const d = { tab, title: 'Community', active: 'community', k, cfg: settings.get('social') };
     if (tab === 'chat') d.chat = await db.query('SELECT c.id, c.text, c.name, c.created_at, c.deleted, c.user_id, u.username, u.mute_until, ci.name city FROM chat_messages c JOIN users u ON u.id = c.user_id LEFT JOIN cities ci ON ci.id = c.city_id ORDER BY c.id DESC LIMIT 120');
     if (tab === 'reports') {
@@ -50,7 +50,7 @@ module.exports = function mount(router, H) {
   router.post('/community/rebuild', wrap(async (req, res) => { await db.query('DELETE FROM player_stats'); const n = await social.backfillStats(); await audit(req, 'community_rebuild', String(n)); flash(req, 'good', `Ranglisten-Daten für ${n} Spieler neu berechnet.`); back(req, res, 'board'); }));
   router.post('/community/broadcast-letter', wrap(async (req, res) => {
     const subject = clean(req.body.subject, 120); const body = clean(req.body.body, 1500); if (!subject || !body) { flash(req, 'bad', 'Betreff und Text fehlen.'); return back(req, res, 'chat'); }
-    const ids = await db.query("SELECT id FROM users WHERE role = 'player' AND banned = 0"); for (const u of ids) await social.sendSystemLetter(u.id, subject, body);
+    const ids = await db.query("SELECT id FROM users WHERE role = 'player' AND banned = 0 AND is_bot = 0"); for (const u of ids) await social.sendSystemLetter(u.id, subject, body);
     await audit(req, 'community_broadcast_letter', subject); flash(req, 'good', `Mitteilung an ${ids.length} Spieler verschickt (Posteingang).`); back(req, res, 'chat');
   }));
 };

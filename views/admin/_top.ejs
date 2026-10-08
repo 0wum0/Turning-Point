@@ -1,7 +1,7 @@
 <%- include('../partials/head', { title: 'Admin · ' + title, era: 1, css: ['admin'], noindex: true, bodyClass: 'admin' }) %>
 <% var NAV = [
   ['Übersicht', [['dashboard','Dashboard','layout-dashboard','/admin'],['analytics','Analytics','trending-up','/admin/analytics']]],
-  ['Spieler', [['users','Spieler','users','/admin/users'],['characters','Charaktere','user','/admin/characters'],['anticheat','Anti-Cheat','shield','/admin/anticheat'],['community','Community','users','/admin/community'],['finance','Finanzen','credit-card','/admin/finance']]],
+  ['Spieler', [['users','Spieler','users','/admin/users'],['characters','Charaktere','user','/admin/characters'],['anticheat','Anti-Cheat','shield','/admin/anticheat'],['bots','Bots','bot','/admin/bots'],['community','Community','users','/admin/community'],['finance','Finanzen','credit-card','/admin/finance']]],
   ['Inhalte', [['news','Zeitung & News','newspaper','/admin/news'],['cities','Städte','map-pin','/admin/cities'],['professions','Berufe','briefcase','/admin/professions'],['media','Medien','image','/admin/media']]],
   ['System', [['settings','Einstellungen','settings','/admin/settings'],['tools','Werkzeuge','wrench','/admin/tools'],['backup','Backup & Import','database','/admin/backup'],['system','System','server','/admin/system'],['audit','Protokoll','scroll','/admin/audit']]]
 ]; var current = ''; NAV.forEach(function(g){ g[1].forEach(function(n){ if (n[0] === active) current = n[1]; }); }); var badges = (typeof adminBadges !== 'undefined' && adminBadges) || {}; %>

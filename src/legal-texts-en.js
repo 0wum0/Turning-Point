@@ -103,6 +103,9 @@ These terms apply to the use of the browser game TURNING POINT. The provider is 
 2. Service
 TURNING POINT is a simulation game that is free to play. There is no entitlement to a particular duration of play, a particular range of functions or constant availability. The game may be further developed, changed, temporarily shut down or discontinued; game balance, prices and rules may be adjusted.
 
+2a. Computer-controlled characters
+In the multiplayer world, individual characters may be computer-controlled (bots). They serve to bring the game world to life, play by the same rules, never ask for money or purchases and do not enter relationships with players. Anyone who seriously asks whether a character is a bot receives an honest answer.
+
 3. Registration and account
 Use requires an account. You must be at least 16 years old and provide truthful information. One account per person is intended. Keep your login details secret; you are responsible for actions taken under your account if you are responsible for the misuse.
 
