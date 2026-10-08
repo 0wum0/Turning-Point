@@ -14,12 +14,14 @@ function card(c, v) {
     <div class="row nowrap spread"><h3>${c.name}</h3><span class="chip accent">${c.tierName}</span></div>
     <div class="dim small">${c.city} · ${c.profession}${c.owner ? ' · du arbeitest hier' : ''}${c.manager ? ' · Manager' : ''}</div>
     <div class="grid c2 mt small" style="--gap:.6rem"><div><div class="dim">Räume</div><b>${c.rooms} / ${c.maxRooms}</b></div><div><div class="dim">Mitarbeiter</div><b>${c.staff} / ${c.needed}</b></div></div>
+    ${c.hit ? html`<div class="alert warn small mt">${icon('trending-down')}<div>Ein Konkurrent unterbietet deine Preise: Umsatz −${c.hit.pct} % (noch ${c.hit.days} Tage).</div></div>` : ''}${c.outage ? html`<div class="alert bad small mt">${icon('flame')}<div>Produktionsausfall nach einem Anschlag: noch ${c.outage} Tage kein Umsatz.</div></div>` : ''}
     ${c.comp ? html`<div class="small mt ${c.comp.factor < 0.9 ? 'neg' : 'dim'}">${icon('users')} Konkurrenz: ${c.comp.firms} Betriebe dieser Art in ${c.city}, ${c.comp.total} von ${c.comp.cap} Räumen Nachfrage${c.comp.factor < 1 ? html` – Umsatz ×${String(Math.round(c.comp.factor * 100) / 100).replace('.', ',')}` : ''}</div>` : ''}
     <div class="mt small">Auslastung ${Math.round(f.efficiency * 100)} %</div>${bar(f.efficiency * 100, f.efficiency < 0.5 ? 'bad' : 'good')}
     <dl class="kv small mt"><dt>Umsatz / Tag</dt><dd>${money(f.income, cur)}</dd><dt>Löhne + Unterhalt</dt><dd class="neg">${money(f.wages + f.upkeep, cur)}</dd><dt><b>Gewinn / Tag</b></dt><dd class="${f.profit >= 0 ? 'pos' : 'neg'}">${signed(f.profit, cur)}</dd><dt>Firmenkasse</dt><dd>${money(c.cash, cur)}</dd><dt>Wert</dt><dd>${money(c.value, cur)}</dd></dl>
     <div class="row mt">
       <button class="btn sm primary" data-b="bizCollect" data-id="${c.id}" ${c.cash > 0 ? '' : 'disabled'}>${icon('hand-coins')} Abholen</button>
       ${c.owner ? '' : html`<button class="btn sm" data-b="bizWork" data-id="${c.id}" ${c.cityId === v.city.id ? '' : 'disabled'}>${icon('hammer')} Selbst arbeiten</button>`}
+      <button class="btn sm" data-b="bizSecurity" data-id="${c.id}" data-on="${c.security ? 0 : 1}">${icon('shield')} ${c.security ? 'Sicherheitsdienst abbestellen' : 'Sicherheitsdienst'}</button>
       <button class="btn sm" data-b="bizManager" data-id="${c.id}" data-on="${c.manager ? 0 : 1}">${icon('crown')} ${c.manager ? 'Manager entlassen' : 'Manager einstellen'}</button>
     </div>
     <div class="row mt">

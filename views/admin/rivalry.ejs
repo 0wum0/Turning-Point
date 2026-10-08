@@ -1,0 +1,20 @@
+<%- include('_top', { actions: '' }) %>
+<% var csrf = '<input type="hidden" name="_csrf" value="' + csrfToken + '">'; const when = (d) => new Date(d).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); const AL = { spy: 'Spionage', price: 'Preiskampf', poach: 'Abwerben', sabotage: 'Sabotage' }; %>
+<div class="kpis">
+  <div class="kpi info"><span class="ico"><%- icon('swords') %></span><label>Teilnehmer (freiwillig)</label><b><%= k.optin %></b></div>
+  <div class="kpi"><span class="ico"><%- icon('flame') %></span><label>Aktionen (7 Tage)</label><b><%= k.week %></b><small><span><%= k.caught %> davon erwischt</span></small></div>
+  <div class="kpi <%= k.banned ? 'bad' : 'good' %>"><span class="ico"><%- icon('shield') %></span><label>Gesperrt</label><b><%= k.banned %></b></div>
+</div>
+<form class="card stack mt" method="post" action="/admin/rivalry/mode"><%- csrf %>
+  <div class="card-title"><%- icon('swords') %> Modus</div>
+  <label class="check"><input type="radio" name="mode" value="off" <%= cfg.mode === 'off' ? 'checked' : '' %>> <b>Aus</b> – keine Wettbewerbsaktionen.</label>
+  <label class="check"><input type="radio" name="mode" value="optin" <%= cfg.mode === 'optin' ? 'checked' : '' %>> <b>Freiwillig</b> – jeder Spieler entscheidet im Profil, ob er teilnimmt (nur Teilnehmer greifen an und können Ziel werden).</label>
+  <label class="check"><input type="radio" name="mode" value="all" <%= cfg.mode === 'all' ? 'checked' : '' %>> <b>Für alle aktiv</b> – alle Spieler nehmen automatisch teil.</label>
+  <div class="row end"><button class="btn primary"><%- icon('check') %> Speichern</button></div>
+  <p class="dim small mb0">Schutzregeln (Neulinge, Tages-/Wochenlimits, Strafen, Sperren, Kosten) stellst du unter <a href="/admin/settings/market">Einstellungen → Markt &amp; Wettbewerb</a> ein.</p>
+</form>
+<h3 class="mt">Protokoll</h3>
+<div class="table-wrap"><table class="table small"><thead><tr><th>Zeit</th><th>Täter</th><th>Ziel</th><th>Betrieb</th><th>Aktion</th><th>Erwischt</th><th></th></tr></thead><tbody>
+<% log.forEach(function(l){ %><tr><td class="dim"><%= when(l.created_at) %></td><td><%= l.att %></td><td><%= l.tgt %></td><td><%= l.company %></td><td><%= AL[l.action] || l.action %></td><td><%= l.caught ? 'ja' : 'nein' %></td><td class="num"><% if (l.caught) { %><form method="post" action="/admin/rivalry/ban/<%= l.attacker %>/clear"><%- csrf %><button class="btn sm ghost" title="Sperre des Täters aufheben">Sperre aufheben</button></form><% } %></td></tr>
+<% }) %><% if (!log.length) { %><tr><td colspan="7" class="dim">Noch keine Aktionen.</td></tr><% } %></tbody></table></div>
+<%- include('_bottom') %>

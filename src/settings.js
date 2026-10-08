@@ -89,6 +89,19 @@ const DEFAULTS = {
   credit: { enabled: true, spread: 1.5, assetPct: 60, incomeDays: 150, minAmount: 20000, maxYears: 30 },
   competition: { enabled: true, cap: [6, 6, 9, 16, 30, 55], minFactor: 0.35, exponent: 0.8 },
   cycles: { realEstate: [[1945, 0.75], [1950, 0.85], [1957, 1.0], [1965, 1.08], [1973, 1.15], [1976, 1.05], [1985, 1.0], [1990, 1.2], [1993, 1.3], [1996, 1.0], [2005, 0.9], [2010, 1.0], [2015, 1.2], [2021, 1.5], [2023, 1.35], [2035, 1.4], [2060, 1.5], [2100, 1.6]] },
+  rivalry: {
+    mode: 'optin', // off | optin (Spieler wählen selbst) | all (für alle aktiv)
+    optOutLockDays: 7, attackerMinGameDays: 60, targetMinGameDays: 60, minAccountHours: 24,
+    dailyCap: 3, perFirmDailyCap: 1, perFirmWeeklyCap: 3, afterSabotageShieldHours: 48,
+    strikeLimit: 3, strikeWindowDays: 30, banDays: 7,
+    actions: {
+      spy: { cost: 2500, label: 'Industriespionage' },
+      price: { cost: 8000, hitPct: 18, days: 14, label: 'Preiskampf' },
+      poach: { cost: 3000, label: 'Mitarbeiter abwerben' },
+      sabotage: { cost: 6000, outageDays: 6, repairPct: 1.5, label: 'Sabotage' },
+    },
+    caughtBase: 0.3, caughtSecurityBonus: 0.25, successSecurity: 0.5, finePct: 400,
+  },
   market: { enabled: true, propFeePct: 3.5, firmFeePct: 1.5, offerMinPct: 40, offerExpireDays: 7, auctionHours: 24, auctionIncrementPct: 5, maxOpenOffers: 10, offersPerDay: 12, minGameDays: 30, blockSameIp: true, estateAuctions: true },
   bots: { enabled: false, target: 8, max: 60, activity: 2, chat: true, letters: true, friends: true, jobs: true, visits: true, market: true },
   'site.announcement': { active: false, id: 1, level: 'info', title: '', text: '' },

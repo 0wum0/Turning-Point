@@ -48,3 +48,23 @@ test('Immobilienzyklus: Faktor je Jahr, stetig', () => {
   assert.ok(Math.abs(realEstateFactor(2021) - 1.5) < 1e-9);
   assert.ok(realEstateFactor(2200) > 1);
 });
+
+test('Wettbewerb: Preiskampf und Anschlag senken den Umsatz, Sicherheitsdienst kostet', () => {
+  const biz = require('../src/game/business');
+  const actions = require('../src/game/actions');
+  const { edition } = require('../src/game/newspaper');
+  const s = createCharacter(w, input(w, { professionKey: 'wirt' }), u());
+  s.money = 90000000; s.housing = { type: 'rent', cityId: s.cityId, base: 70, rooms: 4 };
+  const l = edition(w, s, s.cityId).biz.find((x) => x.pkey === 'wirt');
+  actions.run('buyBiz', { world: w, state: s, input: { listingId: l.id }, user: u(), now: Date.now() });
+  const c = s.companies[0]; c.staff = 6; c.manager = true;
+  const year = require('../src/game/calendar').yearOf(s.day, s.startYear);
+  const base = biz.companyFlows(w, s, c, year).income;
+  c.hit = { until: s.day + 10, factor: 0.8 };
+  assert.ok(biz.companyFlows(w, s, c, year).income < base);
+  c.outageUntil = s.day + 3;
+  assert.strictEqual(biz.companyFlows(w, s, c, year).income, 0);
+  delete c.hit; c.outageUntil = 0;
+  const up0 = biz.companyFlows(w, s, c, year).upkeep; c.security = true;
+  assert.ok(biz.companyFlows(w, s, c, year).upkeep > up0);
+});

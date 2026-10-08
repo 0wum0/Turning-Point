@@ -171,11 +171,21 @@ const views = {
         <div class="field"><label>Über mich (max. 240 Zeichen)</label><textarea id="bio" maxlength="240" style="min-height:90px">${d.bio || ''}</textarea></div>
         <label class="check"><input type="checkbox" id="pub" ${d.public ? 'checked' : ''}> Öffentlich sichtbar (Rangliste, Profil, Stadtplatz, Zeitungsmeldungen)</label>
         <div class="hint">Privat heißt: Du erscheinst nirgends – andere können dir aber weiterhin Briefe schreiben.</div>
+        ${rivalBox(d.rival)}
         <div class="row end mt"><button class="btn primary" id="savebio">Speichern</button></div></section>
       <section class="card"><div class="card-title">${icon('crown')} Deine Platzierungen</div>${s ? html`<div class="pgrid">${Object.entries({ wealth: 'Vermögen', business: 'Unternehmer', politics: 'Politik', dynasty: 'Dynastie', family: 'Familie', time: 'Zeitreise' }).map(([k, l]) => html`<div><small>${l}</small><b>#${p.ranks[k]}</b></div>`)}</div>` : html`<div class="dim">Noch keine Platzierung.</div>`}
         <p class="dim small mt">Die Rangliste vergleicht inflationsbereinigt: 1 DM von 1945 ist die Maßeinheit – so konkurrieren Spieler aus allen Epochen fair.</p></section></div>`;
   },
 };
+
+function rivalBox(r) {
+  if (!r || r.mode === 'off') return '';
+  const locked = r.lockUntil > Date.now();
+  return html`<div class="card flat mt"><div class="card-title">${icon('swords')} Wettbewerb</div>
+    ${r.mode === 'all' ? html`<div class="small">Der Wettbewerb ist für <b>alle Spieler aktiv</b>: Du kannst Betriebe anderer ausspionieren, im Preis unterbieten, Mitarbeiter abwerben oder sabotieren – und selbst Ziel werden.</div>`
+      : html`<label class="check"><input type="checkbox" id="rivopt" ${r.optedIn ? 'checked' : ''} ${locked ? 'disabled' : ''}> Ich nehme am Wettbewerb teil</label>
+        <div class="hint">Teilnehmer können gegenseitig Betriebe ausspionieren, im Preis unterbieten, Mitarbeiter abwerben oder sabotieren (mit Risiko und Strafe). Nur wer selbst teilnimmt, kann Ziel werden. Nach der Anmeldung bleibst du mindestens ${7} Tage dabei.${locked ? ` Ausstieg möglich ab ${new Date(r.lockUntil).toLocaleDateString('de-DE')}.` : ''}${r.banUntil ? ' Du bist derzeit gesperrt.' : ''}</div>`}</div>`;
+}
 
 function chatLine(m) { return `<div class="cl ${m.mine ? 'mine' : ''}" data-id="${m.id}"><span class="t">${hhmm(m.at)}</span> <a href="#/social" class="who" data-profile="${m.userId}">${esc(m.name)}</a>${roleBadgeStr(m.role)} <span class="msg">${esc(m.text)}</span>${m.mine ? '' : `<button class="rep" data-rep="${m.id}" title="Melden" aria-label="Melden">⚑</button>`}</div>`; }
 
@@ -191,7 +201,7 @@ export default {
     if (tab === 'jobs') { const [market, mine] = await Promise.all([api('GET', '/api/social/jobs/market'), api('GET', '/api/social/jobs/mine')]); return { tab, market, mine }; }
     if (tab === 'market') { const [mk, au] = await Promise.all([api('GET', '/api/social/market'), api('GET', `/api/social/market/auctions?cityId=${ctx.view.city.id}`)]); return { tab, ...mk, auctions: au.auctions }; }
     if (tab === 'love') return { tab, ...(await api('GET', '/api/social/couple')) };
-    return { tab: 'me', ...(await api('GET', '/api/social/me')) };
+    return { tab: 'me', ...(await api('GET', '/api/social/me')), rival: await api('GET', '/api/social/rivalry').catch(() => null) };
   },
   render(ctx, d) {
     const tab = d.tab;
@@ -202,6 +212,7 @@ export default {
   bind(root, ctx, d) {
     const s = ctx.ui.soc;
     const go = () => ctx.rerender();
+    const ro = root.querySelector('#rivopt'); if (ro) ro.addEventListener('change', async () => { try { await api('POST', '/api/social/rivalry/optin', { on: ro.checked }); toast(ro.checked ? 'Du nimmst jetzt am Wettbewerb teil.' : 'Du bist ausgestiegen.'); go(); } catch (e) { toast(e.message, 'warn'); ro.checked = !ro.checked; } });
     if (d.tab === 'market') bindMarket(root, ctx, d, go);
     if (s.openLetter) { const id = s.openLetter; s.openLetter = null; setTimeout(() => { const row = root.querySelector(`[data-letter="${id}"]`); if (row) row.click(); }, 60); }
     if (s.openProfile) { const uid = s.openProfile; s.openProfile = null; setTimeout(() => openProfile(ctx, uid), 60); }

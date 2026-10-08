@@ -486,6 +486,21 @@ const MIGRATIONS = [
       KEY idx_mb_a (auction_id, price_real)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
   ] },
+  { id: '016_rivalry', up: [
+    'ALTER TABLE users ADD COLUMN rivalry TINYINT(1) NOT NULL DEFAULT 0, ADD COLUMN rivalry_since DATETIME NULL, ADD COLUMN rivalry_ban DATETIME NULL',
+    `CREATE TABLE IF NOT EXISTS rivalry_log (
+      id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      attacker INT UNSIGNED NOT NULL,
+      target INT UNSIGNED NOT NULL,
+      company_id INT NOT NULL,
+      company VARCHAR(120) NOT NULL DEFAULT '',
+      action VARCHAR(20) NOT NULL,
+      caught TINYINT(1) NOT NULL DEFAULT 0,
+      cost_real BIGINT NOT NULL DEFAULT 0,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      KEY idx_rl_att (attacker, created_at), KEY idx_rl_tgt (target, company_id, created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+  ] },
 ];
 
 async function ensureTable(db) {

@@ -473,6 +473,11 @@ A.bizHire = ({ world, state, input }) => {
   c.staff = Math.max(0, c.staff + Math.sign(n));
   return { msg: n > 0 ? 'Mitarbeiter eingestellt.' : 'Mitarbeiter entlassen.' };
 };
+A.bizSecurity = ({ state, input }) => {
+  const c = company(state, input.id); needActive(c);
+  c.security = !!input.on;
+  return { msg: c.security ? 'Ein Sicherheitsdienst bewacht den Betrieb (kostet täglich etwas, wehrt Angriffe häufiger ab).' : 'Der Sicherheitsdienst wurde abbestellt.' };
+};
 A.bizManager = ({ state, input }) => {
   const c = company(state, input.id); needActive(c);
   c.manager = !!input.on;

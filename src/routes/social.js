@@ -95,6 +95,12 @@ router.post('/market/buy', wrap(async (req, res) => { const r = await market.buy
 router.post('/market/auction/start', wrap(async (req, res) => { const r = await market.startAuction(uid(req), String(req.body.kind), int(req.body.itemId), req.body.minReal, int(req.body.hours, 24)); await fresh(req, res, r); }));
 router.post('/market/auction/bid', wrap(async (req, res) => { await market.bid(uid(req), int(req.body.id), req.body.priceReal); res.json({ ok: true }); }));
 
+/* ---------- Wettbewerb ---------- */
+const rivalry = require('../lib/rivalry');
+router.get('/rivalry', wrap(async (req, res) => res.json({ ok: true, ...(await rivalry.status(uid(req))) })));
+router.post('/rivalry/optin', wrap(async (req, res) => { await rivalry.setOptIn(uid(req), !!req.body.on); res.json({ ok: true, ...(await rivalry.status(uid(req))) }); }));
+router.post('/rivalry/act', wrap(async (req, res) => { const r = await rivalry.perform(uid(req), int(req.body.targetId), int(req.body.companyId), String(req.body.action)); await fresh(req, res, r); }));
+
 /* ---------- Beziehung & Hochzeit ---------- */
 router.get('/couple', wrap(async (req, res) => res.json({ ok: true, ...(await bonds.coupleView(await worldSvc.get(), uid(req))) })));
 router.post('/couple/request', wrap(async (req, res) => { await bonds.request(await worldSvc.get(), uid(req), int(req.body.userId)); res.json({ ok: true }); }));
