@@ -54,6 +54,19 @@ A.apply = ({ world, state, input }) => {
   if (!p) fail('Beruf nicht gefunden.');
   if (l.kind === 'work' && !isLearned(state, l.pkey)) fail('Dafür fehlt dir die Qualifikation.');
   if (l.kind === 'training' && isLearned(state, l.pkey)) fail('Diesen Beruf beherrschst du bereits.');
+  const career = require('./career');
+  const cur = career.workerOcc(state);
+  if (cur && l.kind === 'work' && !(cur.pkey === l.pkey && cur.employer === l.employer)) { // Stellenwechsel: Bewerbung mit Erfolgschance und Kündigungsfrist
+    const cd = career.ensure(state); const key = `${l.pkey}|${l.employer}`;
+    if ((cd.applied[key] || 0) > state.day) fail('Auf diese Stelle hast du dich gerade erst beworben. Versuche es später noch einmal.');
+    if (cur.notice && !cd.hire) fail('Du hast bereits gekündigt. Nimm die Kündigung zurück, um dich zu bewerben.');
+    cd.applied[key] = state.day + settings.get('career').applyCooldownDays;
+    if (career.nextRng(state, 'apply') >= career.applyChance(state, l.pkey)) return { msg: `Die Bewerbung bei ${l.employer} wurde abgelehnt.`, level: 'warn' };
+    const days = settings.get('career').noticeDays;
+    cd.hire = { pkey: l.pkey, employer: l.employer, cityId: l.cityId, factor: l.factor, lodging: l.lodging };
+    cur.notice = { endDay: state.day + days, reason: 'switch' };
+    return { msg: `Zusage von ${l.employer}! Nach Ablauf der Kündigungsfrist (${days} Tage) wechselst du als ${p.name}.`, level: 'good' };
+  }
   state.occupation = { kind: l.kind, pkey: l.pkey, employer: l.employer, cityId: l.cityId, factor: l.factor, lodging: l.lodging, since: state.day, daysLeft: l.kind === 'training' ? p.training_days : 0 };
   if (state.housing.type === 'workplace' && !l.lodging) state.housing = { type: 'street', cityId: state.cityId };
   award(state, l.kind === 'training' ? 'training_start' : 'job_start');
@@ -64,6 +77,7 @@ A.apply = ({ world, state, input }) => {
 A.quit = ({ state }) => {
   if (!state.occupation) fail('Du hast keine Stelle.');
   state.occupation = null;
+  if (state.career) state.career.hire = null;
   if (state.housing.type === 'workplace') state.housing = { type: 'street', cityId: state.cityId };
   return { msg: 'Du hast gekündigt.' };
 };
@@ -587,6 +601,7 @@ A.bizReactivate = ({ world, state, input }) => {
 };
 
 require('./society').install(A, fail, { yr, pay });
+require('./career').install(A, fail, { yr, pay });
 require('./places').install(A, fail, { yr, pay, settings });
 
 /* ---------------- Meldungen ---------------- */

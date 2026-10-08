@@ -51,6 +51,7 @@ function dayStep(ctx) {
   const m = state.meters;
   const occ = state.occupation;
   if (occ) occupationDaily(ctx, flows, year);
+  require('./career').daily(ctx);
 
   if (flows.inc.office) { state.money += flows.inc.office; state.stats.earned += flows.inc.office; }
   // Kindergeld
@@ -346,7 +347,7 @@ function newYear(ctx, year, econ) {
     if (p && !(p.era_from <= year && year <= p.era_to)) {
       const succ = world.successorOf(occ.pkey, year);
       if (succ) { occ.pkey = succ.pkey; learn(state, succ.pkey); }
-      else { state.occupation = null; lost.push(p.name); }
+      else { require('./career').onJobLost(world, state, 'obsolete'); state.occupation = null; lost.push(p.name); }
     }
   }
   if (state.partner && state.partner.pkey) {

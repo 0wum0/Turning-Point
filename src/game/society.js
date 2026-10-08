@@ -57,6 +57,7 @@ function install(A, fail, helpers) {
     const c = cfg(world);
     const o = c.offices[idx];
     if (!o) fail('Unbekanntes Amt.');
+    if (require('../settings').get('elections').disableChance) fail('Ämter werden jetzt per Spielerwahl vergeben (Spieler → Wahlen).');
     if (state.politics.term) fail('Du bist bereits im Amt.');
     if (ageYears(state.person.birthDay, state.day) < c.minAge) fail(`Mindestalter für Ämter: ${c.minAge} Jahre.`);
     if (idx > 0 && completed(state, idx - 1) < 1) fail(`Zuerst musst du eine Amtszeit als ${c.offices[idx - 1].name} absolvieren.`);

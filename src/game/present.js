@@ -4,7 +4,7 @@ const { dateOf, formatDate, yearOf, ageYears } = require('./calendar');
 const { scale } = require('./economy');
 const {
   dailyFlows, propertyValue, netWorth, roomsAvailable, roomsNeeded, effectiveHousing, levelIndex, foodCostPerDay,
-  consumption, kidsAtHome,
+  consumption, kidsAtHome, isLearned,
 } = require('./core');
 const { HOUSING, LEVELS, SCHOOLS } = require('./content');
 const { estateShare, eligibleHeirs, ageOfChild } = require('./family');
@@ -87,8 +87,24 @@ function present(world, state, user, now) {
     },
     occupation: occ ? {
       kind: occ.kind, pkey: occ.pkey, name: occProf ? occProf.name : occ.pkey, employer: occ.employer, playerJob: !!occ.playerJob, lodging: !!occ.lodging, daysLeft: occ.daysLeft || 0,
-      cityId: occ.cityId, level: occ.kind === 'work' ? LEVELS[levelIndex(state, occ.pkey)].name : null, since: occ.since,
+      cityId: occ.cityId, notice: !!occ.notice, level: occ.kind === 'work' ? LEVELS[levelIndex(state, occ.pkey)].name : null, since: occ.since,
     } : null,
+    career: (() => {
+      const career = require('./career'); const k = settings.get('career'); const cd = career.ensure(state); const wo = career.workerOcc(state);
+      const st = wo ? career.steps(state, wo) : null; const wait = Math.max(0, cd.lastRaise + k.raiseCooldownDays - state.day);
+      const used = cd.courses[year] || 0;
+      const fee = (p, n) => scale(p.base_wage, idx, n);
+      const pk = world.activeProfessions(year).filter((p) => !p.academic && p.pkey !== 'helfer');
+      const cp = cd.course ? world.prof(cd.course.pkey) : null; const hp = cd.hire ? world.prof(cd.hire.pkey) : null;
+      return {
+        notice: occ && occ.notice ? { daysLeft: Math.max(0, occ.notice.endDay - state.day), switchTo: cd.hire ? `${hp ? hp.name : cd.hire.pkey} · ${cd.hire.employer}` : null } : null, noticeDays: k.noticeDays, canNotice: !!wo && !occ.notice,
+        steps: st ? { tenure: st.tenure, perf: st.perf, maxTenure: k.tenureMaxSteps, maxPerf: k.raiseMaxSteps, pct: k.stepPct, mult: Math.round(career.payMult(state, wo) * 100) } : null,
+        raise: wo ? { can: st.perf < k.raiseMaxSteps && wait === 0, wait, chance: Math.round(career.raiseChance(state, wo) * 100) } : null,
+        course: cd.course ? { name: cp ? cp.name : cd.course.pkey, kind: cd.course.kind, daysLeft: Math.max(0, cd.course.endDay - state.day) } : null,
+        courses: { used, cap: k.coursesPerYear, days: k.courseDays, unlockDays: k.unlockDays, options: pk.map((p) => ({ key: p.pkey, name: p.name, icon: p.icon, learned: isLearned(state, p.pkey), fee: fee(p, state.skills.learned.includes(p.pkey) ? k.courseFeeDays : k.unlockFeeDays) })) },
+        benefit: career.benefitView(world, state),
+      };
+    })(),
     flows: { income: flows.income, expense: flows.expense, net: flows.net, inc: flows.inc, exp: flows.exp },
     food: {
       consumption: consumption(state),
@@ -118,7 +134,7 @@ function present(world, state, user, now) {
     politics: (() => {
       const pc = econ.politics; const infl = (user.meta.influence || 0) + (state.fx.influence || 0); const t = state.politics.term;
       return {
-        influence: infl, minAge: pc.minAge, termDays: pc.termDays, ageOk: age >= pc.minAge,
+        influence: infl, elections: !!settings.get('elections').enabled, chanceOff: !!settings.get('elections').disableChance, minAge: pc.minAge, termDays: pc.termDays, ageOk: age >= pc.minAge,
         term: t ? { name: pc.offices[t.idx].name, idx: t.idx, daysLeft: Math.max(0, t.endDay - state.day), income: society.officeEffects(world, state, year).income } : null,
         offices: pc.offices.map((o, i) => ({ idx: i, name: o.name, campaign: scale(o.campaign, idx), income: scale(o.income + o.termBonus * society.completed(state, i), idx), done: society.completed(state, i), unlocked: i === 0 || society.completed(state, i - 1) > 0, chance: Math.round(society.winChance(world, state, infl, i) * 100), rest: o.rest })),
       };

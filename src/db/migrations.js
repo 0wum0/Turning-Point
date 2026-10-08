@@ -573,6 +573,55 @@ const MIGRATIONS = [
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
   ] },
   { id: '020_credit_company', up: ['ALTER TABLE pending_credits ADD COLUMN company_id INT NULL'] },
+  { id: '021_elections', up: [
+    `CREATE TABLE IF NOT EXISTS elections (
+      id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      office_idx TINYINT UNSIGNED NOT NULL,
+      city_id INT UNSIGNED NOT NULL DEFAULT 0,
+      cycle BIGINT NOT NULL,
+      vote_start BIGINT NOT NULL,
+      vote_end BIGINT NOT NULL,
+      status ENUM('open','done') NOT NULL DEFAULT 'open',
+      winner_id INT UNSIGNED NULL,
+      result TEXT NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY uq_el (office_idx, city_id, cycle),
+      KEY idx_el_status (status, vote_end)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    `CREATE TABLE IF NOT EXISTS election_candidates (
+      election_id INT UNSIGNED NOT NULL,
+      user_id INT UNSIGNED NOT NULL,
+      platform VARCHAR(200) NULL,
+      fee BIGINT NOT NULL DEFAULT 0,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (election_id, user_id),
+      KEY idx_ec_user (user_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    `CREATE TABLE IF NOT EXISTS election_votes (
+      election_id INT UNSIGNED NOT NULL,
+      voter_id INT UNSIGNED NOT NULL,
+      candidate_id INT UNSIGNED NOT NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (election_id, voter_id),
+      KEY idx_ev_cand (election_id, candidate_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+  ] },
+  { id: '022_push_subscriptions', up: [
+    `CREATE TABLE IF NOT EXISTS push_subscriptions (
+      id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      user_id INT UNSIGNED NOT NULL,
+      endpoint_hash CHAR(64) NOT NULL,
+      endpoint TEXT NOT NULL,
+      p256dh VARCHAR(200) NOT NULL,
+      auth VARCHAR(100) NOT NULL,
+      tz VARCHAR(60) NULL,
+      ua VARCHAR(160) NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      last_ok_at DATETIME NULL,
+      UNIQUE KEY uq_push_endpoint (endpoint_hash),
+      KEY idx_push_user (user_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+  ] },
 ];
 
 async function ensureTable(db) {

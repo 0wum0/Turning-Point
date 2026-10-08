@@ -12,9 +12,10 @@ export default {
       <div class="row spread"><div class="card-title" style="margin:0">${icon('landmark')} Politische Laufbahn</div><span class="chip accent">${icon('sparkles')} Einfluss: ${p.influence}</span></div>
       ${p.term ? html`<div class="mt"><h3 class="serif" style="font-size:1.6rem">${p.term.name}</h3><div class="dim">Noch ${yearsText(p.term.daysLeft)} im Amt · Einkommen ${money(p.term.income, cur)} / Tag</div>${bar((1 - p.term.daysLeft / p.termDays) * 100)}<div class="row end mt"><button class="btn sm danger" id="resign">Zurücktreten</button></div></div>`
         : !p.ageOk ? html`<div class="alert info mt">${icon('info')}<div>Ämter gibt es ab ${p.minAge} Jahren.</div></div>` : ''}
+      ${p.elections ? html`<div class="alert info mt">${icon('info')}<div>Ämter werden in Echtzeit von den Spielern gewählt. <a href="#/social" data-elections>Zu den Wahlen</a></div></div>` : ''}
       <div class="stack mt" style="--gap:.6rem">${p.offices.map((o) => html`<div class="office ${o.unlocked ? '' : 'locked'}"><div class="lic sm">${icon(o.unlocked ? 'landmark' : 'lock')}</div>
         <div class="grow"><b>${o.name}</b><div class="dim small">Wahlkampf ${money(o.campaign, cur)} · Einkommen ${o.income ? money(o.income, cur) + ' / Tag' : 'unbezahlt'} · Kraft −${o.rest}/Tag${o.done ? ' · ' + o.done + '× absolviert' : ''}</div></div>
-        <div class="row nowrap"><span class="chip">${o.chance} %</span><button class="btn sm primary" data-run="${o.idx}" ${(!o.unlocked || p.term || !p.ageOk || v.money < o.campaign) ? 'disabled' : ''}>Kandidieren</button></div></div>`)}</div>
+        <div class="row nowrap"><span class="chip">${o.chance} %</span><button class="btn sm primary" data-run="${o.idx}" ${(p.chanceOff || !o.unlocked || p.term || !p.ageOk || v.money < o.campaign) ? 'disabled' : ''}>Kandidieren</button></div></div>`)}</div>
     </section>
 
     <div class="grid c2 mt" style="--gap:1rem">
@@ -27,6 +28,7 @@ export default {
     </div>`;
   },
   bind(root, ctx) {
+    on(root, 'click', '[data-elections]', (e) => { e.preventDefault(); ctx.ui.soc = Object.assign(ctx.ui.soc || { cat: 'wealth', scope: 'all', box: 'in', page: 1 }, { tab: 'elections' }); ctx.go('social'); });
     on(root, 'click', '[data-run]', (e, t) => ctx.act('runOffice', { idx: Number(t.dataset.run) }));
     const rs = root.querySelector('#resign'); if (rs) rs.onclick = async () => { if (await ctx.confirm({ title: 'Zurücktreten?', text: 'Die laufende Amtszeit zählt dann nicht.', ok: 'Zurücktreten', danger: true })) ctx.act('resignOffice', {}); };
     on(root, 'click', '[data-lotto]', (e, t) => ctx.act('lotto', { tickets: Number(t.dataset.lotto) }));

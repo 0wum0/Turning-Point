@@ -40,7 +40,7 @@ async function feed(limit = 40, cityId = 0) {
   const c = cityId ? 'AND city_id = ?' : ''; const p = cityId ? [cityId] : [];
   const rows = await db.query(
     `(SELECT 'player' src, n.section, n.title, n.text, n.created_at, n.city_id FROM public_news n JOIN users u ON u.id = n.user_id WHERE u.social_public = 1 AND u.banned = 0 ${c.replace('city_id', 'n.city_id')})
-     UNION ALL (SELECT 'world', CASE kind WHEN 'stock' THEN 'Börse' WHEN 'life' THEN 'Chronik' ELSE 'Wirtschaft' END, title, text, created_at, city_id FROM world_events WHERE 1=1 ${c})
+     UNION ALL (SELECT 'world', CASE kind WHEN 'stock' THEN 'Börse' WHEN 'life' THEN 'Chronik' WHEN 'election' THEN 'Politik' ELSE 'Wirtschaft' END, title, text, created_at, city_id FROM world_events WHERE 1=1 ${c})
      ORDER BY created_at DESC LIMIT ${lim}`, [...p, ...p]);
   const world = await require('../game/world').get();
   const city = (id) => { const x = id && world.city(id); return x ? (x.label || x.name) : null; };
@@ -61,6 +61,7 @@ async function stockReport() {
 }
 
 function start() {
+  try { require('./elections').start(); } catch (_) { /* optional */ }
   setInterval(() => { stockReport().catch(() => {}); }, 3600000).unref();
   setInterval(() => { db.query("DELETE FROM world_events WHERE created_at < NOW() - INTERVAL 60 DAY").catch(() => {}); }, 86400000).unref();
 }

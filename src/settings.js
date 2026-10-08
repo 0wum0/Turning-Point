@@ -36,6 +36,16 @@ const DEFAULTS = {
       chat_spam: { enabled: true, weight: 8 },
     },
   },
+  elections: {
+    enabled: true, cycleDays: 7, voteHours: 24, minAccountHours: 24, minGameDays: 30, blockSameIp: true,
+    feePct: 50, maxCandidates: 8, firstNationalOffice: 3, botVotes: true, botVoteMax: 20, botTurnoutPct: 60, botMaxPctOfHuman: 100, keepDays: 60, disableChance: false,
+  },
+  career: {
+    noticeDays: 30, applyBasePct: 55, applyPerLevelPct: 8, applyCooldownDays: 20,
+    raiseCooldownDays: 180, raiseMaxSteps: 3, stepPct: 5, tenureStepDays: 1095, tenureMaxSteps: 4,
+    courseDays: 60, unlockDays: 120, courseFeeDays: 40, unlockFeeDays: 120, coursesPerYear: 2, skillBonusDays: 365,
+    benefit: { enabled: true, pct: 60, days: 180, minWorkDays: 90 },
+  },
   social: {
     enabled: true,
     leaderboardSize: 50,

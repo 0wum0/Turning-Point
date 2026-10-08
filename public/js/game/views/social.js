@@ -1,8 +1,9 @@
 import { renderMarket, bindMarket } from '../market.js';
 import { renderExchange, bindExchange } from '../exchange.js';
+import { renderElections, bindElections } from '../elections.js';
 import { html, raw, icon, api, on, toast, modal, money, moneyShort, num, esc, infoBtn, roleBadge, roleBadgeStr } from '../ui.js';
 
-const TABS = [['rank', 'Rangliste', 'crown'], ['plaza', 'Stadtplatz', 'landmark'], ['jobs', 'Arbeit', 'briefcase'], ['love', 'Beziehung', 'heart'], ['market', 'Markt', 'handshake'], ['exchange', 'Börse', 'trending-up'], ['letters', 'Briefe', 'mail'], ['friends', 'Freunde', 'users'], ['me', 'Mein Profil', 'user']];
+const TABS = [['rank', 'Rangliste', 'crown'], ['plaza', 'Stadtplatz', 'landmark'], ['jobs', 'Arbeit', 'briefcase'], ['love', 'Beziehung', 'heart'], ['market', 'Markt', 'handshake'], ['exchange', 'Börse', 'trending-up'], ['elections', 'Wahlen', 'landmark'], ['letters', 'Briefe', 'mail'], ['friends', 'Freunde', 'users'], ['me', 'Mein Profil', 'user']];
 const hhmm = (d) => new Date(d).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
 const dt = (d) => new Date(d).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' });
 const cityName = (ctx, id) => { const c = ctx.world && ctx.world.cityById && ctx.world.cityById.get(id); return c ? c.label : '–'; };
@@ -151,6 +152,7 @@ const views = {
   },
   market(ctx, d) { return renderMarket(ctx, d); },
   exchange(ctx, d) { return renderExchange(ctx, d); },
+  elections(ctx, d) { return renderElections(ctx, d); },
   letters(ctx, d) {
     return html`<div class="row spread wrap" style="margin-bottom:.8rem"><div class="seg">${[['in', 'Posteingang'], ['out', 'Gesendet']].map((x) => html`<a href="#/social" data-box="${x[0]}" class="${d.box === x[0] ? 'on' : ''}">${x[1]}</a>`)}</div><button class="btn primary sm" id="newletter">${icon('pencil')} Neuer Brief</button></div>
     <div class="table-wrap"><table class="table letters"><tbody>${d.items.map((m) => html`<tr data-letter="${m.id}" class="${m.unread ? 'unread' : ''}" tabindex="0"><td style="width:28px">${m.kind === 'system' ? icon('bell') : icon('mail')}</td><td><b>${m.other}</b> <span class="dim small">${m.kind === 'system' ? '· Mitteilung' : ''}</span><div class="subj">${m.subject}</div><div class="dim small ellip">${m.preview}</div></td><td class="num dim small">${dt(m.at)}</td></tr>`)}
@@ -207,6 +209,7 @@ export default {
     return { tab: 'me', ...(await api('GET', '/api/social/me')), rival: await api('GET', '/api/social/rivalry').catch(() => null) };
   },
   render(ctx, d) {
+    if (tab === 'elections') return { tab, ...(await api('GET', '/api/social/elections')) };
     const tab = d.tab;
     return html`<div class="panel-head"><div><h2>Spieler</h2><p>Messe dich mit anderen, triff Menschen, handle und plaudere – die Welt ist nicht allein deine.</p></div>${infoBtn(['Alle Spieler leben in derselben Welt: Du siehst ihre Betriebe in deiner Stadt, liest über sie in der Zeitung und kannst mit ihnen schreiben, Geschenke tauschen und einander besuchen.', 'Die Rangliste ist inflationsbereinigt, damit 1960 und 2040 vergleichbar bleiben.', 'Du entscheidest selbst, ob du sichtbar bist (Mein Profil).'], 'Spieler')}</div>
     <div class="tabs soc-tabs">${TABS.map((t) => html`<a href="#/social" data-tab="${t[0]}" class="${tab === t[0] ? 'on' : ''}">${icon(t[2])} ${t[1]}${t[0] === 'letters' && ctx.social && ctx.social.unread ? html`<i class="dot">${ctx.social.unread}</i>` : ''}${t[0] === 'friends' && ctx.social && ctx.social.requests ? html`<i class="dot">${ctx.social.requests}</i>` : ''}</a>`)}</div>
@@ -223,6 +226,7 @@ export default {
     on(root, 'click', '[data-tab]', (e, t) => { e.preventDefault(); s.tab = t.dataset.tab; s.page = 1; go(); });
     on(root, 'click', '[data-cat]', (e, t) => { e.preventDefault(); s.cat = t.dataset.cat; go(); });
     on(root, 'click', '[data-scope]', (e, t) => { e.preventDefault(); s.scope = t.dataset.scope; go(); });
+    if (d.tab === 'elections') bindElections(root, ctx, d, go);
     on(root, 'click', '[data-box]', (e, t) => { e.preventDefault(); s.box = t.dataset.box; s.page = 1; go(); });
     on(root, 'click', '[data-pg]', (e, t) => { s.page = Number(t.dataset.pg); go(); });
     on(root, 'click', '[data-profile]', (e, t) => { e.preventDefault(); openProfile(ctx, Number(t.dataset.profile)); });

@@ -55,7 +55,7 @@ function createCharacter(world, input, user, { cycle = 1 } = {}) {
     housing: { type: 'street', cityId: v.cityId },
     occupation: null,
     skills: { learned: [], days: {} },
-    properties: [], nextPropId: 1, companies: [], nextCompanyId: 1, politics: { term: null, completed: {} },
+    properties: [], nextPropId: 1, companies: [], nextCompanyId: 1, politics: { term: null, completed: {} }, career: { applied: {}, hire: null, lastRaise: -9999, courses: {}, course: null, benefit: null },
     insurance: { hausrat: false, gebaeude: false, gesundheit: false },
     cards: { health: 0 }, butler: null,
     partner: null, plan: { target: 3 }, children: [], nextChildId: 1,
@@ -102,6 +102,7 @@ function upgradeState(s) {
   if (!s.mods) s.mods = {};
   if (!s.taskCd) s.taskCd = {};
   if (!s.pending) s.pending = {};
+  if (!s.career) s.career = { applied: {}, hire: null, lastRaise: -9999, courses: {}, course: null, benefit: null };
   if (!s.press) { s.press = []; s.nextPressId = 0; }
   return s;
 }

@@ -327,13 +327,13 @@ async function reconcileOwner(conn, user, state, world) {
 async function reconcileEmployee(conn, user, state, world) {
   const emp = await conn.one("SELECT e.*, f.name firm, f.pkey pkey, o.name oname, o.status ostatus FROM employments e LEFT JOIN player_firms f ON f.user_id = e.owner_id AND f.company_id = e.company_id LEFT JOIN player_stats o ON o.user_id = e.owner_id WHERE e.employee_id = ? AND e.status = 'active' ORDER BY e.id DESC LIMIT 1", [user.id]);
   const occ = state.occupation;
-  const clear = (why) => {
-    if (occ && occ.playerJob) { state.occupation = null; if (state.housing.type === 'workplace') state.housing = { type: 'street', cityId: state.cityId }; }
+  const clear = (why, cause = 'closed') => {
+    if (occ && occ.playerJob) { if (['fired', 'closed', 'admin'].includes(cause)) require('../game/career').onJobLost(world, state, cause); state.occupation = null; if (state.housing.type === 'workplace') state.housing = { type: 'street', cityId: state.cityId }; }
     notice(state, { level: 'warn', title: 'Anstellung beendet', text: why, tab: 'newspaper', interrupt: true });
   };
   if (emp) {
     if (!emp.firm || emp.ostatus === 'gameover') { await endEmployment(conn, emp.id, 'closed', emp.owner_id); return clear('Der Betrieb besteht nicht mehr.'); }
-    if (state.cityId !== emp.city_id) { await endEmployment(conn, emp.id, 'moved', user.id); return clear('Du bist weggezogen – das Arbeitsverhältnis endet.'); }
+    if (state.cityId !== emp.city_id) { await endEmployment(conn, emp.id, 'moved', user.id); return clear('Du bist weggezogen – das Arbeitsverhältnis endet.', 'moved'); }
     if (occ && occ.playerJob && occ.empId === emp.id) { occ.wage = emp.wage; return; }
     if (!emp.synced) {
       if (state.occupation && state.occupation.ownCompanyId) { await endEmployment(conn, emp.id, 'left', user.id); return; }
@@ -348,7 +348,7 @@ async function reconcileEmployee(conn, user, state, world) {
     await endEmployment(conn, emp.id, 'left', user.id); // Beruf wurde anderweitig gewechselt
   } else if (occ && occ.playerJob) {
     const last = await conn.one("SELECT reason FROM employments WHERE id = ?", [occ.empId]);
-    clear({ fired: 'Du wurdest entlassen.', closed: 'Der Betrieb besteht nicht mehr.', admin: 'Das Team hat das Arbeitsverhältnis beendet.', moved: 'Das Arbeitsverhältnis endet durch den Umzug.' }[last && last.reason] || 'Das Arbeitsverhältnis wurde beendet.');
+    clear({ fired: 'Du wurdest entlassen.', closed: 'Der Betrieb besteht nicht mehr.', admin: 'Das Team hat das Arbeitsverhältnis beendet.', moved: 'Das Arbeitsverhältnis endet durch den Umzug.' }[last && last.reason] || 'Das Arbeitsverhältnis wurde beendet.', last && last.reason);
   }
 }
 

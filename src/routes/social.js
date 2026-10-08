@@ -74,6 +74,13 @@ router.get('/firms', wrap(async (req, res) => {
 const bonds = require('../lib/bonds');
 const worldSvc = require('../game/world');
 const fresh = async (req, res, extra = {}) => { const v = await service.getView(uid(req)); res.json({ ok: true, view: v.view, ...extra }); };
+/* ---------- Wahlen ---------- */
+const elections = require('../lib/elections');
+router.get('/elections', wrap(async (req, res) => res.json({ ok: true, ...(await elections.overview(await worldSvc.get(), uid(req))) })));
+router.post('/elections/run', wrap(async (req, res) => { const r = await elections.run(uid(req), req.body.idx, req.body.platform); res.json({ ok: true, message: r.msg, view: r.view }); }));
+router.post('/elections/withdraw', wrap(async (req, res) => { await elections.withdraw(uid(req), req.body.electionId); res.json({ ok: true }); }));
+router.post('/elections/vote', wrap(async (req, res) => { await elections.vote(uid(req), req.body.electionId, req.body.candidateId); res.json({ ok: true }); }));
+
 router.get('/jobs/market', wrap(async (req, res) => res.json({ ok: true, ...(await bonds.market(await worldSvc.get(), uid(req))) })));
 router.get('/jobs/mine', wrap(async (req, res) => res.json({ ok: true, ...(await bonds.mine(await worldSvc.get(), uid(req))) })));
 router.post('/jobs/offer', wrap(async (req, res) => { const id = await bonds.createOffer(await worldSvc.get(), uid(req), req.body || {}); res.json({ ok: true, id }); }));
