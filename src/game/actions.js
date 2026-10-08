@@ -176,7 +176,7 @@ A.loanRepay = ({ world, state, input }) => {
   try { const a = credit.repay(state, Number(input.id), input.all ? l.left : Number(input.amount)); return { msg: `${require('./economy').formatMoney(a, world.currency(yr(state)))} zurückgezahlt.` }; } catch (e) { fail(e.message); }
 };
 
-A.maintain = ({ world, state, input }) => {
+A.maintain = ({ world, state, input, user }) => {
   const p = state.properties.find((x) => x.id === Number(input.propertyId));
   if (!p) fail('Immobilie nicht gefunden.');
   const v = propertyValue(world, state, p, yr(state));
@@ -185,7 +185,22 @@ A.maintain = ({ world, state, input }) => {
   if (state.money < cost) fail('Dir fehlt das Geld für die Instandhaltung.');
   pay(state, cost);
   p.condition = 100;
-  return { msg: `${p.name} wurde instand gesetzt.` };
+  const c = require('./contractors').order(state, user, world, p.cityId, cost, `Instandsetzung ${p.name}`);
+  return { msg: `${p.name} wurde instand gesetzt – ${c ? `die ${c.name} hat den Auftrag bekommen` : 'ein städtischer Handwerksbetrieb hat die Arbeiten übernommen'}.` };
+};
+A.repair = ({ world, state, input, user }) => {
+  const p = state.properties.find((x) => x.id === Number(input.propertyId));
+  if (!p) fail('Immobilie nicht gefunden.');
+  const left = p.closedUntil - state.day;
+  if (!(left > 0)) fail('Hier ist nichts beschädigt.');
+  if (left <= 10) fail('Die Instandsetzung ist ohnehin bald fertig.');
+  const v = propertyValue(world, state, p, yr(state));
+  const cost = Math.round(v * Math.min(0.2, 0.04 + 0.0015 * left));
+  if (state.money < cost) fail('Dir fehlt das Geld für die Reparatur.');
+  pay(state, cost);
+  p.closedUntil = state.day + 10; p.condition = Math.max(p.condition, 70);
+  const c = require('./contractors').order(state, user, world, p.cityId, cost, `Reparatur ${p.name}`);
+  return { msg: `${p.name}: ${c ? `die ${c.name}` : 'ein städtischer Handwerksbetrieb'} repariert den Schaden in etwa zehn Tagen.` };
 };
 
 A.autoMaintain = ({ state, input }) => { state.flags.autoMaintain = !!input.on; return { msg: input.on ? 'Automatische Instandhaltung an.' : 'Automatische Instandhaltung aus.' }; };

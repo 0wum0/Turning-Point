@@ -301,7 +301,10 @@ async function reconcileCredits(conn, user, state, world) {
   const rows = await conn.query('SELECT * FROM pending_credits WHERE user_id = ? FOR UPDATE', [user.id]); if (!rows.length || state.status !== 'alive') return;
   const year = yearOf(state.day, state.startYear); const idx = world.idx(year); const cur = curOf(world, year);
   for (const r of rows) {
-    const cents = Math.round(r.real_amount * idx); state.money += cents; state.stats.earned += cents;
+    const cents = Math.round(r.real_amount * idx);
+    const firm = r.company_id ? (state.companies || []).find((x) => x.id === r.company_id && !x.abandoned) : null;
+    if (firm) { firm.cash += cents; notice(state, { level: 'good', title: `Auftrag für ${firm.name}`, text: `${r.text || ''} ${money(cents, cur)} gingen in die Firmenkasse.`.trim(), tab: 'business' }); continue; }
+    state.money += cents; state.stats.earned += cents;
     notice(state, { level: 'good', title: r.reason === 'inheritance' ? 'Erbe vom Ehepartner' : r.reason === 'settlement' ? 'Scheidungsabfindung' : 'Gutschrift', text: `${r.text || ''} ${money(cents, cur)} wurden dir gutgeschrieben.`.trim(), interrupt: true });
   }
   await conn.query('DELETE FROM pending_credits WHERE user_id = ?', [user.id]);

@@ -102,6 +102,7 @@ function decide(ctx, P) {
   const { world: w, state: s } = ctx; const year = yrOf(s); const idx = w.idx(year);
   tryAct(ctx, 'readNotices', {});
   if (s.meters.fridge < 50) tryAct(ctx, 'buyFood', { tier: P.food });
+  for (const p of s.properties) { if (p.closedUntil - s.day > 10) tryAct(ctx, 'repair', { propertyId: p.id }); else if (p.condition < 60) tryAct(ctx, 'maintain', { propertyId: p.id }); }
   const E = edition(w, s, s.cityId);
   const rooms = Math.max(1, 1 + (s.partner ? 1 : 0) + s.children.filter((c) => c.status === 'home').length);
 

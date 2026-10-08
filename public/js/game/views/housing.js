@@ -60,6 +60,7 @@ export default {
       ${leaseBox(p, cur)}
       <div class="row mt">
         ${p.cityId === v.city.id && !p.residence ? html`<button class="btn sm primary" data-act="moveIn" data-id="${p.id}">Einziehen</button>` : ''}
+        ${p.closed > 10 ? html`<button class="btn sm primary" data-act="repair" data-id="${p.id}" ${v.money < p.repairCost ? 'disabled' : ''} title="Eine Baufirma aus der Stadt wird beauftragt und bezahlt">${icon('hammer')} Baufirma beauftragen · ${money(p.repairCost, cur)}</button>` : ''}
         ${p.maintainCost > 0 ? html`<button class="btn sm" data-act="maintain" data-id="${p.id}" ${v.money < p.maintainCost ? 'disabled' : ''}>Instand setzen · ${money(p.maintainCost, cur)}</button>` : ''}
         <button class="btn sm" data-psell="${p.id}" data-name="${p.name}" data-value="${Math.round(p.value / (v.idx || 1))}">An Spieler verkaufen …</button><button class="btn sm danger" data-sell="${p.id}">Verkaufen</button>
       </div></article>`)}</div>`

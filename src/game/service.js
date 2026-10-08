@@ -119,6 +119,7 @@ async function withCharacter(userId, fn, { needAlive = false } = {}) {
     if (state && row) {
       if (state.status === 'gameover' && ((state.properties || []).length || (state.companies || []).length)) { try { await require('../lib/market').estate(conn, user, state, w); } catch (e) { require('../lib/log').warn(`[market] Insolvenzmasse: ${e.message}`); } }
       flush(user, state); await bonds.beforeSave(conn, user, state, w); await saveCharacter(conn, row, state);
+      try { await require('../game/contractors').flush(conn, state); } catch (e) { require('../lib/log').warn(`[contractors] ${e.message}`); }
       try { await require('../lib/exchange').flushDividends(conn, state); } catch (e) { require('../lib/log').warn(`[exchange] ${e.message}`); }
       const social = require('../lib/social');
       await social.upsertStats(conn, user, row, state, w);

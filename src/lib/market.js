@@ -340,6 +340,8 @@ async function expire() {
 async function refreshSupply() {
   const rows = await db.query('SELECT city_id, pkey, SUM(rooms) rooms, COUNT(*) firms FROM player_firms WHERE abandoned = 0 GROUP BY city_id, pkey');
   require('../game/competition').setSupply(rows);
+  const world = await worldP(); const bau = world.professions.filter((p) => p.category === 'bau').map((p) => p.pkey);
+  if (bau.length) require('../game/contractors').set(await db.query(`SELECT user_id, company_id, name, city_id FROM player_firms WHERE abandoned = 0 AND staff > 0 AND pkey IN (${bau.map(() => '?').join(',')})`, bau));
 }
 
 function start() {

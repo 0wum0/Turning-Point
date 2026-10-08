@@ -99,7 +99,7 @@ function present(world, state, user, now) {
     properties: state.properties.map((p) => ({
       id: p.id, name: p.name, kind: p.kind, cityId: p.cityId, city: (world.city(p.cityId) || {}).name, rooms: p.rooms, condition: round(p.condition),
       value: propertyValue(world, state, p, year), closed: p.closedUntil > state.day ? p.closedUntil - state.day : 0,
-      maintainCost: round(propertyValue(world, state, p, year) * ((100 - p.condition) / 100) * 0.08), residence: state.housing.propertyId === p.id,
+      repairCost: p.closedUntil > state.day ? round(propertyValue(world, state, p, year) * Math.min(0.2, 0.04 + 0.0015 * (p.closedUntil - state.day))) : 0, maintainCost: round(propertyValue(world, state, p, year) * ((100 - p.condition) / 100) * 0.08), residence: state.housing.propertyId === p.id,
       lease: require('./landlord').viewOf(world, state, p, year),
     })),
     companies: (state.companies || []).map((c) => {

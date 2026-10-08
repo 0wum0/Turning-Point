@@ -572,6 +572,7 @@ const MIGRATIONS = [
       KEY idx_we (id), KEY idx_we_time (created_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
   ] },
+  { id: '020_credit_company', up: ['ALTER TABLE pending_credits ADD COLUMN company_id INT NULL'] },
 ];
 
 async function ensureTable(db) {

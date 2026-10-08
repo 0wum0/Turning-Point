@@ -221,14 +221,14 @@ const DEFAULTS = {
     companies: {
       maxCompanies: 30,
       staffWage: 500,          // Cent/Tag je Mitarbeiter (Index 1)
-      managerWage: 900,
+      managerWage: 600,
       upkeepYearPct: 1,
       abandonYears: 10,
       reactivatePct: 25,       // % des Kaufpreises zur Reaktivierung
       tiers: [
-        { minLevel: 0, price: 1200000, rooms: 3, maxRooms: 6, incomePerRoom: 260, roomsPerStaff: 3, roomPrice: 150000, roomCoins: 1 },
-        { minLevel: 2, price: 4000000, rooms: 6, maxRooms: 14, incomePerRoom: 330, roomsPerStaff: 3, roomPrice: 300000, roomCoins: 2 },
-        { minLevel: 3, price: 12000000, rooms: 12, maxRooms: 50, incomePerRoom: 420, roomsPerStaff: 3, roomPrice: 600000, roomCoins: 3 },
+        { minLevel: 0, price: 1200000, rooms: 3, maxRooms: 6, incomePerRoom: 420, roomsPerStaff: 3, roomPrice: 150000, roomCoins: 1 },
+        { minLevel: 2, price: 4000000, rooms: 6, maxRooms: 14, incomePerRoom: 520, roomsPerStaff: 3, roomPrice: 300000, roomCoins: 2 },
+        { minLevel: 3, price: 12000000, rooms: 12, maxRooms: 50, incomePerRoom: 680, roomsPerStaff: 3, roomPrice: 600000, roomCoins: 3 },
       ],
       chains: {
         wirt: ['Wirtshaus', 'Restaurant', 'Hotel'], baecker: ['Bäckerei', 'Großbäckerei', 'Backwarenfabrik'],

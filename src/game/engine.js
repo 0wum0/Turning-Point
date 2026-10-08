@@ -88,6 +88,22 @@ function dayStep(ctx) {
   // ---- Offline-Autopilot ----
   if (ctx.offline) offlineAutopilot(ctx, flows);
 
+  // ---- Butler: füllt den Kühlschrank rechtzeitig auf (gewählte Qualität, sonst eine Stufe günstiger) ----
+  if (state.butler && m.fridge < 35) {
+    let tier = Math.min(state.flags.foodTier ?? 1, 3); let done = false;
+    for (; tier >= 0 && !done; tier--) {
+      const pct = 100 - m.fridge; const cost = Math.round(world.econ.food[tier].perPct * pct * ctx.idx);
+      if (cost > 0 && state.money >= cost) {
+        m.fridgeQ = (m.fridge * m.fridgeQ + pct * (tier + 1)) / 100; m.fridge = 100;
+        state.money -= cost; state.stats.spent += cost; state.hunger = 0; done = true;
+      }
+    }
+    if (!done && state.day - (state.pending.butlerWarn || -99) >= 20) {
+      state.pending.butlerWarn = state.day;
+      notice(state, { level: 'warn', title: 'Der Butler kann nicht einkaufen', tab: 'household', text: 'Dein Konto reicht nicht für Lebensmittel. Der Butler füllt den Kühlschrank wieder auf, sobald Geld da ist.' });
+    }
+  }
+
   // ---- Essen & Meter ----
   const eatCost = consumption(state);
   m.fridge -= eatCost;
