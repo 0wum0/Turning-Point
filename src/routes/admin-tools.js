@@ -64,7 +64,17 @@ module.exports = function mount(router, H) {
     const [u] = await db.query('SELECT COUNT(*) n, SUM(last_seen_at > NOW() - INTERVAL 7 DAY) active FROM users');
     const [au] = await db.query('SELECT COUNT(*) n FROM audit_log');
     const [ad] = await db.query('SELECT COUNT(*) n FROM ad_claims');
-    res.render('admin/tools', { title: 'Werkzeuge', active: 'tools', counts: { alive: a.alive, users: u.n, active: u.active || 0, audit: au.n, ads: ad.n } });
+    const [ec] = await db.query('SELECT COUNT(DISTINCT city_id) cities, COUNT(*) n FROM city_economy');
+    res.render('admin/tools', { title: 'Werkzeuge', active: 'tools', counts: { alive: a.alive, users: u.n, active: u.active || 0, audit: au.n, ads: ad.n }, cityecon: { cities: ec.cities, rows: ec.n, last: require('../lib/cityecon').last(), on: require('../game/cityecon').active() } });
+  }));
+  /* Stadtwirtschaft: Indizes sofort neu berechnen oder alle auf 1 zurücksetzen */
+  router.post('/tools/cityecon', wrap(async (req, res) => {
+    const what = clean(req.body.what, 10); const lib = require('../lib/cityecon'); const ce = require('../game/cityecon');
+    if (what === 'refresh') { const r = await lib.refresh(); flash(req, 'good', r ? `Stadtindizes neu berechnet: ${r.cities} Städte mit Aktivität.` : 'Eine Berechnung läuft gerade – bitte gleich noch einmal versuchen.'); }
+    else if (what === 'reset') { await db.query('DELETE FROM city_economy'); ce.setState(new Map(), new Map()); flash(req, 'good', 'Alle Stadtindizes stehen wieder auf 1 und entwickeln sich neu.'); }
+    else { flash(req, 'bad', 'Unbekannte Aktion.'); return res.redirect('/admin/tools'); }
+    await audit(req, `admin_cityecon_${what}`, {});
+    res.redirect('/admin/tools');
   }));
   const target = (t) => {
     if (t === 'active7') return ['last_seen_at > NOW() - INTERVAL 7 DAY', []];

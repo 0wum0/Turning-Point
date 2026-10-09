@@ -69,10 +69,11 @@ function step2(v, o, tierIdx, name) {
       <dt>Unterhalt pro Tag</dt><dd class="neg">${money(t.upkeep, cur)}</dd>
       <dt>Zutaten</dt><dd>${t.inputs.length ? names(t.inputs) : html`<span>keine – der Betrieb stellt alles selbst her</span>`}</dd>
       <dt>Erzeugnis</dt><dd>${sell.length ? names(sell) : html`<span>Dienstleistung (wird direkt an Kunden verkauft)</span>`}</dd>
-      ${t.market ? html`<dt>Nachfrage vor Ort</dt><dd>${marketChip(t.market)}<div class="small dim"><span>${t.market.firms} Betriebe dieser Art in der Stadt · Nachfrage ${t.market.total} von ${t.market.cap} Räumen</span></div></dd>` : ''}
-      ${t.market && t.market.sector ? html`<dt>Preisniveau der Branche</dt><dd><span>${t.market.sectorName}</span> <b>${t.market.level >= 1 ? '+' : '−'}${Math.round(Math.abs(t.market.level - 1) * 100)} %</b> <span class="dim small">(wirkt auf deinen Umsatz)</span></dd>` : ''}
       ${t.profit != null ? html`<dt>Gewinn pro Tag*</dt><dd class="${t.profit >= 0 ? 'pos' : 'neg'}"><b>${signed(t.profit, cur)}</b></dd>` : ''}
     </dl>
+    ${t.market ? html`<div class="found-market mt"><div class="small dim"><b>Nachfrage vor Ort</b></div><div class="mt0">${marketChip(t.market)}</div>
+      <div class="small dim"><span>${t.market.firms} Betriebe dieser Art in der Stadt · Nachfrage ${t.market.total} von ${t.market.cap} Räumen</span></div>
+      ${t.market.sector ? html`<div class="small"><span>Preisniveau der Branche</span>: <span>${t.market.sectorName}</span> <b>${t.market.level >= 1 ? '+' : '−'}${Math.round(Math.abs(t.market.level - 1) * 100)} %</b> <span class="dim">(wirkt auf deinen Umsatz)</span></div>` : ''}</div>` : ''}
     ${t.profit != null ? html`<div class="small dim mt"><span>* Bei voller Besetzung, nach Zutaten, Löhnen, Unterhalt und Steuern. Zu Beginn hast du noch keine Mitarbeiter: Arbeite zuerst selbst im Betrieb und stelle dann nach und nach Leute ein.</span> <span>Nötige Mitarbeiter:</span> <span>${t.staff}</span> <span>und ein Manager.</span></div>` : ''}
     ${can ? '' : html`<div class="alert warn small mt">${icon('triangle-alert')}<div><span>Dir fehlen</span> <b>${money(Math.max(0, t.price - v.money), cur)}</b></div></div>`}
     <div id="found-err" class="small neg mt" role="alert"></div>

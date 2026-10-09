@@ -272,12 +272,12 @@ function cityTable() {
     ['Großstadt München, ruhig', big, { players: 0, rooms: { food: 0, services: 0, build: 0, all: 0 } }],
     ['Kleinstadt Cottbus, ruhig', small, { players: 0, rooms: { food: 0, services: 0, build: 0, all: 0 } }],
     ['Cottbus, 20 Spieler, wenig Betriebe', small, { players: 20, rooms: { food: 4, services: 4, build: 2, all: 12 } }],
-    ['Cottbus, viele Gaststätten und Läden', small, { players: 6, rooms: { food: 40, services: 60, build: 6, all: 120 } }],
+    ['Cottbus, viele Gaststätten und Läden', small, { players: 6, rooms: { food: 100, services: 250, build: 6, all: 400 } }],
     ['Braunschweig, 40 Spieler, viele Bauten', mid, { players: 40, rooms: { food: 20, services: 20, build: 60, all: 150 } }],
     ['München, 40 Spieler (verträgt viel)', big, { players: 40, rooms: { food: 20, services: 20, build: 20, all: 80 } }],
   ];
   console.log(`\n=== Stadtwirtschaft: Gleichgewicht der Indizes und Wirkung (${year}, Wirtshaus Stufe 1 mit Personal + Manager, DM von 1945 je Tag) ===`);
-  console.log(['Szenario', 'Essen', 'Miete', 'Dienste', 'Bau', 'Löhne', 'Umsatz', 'Lohnkosten', 'Gewinn', 'Gewinn ohne'].map((x, i) => (i ? x.padStart(11) : x.padEnd(40))).join(''));
+  console.log(['Szenario', 'Essen', 'Miete', 'Dienste', 'Bau', 'Löhne', 'Umsatz', 'Lohnkosten', 'Gewinn', 'ohne Index'].map((x, i) => (i ? x.padStart(12) : x.padEnd(40))).join(''));
   for (const [label, city, inp] of scenarios) {
     cityecon.reset(); cityecon.prime();
     const m = new Map(); const eq = {};
@@ -287,7 +287,7 @@ function cityTable() {
     const on = biz.companyFlows(w, s0, mk(), year);
     cityecon.reset(); const off = biz.companyFlows(w, s0, mk(), year);
     const per = (v) => (v / idx / 100).toFixed(1);
-    console.log([label.padEnd(40), ...cityecon.SECTORS.map((k) => eq[k].toFixed(2).padStart(11)), per(on.income).padStart(11), per(on.wages).padStart(11), per(on.profit).padStart(11), per(off.profit).padStart(11)].join(''));
+    console.log([label.padEnd(40), ...cityecon.SECTORS.map((k) => eq[k].toFixed(2).padStart(12)), per(on.income).padStart(12), per(on.wages).padStart(12), per(on.profit).padStart(12), per(off.profit).padStart(12)].join(''));
   }
   cityecon.reset();
 }

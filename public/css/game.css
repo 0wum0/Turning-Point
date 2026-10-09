@@ -481,3 +481,5 @@ html { scroll-padding-top: calc(var(--hud-h, 62px) + 10px); }
   .econ-tbl { font-size: .76rem; } .econ-tbl th:first-child, .econ-tbl td:first-child { width: 30%; }
 }
 .econ-city { margin: .5rem 0 0; font-size: 1.25rem; }
+.found-market { padding: .6rem .75rem; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); display: grid; gap: .25rem; }
+.found-market .chip { white-space: normal; text-align: left; height: auto; }

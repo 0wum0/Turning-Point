@@ -14,6 +14,12 @@
       <button class="btn primary" data-confirm="Meldung an alle lebenden Charaktere senden?">Senden</button></form>
     <div class="hint mt">Für ein dauerhaftes Banner nutze <a href="/admin/settings/announce">Einstellungen → Ankündigung</a>.</div></section>
 </div>
+<section class="card mt"><div class="card-title">Stadtwirtschaft (Preisindizes)</div>
+  <p class="small dim mb0">Städte mit Aktivität: <b><%= cityecon.cities %></b> (<%= cityecon.rows %> Zeilen)<% if (cityecon.last && cityecon.last.at) { %> · letzte Berechnung <%= new Date(cityecon.last.at).toLocaleString('de-DE') %> (<%= cityecon.last.ms %> ms)<% } %> · Stadtwirtschaft ist <b><%= cityecon.on ? 'an' : 'aus' %></b>. Einstellungen: <a href="/admin/settings/stadtwirtschaft">Stadtwirtschaft</a>.</p>
+  <div class="row mt">
+    <form method="post" action="/admin/tools/cityecon"><%- csrf %><input type="hidden" name="what" value="refresh"><button class="btn sm">Jetzt neu berechnen</button></form>
+    <form method="post" action="/admin/tools/cityecon"><%- csrf %><input type="hidden" name="what" value="reset"><button class="btn sm danger" data-confirm="Alle Stadtindizes auf 1 zurücksetzen? Sie entwickeln sich danach aus Angebot und Nachfrage neu.">Alle zurücksetzen</button></form>
+  </div></section>
 <section class="card mt"><div class="card-title">Aufräumen</div>
   <div class="grid c3" style="--gap:.8rem">
     <% [['sessions', 'Abgelaufene Sitzungen löschen', false, 0], ['audit', 'Protokoll älter als … Tage löschen', true, counts.audit], ['ads', 'Werbe-Einträge älter als … Tage löschen', true, counts.ads], ['unverified', 'Unbestätigte Konten ohne Charakter älter als … Tage löschen', true, 0], ['inactive', 'Inaktive Konten (0 Coins, keine Dauerkarte) seit … Tagen löschen', true, 0]].forEach(function(c){ %>

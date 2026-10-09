@@ -122,7 +122,7 @@ Ziel: Wer das Spiel zum ersten Mal öffnet, soll in etwa fünf Minuten wissen, w
 | Baustein | Was es tut | Wo es liegt |
 |---|---|---|
 | **Willkommensdialog** | Vier kurze Folien beim ersten Start (Ausgangslage, Echtzeit-Uhr und EFS, die vier Anzeigen, wo man klickt). Jederzeit über den „?“-Knopf im Kopfbereich erneut zu öffnen. „Gesehen“ steht in `users.meta.welcomed`. | `public/js/game/onboarding.js` |
-| **„Deine ersten Schritte“** | 15 geordnete Aufgaben als einklappbare Karte oben in der Übersicht, mit Fortschrittsbalken. Sie erfüllen sich selbst aus dem Spielstand (Wohnung, Arbeit, Lohn, gefüllter Kühlschrank …). Pro Aufgabe ein Satz „Warum?“, ein Knopf **Zeig mir’s** (öffnet die richtige Seite und lässt die passende Schaltfläche pulsieren, mit Sprechblase) und eine kleine einmalige Belohnung (EFS bzw. 1 Coin, höchstens einmal pro Konto in `users.meta.questRewarded`). | `src/game/onboarding.js` (`QUESTS`), Fortschritt in `state.flags.quests` |
+| **„Deine ersten Schritte“** | 16 geordnete Aufgaben als einklappbare Karte oben in der Übersicht, mit Fortschrittsbalken. Sie erfüllen sich selbst aus dem Spielstand (Wohnung, Arbeit, Lohn, gefüllter Kühlschrank …). Pro Aufgabe ein Satz „Warum?“, ein Knopf **Zeig mir’s** (öffnet die richtige Seite und lässt die passende Schaltfläche pulsieren, mit Sprechblase) und eine kleine einmalige Belohnung (EFS bzw. 1 Coin, höchstens einmal pro Konto in `users.meta.questRewarded`). | `src/game/onboarding.js` (`QUESTS`), Fortschritt in `state.flags.quests` |
 | **„Was jetzt?“** | Berechnet aus dem Spielstand die eine wichtigste nächste Handlung (Hunger, keine Unterkunft, keine Arbeit, beschädigtes Haus, offene Entscheidung bei Kindern, Kredit, brachliegendes Geld …), mit Begründung in einfacher Sprache und Ein-Klick-Knopf (z. B. Essen kaufen). Daneben die nächsten zwei Empfehlungen. | `advise()` in `src/game/onboarding.js` |
 | **Schrittweises Freischalten** | Unternehmen, Gesellschaft, Markt, Börse, Wahlen, Bank und Wettbewerb erscheinen zunächst mit Schloss und dem Hinweis „Wird freigeschaltet, wenn …“. Sie öffnen sich durch die passende Aufgabe, durch vorhandenen Besitz oder nach 6 Spieljahren. Schalter **„Alle Funktionen anzeigen“** im Hilfe-Menü und unter *Konto → Anzeige im Spiel* (`users.meta.showAll`). | `UNLOCKS` / `unlocks()` |
 | **Glossar** | Antippbare Begriffe (`term('EFS')` in `ui.js`) mit kurzer Erklärung, dazu eine Glossar-Seite mit Suche (Hilfe-Menü). | `public/js/game/glossary.js` |
@@ -164,6 +164,8 @@ src/settings.js            Alle Spiel-/Seiteneinstellungen (im Admin änderbar)
 src/game/                  Simulation (reines JS, DB-unabhängig, getestet)
   engine.js                Tagesschritt, Meter, Tod, Währungsumstellung, Berufswandel
   core.js / calendar.js / economy.js / content.js / rng.js
+  goods.js                 Warenkreislauf (Katalog, Rezepte, Preise, Politik-Wirkungen)
+  cityecon.js              Stadtwirtschaft: Preisindizes je Stadt (Lebensmittel, Wohnen, Dienste, Bau, Löhne)
   newspaper.js             Deterministische Zeitung (Stellen, Wohnungen, Kontakte, Ereignisse)
   events.js                Stadtereignisse (Unwetter, Feuer, Einbruch, Fest)
   family.js / heir.js      Partner, Kinder, Schule, Trennung, Pflichtanteil-Erbe
@@ -293,6 +295,60 @@ Betriebe stellen Waren her und brauchen dafür Zutaten (Bauernhof → Mühle →
 **Balance** (`node tools/econ-sim.js`, Tabelle „Warenkreislauf“; Personal + Manager, Stufen 1–3, drei Städte, DM von 1945 je Tag): Der Umsatz ist mit `1 / (1 − Wareneinsatzquote im Großhandel)` kalkuliert, damit die Marge bei Großhandelseinkauf unverändert bleibt. Ergebnis 1950–2090: Gewinn alt = Gewinn neu in jeder Epoche (1950: 31,0; 1965: 26,0; 1980: 19,9 mit Rezession; ab 1995: 26,0), Wareneinsatz 14–20 DM bei 55–74 DM Umsatz. Ein Test prüft alle Berufe × Epochen × Stufen: Gewinn > 0 und höchstens 2 % Abweichung zur Rechnung ohne Waren. Verluste in Krisenjahren (1980: kleine Betriebe in kleinen Städten) sind ein bestehender Befund der Konjunkturfaktoren, nicht der Waren. Vorteil eines Vertrags zu 100 % Marktpreis: 20 % der vertraglich gedeckten Zutatenkosten (Käufer) bzw. 25 % mehr als der Großhandel zahlt (Verkäufer); die Spanne ist so gewählt, dass beide Seiten immer besser fahren als im Großhandel. Zukunft: Verträge zwischen eigenen Betrieben (Werkspreis) und Transport/Entfernung sind nicht modelliert.
 
 **Qualität**: `test/goods.test.js` (Katalog, Rezepte, Versorgung, Verträge, Politik, Knappheit), `test/goods-db.test.js` (zwei Spieler verschiedener Spielzeiten gegen echte Datenbank: Angebot, Annahme, tägliche Abrechnung, Gutschrift genau einmal, Kündigung, Tod, Bot, Beschluss), Fuzz: Invarianten für `state.contracts`/`pending.supply`, `runSupplyScenario` (Σ vorgemerkter Realwert = Σ Zahlungen, nichts doppelt, nichts negativ), `tools/fuzz-long.js` führt es mit.
+
+## Stadtwirtschaft (Preise nach Angebot und Nachfrage)
+
+Jede Stadt hat ein eigenes Preisniveau, das **lebt**: Fünf Indizes (Lebensmittel, Wohnen & Miete, Dienstleistungen & Gastro, Baukosten, Löhne) folgen Nachfrage und Angebot vor Ort. Wo viele Spieler wohnen und wenige Wohnungen oder Betriebe da sind, wird es teurer; wo viele Betriebe konkurrieren, wird es billiger. Ämter können mit Beschlüssen eingreifen. Alles bleibt für Einsteiger lesbar: Das **Preisbarometer** zeigt in einfachen Worten, ob eine Stadt teuer oder günstig ist, und sagt, wo ein Umzug sich lohnt.
+
+**Modell** (`src/game/cityecon.js`, rein und deterministisch; Server-Takt in `src/lib/cityecon.js`)
+- **Stufe = Dynamik × Epochenfaktor**, immer zwischen `min` 0,75 und `max` 1,6 – als Faktor **auf den festen Stadtfaktor** (`cities.price_factor`), nicht statt seiner.
+- **Dynamik** (echtzeitlich, für alle Spieler gleich): nähert sich dem Gleichgewicht `(Nachfrage / Angebot)^Stärke` mit Zeitkonstante `tauHours` (24 Stunden ≈ ein Spieljahr, Standardtempo), dazu ein kleines deterministisches Rauschen (±1,5 %, 6-Stunden-Takt). Nachfrage = Grundlast der Stadt (Obergrenze der Konkurrenz `competition.cap` × Vielfaches je Sektor, `npcRooms`) plus lebende Charaktere (`playerDemand`). Angebot = Grundlast plus Räume der veröffentlichten Spieler- und Bot-Betriebe (`player_firms`, Gewicht `firmWeight`). Lohnniveau: Betriebe fragen Personal nach, Charaktere bieten Arbeit an. Wohnen: Wohnungen entstehen durch Baufirmen (halbes Gewicht) und Baulandbeschlüsse.
+- **Epochenfaktor**: deterministische, mittelwertfreie Welle (14–36 Jahre Periode, ±3 %) plus Langzeittrend je Stadt (±4 %) – hängt nur vom Spieljahr ab, damit Spieler in verschiedenen Epochen jeweils ihre eigene Preisgeschichte sehen.
+- **Speicher**: Tabelle `city_economy` (Migration 027), **nur Städte mit Aktivität oder Beschluss** haben Zeilen (rund 9.000 Orte bleiben sonst reine Formel: Dynamik 1). Aktualisierung alle `intervalMinutes` (Standard 60) und beim Start (`market.start` → `cityecon.start`), danach liegen die Werte auch im Arbeitsspeicher; ruhige Städte fallen von selbst wieder heraus. Der Verlauf (ein Punkt je Spielmonat, `histPoints` 60) steht als JSON in der Zeile und speist die Linien und die Pfeile „seit letztem Jahr“.
+- **Kein Doppelzählen** – die drei Preisschichten im Überblick:
+
+| Schicht | Wirkt auf | Quelle |
+| --- | --- | --- |
+| fester Stadtfaktor | Miete, Immobilien, Gründungskosten, Lebensmittel (abgeschwächt), Warenpreise (`cityPriceWeight`) | `cities.price_factor` |
+| Knappheit der Waren | Großhandelspreis **je Ware** (Zutaten) | `goods.computeScarcity`, Betriebe je Stadt |
+| Konkurrenz-Sättigung | Umsatz **der eigenen Betriebsart** bei Überfüllung | `competition.info` |
+| **Stadtindex** (neu) | Umsatz *aller Betriebe des Sektors* (nur mit `pass.revenue` 0,35), Löhne, Miete, Lebensmittel, Haushaltskosten, Baukosten, Immobilienwerte, Großhandel für Lebensmittel/Bau (`pass.goods` 0,4) | `city_economy` |
+
+Der Umsatz nimmt den Sektorindex nur abgeschwächt (`revenue`), die Angebotsseite zählt Betriebsräume nur mit `firmWeight` 0,3 und die Grundlast ist ein Vielfaches der Konkurrenz-Obergrenze – so wirken Konkurrenz und Stadtindex nebeneinander und nicht doppelt.
+
+**Wo die Indizes im Spiel wirken**
+| Index | Einspeisung |
+| --- | --- |
+| Lebensmittel | `core.foodFactor` → Essen kaufen (`buyFood`), Preisliste im Haushalt, Tageskosten; Großhandel Agrar/Nahrung (`goods.price`) |
+| Wohnen & Miete | Mietanzeigen und Pensionen in der Zeitung, Mieteinnahmen NPC-Mieter (`landlord.rentPerDay/marketPerDay`), Anzeigenpreise; bestehende Mietverträge bleiben fest |
+| Immobilienwert | `core.propertyValue` und Kaufanzeigen: `Miete^0,5 × Baukosten^0,25` (träger als die Miete) |
+| Dienste & Lebensmittel | Umsatz je Raum der Betriebe (`business.companyFlows`, Sektor nach dem wichtigsten Erzeugnis), Kinderkosten und Kindergeld (`householdMult` = Mittel aus beiden) |
+| Baukosten | Gründungspreis (`foundPrice`), Zeitungsangebote für Betriebe, Raum- und Stufenausbau (`bizExpand`, `bizUpgrade`), Großhandel Baustoffe |
+| Löhne | Stellenanzeigen und Tageslohn (`core.dailyFlows`, `newspaper.jobListings` rechnen gleich), Lohnkosten der Betriebe (ohne vereinbarte Spielerlöhne) |
+
+**Oberfläche** (`public/js/game/economy.js`, Server `src/routes/economy.js`, `GET /api/economy/city`)
+- **Preisbarometer** in der Stadtansicht und in der Zeitung (Reiter *Wirtschaft*): je Sektor Etikett *Günstig hier / Durchschnitt / Teuer hier* gegenüber dem Landesdurchschnitt (nach Einwohnern gewichtet), Pfeil und Prozent seit letztem Jahr, Linie der letzten Jahre, „Wohnungen sind knapp / Viele Wohnungen frei“ aus Nachfrage und Angebot, Tipps („In Teltow ist Wohnen etwa 22 % günstiger – ein Umzug spart rund 2,50 DM pro Tag“) und eine **sortierbare Vergleichstabelle** der nächsten Städte (ab 10.000 Einwohnern, bis 150 km) mit Ortssuche für beliebige weitere Orte. Aktualisiert sich still über den Live-Kanal `economy`.
+- **Zeitung**: Meldungen wie „Mieten in X steigen“ oder „Lebensmittel in X werden billiger“, sobald sich ein Index um mindestens `newsPct` (4 %) gegenüber dem Vorjahr bewegt (rein aus dem Zwischenspeicher, keine Dauerschleife). **Tagesblatt**: Zeile mit dem Preisniveau der aktiven Städte und den höchsten Mieten.
+- **Gründen** (`found.js`): „Viel Konkurrenz – die Nachfrage ist knapp“ bzw. „Kaum Konkurrenz“, Betriebe und Nachfrage in Räumen, Preisniveau der Branche.
+- **Einsteiger**: Aufgabe *Vergleiche die Preise deiner Stadt* (16 Aufgaben insgesamt), „Was jetzt?“-Hinweis, wenn die Unterkunft mindestens 30 % des Einkommens kostet und eine Nachbarstadt mindestens 12 % günstiger ist, Glossar (Preisindex, Nachfrage, Angebot, Preisbarometer, Mietpreisbremse, Baulandausweisung).
+
+**Politik** (weiter vollständig verfügbar, ein Beschluss je Amtszeit mit Vorschau, endet mit der Amtszeit): *Stadtrat/Bürgermeister* – **Baulandausweisung** (+5/10/15 % Wohnungsangebot, Nebenwirkung: höhere Baukosten) und (nur Bürgermeister) **Mietpreisbremse** (Mietniveau steigt höchstens 0/2/4 % je Spieljahr; Nebenwirkung: Vermieter investieren weniger, Angebot −6 %, der Druck baut sich auf und holt nach der Amtszeit auf; Mieteinnahmen steigen entsprechend langsam). *Landtag* – **Wohnungsbauprogramm** für alle Städte des Bundeslandes (mit Umlage wie die Preisstützung). *Bundeskanzler* – **Preisbremse / Inflationsziel** (−2…+2 Punkte auf das Preisniveau aller Städte, ±1,5 % je Punkt; Löhne folgen mit 70 %). Bundestag bleibt beim Rahmen. Die Vorschau zeigt die Wirkung auf den Zielwert (`cityecon.previewEffect`).
+
+**Bots** nutzen die dynamischen Preise ohnehin über die günstigsten Anzeigen; zusätzlich ziehen mietende Bots ohne Besitz, Betriebe und Partner gelegentlich in eine mindestens 15 % günstigere Nachbarstadt und kaufen keine Betriebe in übersättigten Städten. **Admin**: Einstellungen → *Stadtwirtschaft* (`stadtwirtschaft`: `enabled`, `intervalMinutes`, `tauHours`, `min`/`max`, `strength` je Sektor, `npcRooms`, `playerDemand`, `firmWeight`, `noisePct`, `eraPct`/`eraTrendPct`, `pass`, `histPoints`, `newsPct`, `policy`); `enabled: false` setzt alle Faktoren auf genau 1.
+
+**Balance** (`node tools/econ-sim.js [--city off|era|live] [--others 12]`, Tabelle *Stadtwirtschaft*; Seeds 7–13, 85 Jahre, Nettovermögen in DM von 1945): Der Mittelwert der Faktoren liegt bei 1 (Epochenfaktor mittelwertfrei, ruhige Städte ohne Dynamik). Mit lebenden Indizes in Braunschweig (12 weitere Charaktere, kleines Gefolge an Betrieben) ändern sich die Archetypen gegenüber „ohne Stadtindizes“ so:
+
+| Archetyp | ohne | mit Stadtindizes | Abweichung |
+| --- | --- | --- | --- |
+| Angestellter (Ø Seeds 8–13) | 121.930 | 120.540 | −1,1 % |
+| Vermieter ohne Kredit (Ø Seeds 8–13) | 38.930 | 36.540 | −6,2 % |
+| Vermieter mit Kredit (Ø Seeds 8–13) | 60.260 | 55.130 | −8,5 % |
+| Betriebsinhaber (Seed 7 / 8) | 1.929.000 / 1.921.000 | 1.786.000 / 1.809.000 | −7,4 % / −5,8 % |
+| Mischform (Seed 7 / 8) | 41.370 / 42.940 | 44.960 / 46.170 | +8,7 % / +7,5 % |
+
+Einzelne Läufe der Vermieter schwanken durch die Auswahl der Anzeigen um bis zu ±20 bis 35 % (schon ohne Stadtindizes liegen die Seeds beim Vermieter mit Kredit zwischen 51.000 und 75.000); der Mittelwert über sechs Seeds liegt im Band von ±10 %. Die Tabelle *Gleichgewicht* zeigt die Lagen für ein Wirtshaus 1980 (Tagesgewinn in DM von 1945): München ruhig 7,2 (ohne Index 7,2), Cottbus ruhig 1,8 (2,0), Cottbus mit 20 Spielern 2,2 (2,0; Mieten +14 %, Löhne −4 %), Cottbus mit 250 Gaststättenräumen 0,3 (2,0; Dienste 0,85, Löhne 1,10, Bau 1,18), München mit 40 Spielern 7,3 – große Städte vertragen Zulauf, kleine kippen schneller.
+
+**Qualität**: `test/cityecon.test.js` (Gleichgewicht, Annäherung ohne Überschwingen, Grenzen, Determinismus, Mietbremse, Epochenmittel, Einspeisung in Miete/Wert/Lohn/Essen/Bau/Umsatz/Großhandel, Barometer, Vergleich, Tipps, Meldungen, Beschlüsse mit Vorschau, englische Texte), `test/cityecon-db.test.js` (opt-in `TP_TEST_DB_PORT`: Aktualisierung aus echten Betrieben, Persistenz, Neustart, Rückkehr zur Mitte, Mietbremse, Tagesblatt), Fuzz: `runCityEconScenario` und Aktionsläufe mit zufälligen Stadtindizes (alle Indizes endlich und in den Grenzen). Offen: Mietverträge sind bei Einzug fest (kein Anpassen an den Markt), Regionsbeschlüsse wirken nur in Städten mit Aktivität, Jahreszeiten kommen in Schritt 6.
 
 ### Spieltempo und Live-Aktualisierung
 - **Tempo:** `efs.daily_auto` = 365 → ein realer Tag entspricht einem Spieljahr (1 EFS = 1 Spieltag). Änderbar im Admin unter Einstellungen → Spielwelt/EFS.
