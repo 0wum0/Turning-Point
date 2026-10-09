@@ -52,11 +52,15 @@ function syncEfs(user, state, now, w) {
   if (state && state.status === 'alive' && whole > 0) {
     const n = Math.min(whole, 3650);
     const before = { day: state.day, money: state.money, year: yearOf(state.day, state.startYear) };
-    if (awayMin >= settings.get('game.offline_after_minutes')) {
+    const away = awayMin >= settings.get('game.offline_after_minutes');
+    // Anfänger-Schutz: In den ersten Spieltagen (≈ einige Stunden echte Zeit) läuft die Uhr im Schutzmodus – wer noch liest und lernt, verhungert nicht
+    const newbie = state.day < settings.get('game.newbie_protect_days');
+    if (away || newbie) {
       const res = advance(w, state, n, { mode: 'offline' });
       flush(user, state);
-      offline = { days: res.advanced, awayMinutes: Math.round(awayMin), fromYear: before.year, toYear: yearOf(state.day, state.startYear), moneyDelta: state.money - before.money, status: state.status };
-      notice(state, {
+      if (!away) clock = { days: res.advanced, fromYear: before.year, toYear: yearOf(state.day, state.startYear), moneyDelta: state.money - before.money, status: state.status };
+      else offline = { days: res.advanced, awayMinutes: Math.round(awayMin), fromYear: before.year, toYear: yearOf(state.day, state.startYear), moneyDelta: state.money - before.money, status: state.status };
+      if (away) notice(state, {
         level: 'info', title: 'Während du weg warst …',
         text: `${res.advanced} Spieltage sind vergangen (${before.year} → ${offline.toYear}). Gehalt, Miete und Alltag liefen automatisch weiter.`,
         info: ['Das Leben geht auch ohne dich weiter: Die Spielzeit läuft mit der echten Uhr.', 'Einnahmen und Fixkosten werden verbucht. Während du länger weg bist, kannst du weder verhungern noch insolvent werden.', 'Schau, was sich verändert hat.'],

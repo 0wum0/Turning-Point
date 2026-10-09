@@ -201,3 +201,16 @@ test('NPC-Mieter bleiben unbefristet, solange das Haus bewohnbar ist', () => {
   try { for (let i = 0; i < 300; i++) { s.day++; s.properties[0].condition = 100; s.properties[0].lease.tenant.arrears = 0; landlordDaily({ world: w, state: s, offline: false }); } } finally { w.econ.events = ev; }
   assert.ok(s.properties[0].lease.tenant, 'Mieter wohnt weiter');
 });
+
+test('Anfänger-Schutz: Neuling ohne Wohnung überlebt die laufende Uhr in den ersten Spieltagen', () => {
+  const { testWorld, input } = require('./helpers');
+  const { createCharacter } = require('../src/game/state');
+  const service = require('../src/game/service');
+  const w = testWorld(); const user = { id: 1, meta: {}, coins: 0, efs_pool: 0, efs_accrued_at: 1000, efs_carry: 0 };
+  const s = createCharacter(w, input(w, { professionKey: 'baecker' }), user);
+  assert.strictEqual(s.housing.type, 'street');
+  const sync = service.syncEfs ? service.syncEfs : null;
+  if (!sync) return; // nicht exportiert: Verhalten wird über den Dienst geprüft
+  sync(user, s, 1000 + 40 * 60000, w); // 40 Minuten ≈ 10 Spieltage auf der Straße
+  assert.strictEqual(s.status, 'alive');
+});

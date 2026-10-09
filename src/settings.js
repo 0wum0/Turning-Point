@@ -184,6 +184,7 @@ const DEFAULTS = {
     partner: 280, child: 420, study_finish: 840, move: 70, insurance: 35,
   },
 
+  'game.newbie_protect_days': 90,    // Anfänger-Schutz: so lange (Spieltage ab Start) kann man durch die laufende Uhr weder verhungern noch insolvent gehen
   'game.clock_days_per_day': 365,    // Spieluhr: so viele Spieltage vergehen in 24 realen Stunden (365 = 1 Jahr)
   'game.start_year': 1945,
   'game.start_age': 20,
