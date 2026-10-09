@@ -143,11 +143,12 @@ Benötigt MySQL ≥ 5.7 oder MariaDB ≥ 10.3 (utf8mb4).
 ## 3b. Tests
 
 - `npm test` – schnelle Unit-Tests (ohne Datenbank), inkl. `test/security.test.js` und `test/maintenance.test.js`.
-- `npm run test:e2e` – Browser-Rundgang mit zwei frischen Spielern (Registrieren, Charakter, Essen, Wohnen, Job, Vorspulen, Karte, Zeitung, Stadtplatz-Chat, Briefe, Glocke, Vermieten an Spieler, Marktangebot, Auktion, Börsengang und Aktienkauf, Adoption, Sicherheitsprüfungen, englische Oberfläche). Nicht Teil von `npm test`.
+- `npm run test:e2e` – Browser-Rundgang mit zwei frischen Spielern (Registrieren, Charakter, Essen, Wohnen, Job, Vorspulen, Karte, Zeitung, Stadtplatz-Chat, Briefe, Glocke, Vermieten an Spieler, Marktangebot, Auktion, Börsengang und Aktienkauf, Adoption, Sicherheitsprüfungen, englische Oberfläche; außerdem Einsteiger-Sperren und „Alle Funktionen anzeigen“, Gründungsdialog, Liefervertrag mit Annahme durch einen zweiten Spieler, Spieluhr per Zeitreise über `users.efs_accrued_at` und das Preisbarometer). Nicht Teil von `npm test`.
   - Voraussetzungen: laufende MariaDB/MySQL, [Playwright](https://playwright.dev) mit Chromium (`TP_PLAYWRIGHT_PATH` zeigt auf das Paket, falls es nicht im Modulpfad liegt; `PLAYWRIGHT_BROWSERS_PATH` für den Browser-Ordner).
   - Die Suite legt eine **eigene** Datenbank an (Standard `tp_e2e`, wird jedes Mal gelöscht und neu erzeugt) und startet die App selbst auf Port 3290 mit eigenem Daten-Ordner – ein laufender Entwicklungsserver bleibt unberührt.
   - Einstellungen per Umgebung: `TP_E2E_PORT`, `TP_E2E_DB_NAME`, `TP_E2E_DB_USER`/`TP_E2E_DB_PASS`/`TP_E2E_DB_HOST`; für das Anlegen der Datenbank `TP_E2E_ADMIN_USER`/`TP_E2E_ADMIN_PASS` (Standard: `root` über `/run/mysqld/mysqld.sock`, sonst zusätzlich `TP_E2E_ADMIN_HOST`). `TP_E2E_HEADED=1` zeigt den Browser.
   - Für die Tests sind Alters- und IP-Sperren zwischen den Testkonten gelockert (siehe `test/e2e/prepare-db.js`).
+  - Die Helfer in `test/e2e/lib.js` schließen den Willkommensdialog, schalten bei Bedarf „Alle Funktionen anzeigen“ (`users.meta.showAll`) ein und warten auf echte Aufbau-Zustände (`#page[data-route]`, keine Platzhalter) statt auf feste Pausen. Läuft auf dem Port schon etwas, bricht die Suite mit einem klaren Hinweis ab.
 
 ## 3c. Aufräumen alter Daten
 

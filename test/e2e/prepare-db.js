@@ -31,6 +31,7 @@ const bcrypt = require('bcryptjs');
       social: { chat: { cooldownSec: 1, minAccountHours: 0 }, messages: { minAccountHours: 0 }, gifts: { minAccountHours: 0, minGameDays: 0, blockSameIp: false }, jobs: { minAccountHours: 0, minGameDays: 0, blockSameIp: false }, couples: { minAccountHours: 0, blockSameIp: false } },
       market: { minGameDays: 0, blockSameIp: false, offerMinPct: 1 },
       exchange: { minGameDays: 0, minValueReal: 100 },
+      goods: { contracts: { minAccountHours: 0, blockSameIp: false } },
     };
     for (const [k, v] of Object.entries(relax)) if (v) await conn.query('INSERT INTO settings (`key`, value) VALUES (?, ?)', [k, JSON.stringify(v)]);
   });

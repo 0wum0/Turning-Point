@@ -169,7 +169,7 @@ async function renderPage(animate) {
   let root = document.getElementById('page'); if (!root) return;
   const page = byId[ctx.route]; const my = ++pageSeq;
   if (animate && ctx.route === 'newspaper') markSeen('newspaper');
-  if (gated(ctx.route)) { const r0 = root.cloneNode(false); root.replaceWith(r0); mount(r0, html`<div class="panel-head"><div><h2>${page.label}</h2></div></div>${lockCard(ctx, GATES[ctx.route])}`); if (animate) document.title = `${page.label} · ${document.title.split(' · ').pop()}`; return; }
+  if (gated(ctx.route)) { const r0 = root.cloneNode(false); root.replaceWith(r0); mount(r0, html`<div class="panel-head"><div><h2>${page.label}</h2></div></div>${lockCard(ctx, GATES[ctx.route])}`); r0.dataset.route = page.id; if (animate) document.title = `${page.label} · ${document.title.split(' · ').pop()}`; return; }
   const scroll = animate ? 0 : window.scrollY;
   let data = null;
   // Seitenwechsel: sofort leeres Gerüst mit Platzhaltern. Aktualisierung derselben Seite: alter Inhalt bleibt stehen, bis der neue fertig ist (kein Flackern).
@@ -183,6 +183,7 @@ async function renderPage(animate) {
   // Frisches Element, damit Event-Listener früherer Renderings nicht kumulieren
   const cur = document.getElementById('page') || root; const fresh = cur.cloneNode(false); cur.replaceWith(fresh); root = fresh;
   mount(root, page.render(ctx, data));
+  root.dataset.route = page.id; // Marke „Seite fertig aufgebaut“ (nutzen die Browser-Tests)
   if (keep) { const el = document.getElementById(keep.id); if (el) { if (keep.v != null && 'value' in el && !el.value) el.value = keep.v; el.focus({ preventScroll: true }); try { el.setSelectionRange(keep.s, keep.e); } catch (_) { /* kein Textfeld */ } } }
   root.classList.remove('enter'); void root.offsetWidth; if (animate) root.classList.add('enter');
   page.bind(root, ctx, data);

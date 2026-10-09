@@ -25,7 +25,27 @@ function loadPlaywright() {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/** Fragt fn() wiederholt ab, bis sie etwas „Wahres“ liefert (z. B. eine Datenbankzeile); wirft mit Beschreibung nach Ablauf. Kein starres Warten. */
+async function until(fn, { timeout = 10000, every = 100, what = 'Bedingung' } = {}) {
+  const end = Date.now() + timeout; let last;
+  for (;;) {
+    try { last = await fn(); if (last) return last; } catch (e) { last = e; }
+    if (Date.now() > end) throw new Error(`Zeitüberschreitung beim Warten auf: ${what}${last instanceof Error ? ` (${last.message})` : ''}`);
+    await sleep(every);
+  }
+}
+
+/** Wartet, bis ein Port frei ist bzw. (frei=false) belegt wird. */
+function portFree(port) {
+  return new Promise((resolve) => {
+    const srv = require('net').createServer();
+    srv.once('error', () => resolve(false));
+    srv.listen(port, '127.0.0.1', () => srv.close(() => resolve(true)));
+  });
+}
+
 async function startApp() {
+  if (!(await portFree(PORT))) throw new Error(`Port ${PORT} ist belegt (läuft noch eine alte Testinstanz?). Setze TP_E2E_PORT auf einen freien Port.`);
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tp-e2e-'));
   const env = { ...E, TP_DB_HOST: DBX.host, TP_DB_PORT: String(DBX.port), TP_DB_USER: DBX.user, TP_DB_PASS: DBX.password, TP_DB_NAME: DBX.database, TP_DATA_DIR: dataDir, PORT: String(PORT), TP_API_RATE: '1000000', TP_SITE_URL: BASE, NODE_ENV: 'test' };
   const prep = spawnSync(process.execPath, [path.join(__dirname, 'prepare-db.js')], { env, encoding: 'utf8' });
@@ -46,7 +66,16 @@ async function startApp() {
     base: BASE, dataDir, logFile, pool,
     log: () => fs.readFileSync(logFile, 'utf8'),
     sql: async (q, p) => (await pool.query(q, p))[0],
-    async stop() { await pool.end().catch(() => {}); child.kill('SIGTERM'); await sleep(300); try { fs.rmSync(dataDir, { recursive: true, force: true }); } catch (_) { /* egal */ } },
+    async stop() {
+      await pool.end().catch(() => {});
+      if (!exited) {
+        const gone = new Promise((r) => child.once('exit', r));
+        child.kill('SIGTERM');
+        await Promise.race([gone, sleep(4000)]);
+        if (!exited) { child.kill('SIGKILL'); await Promise.race([gone, sleep(2000)]); }
+      }
+      try { fs.rmSync(dataDir, { recursive: true, force: true }); } catch (_) { /* egal */ }
+    },
   };
 }
 
@@ -96,35 +125,96 @@ async function createCharacter(pl, { first, last, city = 'Berlin', prof = 'baeck
   await page.click('#next');
   await page.waitForSelector('#page');
   await page.waitForSelector('#hud .hud-id');
+  await dismissWelcome(pl);
 }
 
-/** Schließt offene Dialoge (z. B. den Bericht nach dem Vorspulen). */
+/** Schließt den Willkommensdialog des ersten Starts (Überspringen) und wartet, bis er weg und als gesehen gemeldet ist. */
+async function dismissWelcome(pl) {
+  const { page } = pl;
+  const w = page.locator('.modal.welcome');
+  try { await w.first().waitFor({ state: 'visible', timeout: 4000 }); } catch (_) { return; } // schon gesehen
+  const seen = page.waitForResponse((r) => /\/api\/action\/seen$/.test(r.url()), { timeout: 5000 }).catch(() => null);
+  await page.click('.modal.welcome [data-close=skip]');
+  await page.locator('.modal.welcome').first().waitFor({ state: 'detached' });
+  await seen;
+}
+
+/** Schließt offene Dialoge (z. B. den Bericht nach dem Vorspulen) und wartet, bis sie wirklich weg sind. */
 async function closeModals(pl) {
-  for (let i = 0; i < 5 && (await pl.page.locator('.modal-backdrop').count()); i++) { await pl.page.keyboard.press('Escape'); await sleep(120); }
+  const bd = pl.page.locator('.modal-backdrop');
+  for (let i = 0; i < 6 && (await bd.count()); i++) {
+    await pl.page.keyboard.press('Escape');
+    await bd.first().waitFor({ state: 'detached', timeout: 1500 }).catch(() => {});
+  }
+}
+
+/** Schaltet „Alle Funktionen anzeigen“ (users.meta.showAll) über die Spiel-Schnittstelle ein und lädt die Seite neu. */
+async function showAll(pl, on = true) {
+  const r = await api(pl, 'POST', '/api/action/uiPrefs', { showAll: on });
+  if (r.status !== 200) throw new Error(`uiPrefs fehlgeschlagen: ${r.status}`);
+  await reloadGame(pl);
+}
+
+/** Seite neu laden und warten, bis das Spiel (Kopfzeile + Hauptfläche) fertig aufgebaut ist; ein evtl. Willkommensdialog wird geschlossen. */
+async function reloadGame(pl) {
+  await pl.page.reload();
+  try { await pl.page.waitForSelector('#hud .hud-id'); } catch (e) { throw new Error(`${e.message}\nSeite nach dem Neuladen: ${(await pl.page.innerText('body').catch(() => '')).slice(0, 400)}`); }
+  await pl.page.waitForFunction(() => document.getElementById('page') && !document.querySelector('#page .skel'));
+  await dismissWelcome(pl);
 }
 
 /** Wartet, bis die Hauptfläche neu aufgebaut wurde (renderPage ersetzt #page) und keine Platzhalter mehr zeigt. */
 const pageMarkOld = (pl) => pl.page.evaluate(() => { const p = document.getElementById('page'); if (p) p.__old = true; });
 const pageFresh = (pl) => pl.page.waitForFunction(() => { const p = document.getElementById('page'); return p && !p.__old && !p.querySelector('.skel'); });
+/** Wartet, bis die Seite für die Route fertig aufgebaut ist (#page trägt data-route erst nach dem Aufbau, Platzhalter sind weg). */
+const pageReady = (pl, id) => pl.page.waitForFunction((x) => { const p = document.getElementById('page'); return p && p.dataset.route === x && !p.__old && !p.querySelector('.skel'); }, id);
 
 async function nav(pl, id) {
   await closeModals(pl);
-  if (await pl.page.evaluate((x) => location.hash === `#/${x}`, id)) { // schon dort: kein hashchange, also neu laden über Wechsel
-    await pl.page.waitForFunction(() => !document.querySelector('#page .skel'));
-    return;
+  const { page } = pl;
+  if (await page.evaluate((x) => location.hash === `#/${x}`, id)) {
+    await page.waitForFunction((x) => { const p = document.getElementById('page'); return p && p.dataset.route === x && !p.querySelector('.skel'); }, id);
+  } else {
+    // Die Seitenleiste wird bei jeder Kopfzeilen-Aktualisierung neu aufgebaut; ein Klick kann dabei ins Leere gehen → bis zu dreimal versuchen
+    for (let i = 0; i < 3; i++) {
+      await pageMarkOld(pl);
+      await page.click(`#side a[data-nav=${id}]`);
+      try { await page.waitForFunction((x) => location.hash === `#/${x}`, id, { timeout: 2500 }); break; } catch (e) { if (i === 2) throw e; }
+    }
+    await pageReady(pl, id); // neuer Seiteninhalt (nicht der alte) und keine Platzhalter mehr
   }
-  await pageMarkOld(pl);
-  await pl.page.click(`#side a[data-nav=${id}]`);
-  await pageFresh(pl);
+  await page.waitForSelector(`#side a.nav.on[data-nav=${id}]`);
+}
+
+/** Wie nav, aber mit Prüfung, dass der Bereich nicht gesperrt ist (sonst zeigt die Seite nur die Freischaltungs-Karte). */
+async function navOpen(pl, id) {
+  await nav(pl, id);
+  const locked = await pl.page.locator('#page .lock-card').count();
+  if (locked) throw new Error(`Bereich „${id}“ ist gesperrt: ${(await pl.page.innerText('#page')).slice(0, 200)}`);
 }
 
 /** Tab im Bereich „Spieler“ öffnen. */
 async function socialTab(pl, tab) {
   await nav(pl, 'social');
-  await pl.page.click(`.soc-tabs [data-tab=${tab}]`);
+  if (!(await pl.page.locator(`.soc-tabs [data-tab=${tab}].on`).count())) {
+    await pageMarkOld(pl);
+    await pl.page.click(`.soc-tabs [data-tab=${tab}]`);
+    await pageFresh(pl);
+  }
   await pl.page.waitForSelector(`.soc-tabs [data-tab=${tab}].on`);
   await pl.page.waitForFunction(() => !document.querySelector('#page .skel'));
-  await sleep(250);
+}
+
+/** Reiter in der Zeitung (news, jobs, housing, partners, biz …) öffnen und auf den fertigen Aufbau warten. */
+async function paperTab(pl, tab) {
+  await nav(pl, 'newspaper');
+  const sel = `.paper-tabs [data-tab=${tab}]`;
+  if (!(await pl.page.locator(`${sel}.on`).count())) {
+    await pageMarkOld(pl);
+    await pl.page.click(sel);
+    await pageFresh(pl);
+  }
+  await pl.page.waitForSelector(`${sel}.on`);
 }
 
 async function toastText(pl) { return pl.page.locator('.toasts .toast').last().innerText().catch(() => ''); }
@@ -145,6 +235,6 @@ async function api(pl, method, url, body) {
   }, [method, url, body]);
 }
 
-module.exports = { pageMarkOld, pageFresh, closeModals, ROOT, BASE, PORT, DBX, loadPlaywright, startApp, newPlayer, register, login, logout, createCharacter, nav, socialTab, toastText, setMoney, userId, api, sleep };
+module.exports = { until, paperTab, dismissWelcome, showAll, reloadGame, navOpen, pageMarkOld, pageFresh, closeModals, ROOT, BASE, PORT, DBX, loadPlaywright, startApp, newPlayer, register, login, logout, createCharacter, nav, socialTab, toastText, setMoney, userId, api, sleep };
 
 module.exports.json = (v) => (typeof v === 'string' ? JSON.parse(v) : v);

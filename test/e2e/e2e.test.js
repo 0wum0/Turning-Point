@@ -99,8 +99,7 @@ describe('E2E Turning Point', { concurrency: false }, () => {
     });
 
     it('Zeitung: Wohnungsmarkt, Pension beziehen', async () => {
-      await L.nav(a, 'newspaper');
-      await a.page.click('.paper-tabs [data-tab=housing]');
+      await L.paperTab(a, 'housing');
       await a.page.waitForSelector('.listings article');
       await a.page.click('[data-act=rent]:not([disabled]) >> nth=0');
       await a.page.waitForFunction(() => /Du wohnst hier/.test(document.querySelector('#page').innerText));
@@ -110,8 +109,7 @@ describe('E2E Turning Point', { concurrency: false }, () => {
     });
 
     it('Stellenmarkt: Job annehmen', async () => {
-      await L.nav(a, 'newspaper');
-      await a.page.click('.paper-tabs [data-tab=jobs]');
+      await L.paperTab(a, 'jobs');
       await a.page.waitForSelector('[data-act=apply]');
       await a.page.click('[data-act=apply]:not([disabled]) >> nth=0');
       await a.page.waitForFunction(() => /Aktuell/.test(document.querySelector('#page').innerText));
@@ -215,20 +213,22 @@ describe('E2E Turning Point', { concurrency: false }, () => {
     before(async () => {
       aId = await L.userId(app, A.username); bId = await L.userId(app, B.username);
       await L.setMoney(app, A.username, 60000000); await L.setMoney(app, B.username, 30000000);
-      await a.page.reload(); await b.page.reload();
-      await a.page.waitForSelector('#hud .hud-id'); await b.page.waitForSelector('#hud .hud-id');
+      // Fortgeschrittene Bereiche (Markt, Unternehmen, Börse …) sind erst nach und nach frei – hier per Konto-Einstellung „Alle Funktionen anzeigen“ (users.meta.showAll)
+      await L.showAll(a); await L.showAll(b);
     });
 
-    it('Alice kauft vier Häuser über die Zeitung', async () => {
-      await L.nav(a, 'newspaper');
-      await a.page.click('.paper-tabs [data-tab=housing]');
-      for (let i = 1; i <= 4; i++) {
+    it('Alice kauft alle Häuser, die diese Woche in Berlin zum Verkauf stehen (mindestens drei)', async () => {
+      await L.paperTab(a, 'housing');
+      await a.page.waitForSelector('[data-act=buy]:not([disabled])');
+      const offered = await a.page.locator('[data-act=buy]:not([disabled])').count();
+      assert.ok(offered >= 3, `mindestens drei Verkaufsangebote erwartet, gefunden: ${offered}`);
+      for (let i = 1; i <= offered; i++) {
         await a.page.click('[data-act=buy]:not([disabled]) >> nth=0');
         await confirmYes(a);
-        await a.page.waitForFunction((n) => document.querySelectorAll('.toasts .toast').length >= n, i);
+        await a.page.waitForFunction((n) => document.querySelectorAll('[data-act=buy]').length === n, offered - i); // die Liste baut sich ohne das gekaufte Haus neu auf
       }
       const props = L.json((await app.sql('SELECT JSON_EXTRACT(state, "$.properties") p FROM characters WHERE user_id = ?', [aId]))[0].p);
-      assert.equal(props.length, 4);
+      assert.equal(props.length, offered);
       noErrors(a);
     });
 
@@ -315,18 +315,17 @@ describe('E2E Turning Point', { concurrency: false }, () => {
     });
 
     it('Börse: Betrieb kaufen, Börsengang, Bernd kauft Anteile', async () => {
-      await L.nav(a, 'newspaper');
-      await a.page.click('.paper-tabs [data-tab=biz]');
+      await L.paperTab(a, 'biz');
       await a.page.waitForSelector('[data-act=buyBiz]:not([disabled])');
       await a.page.click('[data-act=buyBiz]:not([disabled]) >> nth=0');
       if (await a.page.locator('.modal [data-close=yes]').count()) await confirmYes(a);
-      for (let i = 0; i < 30; i++) { const [{ c }] = await app.sql("SELECT JSON_LENGTH(JSON_EXTRACT(state, '$.companies')) c FROM characters WHERE user_id = ?", [aId]); if (Number(c) > 0) break; await L.sleep(300); }
+      await L.until(async () => Number((await app.sql("SELECT JSON_LENGTH(JSON_EXTRACT(state, '$.companies')) c FROM characters WHERE user_id = ?", [aId]))[0].c) > 0, { what: 'gekaufter Betrieb' });
       await L.nav(a, 'business');
       await a.page.waitForSelector('[data-ipo]');
       await a.page.click('[data-ipo]');
       await a.page.click('#ip-go');
-      let n = 0; for (let i = 0; i < 30 && !n; i++) { n = (await app.sql("SELECT COUNT(*) n FROM stocks WHERE user_id = ? AND status = 'active'", [aId]))[0].n; if (!n) await L.sleep(300); }
-      assert.equal(n, 1, `Börsengang: ${await L.toastText(a)}`);
+      const n = await L.until(async () => Number((await app.sql("SELECT COUNT(*) n FROM stocks WHERE user_id = ? AND status = 'active'", [aId]))[0].n), { what: 'Börsengang (Aktie aktiv)' });
+      assert.equal(n, 1);
       await L.socialTab(b, 'exchange');
       await b.page.reload(); await b.page.waitForSelector('#hud .hud-id'); await L.socialTab(b, 'exchange');
       await b.page.waitForSelector('[data-xbuy]');
@@ -352,6 +351,159 @@ describe('E2E Turning Point', { concurrency: false }, () => {
       await a.page.waitForSelector('[data-p=adopt], [data-p=adoptCancel]');
       assert.match(await text(a), /Kind adoptieren|Adoption läuft/);
       noErrors(a);
+    });
+  });
+
+  describe('Neue Abläufe: Einstieg, Gründung, Lieferverträge, Spieluhr, Preisbarometer', () => {
+    const F = { username: 'frieda_e2e', email: 'frieda@e2e.test', password: 'frieda-pass-123' };
+    const C = { username: 'cora_e2e', email: 'cora@e2e.test', password: 'cora-pass-12345' };
+    const FIRM_F = 'Brot und Mehr E2E'; const FIRM_C = 'Muehle am Fluss E2E';
+    let f; let c; let fId; let cId;
+
+    /** Gründungsdialog: Betriebsart wählen, Namen eintragen, bestätigen, auf den Abschluss warten. */
+    async function foundViaDialog(pl, pkey, name) {
+      await L.nav(pl, 'business');
+      await pl.page.click('[data-found]');
+      await pl.page.click(`.modal [data-found-pick="${pkey}"]`);
+      await pl.page.fill('#found-name', name);
+      const done = pl.page.waitForResponse((r) => /\/api\/action\/foundBiz$/.test(r.url()) && r.request().method() === 'POST');
+      await pl.page.click('#found-go');
+      assert.equal((await done).status(), 200);
+      await pl.page.locator('.modal-backdrop').first().waitFor({ state: 'detached' });
+    }
+
+    before(async () => {
+      f = await L.newPlayer(browser, app, 'frieda'); c = await L.newPlayer(browser, app, 'cora');
+      await L.register(f, F); await L.register(c, C);
+      await L.createCharacter(f, { first: 'Frieda', last: 'Fink', gender: 'f' });
+      await L.createCharacter(c, { first: 'Cora', last: 'Claasen', gender: 'f', prof: 'muehle' });
+      fId = await L.userId(app, F.username); cId = await L.userId(app, C.username);
+      await L.setMoney(app, F.username, 30000000); await L.setMoney(app, C.username, 30000000);
+      await L.reloadGame(f); await L.reloadGame(c);
+    });
+    after(async () => { for (const p of [f, c]) if (p) await p.ctx.close(); });
+
+    it('Neuer Spieler: Fortgeschrittenes ist gesperrt, „Alle Funktionen anzeigen“ im Hilfe-Menü schaltet es frei', async () => {
+      // Brandneues Konto ohne Geld-/Aufgabenfortschritt (eigener Spieler, damit Frieda/Cora ihr Geld behalten)
+      const n = await L.newPlayer(browser, app, 'neu');
+      await L.register(n, { username: 'neu_e2e', email: 'neu@e2e.test', password: 'neu-pass-123456' });
+      await L.createCharacter(n, { first: 'Nils', last: 'Neu' });
+      assert.match(await n.page.locator('#side a[data-nav=business]').getAttribute('class'), /locked/);
+      await n.page.click('#side a[data-nav=exchange], #side a[data-nav=business]');
+      await n.page.waitForSelector('#page .lock-card');
+      assert.match(await text(n), /Wird freigeschaltet, wenn/);
+      // Hilfe-Menü → Alle Funktionen anzeigen
+      await n.page.click('#hud [data-help]');
+      const saved = n.page.waitForResponse((r) => /\/api\/action\/uiPrefs$/.test(r.url()));
+      await n.page.check('#helpShowAll');
+      assert.equal((await saved).status(), 200);
+      await L.closeModals(n);
+      await n.page.waitForFunction(() => !document.querySelector('#side a[data-nav=business]').classList.contains('locked'));
+      await L.navOpen(n, 'business');
+      const [u] = await app.sql('SELECT meta FROM users WHERE username = ?', ['neu_e2e']);
+      assert.equal(L.json(u.meta).showAll, true);
+      noErrors(n);
+      await n.ctx.close();
+    });
+
+    it('Unternehmen gründen: Dialog mit Prüfung der Eingabe, danach steht die Firma im Spielstand', async () => {
+      await L.showAll(f); await L.showAll(c);
+      await L.nav(f, 'business');
+      await f.page.click('[data-found]');
+      await f.page.waitForSelector('.modal [data-found-pick]');
+      assert.match(await text(f, '.modal'), /Schritt 1 von 2/);
+      await f.page.click('.modal [data-found-pick="baecker"]');
+      assert.match(await text(f, '.modal'), /Schritt 2 von 2/);
+      // zu kurzer Name wird vom Server abgelehnt, der Dialog bleibt offen und zeigt den Grund
+      await f.page.fill('#found-name', 'x');
+      await f.page.click('#found-go');
+      await f.page.waitForFunction(() => /zu kurz/.test(document.querySelector('#found-err').innerText));
+      assert.equal((await app.sql("SELECT JSON_LENGTH(JSON_EXTRACT(state, '$.companies')) c FROM characters WHERE user_id = ?", [fId]))[0].c, 0);
+      await f.page.click('.modal [data-found-back]');
+      await f.page.waitForSelector('.modal [data-found-pick="baecker"]');
+      await L.closeModals(f);
+      const money0 = Number((await app.sql("SELECT money FROM characters WHERE user_id = ?", [fId]))[0].money);
+      await foundViaDialog(f, 'baecker', FIRM_F);
+      await foundViaDialog(c, 'muehle', FIRM_C);
+      const fs = L.json((await app.sql("SELECT JSON_EXTRACT(state, '$.companies') s FROM characters WHERE user_id = ?", [fId]))[0].s);
+      assert.equal(fs.length, 1); assert.equal(fs[0].name, FIRM_F); assert.equal(fs[0].pkey, 'baecker');
+      assert.ok(Number((await app.sql("SELECT money FROM characters WHERE user_id = ?", [fId]))[0].money) < money0, 'Gründungspreis wurde abgebucht');
+      await f.page.waitForFunction((n) => document.querySelector('#page').innerText.includes(n), FIRM_F);
+      // die Firma ist für andere Spieler veröffentlicht (Voraussetzung für Lieferverträge)
+      await L.until(async () => (await app.sql('SELECT 1 FROM player_firms WHERE user_id IN (?, ?)', [fId, cId])).length === 2, { what: 'veröffentlichte Firmen' });
+      noErrors(f, c);
+    });
+
+    it('Liefervertrag: Frieda (Bäckerei) bietet Cora (Mühle) an, Cora nimmt an, der Vertrag läuft', async () => {
+      await L.nav(f, 'business');
+      await f.page.click('[data-contract-propose]');
+      await f.page.click('.modal [data-pr=supplier][data-good=mehl]');
+      await f.page.waitForSelector('.modal [data-pick]');
+      assert.match(await text(f, '.modal'), new RegExp(FIRM_C));
+      await f.page.click('.modal [data-pick="0"]');
+      await f.page.fill('#of-q', '1');
+      const sent = f.page.waitForResponse((r) => /\/api\/supply\/offer$/.test(r.url()));
+      await f.page.click('#of-go');
+      assert.equal((await sent).status(), 200);
+      const [o] = await L.until(async () => { const r = await app.sql("SELECT * FROM supply_contracts WHERE buyer_id = ? AND seller_id = ?", [fId, cId]); return r.length ? r : null; }, { what: 'Vertragsangebot' });
+      assert.equal(o.status, 'offer'); assert.equal(o.good, 'mehl');
+      // Cora sieht das Angebot und nimmt es an
+      await L.reloadGame(c); await L.nav(c, 'business');
+      await c.page.waitForSelector('#supContracts [data-contract-yes]');
+      assert.match(await text(c, '#supContracts'), /Angebot/);
+      const resp = c.page.waitForResponse((r) => /\/api\/supply\/respond$/.test(r.url()));
+      await c.page.click('#supContracts [data-contract-yes]');
+      assert.equal((await resp).status(), 200);
+      const act = await L.until(async () => (await app.sql("SELECT * FROM supply_contracts WHERE id = ? AND status = 'active'", [o.id]))[0], { what: 'laufender Vertrag' });
+      assert.equal(act.buyer_id, fId);
+      // beide sehen den laufenden Vertrag
+      await c.page.waitForFunction(() => /läuft/.test(document.querySelector('#supContracts').innerText));
+      await L.reloadGame(f); await L.nav(f, 'business');
+      await f.page.waitForFunction(() => /läuft/.test((document.querySelector('#supContracts') || {}).innerText || ''));
+      noErrors(f, c);
+    });
+
+    it('Spieluhr: Zeitreise über efs_accrued_at (zwei Stunden) – nach dem Neuladen ist das Spieldatum weiter', async () => {
+      await L.nav(f, 'overview');
+      const label0 = await text(f, '#hud .hud-id small');
+      const [{ d0 }] = await app.sql('SELECT game_day d0 FROM characters WHERE user_id = ? AND status = ?', [fId, 'alive']);
+      // Zwei echte Stunden „Abwesenheit“ nachträglich (Standard: ein Spieltag ≈ 4 Minuten, ab 90 Minuten gilt der Offline-Schutz, niemand verhungert)
+      await app.sql('UPDATE users SET efs_accrued_at = efs_accrued_at - ?, efs_carry = 0 WHERE id = ?', [120 * 60 * 1000, fId]);
+      await L.reloadGame(f);
+      await f.page.waitForFunction((l) => document.querySelector('#hud .hud-id small').innerText !== l, label0);
+      const label1 = await text(f, '#hud .hud-id small');
+      assert.notEqual(label1, label0);
+      const [{ d1 }] = await app.sql('SELECT game_day d1 FROM characters WHERE user_id = ? AND status = ?', [fId, 'alive']);
+      assert.ok(Number(d1) - Number(d0) >= 25, `Spieltage seit der Zeitreise: ${d1 - d0}`);
+      // der Offline-Bericht steht im Postfach der Übersicht
+      await L.nav(f, 'overview');
+      assert.match(await text(f), /Während du weg warst/);
+      assert.equal((await app.sql('SELECT status FROM characters WHERE user_id = ? ORDER BY id DESC LIMIT 1', [fId]))[0].status, 'alive');
+      noErrors(f);
+    });
+
+    it('Preisbarometer: Stadt und Zeitung zeigen alle fünf Bereiche, Vergleich mit einem weiteren Ort', async () => {
+      await L.nav(f, 'city');
+      await f.page.waitForSelector('#econBox[data-loaded="1"]');
+      assert.match(await text(f, '#econBox'), /Preisbarometer/i);
+      assert.deepEqual(await f.page.locator('#econBox .econ-row').evaluateAll((els) => els.map((e) => e.dataset.sector)), ['food', 'rent', 'services', 'build', 'wage']);
+      const rows0 = await f.page.locator('#econBox .econ-tbl tbody tr').count();
+      assert.ok(rows0 >= 2, 'Vergleichstabelle mit Nachbarorten');
+      // zweiten Ort zum Vergleich suchen und hinzufügen
+      await f.page.fill('#ecSearch', 'Hamburg');
+      await f.page.click('#ecRes >> text=Hamburg >> nth=0');
+      await f.page.waitForFunction((n) => document.querySelectorAll('#econBox .econ-tbl tbody tr').length > n, rows0);
+      assert.match(await text(f, '#econBox .econ-tbl'), /Hamburg/);
+      // Sortierung nach „Miete“
+      await f.page.click('#econBox [data-ec-sort=rent]');
+      await f.page.waitForSelector('#econBox [data-ec-sort=rent].on');
+      // Zeitung → Reiter „Wirtschaft“
+      await L.paperTab(f, 'economy');
+      await f.page.waitForSelector('#econBox[data-loaded="1"] .econ-row');
+      assert.equal(await f.page.locator('#econBox .econ-row').count(), 5);
+      const api1 = await L.api(f, 'GET', '/api/economy/city?cityId=1');
+      assert.equal(api1.status, 200);
+      noErrors(f);
     });
   });
 
