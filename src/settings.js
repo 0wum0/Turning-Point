@@ -110,6 +110,29 @@ const DEFAULTS = {
   tax: { enabled: true, brackets: [[1500, 0], [6000, 0.15], [20000, 0.28], [60000, 0.38], [1e15, 0.45]], corporatePct: 15 },
   credit: { enabled: true, spread: 1.0, assetPct: 60, incomeDays: 150, minAmount: 20000, maxYears: 30 },
   competition: { enabled: true, cap: [6, 6, 9, 16, 30, 55], minFactor: 0.35, exponent: 0.8 },
+  // Warenkreislauf (src/game/goods.js): Rohstoffe, Zutaten und Waren. Preise sind „Wert von 1945“ (Cent je Einheit) und werden mit dem Preisindex hochgerechnet.
+  goods: {
+    enabled: true,
+    wholesaleMarkupPct: 25,       // Großhandel verkauft an Betriebe so viel Prozent über dem Marktpreis
+    wholesaleDiscountPct: 20,     // … und kauft Überschüsse so viel Prozent darunter (Umsatz ist darauf abgestimmt)
+    scarcityStrength: 0.35,       // Wirkung von Knappheit/Überangebot auf den Preis (0 = aus, 1 = voll)
+    scarcityMin: 0.8, scarcityMax: 1.5,
+    cityPriceWeight: 0.5,         // wie stark der Preisfaktor der Stadt auf Warenpreise durchschlägt
+    noInputEfficiencyPct: 35,     // so viel Leistung bleibt, wenn alle benötigten Waren fehlen (nie sofort null)
+    contracts: {
+      enabled: true, maxPerFirm: 4, minTermDays: 30, maxTermDays: 730, minPricePct: 90, maxPricePct: 115, // Vertragspreis in % des Marktpreises
+      minAccountHours: 12, blockSameIp: true, offersPerDay: 12, offerTtlHours: 72, sameRegionOnly: true,
+    },
+    policy: {
+      enabled: true, surchargeMin: -2, surchargeMax: 4, subsidyMax: 20, supportMax: 15, vatMin: -3, vatMax: 5, tariffMin: -10, tariffMax: 20,
+      levyPerSubsidy: 0.15,       // jeder Prozentpunkt Subvention kostet alle Betriebe im Gebiet so viele Punkte Gewerbesteuer (Gegenfinanzierung)
+      frames: {                   // Bundestag wählt einen Rahmen: Obergrenzen für Zuschlag und Subvention
+        eng: { name: 'Streng', maxSurcharge: 2, maxSubsidy: 10 },
+        normal: { name: 'Normal', maxSurcharge: 4, maxSubsidy: 20 },
+        weit: { name: 'Weit', maxSurcharge: 6, maxSubsidy: 30 },
+      },
+    },
+  },
   cycles: { realEstate: [[1945, 0.75], [1950, 0.85], [1957, 1.0], [1965, 1.08], [1973, 1.15], [1976, 1.05], [1985, 1.0], [1990, 1.2], [1993, 1.3], [1996, 1.0], [2005, 0.9], [2010, 1.0], [2015, 1.2], [2021, 1.5], [2023, 1.35], [2035, 1.4], [2060, 1.5], [2100, 1.6]] },
   exchange: { enabled: true, shares: 1000, minValueReal: 300000, minGameDays: 90, minFloatPct: 10, maxFloatPct: 49, makerSpreadPct: 5, makerDailyPct: 5, maxOrderShares: 500, openOrdersMax: 12, takeoverPct: 50,
     // Grenzen des Marktteilnehmers: Tageslimit je Nutzer (Gesamtwert real in Cent, 0 = kein Limit), Mindest-Haltedauer vor dem Rückverkauf an ihn,

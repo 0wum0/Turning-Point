@@ -1,0 +1,538 @@
+'use strict';
+/**
+ * Warenkreislauf: Katalog der Waren, Rezepte der Betriebe (was sie verbrauchen und herstellen), Preise (Großhandel, Knappheit,
+ * Stadt, Politik) und die tägliche Versorgung eines Betriebs.
+ *
+ * Grundidee (bewusst einfach):
+ *  - Jeder Betrieb hat ein Rezept: Anteile seines Umsatzes, die er in Zutaten steckt (inputs), und Waren, die er herstellt (out).
+ *    Aus Umsatz und Warenpreisen ergeben sich die Mengen je Tag. Reine Erzeuger (Bauernhof, Zeche, Fischkutter …) brauchen nichts.
+ *  - Der Umsatz des Betriebs ist so kalkuliert, dass er bei Einkauf im Großhandel (Marktpreis + Aufschlag) dieselbe Marge hat wie
+ *    vor der Einführung der Warenwirtschaft: Anfänger müssen nichts tun und verdienen weiter. Lieferverträge sind günstiger als der
+ *    Großhandel – das ist der Gewinn für Spieler, die sich kümmern.
+ *  - Fehlen Zutaten, sinkt die Leistung bis auf eine Untergrenze (nie sofort null). Der Großhandel ist dagegen immer lieferbar.
+ *  - Alle Preise sind „Wert von 1945“ (Cent je Einheit) und werden mit dem Preisindex des jeweiligen Spieljahres hochgerechnet.
+ *    Verträge speichern den Preis ebenfalls real, so rechnen Spieler in verschiedenen Epochen exakt gegeneinander ab.
+ */
+const settings = require('../settings');
+
+const clampN = (v, d, lo, hi) => { const n = Number(v); return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : d; };
+const cfg = () => settings.get('goods') || {};
+function W() {
+  const c = cfg();
+  return {
+    on: c.enabled !== false,
+    markup: clampN(c.wholesaleMarkupPct, 25, 0, 200) / 100,
+    discount: clampN(c.wholesaleDiscountPct, 20, 0, 80) / 100,
+    strength: clampN(c.scarcityStrength, 0.35, 0, 2),
+    sMin: clampN(c.scarcityMin, 0.8, 0.2, 1),
+    sMax: clampN(c.scarcityMax, 1.5, 1, 5),
+    cityW: clampN(c.cityPriceWeight, 0.5, 0, 2),
+    floor: clampN(c.noInputEfficiencyPct, 35, 0, 100) / 100,
+  };
+}
+const enabled = () => cfg().enabled !== false;
+
+/* ------------------------------------------------------------------ Katalog ------------------------------------------------------------------ */
+const GOODS = {};
+/** add(key, Name, Einheit, Basispreis [Cent 1945 je Einheit], von, bis, Kategorie, Importanteil [1945, 2100], Optionen) */
+function add(key, name, unit, base, from, to, cat, imp, opt = {}) {
+  GOODS[key] = { key, name, unit, base, from, to, cat, imp: imp || [0, 0], service: !!opt.service, trend: opt.trend || null, icon: opt.icon || 'package' };
+}
+// Landwirtschaft & Rohstoffe
+add('getreide', 'Getreide', 'kg', 25, 1945, 2999, 'agrar', [0.1, 0.2], { icon: 'wheat' });
+add('gemuese', 'Gemüse & Obst', 'kg', 30, 1945, 2999, 'agrar', [0.1, 0.35], { icon: 'sprout' });
+add('milch', 'Milch', 'l', 22, 1945, 2999, 'agrar', [0.02, 0.1], { icon: 'package' });
+add('fleisch', 'Fleisch', 'kg', 180, 1945, 2999, 'agrar', [0.05, 0.2], { icon: 'utensils' });
+add('fisch', 'Fisch', 'kg', 90, 1945, 2999, 'agrar', [0.2, 0.5], { icon: 'package' });
+add('holz', 'Holz', 'kg', 4, 1945, 2999, 'rohstoff', [0.2, 0.3], { icon: 'tree-pine' });
+add('kohle', 'Kohle', 'kg', 3, 1945, 2040, 'energie', [0.05, 0.9], { icon: 'flame' });
+add('strom', 'Strom', 'kWh', 20, 1945, 2999, 'energie', [0.02, 0.1], { icon: 'zap' });
+add('kraftstoff', 'Kraftstoff', 'l', 18, 1945, 2999, 'energie', [0.7, 0.4], { icon: 'truck' });
+add('eisen', 'Eisen & Stahl', 'kg', 30, 1945, 2999, 'rohstoff', [0.15, 0.4], { icon: 'hammer' });
+add('chemie', 'Chemikalien', 'kg', 80, 1945, 2999, 'rohstoff', [0.2, 0.4], { icon: 'factory' });
+add('papier', 'Papier', 'kg', 60, 1945, 2999, 'rohstoff', [0.1, 0.25], { icon: 'scroll' });
+add('baustoffe', 'Baustoffe', 'kg', 6, 1945, 2999, 'bau', [0.02, 0.1], { icon: 'building-2' });
+// Nahrung & Genuss
+add('mehl', 'Mehl', 'kg', 40, 1945, 2999, 'nahrung', [0.05, 0.1], { icon: 'wheat' });
+add('brot', 'Brot & Backwaren', 'kg', 60, 1945, 2999, 'nahrung', [0, 0.05], { icon: 'croissant' });
+add('suessware', 'Süßwaren & Torten', 'kg', 220, 1945, 2999, 'nahrung', [0.05, 0.2], { icon: 'cake' });
+add('wurst', 'Wurstwaren', 'kg', 260, 1945, 2999, 'nahrung', [0.02, 0.1], { icon: 'utensils' });
+add('bier', 'Bier', 'l', 50, 1945, 2999, 'nahrung', [0.05, 0.15], { icon: 'package' });
+// Handwerk & Industrie
+add('eisenwaren', 'Eisenwaren & Werkzeug', 'kg', 70, 1945, 2999, 'ware', [0.05, 0.3], { icon: 'hammer' });
+add('moebel', 'Möbel', 'Stück', 2000, 1945, 2999, 'ware', [0.02, 0.4], { icon: 'house' });
+add('textil', 'Stoffe & Leder', 'm', 90, 1945, 2999, 'ware', [0.15, 0.6], { icon: 'scissors' });
+add('kleidung', 'Kleidung & Schuhe', 'Stück', 600, 1945, 2999, 'ware', [0.05, 0.7], { icon: 'shirt' });
+add('ersatzteile', 'Ersatzteile & Maschinen', 'Stück', 400, 1950, 2999, 'ware', [0.1, 0.4], { icon: 'wrench' });
+add('elektronik', 'Elektronik & IT-Hardware', 'Stück', 3500, 1960, 2999, 'ware', [0.2, 0.7], { icon: 'cpu', trend: [1960, 1, 2100, 0.35] });
+add('arznei', 'Arzneimittel', 'Stück', 300, 1945, 2999, 'ware', [0.2, 0.4], { icon: 'heart-pulse' });
+add('druck', 'Druckerzeugnisse', 'kg', 150, 1945, 2999, 'ware', [0.02, 0.1], { icon: 'newspaper' });
+// Dienstleistungen (werden an Kundschaft verkauft, nicht zwischen Betrieben gehandelt)
+add('mahlzeit', 'Mahlzeiten & Gästebetreuung', 'Mahlzeit', 120, 1945, 2999, 'dienst', null, { service: true, icon: 'utensils' });
+add('ladenverkauf', 'Ladenverkauf', 'Einkauf', 150, 1945, 2999, 'dienst', null, { service: true, icon: 'shopping-basket' });
+add('bauleistung', 'Bau- und Installationsarbeit', 'Arbeitsstunde', 250, 1945, 2999, 'dienst', null, { service: true, icon: 'hammer' });
+add('handwerk', 'Handwerksleistung', 'Auftrag', 600, 1945, 2999, 'dienst', null, { service: true, icon: 'wrench' });
+add('transport', 'Transport & Fahrten', 'Fahrt', 200, 1945, 2999, 'dienst', null, { service: true, icon: 'truck' });
+add('software', 'Software & IT-Leistung', 'Projekttag', 1500, 1945, 2999, 'dienst', null, { service: true, icon: 'code' });
+add('dienst', 'Dienstleistung', 'Leistung', 300, 1945, 2999, 'dienst', null, { service: true, icon: 'briefcase' });
+
+const good = (key) => GOODS[key] || null;
+const inEra = (g, year) => !!g && year >= g.from && year <= g.to;
+const lerp = (a, b, f) => a + (b - a) * Math.max(0, Math.min(1, f));
+/** Realpreis (Cent 1945 je Einheit) im Jahr, mit optionalem langfristigem Preistrend. */
+function priceReal(g, year) {
+  if (!g.trend) return g.base;
+  const [y0, f0, y1, f1] = g.trend;
+  return g.base * lerp(f0, f1, (year - y0) / Math.max(1, y1 - y0));
+}
+const importShare = (g, year) => lerp(g.imp[0], g.imp[1], (year - 1945) / 155);
+
+/** Preisniveau der Stadt für Waren (1 = Durchschnitt); wirkt auf Einkaufspreise und – damit die Marge gleich bleibt – auf den Umsatz. */
+function cityFactor(world, cityId) {
+  const city = cityId != null && world && world.city ? world.city(cityId) : null;
+  return 1 + (((city && city.price_factor) || 1) - 1) * W().cityW;
+}
+
+/* ------------------------------------------------------------------ Rezepte ------------------------------------------------------------------ */
+// Eintrag in inputs: [Ware, Anteil am Umsatz (zu Marktpreisen), von, bis]; out: [Ware, Anteil]
+const HEAT = (s) => [['kohle', s, 1945, 1964], ['strom', s, 1965, 2999]];
+const REC = {};
+function rec(pkeys, out, ins, label) { for (const k of [].concat(pkeys)) REC[k] = { out, in: ins || [], label: label || null }; }
+const OUT = (g) => [[g, 1]];
+
+// Erzeuger (brauchen nichts)
+rec('landwirt', [['getreide', 0.3], ['milch', 0.25], ['fleisch', 0.25], ['gemuese', 0.2]], []);
+rec('gaertner', OUT('gemuese'), []);
+rec('kutterfischer', OUT('fisch'), []);
+rec('bergmann', OUT('kohle'), []);
+rec('energietechniker', OUT('strom'), []);
+rec('windkraftmonteur', OUT('strom'), []);
+rec('agrartechniker', OUT('dienst'), [['kraftstoff', 0.14, 1950, 2999]]);
+rec('vertikalfarmer', OUT('gemuese'), [['strom', 0.18]]);
+// Nahrung
+rec('muehle', OUT('mehl'), [['getreide', 0.34], ...HEAT(0.03)]);
+rec('baecker', OUT('brot'), [['mehl', 0.24], ['milch', 0.03], ...HEAT(0.04)]);
+rec('konditor', OUT('suessware'), [['mehl', 0.1], ['milch', 0.09], ...HEAT(0.03)]);
+rec('fleischermeister', OUT('wurst'), [['fleisch', 0.34], ...HEAT(0.03)]);
+rec('lebensmitteltechniker', [['brot', 0.35], ['wurst', 0.25], ['suessware', 0.4]], [['mehl', 0.12], ['fleisch', 0.1], ['milch', 0.07], ['strom', 0.05]]);
+rec('wirt', OUT('mahlzeit'), [['fleisch', 0.08], ['gemuese', 0.06], ['bier', 0.08], ['brot', 0.04], ...HEAT(0.04)]);
+rec('servierkraft', OUT('mahlzeit'), [['fleisch', 0.08], ['gemuese', 0.06], ['bier', 0.08], ['brot', 0.04], ...HEAT(0.04)]);
+rec('einzelhandelsverkaeufer', OUT('ladenverkauf'), [['brot', 0.08], ['gemuese', 0.07], ['milch', 0.06], ['wurst', 0.08], ['kleidung', 0.03], ...HEAT(0.03)]);
+rec('kohlenhaendler', OUT('ladenverkauf'), [['kohle', 0.4]]);
+rec('online_haendler', OUT('ladenverkauf'), [['elektronik', 0.14], ['kleidung', 0.08], ['kraftstoff', 0.04, 1945, 2060], ['strom', 0.03]]);
+rec('erzieher', OUT('dienst'), [['milch', 0.05], ['gemuese', 0.05], ['brot', 0.04], ...HEAT(0.03)]);
+// Handwerk & Industrie
+rec('schmied', OUT('eisenwaren'), [['eisen', 0.3], ...HEAT(0.06)]);
+rec('maschinenbauer', OUT('ersatzteile'), [['eisen', 0.28], ['strom', 0.05], ['elektronik', 0.05, 1975, 2999]]);
+rec('tischler', OUT('moebel'), [['holz', 0.3], ['eisenwaren', 0.03], ...HEAT(0.03)]);
+rec('stellmacher', OUT('handwerk'), [['holz', 0.22], ['eisen', 0.06]]);
+rec('schneider', OUT('kleidung'), [['textil', 0.3], ...HEAT(0.02)]);
+rec('textilfachmann', OUT('textil'), [['chemie', 0.1], ['strom', 0.07]]);
+rec('modedesigner', OUT('kleidung'), [['textil', 0.26], ['strom', 0.03]]);
+rec('schuhmachermeister', OUT('kleidung'), [['textil', 0.2], ...HEAT(0.02)]);
+rec('orthopaedieschuhtechniker', OUT('kleidung'), [['textil', 0.18], ['strom', 0.03]]);
+rec('maurer', OUT('bauleistung'), [['baustoffe', 0.28], ['holz', 0.04], ['kraftstoff', 0.03, 1955, 2999]]);
+rec('betonbauer', OUT('baustoffe'), [['eisen', 0.08], ...HEAT(0.08)]);
+rec('dachdecker', OUT('bauleistung'), [['baustoffe', 0.2], ['holz', 0.08]]);
+rec('malermeister', OUT('bauleistung'), [['chemie', 0.18], ['papier', 0.02]]);
+rec('installateur', OUT('bauleistung'), [['eisen', 0.12], ['baustoffe', 0.06]]);
+rec('heizungsbauer', OUT('bauleistung'), [['eisen', 0.14], ['baustoffe', 0.04], ['elektronik', 0.06, 1980, 2999]]);
+rec('waermepumpeninstallateur', OUT('bauleistung'), [['elektronik', 0.2], ['eisen', 0.05]]);
+rec('solartechniker', OUT('bauleistung'), [['elektronik', 0.24], ['eisen', 0.04]]);
+rec('klimatechniker', OUT('bauleistung'), [['elektronik', 0.12], ['strom', 0.05]]);
+rec('elektriker', OUT('handwerk'), [['eisen', 0.1, 1945, 1964], ['elektronik', 0.2, 1965, 2999]]);
+rec('kfz_mechaniker', OUT('handwerk'), [['ersatzteile', 0.3], ['kraftstoff', 0.02]]);
+rec('eauto_techniker', OUT('handwerk'), [['ersatzteile', 0.2], ['elektronik', 0.12], ['strom', 0.03]]);
+rec('uhrmacher', OUT('handwerk'), [['eisen', 0.08]]);
+rec('optiker', OUT('handwerk'), [['eisen', 0.05], ['elektronik', 0.1, 1975, 2999]]);
+rec('zahntechniker', OUT('handwerk'), [['chemie', 0.1], ['strom', 0.03]]);
+rec('fernsehtechniker', OUT('handwerk'), [['elektronik', 0.3]]);
+rec('smarthome_installateur', OUT('handwerk'), [['elektronik', 0.26]]);
+rec('werftarbeiter', OUT('handwerk'), [['eisen', 0.3], ...HEAT(0.05)]);
+rec('mechatroniker', OUT('ersatzteile'), [['eisen', 0.15], ['elektronik', 0.15], ['strom', 0.05]]);
+rec('verfahrenstechniker', OUT('chemie'), [['strom', 0.18], ['kohle', 0.04, 1990, 2040]]);
+rec('druck3d_fachkraft', OUT('ersatzteile'), [['eisen', 0.08], ['chemie', 0.1], ['strom', 0.08]]);
+rec('biotechniker', OUT('arznei'), [['chemie', 0.1], ['strom', 0.12], ['elektronik', 0.06]]);
+rec('robotertechniker', OUT('ersatzteile'), [['elektronik', 0.2], ['eisen', 0.08]]);
+// Energie
+rec('kraftwerkstechniker', OUT('strom'), [['kohle', 0.25, 1945, 2040]]);
+rec('wasserstofftechniker', OUT('kraftstoff'), [['strom', 0.35]]);
+// Verkehr
+rec('fuhrmann', OUT('transport'), [['getreide', 0.12], ['eisen', 0.03]]);
+rec('kraftfahrer', OUT('transport'), [['kraftstoff', 0.2], ['ersatzteile', 0.05]]);
+rec('busfahrer', OUT('transport'), [['kraftstoff', 0.18], ['ersatzteile', 0.04]]);
+rec('taxifahrer', OUT('transport'), [['kraftstoff', 0.15], ['ersatzteile', 0.03]]);
+rec('lagerist', OUT('transport'), [['strom', 0.05]]);
+rec('hafenlogistiker', OUT('transport'), [['kraftstoff', 0.1], ['strom', 0.06]]);
+rec('logistiker', OUT('transport'), [['strom', 0.1], ['elektronik', 0.08]]);
+rec('paketzusteller', OUT('transport'), [['kraftstoff', 0.12], ['papier', 0.03]]);
+rec('drohnenpilot', OUT('transport'), [['elektronik', 0.15], ['strom', 0.05]]);
+rec('flottenbetreuer', OUT('transport'), [['strom', 0.12], ['ersatzteile', 0.08]]);
+rec('weltraum_logistiker', OUT('transport'), [['kraftstoff', 0.2], ['elektronik', 0.1]]);
+rec('lieferroboter_betreuer', OUT('transport'), [['elektronik', 0.12], ['strom', 0.08]]);
+// Medien, Büro, Technik
+rec(['journalist', 'schriftsetzer'], OUT('druck'), [['papier', 0.22], ['strom', 0.04]]);
+rec('mediengestalter', OUT('dienst'), [['druck', 0.06], ['strom', 0.04]]);
+rec('werbekaufmann', OUT('dienst'), [['druck', 0.06], ['papier', 0.03]]);
+rec('fotograf', OUT('dienst'), [['chemie', 0.06, 1945, 1999], ['elektronik', 0.06, 2000, 2999], ['papier', 0.04]]);
+rec('kinovorfuehrer', OUT('dienst'), [['strom', 0.06]]);
+rec('radiomoderator', OUT('dienst'), [['strom', 0.06]]);
+rec(['it_fachmann', 'webentwickler', 'programmierer', 'systemadministrator', 'app_entwickler', 'cybersecurity_spezialist'], OUT('software'), [['elektronik', 0.12], ['strom', 0.06]]);
+rec('ki_techniker', OUT('software'), [['elektronik', 0.15], ['strom', 0.12]]);
+rec(['webdesigner', 'content_creator', 'social_media_manager', 'influencer_manager', 'vr_designer'], OUT('software'), [['elektronik', 0.08], ['strom', 0.06]]);
+// Dienste mit Zutaten
+rec('friseur', OUT('dienst'), [['chemie', 0.06], ...HEAT(0.04)]);
+rec('gebaeudereiniger', OUT('dienst'), [['chemie', 0.15], ['strom', 0.03]]);
+rec('fitnesstrainer', OUT('dienst'), [['strom', 0.08], ['chemie', 0.02]]);
+rec(['pflegekraft', 'krankenpfleger'], OUT('dienst'), [['arznei', 0.12], ['brot', 0.04]]);
+rec('pflegeroboter_betreuer', OUT('dienst'), [['elektronik', 0.1], ['strom', 0.05]]);
+rec('arzt', OUT('dienst'), [['arznei', 0.12], ['strom', 0.03]]);
+rec('zahnarzt', OUT('dienst'), [['arznei', 0.1], ['strom', 0.03]]);
+rec('tierarzt', OUT('dienst'), [['arznei', 0.12], ['strom', 0.03]]);
+rec('apotheker', OUT('ladenverkauf'), [['arznei', 0.3]]);
+rec(['reisekaufmann', 'versicherungskaufmann', 'buchhalter', 'callcenter_agent', 'finanzwirt', 'jurist', 'architekt', 'ingenieur', 'lehrer', 'psychologe', 'umweltberater'], OUT('dienst'), [['papier', 0.03], ['strom', 0.04], ['elektronik', 0.04, 1985, 2999]]);
+
+// Rückfall nach Berufskategorie (für vom Admin neu angelegte Berufe)
+const CAT = {
+  landwirtschaft: { out: OUT('gemuese'), in: [] },
+  energie: { out: OUT('strom'), in: [] },
+  handwerk: { out: OUT('handwerk'), in: [['eisen', 0.12], ...HEAT(0.03)] },
+  industrie: { out: OUT('ersatzteile'), in: [['eisen', 0.2], ['strom', 0.08]] },
+  bau: { out: OUT('bauleistung'), in: [['baustoffe', 0.2]] },
+  verkehr: { out: OUT('transport'), in: [['kraftstoff', 0.15]] },
+  gastronomie: { out: OUT('mahlzeit'), in: [['fleisch', 0.08], ['gemuese', 0.06], ['bier', 0.08], ['brot', 0.04], ...HEAT(0.04)] },
+  technik: { out: OUT('software'), in: [['elektronik', 0.1], ['strom', 0.06]] },
+  kreativ: { out: OUT('dienst'), in: [['papier', 0.04], ['strom', 0.04]] },
+  akademisch: { out: OUT('dienst'), in: [['papier', 0.03], ['strom', 0.03]] },
+  dienstleistung: { out: OUT('dienst'), in: [['papier', 0.03], ['strom', 0.04]] },
+};
+
+/** Rezept eines Berufs/Betriebs (Rückfall auf die Kategorie, zuletzt eine schlanke Dienstleistung). */
+function recipeFor(world, pkey) {
+  if (REC[pkey]) return REC[pkey];
+  const p = world && world.prof ? world.prof(pkey) : null;
+  return CAT[(p && p.category) || ''] || CAT.dienstleistung;
+}
+
+/**
+ * Rezept im gegebenen Jahr: nur Zutaten, die es dann gibt; mult = Umsatzaufschlag für die Wareneinsätze
+ * (Umsatz = Basisumsatz / (1 − Wareneinsatzquote im Großhandel)), damit die Marge bei Großhandelseinkauf unverändert bleibt.
+ */
+function activeRecipe(world, pkey, year, cityId) {
+  const w = W();
+  const r = recipeFor(world, pkey);
+  const inputs = [];
+  if (w.on) {
+    for (const [gk, share, from, to] of r.in) {
+      const g = GOODS[gk];
+      if (!g || !inEra(g, year)) continue;
+      if (year < (from || 0) || year > (to || 99999)) continue;
+      inputs.push({ good: gk, share });
+    }
+  }
+  const out = r.out.filter(([gk]) => GOODS[gk]).map(([gk, share]) => ({ good: gk, share }));
+  const c = Math.min(0.6, inputs.reduce((s, x) => s + x.share, 0) * (1 + w.markup) * cityFactor(world, cityId));
+  return { out, inputs, primary: !inputs.length, mult: w.on ? 1 / (1 - c) : 1, wholesaleShare: c };
+}
+
+/* ------------------------------------------------------------------ Markt: Knappheit und Politik ------------------------------------------------------------------ */
+let SCARCITY = new Map(); // `${cityId}|${ware}` → Faktor
+const emptyPolicy = () => ({ city: new Map(), region: new Map(), nation: { vat: 0, tariff: 0, subsidy: {}, levy: 0, frame: null } });
+let POL = emptyPolicy();
+
+const scarcity = (cityId, key) => SCARCITY.get(`${cityId}|${key}`) || 1;
+function setScarcity(map) { SCARCITY = map instanceof Map ? map : new Map(); }
+function setPolicies(pol) { POL = pol || emptyPolicy(); }
+const currentPolicies = () => POL;
+
+/**
+ * Knappheit je (Stadt, Ware) aus den veröffentlichten Betrieben (player_firms ∪ player_stats.year).
+ * rows: [{city_id, pkey, tier, rooms, year}]. Marktgröße der Stadt (NPC-Grundlast) = Konkurrenz-Obergrenze × Umsatz je Raum.
+ */
+function computeScarcity(world, rows) {
+  const w = W(); const comp = settings.get('competition') || {}; const tiers = (world.econ.companies || {}).tiers || [];
+  const S = new Map(); const D = new Map();
+  for (const r of rows || []) {
+    const city = world.city(r.city_id); if (!city) continue;
+    const t = tiers[Math.max(0, Math.min(tiers.length - 1, Number(r.tier) || 0))]; if (!t) continue;
+    const year = Number(r.year) || 1945;
+    const ar = activeRecipe(world, r.pkey, year, r.city_id);
+    const rev = (Number(r.rooms) || 0) * t.incomePerRoom * (0.7 + 0.15 * city.size_tier) * ar.mult; // Umsatz je Tag (Wert 1945)
+    for (const o of ar.out) { const k = `${r.city_id}|${o.good}`; S.set(k, (S.get(k) || 0) + rev * o.share); }
+    for (const i of ar.inputs) { const k = `${r.city_id}|${i.good}`; D.set(k, (D.get(k) || 0) + rev * i.share); }
+  }
+  const out = new Map();
+  const keys = new Set([...S.keys(), ...D.keys()]);
+  for (const k of keys) {
+    const [cid, gk] = k.split('|'); const g = GOODS[gk]; if (!g || g.service) continue;
+    const city = world.city(Number(cid)); const cap = ((comp.cap && comp.cap[city ? city.size_tier : 2]) || 10);
+    const N = cap * 420 * 1.5; // Grundlast der Stadt, in Wert 1945 je Tag
+    const ratio = (N + (D.get(k) || 0)) / (N + (S.get(k) || 0));
+    const f = Math.max(w.sMin, Math.min(w.sMax, Math.pow(ratio, w.strength)));
+    if (Math.abs(f - 1) > 0.002) out.set(k, f);
+  }
+  return out;
+}
+
+/**
+ * Politik-Zeilen (goods_policies, nur gültige) zu Wirkungen verdichten.
+ * row: {office_idx, kind, good, val, scope_city, region}. Gegenfinanzierung (levy) trifft alle Betriebe im Geltungsbereich.
+ */
+function buildPolicies(rows) {
+  const P = cfg().policy || {}; const lev = clampN(P.levyPerSubsidy, 0.15, 0, 2);
+  const pol = emptyPolicy();
+  for (const r of rows || []) {
+    const val = Number(r.val); if (!Number.isFinite(val)) continue;
+    const city = () => { if (!pol.city.has(r.scope_city)) pol.city.set(r.scope_city, { surcharge: 0, subsidy: {}, levy: 0 }); return pol.city.get(r.scope_city); };
+    const reg = () => { if (!pol.region.has(r.region)) pol.region.set(r.region, { support: {}, levy: 0 }); return pol.region.get(r.region); };
+    if (r.kind === 'surcharge') city().surcharge = val;
+    else if (r.kind === 'subsidy' && GOODS[r.good]) { const c = city(); c.subsidy[r.good] = Math.max(c.subsidy[r.good] || 0, val); c.levy += val * lev; }
+    else if (r.kind === 'support' && GOODS[r.good]) { const c = reg(); c.support[r.good] = Math.max(c.support[r.good] || 0, val); c.levy += val * lev * 0.7; }
+    else if (r.kind === 'natsubsidy' && GOODS[r.good]) { pol.nation.subsidy[r.good] = Math.max(pol.nation.subsidy[r.good] || 0, val); pol.nation.levy += val * lev; }
+    else if (r.kind === 'vat') pol.nation.vat = val;
+    else if (r.kind === 'tariff') pol.nation.tariff = val;
+    else if (r.kind === 'frame') { const f = (P.frames || {})[r.good]; if (f) pol.nation.frame = { key: r.good, maxSurcharge: clampN(f.maxSurcharge, 4, 0, 20), maxSubsidy: clampN(f.maxSubsidy, 20, 0, 60), name: f.name || r.good }; }
+  }
+  return pol;
+}
+
+/** Rahmen (Bundestag) – ohne Beschluss gelten die Standardgrenzen aus den Einstellungen. */
+function frame() {
+  const P = cfg().policy || {};
+  if (POL.nation.frame) return POL.nation.frame;
+  return { key: null, maxSurcharge: clampN(P.surchargeMax, 4, 0, 20), maxSubsidy: clampN(P.subsidyMax, 20, 0, 60), name: 'Standard' };
+}
+
+/** Alle Wirkungen der Politik auf einen Betrieb in einer Stadt. */
+function effectsFor(world, cityId) {
+  const P = cfg().policy || {};
+  const on = P.enabled !== false;
+  const out = { surcharge: 0, levy: 0, vat: 0, tariff: 0, subsidy: {}, support: {} };
+  if (!on) return out;
+  const city = world.city(cityId); const region = city ? city.state : '';
+  const c = POL.city.get(cityId); const r = POL.region.get(region); const n = POL.nation;
+  const fr = frame();
+  if (c) out.surcharge = Math.max(clampN(P.surchargeMin, -2, -20, 0), Math.min(fr.maxSurcharge, c.surcharge || 0));
+  out.levy = (c ? c.levy : 0) + (r ? r.levy : 0) + n.levy;
+  out.vat = Math.max(clampN(P.vatMin, -3, -20, 0), Math.min(clampN(P.vatMax, 5, 0, 30), n.vat || 0));
+  out.tariff = Math.max(clampN(P.tariffMin, -10, -50, 0), Math.min(clampN(P.tariffMax, 20, 0, 100), n.tariff || 0));
+  for (const [g, v] of Object.entries(n.subsidy)) out.subsidy[g] = v;
+  if (c) for (const [g, v] of Object.entries(c.subsidy)) out.subsidy[g] = Math.min(40, (out.subsidy[g] || 0) + v);
+  if (r) out.support = { ...r.support };
+  return out;
+}
+
+/* ------------------------------------------------------------------ Preise ------------------------------------------------------------------ */
+/**
+ * Preise einer Ware in einer Stadt (Cent je Einheit in Preisen des Spieljahres):
+ * base = Basispreis · Index, market = Marktpreis (Stadt, Knappheit, Zoll), buy = Großhandels-Einkaufspreis, sell = Großhandels-Ankaufspreis.
+ */
+function price(world, cityId, key, year) {
+  const g = GOODS[key]; const w = W();
+  if (!g) return null;
+  const idx = world.idx(year); const ef = effectsFor(world, cityId);
+  const imp = importShare(g, year);
+  const cityF = cityFactor(world, cityId);
+  const scar = g.service ? 1 : scarcity(cityId, key);
+  const tariff = 1 + (ef.tariff / 100) * imp;
+  const base = priceReal(g, year) * idx;
+  const market = base * cityF * scar * tariff;
+  const protect = 1 + 0.5 * (ef.tariff / 100) * imp; // Zoll schützt die heimischen Erzeuger
+  const support = 1 + (ef.support[key] || 0) / 100;
+  return {
+    key, base, market, scar, imp, tariffPct: ef.tariff * imp, subsidy: ef.subsidy[key] || 0, support: ef.support[key] || 0,
+    buy: market * (1 + w.markup), sell: base * cityF * scar * (1 - w.discount) * protect * support,
+  };
+}
+const scarcityLabel = (f) => (f >= 1.12 ? 'knapp' : f <= 0.9 ? 'reichlich' : 'normal');
+
+/** Politik-Faktor auf den Umsatz der Erzeugnisse: Preisstützung (Land) und Zollschutz (Bund) je Ware, gewichtet mit dem Umsatzanteil. */
+function outputFactor(ar, year, ef) {
+  let f = 0;
+  for (const o of ar.out) {
+    const g = GOODS[o.good];
+    if (!g || g.service) { f += o.share; continue; }
+    f += o.share * (1 + (ef.support[o.good] || 0) / 100) * (1 + 0.5 * (ef.tariff / 100) * importShare(g, year));
+  }
+  return f > 0 ? f : 1;
+}
+
+/* ------------------------------------------------------------------ Versorgung eines Betriebs ------------------------------------------------------------------ */
+const contractsOf = (state) => (state && state.contracts && typeof state.contracts === 'object' ? state.contracts : { buys: [], sells: [] });
+
+/**
+ * Einkauf: Bedarf je Zutat, Deckung durch Verträge (günstigste zuerst) und – wenn „Automatisch einkaufen“ an ist – Großhandel.
+ * rPot = Umsatz bei voller Versorgung (Cent/Tag). Rein (keine Nebenwirkungen).
+ */
+function buyPlan(world, state, c, year, rPot, ar, w) {
+  const idx = world.idx(year);
+  const auto = c.autoBuy !== false;
+  const buys = (contractsOf(state).buys || []).filter((b) => b && b.firmId === c.id && !b.ended && GOODS[b.good]);
+  const needs = []; const pays = [];
+  let wsum = 0; let wfill = 0; let costC = 0; let costW = 0; let subsidy = 0;
+  for (const inp of ar.inputs) {
+    const g = GOODS[inp.good]; const p = price(world, c.cityId, g.key, year);
+    const unitBase = priceReal(g, year) * idx;
+    const need = unitBase > 0 ? (rPot * inp.share) / unitBase : 0;
+    let left = need; let byC = 0; let cents = 0;
+    const mine = buys.filter((b) => b.good === g.key).sort((a, b) => a.price - b.price);
+    const used = [];
+    for (const b of mine) {
+      if (left <= 1e-9) break;
+      const fill = b.fill == null ? 1 : Math.max(0, Math.min(1, Number(b.fill) || 0));
+      const give = Math.min(left, Math.max(0, Number(b.qty) || 0) * fill);
+      if (give <= 1e-9) continue;
+      const cc = Math.round(give * (Number(b.price) || 0) * idx);
+      used.push({ id: b.id, units: give, cents: cc, sellerId: b.sellerId, sellerFirm: b.sellerFirm, sellerName: b.sellerName });
+      pays.push({ id: b.id, sellerId: b.sellerId, sellerFirm: b.sellerFirm, cents: cc, units: give });
+      byC += give; left -= give; cents += cc;
+    }
+    const byW = auto ? Math.max(0, left) : 0;
+    const missing = Math.max(0, left - byW);
+    const cw = Math.round(byW * p.buy);
+    const sub = Math.min(cents + cw, Math.round((p.subsidy / 100) * (byC + byW) * p.market));
+    costC += cents; costW += cw; subsidy += sub;
+    wsum += inp.share; wfill += inp.share * (need > 0 ? Math.min(1, (byC + byW) / need) : 1);
+    needs.push({
+      good: g.key, name: g.name, unit: g.unit, icon: g.icon, need, byContract: byC, byWholesale: byW, missing, contracts: used,
+      costContract: cents, costWholesale: cw, subsidy: sub, price: p.buy, market: p.market, scar: p.scar, scarLabel: scarcityLabel(p.scar), subsidyPct: p.subsidy,
+      share: inp.share, fill: need > 0 ? Math.min(1, (byC + byW) / need) : 1,
+    });
+  }
+  const ratio = wsum > 0 ? wfill / wsum : 1;
+  const status = !needs.length ? 'none' : ratio >= 0.9 ? 'ok' : ratio >= 0.5 ? 'tight' : 'missing';
+  const factor = needs.length ? w.floor + (1 - w.floor) * ratio : 1;
+  return { auto, needs, pays, ratio, factor, status, costContract: costC, costWholesale: costW, subsidy, cost: Math.max(0, costC + costW - subsidy) };
+}
+
+/**
+ * Verkauf: Teile der Produktion können per Liefervertrag an andere Betriebe gehen (Bezahlung kommt vom Käufer);
+ * der Rest läuft über Kundschaft/Großhandel (im Umsatz enthalten). rAct = Umsatz nach Versorgung. Rein.
+ */
+function sellPlan(world, state, c, year, rAct, ar, w) {
+  const idx = world.idx(year);
+  const sells = (contractsOf(state).sells || []).filter((s) => s && s.firmId === c.id && GOODS[s.good]);
+  const outputs = []; const fills = {}; let npcShare = 1; let contractIncome = 0;
+  for (const o of ar.out) {
+    const g = GOODS[o.good];
+    const unitSell = priceReal(g, year) * idx * (1 - w.discount);
+    const units = unitSell > 0 ? (rAct * o.share) / unitSell : 0;
+    const mine = g.service ? [] : sells.filter((s) => s.good === g.key);
+    const committed = mine.reduce((s, x) => s + Math.max(0, Number(x.qty) || 0), 0);
+    const fill = committed > 0 ? Math.min(1, units / committed) : 1;
+    const phi = units > 0 ? Math.min(committed, units) / units : 0;
+    npcShare -= o.share * phi;
+    let ci = 0;
+    for (const s of mine) { fills[s.id] = fill; ci += Math.max(0, Number(s.qty) || 0) * fill * (Number(s.price) || 0) * idx; }
+    contractIncome += ci;
+    outputs.push({ good: g.key, name: g.name, unit: g.unit, icon: g.icon, service: g.service, units, share: o.share, byContract: Math.min(committed, units), committed, fill, income: Math.round(ci) });
+  }
+  return { outputs, fills, npcShare: Math.max(0, Math.min(1, npcShare)), contractIncome: Math.round(contractIncome), contracts: sells.length };
+}
+
+/* ------------------------------------------------------------------ Politik: Befugnisse eines Amtes ------------------------------------------------------------------ */
+// Amt (Index in economy.politics.offices) → mögliche Beschlüsse
+const POWERS = {
+  1: ['surcharge'],
+  2: ['surcharge', 'subsidy'],
+  3: ['support'],
+  4: ['frame'],
+  5: ['vat', 'tariff', 'natsubsidy'],
+};
+const KINDS = {
+  surcharge: { name: 'Gewerbesteuer-Zuschlag', scope: 'city', what: 'Punkte auf die Gewerbesteuer aller Betriebe in deiner Stadt' },
+  subsidy: { name: 'Stadt-Subvention', scope: 'city', what: 'Zuschuss auf den Einkauf einer Ware für alle Betriebe in deiner Stadt' },
+  support: { name: 'Preisstützung (Land)', scope: 'region', what: 'höherer Verkaufspreis einer Ware für Erzeuger in deinem Bundesland' },
+  frame: { name: 'Rahmen (Bund)', scope: 'nation', what: 'Obergrenzen für Gewerbesteuer-Zuschlag und Subventionen im ganzen Land' },
+  vat: { name: 'Mehrwertsteuer auf Waren', scope: 'nation', what: 'Punkte auf die Wertschöpfung (Umsatz minus Wareneinkauf) aller Betriebe' },
+  tariff: { name: 'Einfuhrzoll', scope: 'nation', what: 'Prozent Aufschlag auf den importierten Anteil aller Waren' },
+  natsubsidy: { name: 'Branchen-Subvention (Bund)', scope: 'nation', what: 'Zuschuss auf den Einkauf einer Ware für alle Betriebe im Land' },
+};
+const tradable = (year) => Object.values(GOODS).filter((g) => !g.service && inEra(g, year));
+
+/** Befugnisse eines Amts mit den aktuell geltenden Grenzen (für die Oberfläche). */
+function powersOf(world, officeIdx, year) {
+  const P = cfg().policy || {}; const fr = frame();
+  const kinds = P.enabled === false ? [] : (POWERS[officeIdx] || []);
+  const goodsList = tradable(year).map((g) => ({ key: g.key, name: g.name }));
+  return kinds.map((k) => {
+    const base = { kind: k, ...KINDS[k] };
+    if (k === 'surcharge') return { ...base, min: clampN(P.surchargeMin, -2, -20, 0), max: fr.maxSurcharge, step: 1, unit: 'Punkte' };
+    if (k === 'subsidy' || k === 'natsubsidy') return { ...base, goods: goodsList, options: [5, 10, 15, 20, 30].filter((v) => v <= Math.min(clampN(P.subsidyMax, 20, 0, 60), fr.maxSubsidy)), unit: '%' };
+    if (k === 'support') return { ...base, goods: goodsList, options: [5, 10, 15].filter((v) => v <= clampN(P.supportMax, 15, 0, 60)), unit: '%' };
+    if (k === 'vat') return { ...base, min: clampN(P.vatMin, -3, -20, 0), max: clampN(P.vatMax, 5, 0, 30), step: 1, unit: 'Punkte' };
+    if (k === 'tariff') return { ...base, min: clampN(P.tariffMin, -10, -50, 0), max: clampN(P.tariffMax, 20, 0, 100), step: 5, unit: '%' };
+    if (k === 'frame') return { ...base, frames: Object.entries(P.frames || {}).map(([key, f]) => ({ key, name: f.name || key, maxSurcharge: f.maxSurcharge, maxSubsidy: f.maxSubsidy })) };
+    return base;
+  });
+}
+
+/** Prüft und normalisiert einen Beschluss; wirft bei ungültigen Werten. Rückgabe: Zeile für goods_policies. */
+function normalizePolicy(world, officeIdx, city, year, input) {
+  const kind = String(input && input.kind || '');
+  const power = powersOf(world, officeIdx, year).find((x) => x.kind === kind);
+  if (!power) throw new Error('Dieses Amt hat dafür keine Befugnis.');
+  const row = { office_idx: officeIdx, kind, good: null, val: 0, scope_city: 0, region: null };
+  if (power.scope === 'city') row.scope_city = city ? city.id : 0;
+  if (power.scope === 'region') row.region = city ? city.state : null;
+  if (power.scope === 'city' && !row.scope_city) throw new Error('Dir fehlt eine Heimatstadt.');
+  if (power.scope === 'region' && !row.region) throw new Error('Dir fehlt eine Heimatregion.');
+  const num = Number(input.value);
+  if (kind === 'surcharge' || kind === 'vat' || kind === 'tariff') {
+    if (!Number.isFinite(num) || Math.round(num) !== num) throw new Error('Bitte einen ganzzahligen Wert wählen.');
+    if (num < power.min || num > power.max) throw new Error(`Erlaubt sind Werte von ${power.min} bis ${power.max}.`);
+    if (kind === 'tariff' && num % 5 !== 0) throw new Error('Der Zoll wird in 5er-Schritten festgelegt.');
+    row.val = num;
+  } else if (kind === 'subsidy' || kind === 'natsubsidy' || kind === 'support') {
+    const g = String(input.good || '');
+    if (!power.goods.some((x) => x.key === g)) throw new Error('Bitte eine handelbare Ware wählen.');
+    if (!power.options.includes(num)) throw new Error('Dieser Satz ist nicht erlaubt (siehe Rahmen).');
+    row.good = g; row.val = num;
+  } else if (kind === 'frame') {
+    const key = String(input.good || input.value || '');
+    if (!power.frames.some((x) => x.key === key)) throw new Error('Unbekannter Rahmen.');
+    row.good = key; row.val = 1;
+  }
+  return row;
+}
+
+/** Kurz erklärte Wirkung eines Beschlusses (Zahlen; die Oberfläche formuliert daraus Sätze). */
+function previewPolicy(world, row, year) {
+  const P = cfg().policy || {}; const lev = clampN(P.levyPerSubsidy, 0.15, 0, 2);
+  const g = row.good ? GOODS[row.good] : null;
+  const out = { kind: row.kind, good: g ? g.name : null, value: row.val, unit: g ? g.unit : null, lines: [] };
+  const L = (key, a, b, c) => out.lines.push({ key, a, b, c });
+  if (row.kind === 'surcharge') L('surcharge', row.val, Math.round(row.val * 10) / 10); // Punkte, Euro je 100 Gewinn
+  else if (row.kind === 'subsidy' || row.kind === 'natsubsidy') { L('subsidy', row.val, g.name); L('levy', Math.round(row.val * lev * 10) / 10); }
+  else if (row.kind === 'support') { L('support', row.val, g.name); L('levy', Math.round(row.val * lev * 0.7 * 10) / 10); }
+  else if (row.kind === 'vat') L('vat', row.val);
+  else if (row.kind === 'tariff') {
+    const ex = ['kraftstoff', 'elektronik', 'kleidung', 'fisch'].filter((k) => inEra(GOODS[k], year)).map((k) => ({ name: GOODS[k].name, imp: Math.round(importShare(GOODS[k], year) * 100), up: Math.round(row.val * importShare(GOODS[k], year) * 10) / 10 }));
+    L('tariff', row.val, ex);
+  } else if (row.kind === 'frame') { const f = (P.frames || {})[row.good] || {}; L('frame', f.maxSurcharge, f.maxSubsidy, f.name || row.good); }
+  return out;
+}
+
+/** Beispielkatalog für die Oberfläche (Waren der Epoche mit Preisen in der Stadt). */
+function priceList(world, cityId, year, keys) {
+  const list = keys && keys.length ? keys.map((k) => GOODS[k]).filter(Boolean) : tradable(year);
+  return list.filter((g) => inEra(g, year)).map((g) => {
+    const p = price(world, cityId, g.key, year);
+    return { key: g.key, name: g.name, unit: g.unit, icon: g.icon, service: g.service, base: Math.round(p.base * 100) / 100, buy: Math.round(p.buy * 100) / 100, sell: Math.round(p.sell * 100) / 100, scarLabel: scarcityLabel(p.scar), subsidy: p.subsidy, tariffPct: Math.round(p.tariffPct * 10) / 10, support: p.support };
+  });
+}
+
+/** Beispiel-Lieferketten für die Erklärung „Warenkreislauf“: Schritte mit Berufsschlüssel (zum Hervorheben eigener Betriebe). */
+const CHAINS = [
+  { name: 'Brot', steps: [{ label: 'Bauernhof', pkey: 'landwirt', good: 'getreide' }, { label: 'Mühle', pkey: 'muehle', good: 'mehl' }, { label: 'Bäckerei', pkey: 'baecker', good: 'brot' }, { label: 'Ladengeschäft', pkey: 'einzelhandelsverkaeufer', good: 'ladenverkauf' }] },
+  { name: 'Fleisch & Gaststätte', steps: [{ label: 'Bauernhof', pkey: 'landwirt', good: 'fleisch' }, { label: 'Fleischerei', pkey: 'fleischermeister', good: 'wurst' }, { label: 'Wirtshaus', pkey: 'wirt', good: 'mahlzeit' }] },
+  { name: 'Möbel', steps: [{ label: 'Holz (Großhandel)', pkey: null, good: 'holz' }, { label: 'Tischlerei', pkey: 'tischler', good: 'moebel' }, { label: 'Ladengeschäft', pkey: 'einzelhandelsverkaeufer', good: 'ladenverkauf' }] },
+  { name: 'Hausbau', steps: [{ label: 'Betonwerk', pkey: 'betonbauer', good: 'baustoffe' }, { label: 'Baufirma', pkey: 'maurer', good: 'bauleistung' }, { label: 'Dachdecker', pkey: 'dachdecker', good: 'bauleistung' }] },
+  { name: 'Strom & Technik', steps: [{ label: 'Zeche', pkey: 'bergmann', good: 'kohle' }, { label: 'Kraftwerk', pkey: 'kraftwerkstechniker', good: 'strom' }, { label: 'IT-Firma', pkey: 'it_fachmann', good: 'software' }] },
+];
+
+module.exports = {
+  GOODS, KINDS, POWERS, CHAINS, REC, enabled, W, good, inEra, priceReal, importShare, recipeFor, activeRecipe,
+  setScarcity, computeScarcity, scarcity, scarcityLabel, setPolicies, buildPolicies, currentPolicies, frame, effectsFor, price, priceList,
+  outputFactor, buyPlan, sellPlan, powersOf, normalizePolicy, previewPolicy, tradable,
+};

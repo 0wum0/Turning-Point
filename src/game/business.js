@@ -53,7 +53,7 @@ function companyFlows(world, state, c, year) {
   const idx = world.idx(year);
   const econ = world.econ.companies;
   const t = tiersOf(world)[c.tier];
-  if (c.abandoned) return { income: 0, wages: 0, upkeep: 0, profit: 0, efficiency: 0, needed: 0 };
+  if (c.abandoned) return { income: 0, wages: 0, upkeep: 0, profit: 0, efficiency: 0, needed: 0, inputs: 0, vat: 0, contractIncome: 0, profitAll: 0 };
   const needed = staffNeeded(world, c);
   const ownerHere = state.occupation && state.occupation.ownCompanyId === c.id ? 1 : 0;
   const ps = c.playerStaff || [];
@@ -61,11 +61,32 @@ function companyFlows(world, state, c, year) {
   const strike = c.strikeUntil && state.day < c.strikeUntil ? 0 : 1;
   const comp = require('./competition').info(world, c.cityId, c.pkey, c.rooms);
   const hit = c.hit && state.day < c.hit.until ? c.hit.factor : 1; const outage = c.outageUntil && state.day < c.outageUntil ? 0 : 1;
-  const income = Math.round(c.rooms * t.incomePerRoom * idx * cityMult(world.city(c.cityId)) * eff * marketPhase(year).factor * strike * comp.factor * hit * outage);
+  const raw = c.rooms * t.incomePerRoom * idx * cityMult(world.city(c.cityId)) * eff * marketPhase(year).factor * strike * comp.factor * hit * outage;
+  // Warenkreislauf: Rezept, Versorgung, Verträge, Politik (siehe goods.js). Ohne Rezeptzutaten/aus: identisch zur früheren Rechnung.
+  const goods = require('./goods'); const gw = goods.W();
+  const ar = goods.activeRecipe(world, c.pkey, year, c.cityId);
+  const ef = goods.effectsFor(world, c.cityId);
+  const rPot = Math.round(raw * ar.mult * goods.outputFactor(ar, year, ef));
+  const buy = goods.buyPlan(world, state, c, year, rPot, ar, gw);
+  const rAct = Math.round(rPot * buy.factor);
+  const sell = goods.sellPlan(world, state, c, year, rAct, ar, gw);
+  const income = Math.round(rAct * sell.npcShare);
   const wages = Math.round(c.staff * econ.staffWage * idx + (c.manager ? econ.managerWage * idx : 0) + ps.reduce((s, x) => s + x.wage * idx, 0) + (c.playerManager ? c.playerManager.wage * idx : 0));
   const upkeep = Math.round((companyValue(world, state, c, year) * econ.upkeepYearPct) / 100 / 365) + (c.security ? Math.round(c.rooms * t.incomePerRoom * idx * 0.04) : 0);
-  const pretax = income - wages - upkeep; const tax = require('./tax').corporateTax(pretax);
-  return { income, wages, upkeep, tax, pretax, profit: pretax - tax, efficiency: eff, needed, comp };
+  const inputs = buy.cost;
+  const vat = Math.round((ef.vat / 100) * Math.max(0, income - inputs));
+  const pretax = income - wages - upkeep - inputs - vat;
+  const taxer = require('./tax');
+  const tax = pretax > 0 ? Math.max(0, taxer.corporateTax(pretax) + Math.round((pretax * (ef.surcharge + ef.levy)) / 100)) : 0;
+  const profit = pretax - tax;
+  return {
+    income, wages, upkeep, tax, pretax, profit, efficiency: eff, needed, comp, inputs, vat, contractIncome: sell.contractIncome, profitAll: profit + sell.contractIncome,
+    supply: {
+      on: gw.on, primary: ar.primary, status: buy.status, ratio: buy.ratio, factor: buy.factor, auto: buy.auto, needs: buy.needs, pays: buy.pays, outputs: sell.outputs, fills: sell.fills,
+      costContract: buy.costContract, costWholesale: buy.costWholesale, subsidy: buy.subsidy, cost: buy.cost, contractIncome: sell.contractIncome,
+      policy: { surcharge: ef.surcharge, levy: Math.round(ef.levy * 10) / 10, vat: ef.vat, tariff: ef.tariff },
+    },
+  };
 }
 
 function netBusinessValue(world, state, year) {
@@ -144,11 +165,36 @@ function businessDaily(ctx) {
     const f = companyFlows(world, state, c, year);
     c.cash += f.profit;
     c.lastProfit = f.profit;
+    settleContracts(state, c, f, world.idx(year));
     if (c.stock) require('../lib/exchange').dividend(ctx, c, f.profit);
     if (c.cash < 0) {
       state.money += c.cash; state.stats.spent += -c.cash; c.cash = 0;
       if (ctx.offline) { c.staff = Math.max(0, c.staff - 1); }
     }
+  }
+}
+
+/**
+ * Lieferverträge buchen (reine Zustandsänderung, die DB-Gutschrift folgt beim Speichern – siehe lib/supply.js):
+ * Der Käufer zahlt in seiner Zeit, die Gutschrift für den Verkäufer wird in „realem“ Wert (÷ eigener Preisindex) vorgemerkt.
+ * Verkäufer merken sich, zu wie viel Prozent sie liefern konnten (fill); Käufer zählen die Laufzeit herunter.
+ */
+function settleContracts(state, c, f, idxNow) {
+  const sp = f.supply; const K = state.contracts;
+  if (!sp || !K) return;
+  const idx = Math.max(0.0001, idxNow || 1);
+  for (const p of sp.pays || []) {
+    if (!(p.cents > 0) || !p.sellerId) continue;
+    const q = state.pending.supply || (state.pending.supply = []);
+    let e = q.find((x) => x.id === p.id);
+    if (!e) { e = { id: p.id, userId: p.sellerId, firm: p.sellerFirm, real: 0, what: c.name }; q.push(e); }
+    e.real += p.cents / idx;
+  }
+  for (const s of K.sells || []) if (s.firmId === c.id && sp.fills && sp.fills[s.id] != null) s.fill = Math.round(sp.fills[s.id] * 1000) / 1000;
+  for (const b of K.buys || []) {
+    if (b.firmId !== c.id || b.ended) continue;
+    b.daysLeft = (b.daysLeft == null ? b.term || 30 : b.daysLeft) - 1;
+    if (b.daysLeft <= 0) { if (b.auto) b.daysLeft = b.term || 30; else b.ended = true; }
   }
 }
 
@@ -193,4 +239,4 @@ function bizListings(world, state, city, week) {
   return out;
 }
 
-module.exports = { marketPhase, qualification, companyValue, companyFlows, staffNeeded, businessDaily, bizListings, tierName, chainNames, netBusinessValue, tiersOf, cityMult };
+module.exports = { settleContracts, marketPhase, qualification, companyValue, companyFlows, staffNeeded, businessDaily, bizListings, tierName, chainNames, netBusinessValue, tiersOf, cityMult };
