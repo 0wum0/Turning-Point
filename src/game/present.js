@@ -13,6 +13,7 @@ const { mediumFor } = require('./newspaper');
 const biz = require('./business');
 const society = require('./society');
 const onboarding = require('./onboarding');
+const cityecon = require('./cityecon');
 
 const round = (n) => Math.round(n);
 
@@ -71,6 +72,12 @@ function goodsView(world, state, year) {
   };
 }
 
+/** Stadtwirtschaft in Kurzform für „Was jetzt?“ und die Kopfzeile: Mietanteil am Einkommen und günstigere Nachbarstädte. */
+function econView(world, state, year, flows) {
+  if (!cityecon.active() || state.status !== 'alive') return { on: false, tips: [], rentShare: 0 };
+  return { on: true, tips: cityecon.tips(world, state, year, flows.exp.lodging), rentShare: flows.income > 0 ? Math.round((flows.exp.lodging / flows.income) * 1000) / 1000 : 0 };
+}
+
 function present(world, state, user, now) {
   const year = yearOf(state.day, state.startYear);
   const idx = world.idx(year);
@@ -81,7 +88,7 @@ function present(world, state, user, now) {
   const h = effectiveHousing(state);
   const occ = state.occupation;
   const occProf = occ ? world.prof(occ.pkey) : null;
-  const curCityFactor = 0.6 + 0.4 * (city ? city.price_factor : 1);
+  const curCityFactor = require('./core').foodFactor(world, state, year);
   const age = ageYears(state.person.birthDay, state.day);
   const span = lifespanDays(state, year);
 
@@ -151,14 +158,14 @@ function present(world, state, user, now) {
     })),
     companies: (state.companies || []).map((c) => {
       const t = biz.tiersOf(world)[c.tier]; const nt = biz.tiersOf(world)[c.tier + 1]; const f = biz.companyFlows(world, state, c, year); const city = world.city(c.cityId);
-      const roomCost = Math.round(t.roomPrice * idx * (city ? city.price_factor : 1));
+      const roomCost = Math.round(t.roomPrice * idx * (city ? city.price_factor : 1) * cityecon.buildMult(c.cityId, year));
       return {
         id: c.id, name: c.name, pkey: c.pkey, profession: (world.prof(c.pkey) || {}).name, tier: c.tier, tierName: biz.tierName(world, c), cityId: c.cityId, city: city && city.name,
         rooms: c.rooms, maxRooms: t.maxRooms, staff: c.staff, needed: f.needed || biz.staffNeeded(world, c), manager: c.manager, cash: c.cash, abandoned: !!c.abandoned,
         value: biz.companyValue(world, state, c, year), flows: f, comp: f.comp, security: !!c.security, stock: c.stock ? { id: c.stock.id, div: c.stock.divPct, outside: c.stock.outside || 0 } : null, hit: c.hit && state.day < c.hit.until ? { days: c.hit.until - state.day, pct: Math.round((1 - c.hit.factor) * 100) } : null, outage: c.outageUntil && state.day < c.outageUntil ? c.outageUntil - state.day : 0, owner: !!(state.occupation && state.occupation.ownCompanyId === c.id),
         roomCost, roomCoins: biz.tiersOf(world)[c.tier].roomCoins, roomStep: state.discounts[`room:${c.id}`] || 0,
         qualified: biz.qualification(world, state, c.pkey, c.tier).ok,
-        next: nt ? { name: biz.chainNames(world, c.pkey)[c.tier + 1], cost: Math.max(0, Math.round((nt.price - t.price) * idx * (city ? city.price_factor : 1))), minLevel: nt.minLevel, qualified: biz.qualification(world, state, c.pkey, c.tier + 1).ok } : null,
+        next: nt ? { name: biz.chainNames(world, c.pkey)[c.tier + 1], cost: Math.max(0, Math.round((nt.price - t.price) * idx * (city ? city.price_factor : 1) * cityecon.buildMult(c.cityId, year))), minLevel: nt.minLevel, qualified: biz.qualification(world, state, c.pkey, c.tier + 1).ok } : null,
         reactivateCost: Math.round(c.base * idx * (econ.companies.reactivatePct / 100)),
         autoBuy: c.autoBuy !== false, supply: supplyView(f.supply), inputs: f.inputs || 0, vat: f.vat || 0, contractIncome: f.contractIncome || 0, profitAll: f.profitAll == null ? f.profit : f.profitAll,
         deals: dealsView(state, c.id),
@@ -166,6 +173,7 @@ function present(world, state, user, now) {
     }),
     goods: goodsView(world, state, year),
     found: biz.foundOptions(world, state),
+    econ: econView(world, state, year, flows),
     politics: (() => {
       const pc = econ.politics; const infl = (user.meta.influence || 0) + (state.fx.influence || 0); const t = state.politics.term;
       return {

@@ -61,7 +61,8 @@ function companyFlows(world, state, c, year) {
   const strike = c.strikeUntil && state.day < c.strikeUntil ? 0 : 1;
   const comp = require('./competition').info(world, c.cityId, c.pkey, c.rooms);
   const hit = c.hit && state.day < c.hit.until ? c.hit.factor : 1; const outage = c.outageUntil && state.day < c.outageUntil ? 0 : 1;
-  const raw = c.rooms * t.incomePerRoom * idx * cityMult(world.city(c.cityId)) * eff * marketPhase(year).factor * strike * comp.factor * hit * outage;
+  const ce = require('./cityecon'); // Stadtwirtschaft: Sektor-Index (Umsatz, abgeschwächt) und örtliches Lohnniveau; ohne Stadtindizes = 1
+  const raw = c.rooms * t.incomePerRoom * idx * cityMult(world.city(c.cityId)) * eff * marketPhase(year).factor * strike * comp.factor * hit * outage * ce.revenueMult(world, c.cityId, c.pkey, year);
   // Warenkreislauf: Rezept, Versorgung, Verträge, Politik (siehe goods.js). Ohne Rezeptzutaten/aus: identisch zur früheren Rechnung.
   const goods = require('./goods'); const gw = goods.W();
   const ar = goods.activeRecipe(world, c.pkey, year, c.cityId);
@@ -71,7 +72,7 @@ function companyFlows(world, state, c, year) {
   const rAct = Math.round(rPot * buy.factor);
   const sell = goods.sellPlan(world, state, c, year, rAct, ar, gw);
   const income = Math.round(rAct * sell.npcShare);
-  const wages = Math.round(c.staff * econ.staffWage * idx + (c.manager ? econ.managerWage * idx : 0) + ps.reduce((s, x) => s + x.wage * idx, 0) + (c.playerManager ? c.playerManager.wage * idx : 0));
+  const wages = Math.round((c.staff * econ.staffWage * idx + (c.manager ? econ.managerWage * idx : 0)) * ce.wageMult(c.cityId, year) + ps.reduce((s, x) => s + x.wage * idx, 0) + (c.playerManager ? c.playerManager.wage * idx : 0));
   const upkeep = Math.round((companyValue(world, state, c, year) * econ.upkeepYearPct) / 100 / 365) + (c.security ? Math.round(c.rooms * t.incomePerRoom * idx * 0.04) : 0);
   const inputs = buy.cost;
   const vat = Math.round((ef.vat / 100) * Math.max(0, income - inputs));
@@ -215,7 +216,7 @@ function bizListings(world, state, city, week) {
     let tier = 0;
     for (let t = tiers.length - 1; t >= 0; t--) if (qualification(world, state, p.pkey, t).ok) { tier = Math.min(t + (i > 0 && r() < 0.25 ? 1 : 0), tiers.length - 1); break; }
     const t = tiers[tier];
-    const base = Math.round(t.price * city.price_factor * (0.85 + r() * 0.35));
+    const base = Math.round(t.price * city.price_factor * require('./cityecon').buildMult(city.id, year) * (0.85 + r() * 0.35));
     const names = chainNames(world, p.pkey);
     out.push({
       id: `biz:${city.id}:${week}:${i}`, type: 'biz', pkey: p.pkey, tier, tierName: names[tier], name: `${names[tier]} ${pick(r, LAST)}`, cityId: city.id,
@@ -230,7 +231,7 @@ function bizListings(world, state, city, week) {
     const top = out[0]; const pk = top.pkey;
     for (let t = top.tier - 1; t >= 0; t--) {
       const tt = tiers[t]; const names = chainNames(world, pk);
-      const base = Math.round(tt.price * city.price_factor * (0.85 + r() * 0.35));
+      const base = Math.round(tt.price * city.price_factor * require('./cityecon').buildMult(city.id, year) * (0.85 + r() * 0.35));
       out.push({
         id: `biz:${city.id}:${week}:${10 + t}`, type: 'biz', pkey: pk, tier: t, tierName: names[t], name: `${names[t]} ${pick(r, LAST)}`, cityId: city.id,
         base, price: Math.round(base * idx), rooms: tt.rooms, minLevel: tt.minLevel, profession: top.profession, icon: top.icon,
@@ -265,7 +266,7 @@ function suggestName(world, state, pkey, tier) {
   }
   return base;
 }
-const foundPrice = (world, city, tier, idx) => { const base = Math.round(tiersOf(world)[tier].price * city.price_factor); return { base, price: Math.round(base * idx) }; };
+const foundPrice = (world, city, tier, idx, year) => { const base = Math.round(tiersOf(world)[tier].price * city.price_factor * require('./cityecon').buildMult(city.id, year)); return { base, price: Math.round(base * idx) }; };
 
 /** Berufe, aus denen man gründen darf (wie die Zeitung: kein Akademiker-/Helferberuf, nur mit Betriebsart, nur in der Epoche). */
 function foundKeys(world, state, year) {
@@ -294,7 +295,7 @@ function foundOptions(world, state) {
       for (let t = 0; t < tiers.length; t++) {
         const q = qualification(world, state, p.pkey, t);
         if (!q.ok) continue;
-        const { base, price } = foundPrice(world, city, t, idx);
+        const { base, price } = foundPrice(world, city, t, idx, year);
         const rooms = tiers[t].rooms;
         const probe = { id: -1, pkey: p.pkey, tier: t, name: '', cityId: city.id, rooms, staff: staffNeeded(world, { rooms, tier: t }), manager: true, cash: 0, base, since: state.day, abandoned: null };
         let f = null; try { f = companyFlows(world, state, probe, year); } catch (_) { f = null; }
@@ -332,7 +333,7 @@ function checkFound(world, state, input) {
   if (!qualification(world, state, pkey, tier).ok) return { ok: false, err: 'Dir fehlt die Qualifikation für diesen Betrieb.' };
   const nm = inp.name == null || inp.name === '' ? { ok: true, name: suggestName(world, state, pkey, tier) } : validName(state, inp.name);
   if (!nm.ok) return nm;
-  const { base, price } = foundPrice(world, city, tier, world.idx(year));
+  const { base, price } = foundPrice(world, city, tier, world.idx(year), year);
   if (state.money < price) return { ok: false, err: 'Dafür reicht dein Geld nicht.' };
   return { ok: true, pkey, tier, name: nm.name, city, base, price, rooms: tiersOf(world)[tier].rooms };
 }

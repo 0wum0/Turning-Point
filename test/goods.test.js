@@ -213,8 +213,8 @@ test('Rahmen des Bundestags begrenzt Zuschlag und Subventionen', () => {
 test('Befugnisse: Ämter und Prüfung der Beschlüsse', () => {
   reset();
   assert.deepStrictEqual(goods.powersOf(w, 0, 1950), []);
-  assert.deepStrictEqual(goods.powersOf(w, 1, 1950).map((p) => p.kind), ['surcharge']);
-  assert.deepStrictEqual(goods.powersOf(w, 5, 1950).map((p) => p.kind), ['vat', 'tariff', 'natsubsidy']);
+  assert.deepStrictEqual(goods.powersOf(w, 1, 1950).map((p) => p.kind), ['surcharge', 'landzone']);
+  assert.deepStrictEqual(goods.powersOf(w, 5, 1950).map((p) => p.kind), ['vat', 'tariff', 'natsubsidy', 'pricebrake']);
   const c = city();
   const row = goods.normalizePolicy(w, 2, c, 1950, { kind: 'subsidy', good: 'mehl', value: 15 });
   assert.deepStrictEqual([row.kind, row.good, row.val, row.scope_city], ['subsidy', 'mehl', 15, c.id]);

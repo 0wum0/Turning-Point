@@ -6,6 +6,7 @@ const { LEVELS, LAST, randomFirstName, demonym } = require('./content');
 const { townEventsForWeek, describeTownEvent } = require('./events');
 const { scale } = require('./economy');
 const { bizListings } = require('./business');
+const cityecon = require('./cityecon');
 
 const TD = require('./text-defaults');
 const txt = (world) => world.settings.get('texts');
@@ -36,6 +37,7 @@ function jobListings(world, state, city, week) {
   const year = yearOf(state.day, state.startYear);
   const idx = world.idx(year);
   const r = rngFor('jobs', city.id, week);
+  const wm = cityecon.wageMult(city.id, year); // örtliches Lohnniveau (muss zu core.dailyFlows passen)
   const active = world.activeProfessions(year).filter((p) => !p.academic);
   const learned = active.filter((p) => isLearned(state, p.pkey) && p.pkey !== 'helfer');
   const academic = world.activeProfessions(year).filter((p) => p.academic && isLearned(state, p.pkey));
@@ -51,7 +53,7 @@ function jobListings(world, state, city, week) {
     const kind = isLearned(state, p.pkey) ? 'work' : 'training';
     const lodging = !!p.lodging && chance(r, Math.min(0.8, Math.max(0.1, 0.8 - (year - 1945) / 60)));
     const lv = LEVELS[levelIndex(state, p.pkey)].mult;
-    const wage = kind === 'work' ? scale(p.base_wage, idx, factor * lv) : scale(p.base_wage, idx, factor * 0.4);
+    const wage = Math.round((kind === 'work' ? scale(p.base_wage, idx, factor * lv) : scale(p.base_wage, idx, factor * 0.4)) * wm);
     return {
       id: `job:${city.id}:${week}:${i}`, type: 'job', kind, pkey: p.pkey, profession: p.name, icon: p.icon, employer: nameJob(r, p, year, txt(world)),
       factor, lodging, wage, trainingDays: kind === 'training' ? p.training_days : 0, cityId: city.id,
@@ -67,15 +69,16 @@ function housingListings(world, state, city, week) {
   const r = rngFor('housing', city.id, week);
   const out = { pension: [], rent: [], sale: [] };
   const pf = city.price_factor;
+  const rm = cityecon.rentMult(city.id, year); const pm = cityecon.propertyMult(city.id, year); // Stadtwirtschaft: Mietniveau und Immobilienpreise
   for (let i = 0; i < 2; i++) {
-    const base = Math.round(econ.lodging.pension * pf * (0.9 + r() * 0.25));
+    const base = Math.round(econ.lodging.pension * pf * rm * (0.9 + r() * 0.25));
     const name = pick(r, txt(world).paper.pensions);
     out.pension.push({ id: `pension:${city.id}:${week}:${i}`, type: 'pension', name: name.endsWith('Frau') ? `${name} ${pick(r, LAST)}` : name, base, perDay: scale(base, idx), cityId: city.id });
   }
   const maxRooms = city.size_tier >= 3 ? 4 : 3;
   for (let i = 0; i < 3 + (city.size_tier > 3 ? 1 : 0); i++) {
     const rooms = int(r, 1, maxRooms);
-    const base = Math.round(econ.rentPerRoom[Math.min(3, rooms - 1)] * pf * (0.9 + r() * 0.25));
+    const base = Math.round(econ.rentPerRoom[Math.min(3, rooms - 1)] * pf * rm * (0.9 + r() * 0.25));
     out.rent.push({ id: `rent:${city.id}:${week}:${i}`, type: 'rent', name: `${rooms}-Zimmer-Wohnung, ${pick(r, txt(world).paper.streets)} ${int(r, 1, 60)}`, rooms, base, perDay: scale(base, idx), cityId: city.id });
   }
   const kinds = [['flat', 4], ['house_small', 3], ['house_large', 1.5], ['villa', 0.5]];
@@ -86,10 +89,10 @@ function housingListings(world, state, city, week) {
     const def = econ.property[kind];
     const base = Math.round(def.price * pf * (0.85 + r() * 0.4));
     const condition = int(r, 45, 95);
-    const price = Math.round(base * idx * (0.2 + 0.8 * (condition / 100)) * require('./economy').realEstateFactor(year));
+    const price = Math.round(base * idx * (0.2 + 0.8 * (condition / 100)) * require('./economy').realEstateFactor(year) * pm);
     out.sale.push({
       id: `sale:${city.id}:${week}:${i}`, type: 'sale', kind, name: `${def.name}, ${pick(r, txt(world).paper.streets)} ${int(r, 1, 60)}`, rooms: def.rooms, base, condition, price, rest: def.rest, cityId: city.id,
-      rentPerDay: Math.round(scale(require('./landlord').marketBase({ base, kind, condition }), idx) * require('./landlord').cycleRent(year)),
+      rentPerDay: Math.round(scale(require('./landlord').marketBase({ base, kind, condition }), idx) * require('./landlord').cycleRent(year) * rm),
     });
   }
   return out;
@@ -180,6 +183,7 @@ function edition(world, state, cityId) {
     if (pr.cityId && pr.cityId !== cityId) continue;
     news.push({ title: pr.title, text: pr.text, day: pr.day, ago: state.day - pr.day, type: 'press', section: pr.section, big: !!pr.big });
   }
+  for (const n of cityecon.news(world, cityId, year)) news.push({ title: n.title, text: n.text, day: state.day, ago: 0, type: 'press', section: 'Wirtschaft', big: Math.abs(n.pct) >= 8 });
   news.sort((a, b) => b.day - a.day || (b.big ? 1 : 0) - (a.big ? 1 : 0));
   for (const c of customNews(world, state, cityId).reverse()) news.unshift(c);
   const d = dateOf(state.day, state.startYear);

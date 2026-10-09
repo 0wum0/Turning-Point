@@ -35,6 +35,10 @@ function describe(world, r) {
     case 'frame': { const f = (settings.get('goods').policy || {}).frames || {}; const x = f[r.good] || {}; return `Rahmen für Zuschläge und Subventionen: ${x.name || r.good} (Zuschlag höchstens ${x.maxSurcharge} Punkte, Subvention höchstens ${x.maxSubsidy} %)`; }
     case 'vat': return `Mehrwertsteuer auf Waren: ${sign(r.val)} Punkte`;
     case 'tariff': return `Einfuhrzoll: ${sign(r.val)} %`;
+    case 'rentcap': return `Mietpreisbremse in ${city ? city.name : 'der Stadt'}: Mietniveau steigt höchstens ${r.val} % pro Jahr`;
+    case 'landzone': return `Baulandausweisung in ${city ? city.name : 'der Stadt'}: ${r.val} % mehr Wohnungsangebot`;
+    case 'housing': return `Wohnungsbauprogramm in ${r.region || 'der Region'}: ${r.val} % mehr Wohnungsangebot`;
+    case 'pricebrake': return `${r.val < 0 ? 'Preisbremse' : 'Inflationsziel'}: Preisniveau ${sign(r.val)} Punkte`;
     case 'natsubsidy': return `Branchen-Subvention im Land: ${r.val} % Zuschuss auf ${g ? g.name : r.good}`;
     default: return r.kind;
   }
@@ -66,7 +70,7 @@ async function overview(userId) {
   const out = {
     enabled: (settings.get('goods').policy || {}).enabled !== false && goods.enabled(), year, idx,
     frame: { name: fr.name, maxSurcharge: fr.maxSurcharge, maxSubsidy: fr.maxSubsidy },
-    local: { city: city ? city.name : null, region: city ? city.state : null, surcharge: ef.surcharge, levy: Math.round(ef.levy * 10) / 10, vat: ef.vat, tariff: ef.tariff, subsidy: ef.subsidy, support: ef.support },
+    local: { city: city ? city.name : null, region: city ? city.state : null, surcharge: ef.surcharge, levy: Math.round(ef.levy * 10) / 10, vat: ef.vat, tariff: ef.tariff, subsidy: ef.subsidy, support: ef.support, zone: ef.zone, rentCap: ef.rentCap, brake: ef.brake },
     active: ACTIVE.filter((a) => (!a.cityId || a.cityId === state.cityId) && (!a.region || (city && a.region === city.state))).map((a) => ({ kind: a.kind, text: a.text, office: a.office, holder: a.holder, hours: Math.max(0, Math.round((a.until - Date.now()) / 3600000)) })),
     office: null,
   };
@@ -92,7 +96,7 @@ function rowFrom(world, state, input) {
 async function preview(userId, input) {
   const p = await service.peek(userId); if (!p || !p.state || p.state.status !== 'alive') fail('Du brauchst einen lebenden Charakter.');
   const row = rowFrom(p.w, p.state, input);
-  return { preview: goods.previewPolicy(p.w, row, yearOf(p.state.day, p.state.startYear)), text: describe(p.w, row) };
+  return { preview: goods.previewPolicy(p.w, row, yearOf(p.state.day, p.state.startYear), p.state.cityId), text: describe(p.w, row) };
 }
 
 /** Beschluss fassen: einmal je Amtszeit. */
@@ -116,7 +120,7 @@ async function set(userId, input) {
     const nm = ctx.user.social_public ? `${state.person.first} ${state.person.last}` : 'Ein Amtsinhaber';
     await tagesblatt.post('election', `Beschluss: ${office}`, `Beschluss von ${nm} (${office}): ${text}.`, row.scope_city || 0, conn);
     return { msg: `Beschluss gefasst: ${text}.`, level: 'good' };
-  }, { needAlive: true }).then(async (r) => { await refresh().catch((e) => log.warn(`[policies] ${e.message}`)); live.publish('economy', {}); return r; });
+  }, { needAlive: true }).then(async (r) => { await refresh().catch((e) => log.warn(`[policies] ${e.message}`)); await require('./cityecon').refresh().catch((e) => log.warn(`[stadtwirtschaft] ${e.message}`)); live.publish('economy', {}); return r; });
 }
 
 module.exports = { refresh, overview, preview, set, describe };

@@ -704,6 +704,22 @@ const MIGRATIONS = [
       CONSTRAINT fk_gp_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
   ] },
+  { id: '027_city_economy', up: [
+    // Stadtwirtschaft: Preisindex je Stadt und Sektor (food, rent, services, build, wage). Nur Städte mit Aktivität haben Zeilen.
+    // idx = Dynamik (Faktor um 1), target = Gleichgewicht, demand/supply = Nachfrage und Angebot in Räumen, hist = Verlauf (JSON, ein Punkt je Spielmonat).
+    `CREATE TABLE IF NOT EXISTS city_economy (
+      city_id INT UNSIGNED NOT NULL,
+      sector VARCHAR(12) NOT NULL,
+      idx DOUBLE NOT NULL DEFAULT 1,
+      target DOUBLE NOT NULL DEFAULT 1,
+      demand DOUBLE NOT NULL DEFAULT 0,
+      supply DOUBLE NOT NULL DEFAULT 0,
+      hist TEXT NULL,
+      pt_at BIGINT NOT NULL DEFAULT 0,
+      updated_at BIGINT NOT NULL DEFAULT 0,
+      PRIMARY KEY (city_id, sector)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+  ] },
 ];
 
 async function ensureTable(db) {

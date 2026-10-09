@@ -54,7 +54,12 @@ function levelIndex(state, key) {
 
 function propertyValue(world, state, p, year) {
   const idx = world.idx(year);
-  return Math.round(p.base * idx * (0.2 + 0.8 * (p.condition / 100)) * require('./economy').realEstateFactor(year));
+  return Math.round(p.base * idx * (0.2 + 0.8 * (p.condition / 100)) * require('./economy').realEstateFactor(year) * require('./cityecon').propertyMult(p.cityId, year));
+}
+/** Preisfaktor für Lebensmittel am Wohnort: fester Stadtfaktor (abgeschwächt) × Stadtindex Lebensmittel. */
+function foodFactor(world, state, year) {
+  const c = world.city(state.cityId);
+  return (0.6 + 0.4 * (c ? c.price_factor : 1)) * require('./cityecon').foodMult(state.cityId, year);
 }
 function netWorth(world, state) {
   const year = yearOf(state.day, state.startYear);
@@ -120,6 +125,8 @@ function dailyFlows(world, state) {
       }
     }
   }
+  const ce = require('./cityecon');
+  if (occ && !(occ.kind === 'work' && (occ.ownCompanyId || occ.playerJob)) && occ.kind !== 'study') inc.wage = Math.round(inc.wage * ce.wageMult(occ.cityId != null ? occ.cityId : state.cityId, year)); // örtliches Lohnniveau (Stadtwirtschaft)
   const oe = require('./society').officeEffects(world, state, year);
   inc.wage = Math.round(inc.wage * oe.wageMult);
   inc.office = oe.income;
@@ -128,7 +135,7 @@ function dailyFlows(world, state) {
   if (h.type === 'workplace') exp.lodging = scale(econ.lodging.workplace, idx);
   else if (h.type === 'pension' || h.type === 'rent') exp.lodging = scale(h.base, idx);
   const home = minors(state);
-  const childCost = scale(econ.childCostPerDay, idx);
+  const childCost = scale(econ.childCostPerDay, idx, ce.householdMult(state.cityId, year));
   exp.children = home.length * childCost;
   for (const c of home) exp.children += scale(SCHOOL_COST[c.school] || 0, idx);
   inc.kindergeld = Math.round(home.length * childCost * (econ.kindergeldPct / 100));
@@ -162,10 +169,10 @@ const satiety = (q) => Math.max(0.6, 1.25 - 0.17 * (Math.max(1, Math.min(4, q ||
 /** Kosten (Cent) des täglichen Essens in einer Qualitätsstufe. */
 function foodCostPerDay(world, state, tierIdx = 1) {
   const year = yearOf(state.day, state.startYear);
-  return Math.round(world.econ.food[tierIdx].perPct * consumption(state) * satiety(tierIdx + 1) * world.idx(year));
+  return Math.round(world.econ.food[tierIdx].perPct * consumption(state) * satiety(tierIdx + 1) * world.idx(year) * foodFactor(world, state, year));
 }
 
 module.exports = {
-  clamp, notice, chronicle, award, isLearned, learn, levelIndex, propertyValue, netWorth, kidsAtHome, minors,
+  clamp, notice, chronicle, award, isLearned, learn, levelIndex, propertyValue, foodFactor, netWorth, kidsAtHome, minors,
   residenceProperty, effectiveHousing, roomsAvailable, roomsNeeded, foodMods, dailyFlows, foodCostPerDay, consumption, satiety, SCHOOL_COST,
 };

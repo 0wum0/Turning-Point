@@ -7,7 +7,7 @@
  */
 
 /** Marken, die die Oberfläche melden darf (Seitenbesuche und Aktionen, die der Spielstand nicht selbst festhält). */
-const SEEN_KEYS = ['newspaper', 'map', 'friend', 'marketOffer', 'vote', 'glossary'];
+const SEEN_KEYS = ['newspaper', 'map', 'friend', 'marketOffer', 'vote', 'glossary', 'prices'];
 /** Nach so vielen Spieljahren öffnet sich alles von selbst (wer so lange spielt, kennt das Spiel). */
 const OPEN_AFTER_YEARS = 6;
 
@@ -39,6 +39,7 @@ const QUESTS = [
   { id: 'job', title: 'Arbeit oder Lehrstelle annehmen', why: 'Ohne Einkommen schmilzt dein Startgeld. Wer arbeitet, bekommt jeden Tag Lohn.', tab: 'newspaper', spot: 'listing:job', reward: { efs: 3 }, done: (s) => !!s.occupation },
   { id: 'wage', title: 'Den ersten Lohn verdienen', why: 'Der Lohn kommt automatisch, sobald ein Spieltag vergeht. Die Uhr läuft von selbst – du musst nur etwas Zeit mitbringen.', tab: 'overview', spot: 'time', reward: { efs: 3 }, done: (s) => (s.stats ? s.stats.earned : 0) > 0 },
   { id: 'home', title: 'Eine Wohnung mieten oder kaufen', why: 'Eine richtige Wohnung bringt deutlich mehr Erholung und Gesundheit als jeder Notschlafplatz.', tab: 'newspaper', spot: 'listing:home', reward: { efs: 4 }, done: (s) => !!s.housing && (s.housing.type === 'rent' || s.housing.type === 'own') },
+  { id: 'prices', title: 'Vergleiche die Preise deiner Stadt', why: 'Wohnen, Essen und Löhne kosten nicht überall gleich viel. Im Preisbarometer siehst du, ob deine Stadt teuer oder günstig ist – und wo es sich zu leben lohnt.', tab: 'city', spot: 'prices', reward: { efs: 3 }, done: (s, q) => !!q.seen.prices },
   { id: 'fridge7', title: 'Eine Woche lang den Kühlschrank gefüllt halten', why: 'Regelmäßig einkaufen ist die wichtigste Gewohnheit des Spiels: Es hält dich gesund und glücklich.', tab: 'household', spot: 'food', reward: { efs: 4 }, done: (s, q) => q.fridgeSince != null && s.day - q.fridgeSince >= 7 },
   { id: 'friend', title: 'Einen Partner oder Freund finden', why: 'Partner, Freunde und später Kinder machen glücklich – und Kinder sind die Erben deines Lebenswerks.', tab: 'newspaper', spot: 'listing:contact', reward: { efs: 4 }, done: (s, q) => !!s.partner || !!q.seen.friend },
   { id: 'save', title: 'Das Zehnfache deines Startgelds sparen', why: 'Rücklagen schützen dich bei Notfällen und sind die Grundlage für alles Größere: ein Haus, eine Firma, ein Amt.', tab: 'overview', spot: 'money', reward: { efs: 5 }, done: (s, q, k) => s.money >= 10 * (k.startMoney || 4000) },
@@ -204,6 +205,10 @@ function advise(v, nextQuest, opts) {
   }
   if (v.found && v.found.canAfford && !(v.companies || []).length && v.status === 'alive' && v.occupation && (v.meters || {}).fridge >= 15) {
     add(34, { id: 'found', level: 'good', icon: 'store', title: 'Gründe dein erstes Unternehmen', why: `Du hast die Qualifikation und genug Geld (ab ${dm(v.found.cheapest, cur)}). Eine eigene Firma verdient auch, wenn du nicht arbeitest.`, cta: { kind: 'go', label: 'Unternehmen gründen', tab: 'business', spot: 'found' } });
+  }
+  const eco = v.econ; const rentTip = eco && (eco.tips || []).find((t) => t.kind === 'rent');
+  if (rentTip && eco.rentShare >= 0.3 && rentTip.pct >= 12 && v.housing && ['rent', 'pension'].includes(v.housing.type)) {
+    add(36, { id: 'cheaper-city', level: 'info', icon: 'house', title: `Wohnen ist in ${rentTip.city} günstiger`, why: `Deine Unterkunft kostet ${Math.round(eco.rentShare * 100)} % deines Einkommens. In ${rentTip.city} (${rentTip.km} km entfernt) wäre sie rund ${rentTip.pct} % billiger – etwa ${dm(rentTip.savePerDay, cur)} pro Tag. Ein Umzug kostet aber Geld und Coins, und Arbeit musst du dort neu suchen.`, cta: { kind: 'go', label: 'Preise vergleichen', tab: 'city', spot: 'prices' } });
   }
   if (nextQuest) add(20, { id: 'quest', level: 'info', icon: 'flag', title: `Nächster Schritt: ${nextQuest.title}`, why: nextQuest.why, cta: { kind: 'go', label: 'Zeig mir’s', tab: nextQuest.tab, spot: nextQuest.spot } });
   c.sort((a, b) => b.prio - a.prio);

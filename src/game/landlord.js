@@ -21,10 +21,11 @@ const active = (state, p) => !!(p.lease && p.lease.on) && !isResidence(state, p)
 
 /** Miete pro Tag (Cent, heutige Preise), wenn ein Mieter einzahlt. */
 const cycleRent = (year) => Math.pow(require('./economy').realEstateFactor(year), 0.6); // Mieten schwanken schwächer als Preise
+const localRent = (p, year) => require('./cityecon').rentMult(p.cityId, year); // Mietniveau der Stadt (Stadtwirtschaft; ohne Indizes 1)
 function rentPerDay(world, state, p, year) {
-  return Math.round(scale(Math.round(marketBase(p) * clamp((p.lease && p.lease.mult) || 1, MIN_MULT, MAX_MULT)), world.idx(year)) * cycleRent(year));
+  return Math.round(scale(Math.round(marketBase(p) * clamp((p.lease && p.lease.mult) || 1, MIN_MULT, MAX_MULT)), world.idx(year)) * cycleRent(year) * localRent(p, year));
 }
-const marketPerDay = (world, state, p, year) => Math.round(scale(marketBase(p), world.idx(year)) * cycleRent(year));
+const marketPerDay = (world, state, p, year) => Math.round(scale(marketBase(p), world.idx(year)) * cycleRent(year) * localRent(p, year));
 
 /** Miete eines Mieters: Spieler zahlen den bei Einzug vereinbarten Preis (in Wert von 1945), NPC-Mieter die Marktmiete des Reglers. */
 function tenantRent(world, state, p, year) {

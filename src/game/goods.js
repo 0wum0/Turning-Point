@@ -237,7 +237,7 @@ function activeRecipe(world, pkey, year, cityId) {
 
 /* ------------------------------------------------------------------ Markt: Knappheit und Politik ------------------------------------------------------------------ */
 let SCARCITY = new Map(); // `${cityId}|${ware}` → Faktor
-const emptyPolicy = () => ({ city: new Map(), region: new Map(), nation: { vat: 0, tariff: 0, subsidy: {}, levy: 0, frame: null } });
+const emptyPolicy = () => ({ city: new Map(), region: new Map(), nation: { vat: 0, tariff: 0, subsidy: {}, levy: 0, frame: null, brake: 0 } });
 let POL = emptyPolicy();
 
 const scarcity = (cityId, key) => SCARCITY.get(`${cityId}|${key}`) || 1;
@@ -283,12 +283,16 @@ function buildPolicies(rows) {
   const pol = emptyPolicy();
   for (const r of rows || []) {
     const val = Number(r.val); if (!Number.isFinite(val)) continue;
-    const city = () => { if (!pol.city.has(r.scope_city)) pol.city.set(r.scope_city, { surcharge: 0, subsidy: {}, levy: 0 }); return pol.city.get(r.scope_city); };
-    const reg = () => { if (!pol.region.has(r.region)) pol.region.set(r.region, { support: {}, levy: 0 }); return pol.region.get(r.region); };
+    const city = () => { if (!pol.city.has(r.scope_city)) pol.city.set(r.scope_city, { surcharge: 0, subsidy: {}, levy: 0, zone: 0, rentCap: null }); return pol.city.get(r.scope_city); };
+    const reg = () => { if (!pol.region.has(r.region)) pol.region.set(r.region, { support: {}, levy: 0, zone: 0 }); return pol.region.get(r.region); };
     if (r.kind === 'surcharge') city().surcharge = val;
     else if (r.kind === 'subsidy' && GOODS[r.good]) { const c = city(); c.subsidy[r.good] = Math.max(c.subsidy[r.good] || 0, val); c.levy += val * lev; }
     else if (r.kind === 'support' && GOODS[r.good]) { const c = reg(); c.support[r.good] = Math.max(c.support[r.good] || 0, val); c.levy += val * lev * 0.7; }
     else if (r.kind === 'natsubsidy' && GOODS[r.good]) { pol.nation.subsidy[r.good] = Math.max(pol.nation.subsidy[r.good] || 0, val); pol.nation.levy += val * lev; }
+    else if (r.kind === 'rentcap') city().rentCap = Math.max(0, val);
+    else if (r.kind === 'landzone') { const c = city(); c.zone = Math.max(c.zone, val); }
+    else if (r.kind === 'housing') { const c = reg(); c.zone = Math.max(c.zone, val); c.levy += val * lev * 0.7; }
+    else if (r.kind === 'pricebrake') pol.nation.brake = val;
     else if (r.kind === 'vat') pol.nation.vat = val;
     else if (r.kind === 'tariff') pol.nation.tariff = val;
     else if (r.kind === 'frame') { const f = (P.frames || {})[r.good]; if (f) pol.nation.frame = { key: r.good, maxSurcharge: clampN(f.maxSurcharge, 4, 0, 20), maxSubsidy: clampN(f.maxSubsidy, 20, 0, 60), name: f.name || r.good }; }
@@ -307,7 +311,7 @@ function frame() {
 function effectsFor(world, cityId) {
   const P = cfg().policy || {};
   const on = P.enabled !== false;
-  const out = { surcharge: 0, levy: 0, vat: 0, tariff: 0, subsidy: {}, support: {} };
+  const out = { surcharge: 0, levy: 0, vat: 0, tariff: 0, subsidy: {}, support: {}, zone: 0, rentCap: null, brake: 0 };
   if (!on) return out;
   const city = world.city(cityId); const region = city ? city.state : '';
   const c = POL.city.get(cityId); const r = POL.region.get(region); const n = POL.nation;
@@ -319,6 +323,10 @@ function effectsFor(world, cityId) {
   for (const [g, v] of Object.entries(n.subsidy)) out.subsidy[g] = v;
   if (c) for (const [g, v] of Object.entries(c.subsidy)) out.subsidy[g] = Math.min(40, (out.subsidy[g] || 0) + v);
   if (r) out.support = { ...r.support };
+  // Stadtwirtschaft: Bauland/Wohnungsbau (Angebot in %), Mietpreisbremse (erlaubter Anstieg in % je Jahr), Preisbremse (Punkte)
+  out.zone = Math.max(0, Math.min(40, ((c && c.zone) || 0) + ((r && r.zone) || 0)));
+  out.rentCap = c && c.rentCap != null ? c.rentCap : null;
+  out.brake = Math.max(-3, Math.min(3, n.brake || 0));
   return out;
 }
 
@@ -332,7 +340,7 @@ function price(world, cityId, key, year) {
   if (!g) return null;
   const idx = world.idx(year); const ef = effectsFor(world, cityId);
   const imp = importShare(g, year);
-  const cityF = cityFactor(world, cityId);
+  const cityF = cityFactor(world, cityId) * require('./cityecon').goodMult(cityId, g, year); // fester Stadtfaktor × Stadtindex (Lebensmittel/Bau, abgeschwächt)
   const scar = g.service ? 1 : scarcity(cityId, key);
   const tariff = 1 + (ef.tariff / 100) * imp;
   const base = priceReal(g, year) * idx;
@@ -434,11 +442,11 @@ function sellPlan(world, state, c, year, rAct, ar, w) {
 /* ------------------------------------------------------------------ Politik: Befugnisse eines Amtes ------------------------------------------------------------------ */
 // Amt (Index in economy.politics.offices) → mögliche Beschlüsse
 const POWERS = {
-  1: ['surcharge'],
-  2: ['surcharge', 'subsidy'],
-  3: ['support'],
+  1: ['surcharge', 'landzone'],
+  2: ['surcharge', 'subsidy', 'rentcap', 'landzone'],
+  3: ['support', 'housing'],
   4: ['frame'],
-  5: ['vat', 'tariff', 'natsubsidy'],
+  5: ['vat', 'tariff', 'natsubsidy', 'pricebrake'],
 };
 const KINDS = {
   surcharge: { name: 'Gewerbesteuer-Zuschlag', scope: 'city', what: 'Punkte auf die Gewerbesteuer aller Betriebe in deiner Stadt' },
@@ -448,7 +456,12 @@ const KINDS = {
   vat: { name: 'Mehrwertsteuer auf Waren', scope: 'nation', what: 'Punkte auf die Wertschöpfung (Umsatz minus Wareneinkauf) aller Betriebe' },
   tariff: { name: 'Einfuhrzoll', scope: 'nation', what: 'Prozent Aufschlag auf den importierten Anteil aller Waren' },
   natsubsidy: { name: 'Branchen-Subvention (Bund)', scope: 'nation', what: 'Zuschuss auf den Einkauf einer Ware für alle Betriebe im Land' },
+  rentcap: { name: 'Mietpreisbremse', scope: 'city', what: 'Begrenzt, wie schnell das Mietniveau in deiner Stadt steigen darf' },
+  landzone: { name: 'Baulandausweisung', scope: 'city', what: 'Mehr Bauland und damit mehr Wohnungen in deiner Stadt' },
+  housing: { name: 'Wohnungsbauprogramm (Land)', scope: 'region', what: 'Mehr Wohnungsangebot in allen Städten deines Bundeslandes' },
+  pricebrake: { name: 'Preisbremse / Inflationsziel', scope: 'nation', what: 'Schiebt das Preisniveau aller Städte etwas nach unten oder oben' },
 };
+const CE = () => require('./cityecon').C();
 const tradable = (year) => Object.values(GOODS).filter((g) => !g.service && inEra(g, year));
 
 /** Befugnisse eines Amts mit den aktuell geltenden Grenzen (für die Oberfläche). */
@@ -463,6 +476,10 @@ function powersOf(world, officeIdx, year) {
     if (k === 'support') return { ...base, goods: goodsList, options: [5, 10, 15].filter((v) => v <= clampN(P.supportMax, 15, 0, 60)), unit: '%' };
     if (k === 'vat') return { ...base, min: clampN(P.vatMin, -3, -20, 0), max: clampN(P.vatMax, 5, 0, 30), step: 1, unit: 'Punkte' };
     if (k === 'tariff') return { ...base, min: clampN(P.tariffMin, -10, -50, 0), max: clampN(P.tariffMax, 20, 0, 100), step: 5, unit: '%' };
+    if (k === 'rentcap') return { ...base, options: CE().policy.rentCap, unit: '% pro Jahr' };
+    if (k === 'landzone') return { ...base, options: CE().policy.zone, unit: '%' };
+    if (k === 'housing') return { ...base, options: CE().policy.program, unit: '%' };
+    if (k === 'pricebrake') return { ...base, options: CE().policy.brake, unit: 'Punkte' };
     if (k === 'frame') return { ...base, frames: Object.entries(P.frames || {}).map(([key, f]) => ({ key, name: f.name || key, maxSurcharge: f.maxSurcharge, maxSubsidy: f.maxSubsidy })) };
     return base;
   });
@@ -489,6 +506,9 @@ function normalizePolicy(world, officeIdx, city, year, input) {
     if (!power.goods.some((x) => x.key === g)) throw new Error('Bitte eine handelbare Ware wählen.');
     if (!power.options.includes(num)) throw new Error('Dieser Satz ist nicht erlaubt (siehe Rahmen).');
     row.good = g; row.val = num;
+  } else if (kind === 'rentcap' || kind === 'landzone' || kind === 'housing' || kind === 'pricebrake') {
+    if (!Number.isFinite(num) || Math.round(num) !== num || !power.options.includes(num)) throw new Error('Dieser Wert ist nicht erlaubt.');
+    row.val = num;
   } else if (kind === 'frame') {
     const key = String(input.good || input.value || '');
     if (!power.frames.some((x) => x.key === key)) throw new Error('Unbekannter Rahmen.');
@@ -498,7 +518,7 @@ function normalizePolicy(world, officeIdx, city, year, input) {
 }
 
 /** Kurz erklärte Wirkung eines Beschlusses (Zahlen; die Oberfläche formuliert daraus Sätze). */
-function previewPolicy(world, row, year) {
+function previewPolicy(world, row, year, cityId) {
   const P = cfg().policy || {}; const lev = clampN(P.levyPerSubsidy, 0.15, 0, 2);
   const g = row.good ? GOODS[row.good] : null;
   const out = { kind: row.kind, good: g ? g.name : null, value: row.val, unit: g ? g.unit : null, lines: [] };
@@ -511,6 +531,14 @@ function previewPolicy(world, row, year) {
     const ex = ['kraftstoff', 'elektronik', 'kleidung', 'fisch'].filter((k) => inEra(GOODS[k], year)).map((k) => ({ name: GOODS[k].name, imp: Math.round(importShare(GOODS[k], year) * 100), up: Math.round(row.val * importShare(GOODS[k], year) * 10) / 10 }));
     L('tariff', row.val, ex);
   } else if (row.kind === 'frame') { const f = (P.frames || {})[row.good] || {}; L('frame', f.maxSurcharge, f.maxSubsidy, f.name || row.good); }
+  else if (row.kind === 'rentcap' || row.kind === 'landzone' || row.kind === 'housing' || row.kind === 'pricebrake') {
+    const ce = require('./cityecon'); const cid = cityId || row.scope_city || 0; const fx = ce.previewEffect(world, cid, row, effectsFor(world, cid), Date.now());
+    const pc = ce.C().policy;
+    if (row.kind === 'rentcap') L('rentcap', row.val, fx, Math.round(pc.capPenalty * 100));
+    else if (row.kind === 'landzone') L('landzone', row.val, fx, Math.round(pc.zoneBuild * row.val * 10) / 10);
+    else if (row.kind === 'housing') { L('housing', row.val, fx); L('levy', Math.round(row.val * lev * 0.7 * 10) / 10); }
+    else L('pricebrake', row.val, fx);
+  }
   return out;
 }
 

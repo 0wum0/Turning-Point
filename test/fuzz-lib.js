@@ -195,6 +195,7 @@ function runScenario(seed, steps = 300, opts = {}) {
   const failures = [];
   const trace = (m) => { log.push(m); if (log.length > 60) log.shift(); };
   const fail = (msg, extra) => { failures.push({ seed, msg, extra, trace: log.slice(-12) }); throw new Failure(msg); };
+  if (opts.cityEcon) primeCityEcon(seed);
   const st = { digest: 0, heirs: 0, deaths: 0, gameovers: 0, steps: 0, actionsOk: 0, actionsRejected: 0, maxYear: 0 };
   let nowMs = 1.7e12;
   const user = { meta: {}, coins: 200, efs_pool: 0, now: nowMs };
@@ -292,7 +293,7 @@ function runScenario(seed, steps = 300, opts = {}) {
         fail(`unerwartete Ausnahme in ${label}: ${e && e.stack ? e.stack.split('\n').slice(0, 4).join(' | ') : e}`);
       }
       if (s.status === 'dead') st.deaths++;
-      const bad = invariants(s, prev);
+      const bad = invariants(s, prev).concat(opts.cityEcon ? cityEconInvariants(world, s) : []);
       if (bad.length) fail(`Invariante nach ${label}: ${bad.slice(0, 5).join('; ')}`, { state: s });
       // present darf nie werfen; Zustand ist idempotent aufwertbar
       try { present(world, s, user, nowMs); } catch (e) { fail(`present wirft nach ${label}: ${e.stack.split('\n').slice(0, 3).join(' | ')}`); }
@@ -307,8 +308,60 @@ function runScenario(seed, steps = 300, opts = {}) {
     if (!(e instanceof Failure)) failures.push({ seed, msg: `Harness-Fehler: ${e.stack}`, trace: log.slice(-12) });
   } finally {
     Math.random = realRandom;
+    if (opts.cityEcon) require('../src/game/cityecon').reset();
   }
   return { failures, stats: st, state: s };
+}
+
+/* ---------------- Stadtwirtschaft ---------------- */
+/** Belegt den Zwischenspeicher der Stadtindizes mit zufälligen Werten innerhalb der Grenzen (für alle Städte). */
+function primeCityEcon(seed) {
+  const ce = require('../src/game/cityecon'); const rr = mulberry32(seed + 99); const C = ce.C(); const m = new Map();
+  for (const c of world.cityList) for (const sec of ce.SECTORS) { const v = C.lo + rr() * (C.hi - C.lo); m.set(ce.key(c.id, sec), { v, t: 0, pt: 0, hist: [v], cityId: c.id, sector: sec }); }
+  ce.setState(m, new Map());
+}
+/** Alle Stadtindizes sind endlich und in den Grenzen; die Multiplikatoren, die das Spiel nutzt, ebenso. */
+function cityEconInvariants(w, s) {
+  const ce = require('../src/game/cityecon'); const C = ce.C(); const bad = []; const year = yearOf(s.day, s.startYear);
+  for (const sec of ce.SECTORS) { const v = ce.level(s.cityId, sec, year); if (!Number.isFinite(v) || v < C.lo - 1e-9 || v > C.hi + 1e-9) bad.push(`Stadtindex ${sec} = ${v}`); }
+  for (const f of [ce.householdMult(s.cityId, year), ce.propertyMult(s.cityId, year), ce.revenueMult(w, s.cityId, 'baecker', year), ce.revenueMult(w, s.cityId, 'maurer', year)]) {
+    if (!Number.isFinite(f) || f < 0.4 || f > 2.6) bad.push(`Multiplikator ${f}`);
+  }
+  return bad;
+}
+/**
+ * Modellstrecke: zufällige Eingaben, Beschlüsse und Zeitschritte. Prüft Endlichkeit, Grenzen, Verlauf, Mietbremse und Determinismus.
+ */
+function runCityEconScenario(seed, rounds = 40) {
+  const ce = require('../src/game/cityecon'); const r = mulberry32(seed + 5); const failures = []; const C = ce.C();
+  const fail = (m) => failures.push({ seed, msg: m });
+  try {
+    for (let i = 0; i < rounds; i++) {
+      const c = pickOf(r, world.cityList); const sec = pickOf(r, ce.SECTORS);
+      const inp = { players: Math.floor(r() * r() * 400), rooms: { food: Math.floor(r() * 300), services: Math.floor(r() * 300), build: Math.floor(r() * 300), all: Math.floor(r() * 900) } };
+      const pol = r() < 0.5 ? null : { zone: Math.floor(r() * 40), rentCap: r() < 0.5 ? null : Math.floor(r() * 5), brake: Math.floor(r() * 7) - 3 };
+      let e = null; let e2 = null; let now = 1.7e12; let prevV = 1;
+      for (let k = 0; k < 60; k++) {
+        now += Math.floor(r() * 4 * 3600000);
+        const t = ce.target(world, c.id, sec, inp, pol, now); const t2 = ce.target(world, c.id, sec, inp, pol, now);
+        if (t !== t2) fail('Ziel nicht deterministisch');
+        if (!Number.isFinite(t) || t < C.lo - 1e-9 || t > C.hi + 1e-9) fail(`Ziel ${t}`);
+        const cap = sec === 'rent' && pol && pol.rentCap != null ? pol.rentCap : null;
+        e = ce.advanceEntry(e, t, now, cap); e2 = ce.advanceEntry(e2, t, now, cap);
+        if (JSON.stringify(e) !== JSON.stringify(e2)) fail('Schritt nicht deterministisch');
+        if (!Number.isFinite(e.v) || e.v < C.lo - 1e-9 || e.v > C.hi + 1e-9) fail(`Index ${sec} ${e.v}`);
+        if (e.hist.length > C.hist || !e.hist.every(Number.isFinite)) fail('Verlauf');
+        if (cap === 0 && e.v > prevV + 1e-9 && prevV >= 1) fail(`Mietbremse 0 lässt Anstieg zu: ${prevV} → ${e.v}`);
+        prevV = e.v;
+      }
+      const b = (() => { ce.setState(new Map([[ce.key(c.id, sec), { ...e, cityId: c.id, sector: sec }]]), new Map([[c.id, inp]])); return ce.barometer(world, c.id, 1945 + Math.floor(r() * 155)); })();
+      for (const row of b.rows) if (![row.level, row.idx, row.yoy, row.vsNational, ...row.spark].every(Number.isFinite)) fail(`Barometer ${row.sector} nicht endlich`);
+      const cmp = ce.compare(world, c.id, 2000, { ids: [pickOf(r, world.cityList).id] });
+      for (const row of cmp) if (!Object.values(row.levels).every(Number.isFinite)) fail('Vergleich nicht endlich');
+      for (const n of ce.news(world, c.id, 2000)) if (/\{/.test(n.title + n.text)) fail('Meldung mit Platzhalter');
+    }
+  } catch (e) { failures.push({ seed, msg: `Stadtwirtschaft: ${e.stack}` }); } finally { ce.reset(); }
+  return failures;
 }
 
 /** Zeitreise zwischen Epochen: Immobilie/Betrieb von A nach B (unterschiedliche Jahre) – Realwert bleibt erhalten, Geld erscheint nicht aus dem Nichts. */
@@ -392,4 +445,4 @@ function runSupplyScenario(seed, rounds = 30) {
   return failures;
 }
 
-module.exports = { world, runScenario, runTradeScenario, runSupplyScenario, invariants, inputFor, JUNK, clone };
+module.exports = { world, runScenario, runTradeScenario, runSupplyScenario, runCityEconScenario, invariants, inputFor, JUNK, clone };

@@ -133,6 +133,24 @@ const DEFAULTS = {
       },
     },
   },
+  // Stadtwirtschaft (src/game/cityecon.js, src/lib/cityecon.js): Preisindizes je Stadt (Lebensmittel, Wohnen, Dienste, Bau, Löhne) aus Nachfrage und Angebot.
+  // Alle Indizes sind Faktoren relativ zum festen Stadtfaktor (cities.price_factor) und bleiben zwischen min und max.
+  stadtwirtschaft: {
+    enabled: true,
+    intervalMinutes: 60,          // Aktualisierung der Indizes (auch beim Start)
+    tauHours: 24,                 // Zeitkonstante der Annäherung ans Gleichgewicht (24 Stunden = ca. 1 Spieljahr)
+    min: 0.75, max: 1.6,          // Grenzen der Indizes (relativ zum festen Stadtfaktor)
+    strength: { food: 0.35, rent: 0.5, services: 0.4, build: 0.4, wage: 0.4 }, // Wirkung des Verhältnisses Nachfrage/Angebot (Exponent)
+    npcRooms: { food: 5, rent: 8, services: 6, build: 4, wage: 10 },           // Grundangebot der Stadt (NPC) je Sektor, in Vielfachen der Konkurrenz-Obergrenze (competition.cap)
+    playerDemand: 0.6,            // Nachfrage je lebendem Charakter in der Stadt (in Räumen)
+    firmWeight: 0.7,              // Gewicht eines Betriebsraums auf der Angebotsseite (die Sättigung der eigenen Betriebsart steckt schon in „Konkurrenz“)
+    noisePct: 1.5,                // kleines deterministisches Rauschen auf dem Zielwert (Prozent)
+    eraPct: 3, eraTrendPct: 4,    // Epochenwelle und Langzeittrend je Stadt (Prozent, deterministisch, Mittel = 1)
+    pass: { revenue: 0.6, property: 0.5, goods: 0.4, household: 1 }, // Durchschlag: Umsatz der Betriebe, Immobilienpreise, Warenpreise (Lebensmittel/Bau), Haushaltskosten
+    histPoints: 60,               // Verlaufspunkte je Index (ein Punkt je Spielmonat)
+    newsPct: 4,                   // Zeitungsmeldung ab so vielen Prozent Veränderung gegenüber dem Vorjahr
+    policy: { rentCapOptions: [0, 2, 4], zoneOptions: [5, 10, 15], programOptions: [5, 10, 15], brakeOptions: [-2, -1, 1, 2], capSupplyPenaltyPct: 6, zoneBuildPct: 50, brakeWagePct: 70 },
+  },
   cycles: { realEstate: [[1945, 0.75], [1950, 0.85], [1957, 1.0], [1965, 1.08], [1973, 1.15], [1976, 1.05], [1985, 1.0], [1990, 1.2], [1993, 1.3], [1996, 1.0], [2005, 0.9], [2010, 1.0], [2015, 1.2], [2021, 1.5], [2023, 1.35], [2035, 1.4], [2060, 1.5], [2100, 1.6]] },
   exchange: { enabled: true, shares: 1000, minValueReal: 300000, minGameDays: 90, minFloatPct: 10, maxFloatPct: 49, makerSpreadPct: 5, makerDailyPct: 5, maxOrderShares: 500, openOrdersMax: 12, takeoverPct: 50,
     // Grenzen des Marktteilnehmers: Tageslimit je Nutzer (Gesamtwert real in Cent, 0 = kein Limit), Mindest-Haltedauer vor dem Rückverkauf an ihn,

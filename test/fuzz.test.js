@@ -5,7 +5,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert');
-const { runScenario, runTradeScenario, runSupplyScenario } = require('./fuzz-lib');
+const { runScenario, runTradeScenario, runSupplyScenario, runCityEconScenario } = require('./fuzz-lib');
 
 const report = (failures) => failures.map((f) => `Seed ${f.seed}: ${f.msg}\n  Spur: ${(f.trace || []).slice(-6).join(' | ')}`).join('\n');
 
@@ -45,6 +45,20 @@ test('Fuzz: Handel zwischen Spielern verschiedener Epochen erhält den Realwert'
 test('Fuzz: Lieferverträge erhalten den Realwert zwischen Epochen (genau einmal, nie negativ, nichts aus dem Nichts)', () => {
   for (const seed of [31, 32, 33]) {
     const failures = runSupplyScenario(seed, 6);
+    assert.deepStrictEqual(failures, [], report(failures));
+  }
+});
+
+test('Fuzz: Stadtindizes bleiben endlich und in den Grenzen (Modell, Politik, Mietbremse, Barometer)', () => {
+  for (const seed of [41, 42, 43]) {
+    const failures = runCityEconScenario(seed, 25);
+    assert.deepStrictEqual(failures, [], report(failures));
+  }
+});
+
+test('Fuzz: Aktionsfolgen mit zufälligen Stadtindizes halten alle Invarianten ein', () => {
+  for (const seed of [51, 52]) {
+    const { failures } = runScenario(seed, 100, { lifeline: seed % 2 === 0, cityEcon: true });
     assert.deepStrictEqual(failures, [], report(failures));
   }
 });

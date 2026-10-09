@@ -7,7 +7,7 @@
  *   node tools/fuzz-long.js --seed 37 --steps 3000 --verbose   # einen Seed nachspielen
  * Ein Seed spielt deterministisch immer denselben Verlauf; die Fehlermeldung nennt Seed und die letzten Schritte.
  */
-const { runScenario, runTradeScenario, runSupplyScenario } = require('../test/fuzz-lib');
+const { runScenario, runTradeScenario, runSupplyScenario, runCityEconScenario } = require('../test/fuzz-lib');
 
 const arg = (name, d) => { const i = process.argv.indexOf(`--${name}`); return i > 0 ? Number(process.argv[i + 1]) : d; };
 const flag = (name) => process.argv.includes(`--${name}`);
@@ -20,7 +20,7 @@ const seen = new Map();
 const agg = { runs: 0, steps: 0, actionsOk: 0, actionsRejected: 0, deaths: 0, heirs: 0, gameovers: 0, maxYear: 0 };
 const t0 = Date.now();
 for (let seed = from; seed <= to; seed++) {
-  const { failures, stats } = runScenario(seed, steps);
+  const { failures, stats } = runScenario(seed, steps, { cityEcon: seed % 2 === 1 });
   agg.runs++; agg.steps += stats.steps; agg.actionsOk += stats.actionsOk; agg.actionsRejected += stats.actionsRejected;
   agg.deaths += stats.deaths; agg.heirs += stats.heirs; agg.gameovers += stats.gameovers; agg.maxYear = Math.max(agg.maxYear, stats.maxYear);
   for (const f of failures) {
@@ -33,6 +33,7 @@ for (let seed = from; seed <= to; seed++) {
 }
 for (const f of runTradeScenario(from, 60)) { const key = `trade:${f.msg.slice(0, 80)}`; if (!seen.has(key)) seen.set(key, { first: f, count: 0 }); seen.get(key).count++; }
 for (let seed = from; seed <= to; seed += 5) for (const f of runSupplyScenario(seed, 4)) { const key = `supply:${String(f.msg).replace(/\d+/g, '#').slice(0, 80)}`; if (!seen.has(key)) seen.set(key, { first: f, count: 0 }); seen.get(key).count++; }
+for (let seed = from; seed <= to; seed += 5) for (const f of runCityEconScenario(seed, 20)) { const key = `cityecon:${String(f.msg).replace(/\d+/g, '#').slice(0, 80)}`; if (!seen.has(key)) seen.set(key, { first: f, count: 0 }); seen.get(key).count++; }
 
 console.log(JSON.stringify({ ...agg, seconds: Math.round((Date.now() - t0) / 1000) }));
 for (const [, v] of seen) console.log(`\n${v.count}× — Seed ${v.first.seed}: ${v.first.msg}\n  Spur: ${(v.first.trace || []).slice(-8).join('\n        ')}`);

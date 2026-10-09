@@ -18,7 +18,7 @@ class ActionError extends Error {}
 const fail = (m) => { throw new ActionError(m); };
 const yr = (state) => yearOf(state.day, state.startYear);
 const pay = (state, cents) => { state.money -= cents; state.stats.spent += cents; };
-const cityFactor = (world, state) => { const c = world.city(state.cityId); return 0.6 + 0.4 * (c ? c.price_factor : 1); };
+const cityFactor = (world, state) => require('./core').foodFactor(world, state, yr(state)); // Lebensmittelpreis am Wohnort (fester Stadtfaktor × Stadtindex)
 
 /** Coin-Preisleiter: 50 → 25 → 13 → 7 → 4 → 2 → 1 (jede freiwillige Werbung halbiert). */
 function ladder(base, step) {
@@ -569,7 +569,7 @@ A.bizExpand = ({ world, state, input, user }) => {
   if (c.rooms >= t.maxRooms) fail('Auf dieser Stufe sind alle Räume freigeschaltet. Baue den Betrieb aus (Stufe erhöhen).');
   const idx = world.idx(yr(state));
   const city = world.city(c.cityId);
-  const cost = Math.round(t.roomPrice * idx * (city ? city.price_factor : 1));
+  const cost = Math.round(t.roomPrice * idx * (city ? city.price_factor : 1) * require('./cityecon').buildMult(c.cityId, yr(state)));
   const key = `room:${c.id}`;
   const coins = ladder(t.roomCoins, state.discounts[key] || 0);
   if (state.money < cost) fail('Dafür reicht dein Geld nicht.');
@@ -586,7 +586,7 @@ A.bizUpgrade = ({ world, state, input }) => {
   const nt = tiers[c.tier + 1];
   if (!biz.qualification(world, state, c.pkey, c.tier + 1).ok) fail('Dir fehlt die Qualifikation für die nächste Stufe (höhere Berufsstufe nötig).');
   const idx = world.idx(yr(state)); const city = world.city(c.cityId);
-  const cost = Math.max(0, Math.round((nt.price - tiers[c.tier].price) * idx * (city ? city.price_factor : 1)));
+  const cost = Math.max(0, Math.round((nt.price - tiers[c.tier].price) * idx * (city ? city.price_factor : 1) * require('./cityecon').buildMult(c.cityId, yr(state))));
   if (state.money < cost) fail('Dafür reicht dein Geld nicht.');
   pay(state, cost);
   c.tier++; c.rooms = Math.max(c.rooms, nt.rooms); c.base += Math.round(cost / idx);
