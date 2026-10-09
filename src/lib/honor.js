@@ -67,7 +67,7 @@ async function preview(mayorId, targetId) {
   return {
     target: { userId: t.id, name: t.name, username: t.username, level: r.localLevel, levelName: r.localName },
     gain: { civic, localPts: pts, afterLevel: Math.max(r.localLevel, Math.min(4, after)), afterName: R.levelName(Math.max(r.localLevel, Math.min(4, after))), mayor: R.REASONS.honor_given.d },
-    text: `${t.name} wird Ehrenbürger von ${(p.w.city(p.state.cityId) || {}).name || 'deiner Stadt'}: Gemeinwohl +${civic}, örtliches Ansehen +${pts}. Du gewinnst selbst ein wenig Amtsansehen. Das geht nur einmal pro Amtszeit.`,
+    text: `${t.name} wird Ehrenbürger von ${(p.w.city(p.state.cityId) || {}).name || 'deiner Stadt'}: Gemeinwohl +${civic}, örtliches Ansehen +${pts}. Du gewinnst selbst ein wenig Amtsansehen. Das geht nur einmal pro Amtszeit. Danach wäre ${t.name} vor Ort „${R.levelName(Math.max(r.localLevel, Math.min(4, after)))}“ (jetzt: ${r.localName}).`,
   };
 }
 
@@ -82,7 +82,7 @@ async function grant(mayorId, targetId) {
     const term = state.politics.term; term.honors = (term.honors || 0) + 1;
     R.queue(state, 'office', null, 'honor_given', `u${targetId}`);
     const city = (world.city(state.cityId) || {}).name || 'der Stadt';
-    notice(state, { level: 'good', title: 'Ehrenbürgerwürde verliehen', text: `${t.name} ist jetzt Ehrenbürger von ${city}.`, tab: 'society' });
+    notice(state, { level: 'good', title: 'Ehrenbürgerwürde verliehen', text: `Neuer Ehrenbürger von ${city}: ${t.name}.`, tab: 'society' });
     chronicle(state, `${state.person.first} verleiht ${t.name} die Ehrenbürgerwürde von ${city}.`, 'politics');
     const nm = ctx.user.social_public ? `${state.person.first} ${state.person.last}` : 'Der Bürgermeister';
     info = { t, city, cityId: state.cityId, nm, conn: null };

@@ -36,6 +36,12 @@
   </section>
 </div>
 
+<section class="card mt"><div class="card-title">Ansehen <span class="dim small">· <%= rep.levelName %> (Wert <%= rep.score %>) · Zuverlässigkeit <%= rep.comps.rel %> · Handel <%= rep.comps.trade %> · Gemeinwohl <%= rep.comps.civic %> · Amt <%= rep.comps.office %> · Skandal <%= rep.comps.scandal %></span></div>
+  <table class="table small"><thead><tr><th>Wann</th><th>Bestandteil</th><th>Ereignis</th><th class="num">Änderung</th><th class="num">×</th><th></th></tr></thead>
+  <tbody><% repLog.forEach(function(e){ %><tr><td class="dim"><%= new Date(e.at).toLocaleString('de-DE') %></td><td><%= e.kind %></td><td><%= e.label %></td><td class="num"><%= e.delta %></td><td class="num"><%= e.n %></td>
+    <td><form method="post" action="/admin/users/<%= u.id %>/reputation"><%- csrf %><input type="hidden" name="what" value="delete"><input type="hidden" name="entry" value="<%= e.id %>"><button class="btn sm ghost">löschen</button></form></td></tr><% }) %>
+  <% if (!repLog.length) { %><tr><td colspan="6" class="dim">Noch keine Einträge.</td></tr><% } %></tbody></table>
+  <form method="post" action="/admin/users/<%= u.id %>/reputation" class="mt"><%- csrf %><input type="hidden" name="what" value="reset"><button class="btn sm danger" data-confirm="Ansehen, Ortspunkte und Protokoll dieses Spielers auf null setzen?">Ansehen zurücksetzen</button> <span class="dim small">Einstellungen: <a href="/admin/settings/ruf">Ruf &amp; Ansehen</a></span></form></section>
 <section class="card mt"><div class="card-title">Leben &amp; Generationen <span class="dim small">(zum Bearbeiten öffnen)</span></div>
   <div class="table-wrap"><table class="table"><thead><tr><th>#</th><th>Zyklus</th><th>Gen.</th><th>Name</th><th>Status</th><th class="num">Jahr</th><th class="num">Geld (Cent)</th><th>Ende</th><th></th></tr></thead>
   <tbody><% chars.forEach(function(c){ %><tr><td><%= c.id %></td><td><%= c.cycle %></td><td><%= c.generation %></td><td><%= c.name %></td><td><span class="chip <%= c.status === 'alive' ? 'good' : c.status === 'dead' ? 'warn' : '' %>"><%= c.status %></span></td><td class="num"><%= c.year %></td><td class="num"><%= c.money %></td><td class="dim small"><%= c.end_reason || '' %></td><td class="num"><a class="btn sm" href="/admin/characters/<%= c.id %>">Bearbeiten</a></td></tr><% }) %><% if (!chars.length) { %><tr><td colspan="9" class="dim">Noch kein Charakter.</td></tr><% } %></tbody></table></div></section>

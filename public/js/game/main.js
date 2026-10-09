@@ -79,6 +79,7 @@ function go(route) {
   if (location.hash === `#/${route}`) rerender(); else location.hash = `#/${route}`;
 }
 import { startLive } from './live.js';
+import { startBadges } from './reputation.js';
 window.addEventListener('hashchange', () => { ctx.route = routeFromHash(); if (shellActive()) { renderHud(); renderPage(true); } });
 const shellActive = () => !!document.getElementById('page');
 
@@ -93,7 +94,7 @@ function render() {
     mount(app, html`<div class="shell"><header class="hud" id="hud"></header><nav class="side" id="side" aria-label="Hauptmenü"></nav><main class="page" id="page" tabindex="-1"></main></div>`);
   }
   renderHud(); trackHud(); renderPage(true);
-  startSocialPoll();
+  startSocialPoll(); startBadges();
   startLive(ctx, { pollSocial, softRefresh: () => renderPage(false), refreshHud: async () => { const r = await refresh(); if (r && r.view) renderHud(); } });
 }
 

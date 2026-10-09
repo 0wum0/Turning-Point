@@ -1,6 +1,7 @@
 import { isOpen, lockHint } from './onboarding.js';
 import { html, raw, icon, api, on, money, mount, esc, roleBadge, toast } from './ui.js';
 import { openProfile } from './views/social.js';
+import { repBadge } from './reputation.js';
 
 const TABS = [['people', 'Einwohner', 'users'], ['houses', 'Häuser', 'house'], ['firms', 'Betriebe', 'store']];
 
@@ -20,9 +21,9 @@ export function bindDirectory(root, ctx, cityId) {
   const body = root.querySelector('#dirBody'); if (!body) return;
   const profName = (key) => { const p = (ctx.world.professions || []).find((x) => x.key === key); return p ? p.name : key; };
   const m = (real) => money(Math.round(real * k), cur);
-  const owner = (i) => html`<a href="#/city" data-profile="${i.userId}">${i.owner}</a>${roleBadge(i.role)}`;
+  const owner = (i) => html`<a href="#/city" data-profile="${i.userId}">${i.owner}</a>${roleBadge(i.role)} ${repBadge(i.userId, cityId)}`;
   const row = {
-    people: (i) => html`<div class="dir-row"><button class="linkrow grow" data-profile="${i.userId}"><i class="odot ${i.online ? 'on' : ''}"></i><span class="grow"><b data-i18n-skip>${i.name}</b> ${roleBadge(i.role)} <span class="dim small">@${i.username}</span><div class="dim small">${i.occupation || 'ohne Beruf'} · ${i.year}${i.companies ? ' · ' + i.companies + ' Betrieb(e)' : ''}${i.properties ? ' · ' + i.properties + ' Immobilie(n)' : ''}</div></span></button><b class="mono">${m(i.wealth)}</b></div>`,
+    people: (i) => html`<div class="dir-row"><button class="linkrow grow" data-profile="${i.userId}"><i class="odot ${i.online ? 'on' : ''}"></i><span class="grow"><b data-i18n-skip>${i.name}</b> ${roleBadge(i.role)} ${repBadge(i.userId, cityId)} <span class="dim small">@${i.username}</span><div class="dim small">${i.occupation || 'ohne Beruf'} · ${i.year}${i.companies ? ' · ' + i.companies + ' Betrieb(e)' : ''}${i.properties ? ' · ' + i.properties + ' Immobilie(n)' : ''}</div></span></button><b class="mono">${m(i.wealth)}</b></div>`,
     houses: (i) => html`<div class="dir-row"><span class="dir-ic">${icon(kindIcon(i.kind))}</span><div class="grow"><b data-i18n-skip>${i.name}</b><div class="dim small">${i.rooms} Zimmer · Zustand ${i.cond} % · Eigentümer: ${owner(i)}</div>
       <div class="row small" style="margin-top:.25rem">${i.residence ? html`<span class="chip">Wohnsitz</span>` : ''}${i.rent != null ? html`<span class="chip ${i.tenant ? 'good' : 'warn'}">${i.tenant ? 'vermietet' : 'zu vermieten'} · ${m(i.rent)} / Tag</span>` : ''}${i.open && !i.mine ? html`<button class="btn sm primary" data-rentp="${i.userId}:${i.propId}" data-name="${i.name}" data-rent="${i.rent}">Mieten</button>` : ''}${i.ask != null ? html`<span class="chip accent">Zu verkaufen · ${m(i.ask)}</span>` : ''}</div></div>
       <div class="right"><b class="mono">${m(i.value)}</b><div class="small dim">Wert</div>${i.mine ? html`<button class="btn sm mt" data-sellmine="prop:${i.propId}" data-name="${i.name}" data-value="${i.value}" data-ask="${i.ask == null ? '' : i.ask}">Verkaufen …</button>` : html`<button class="btn sm mt" data-offer="prop:${i.userId}:${i.propId}" data-name="${i.name}" data-value="${i.value}" data-ask="${i.ask == null ? '' : i.ask}">Angebot</button>`}</div></div>`,

@@ -134,11 +134,25 @@ module.exports = function mount(router, H) {
     const sess = { n: await countUserSessions(u.id) };
     let meta = {}; try { meta = u.meta ? JSON.parse(u.meta) : {}; } catch (_) { /* leer */ }
     const sub = u.sub_until ? new Date(Number(u.sub_until)) : null;
+    const repLib = require('../lib/reputation');
+    const rep = await repLib.get(u.id, 0); const repLog = await repLib.ledger(u.id, 40);
     render(res, 'admin/user', {
-      title: u.username, active: 'users', u, meta,
+      title: u.username, active: 'users', u, meta, rep, repLog,
       chars: chars.map((x) => ({ ...x, year: startYear + Math.floor(x.game_day / 365) })), audits, purchases, ads, sessions: sess.n,
       subLocal: sub ? new Date(sub.getTime() - sub.getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '',
     });
+  }));
+
+  /* Ansehen: Protokoll einsehen, einzelne Einträge löschen, alles zurücksetzen (Werte bleiben nachvollziehbar im Protokoll der Spielleitung) */
+  router.post('/users/:id(\\d+)/reputation', wrap(async (req, res) => {
+    const id = int(req.params.id); const what = String(req.body.what || '').slice(0, 10); const lib = require('../lib/reputation');
+    const t = await db.one('SELECT id, role FROM users WHERE id = ?', [id]);
+    if (!t) { flash(req, 'bad', 'Spieler nicht gefunden.'); return res.redirect('/admin/users'); }
+    if (what === 'reset') { await lib.adminReset(id); flash(req, 'good', 'Ansehen und Protokoll wurden zurückgesetzt.'); }
+    else if (what === 'delete') { await lib.adminDeleteEntry(id, int(req.body.entry)); lib.invalidate(id); flash(req, 'good', 'Eintrag gelöscht (der Wert bleibt, bis er abflaut – bei Bedarf zurücksetzen).'); }
+    else flash(req, 'bad', 'Unbekannte Aktion.');
+    await audit(req, `admin_reputation_${what}`, { user: id });
+    res.redirect(`/admin/users/${id}`);
   }));
 
   router.post('/users/:id(\\d+)/edit', wrap(async (req, res) => {

@@ -188,7 +188,8 @@ async function partners(userId, companyId, goodKey, side) {
     deals: dmap.get(r.user_id) || 0, linked: my.some((m) => (m.seller_id === r.user_id && m.seller_company === r.company_id) || (m.buyer_id === r.user_id && m.buyer_company === r.company_id)),
   })).filter((r) => r.units > 0);
   const price = goods.priceReal(g, ps.year); // Richtpreis (Wert 1945) – Spanne in Prozent legt der Spieler fest
-  return { good: g.name, unit: g.unit, key: g.key, baseReal: price, min: num(ccfg().minPricePct, 90, 50, 100), max: num(ccfg().maxPricePct, 115, 100, 300), list };
+  const band = await bandFor(userId); // Preisband: Das Ansehen weitet oder verengt den Rahmen
+  return { good: g.name, unit: g.unit, key: g.key, baseReal: price, min: Math.ceil(band.lo), max: Math.floor(band.hi), band: { pad: band.pad, name: band.name, blocked: band.blocked }, list };
 }
 
 /* ============================================================================================

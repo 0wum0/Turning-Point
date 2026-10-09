@@ -1,6 +1,7 @@
 import { term, html, icon, money, moneyShort, signed, infoBtn, bar, on, num, yearsText } from '../ui.js';
 import { cityScene } from '../scene.js';
 import { advisorCard, questCard, bindGuide, isOpen, lockHint } from '../onboarding.js';
+import { standingCard, bindStanding } from '../reputation.js';
 
 const LEVEL_ICON = { good: 'circle-check', warn: 'triangle-alert', bad: 'circle-alert', info: 'info' };
 
@@ -41,6 +42,7 @@ export default {
       </div>
       ${v.hints.length ? html`<div class="hint-row">${v.hints.map((h) => html`<button class="chip ${h.level}" data-go="${h.target}">${icon(h.level === 'bad' ? 'circle-alert' : 'lightbulb')} ${h.text}</button>`)}</div>` : ''}
     </section>
+    ${standingCard(ctx)}
     ${ctx.social && ctx.social.rank ? html`<div class="soc-strip mt"><button class="chip accent" data-go="social">${icon('crown')} Platz ${ctx.social.rank.wealth} von ${ctx.social.rank.total} · Vermögen</button><button class="chip" data-go="social">${icon('users')} ${ctx.social.rank.onlineHere} Spieler online in ${v.city.name}</button>${ctx.social.unread ? html`<button class="chip bad" data-go="social">${icon('mail')} ${ctx.social.unread} neue${ctx.social.unread === 1 ? 'r Brief' : ' Briefe'}</button>` : ''}${ctx.social.requests ? html`<button class="chip warn" data-go="social">${icon('users')} ${ctx.social.requests} Freundschaftsanfrage${ctx.social.requests === 1 ? '' : 'n'}</button>` : ''}</div>` : ''}
 
     <div class="grid c3 mt" style="--gap:1rem">
@@ -101,7 +103,7 @@ export default {
     </section>`;
   },
   bind(root, ctx) {
-    bindGuide(root, ctx);
+    bindGuide(root, ctx); bindStanding(root, ctx);
     root.querySelectorAll('[data-social]').forEach((a) => a.addEventListener('click', () => { const so = ctx.ui.soc = ctx.ui.soc || { cat: 'wealth', scope: 'all', box: 'in', page: 1 }; so.tab = a.dataset.social; }));
     on(root, 'click', '[data-bank]', () => { if (!isOpen(ctx, 'bank')) return; import('../bank.js').then((m) => m.openBank(ctx)); });
     on(root, 'click', '[data-go]', (e, t) => { e.preventDefault(); ctx.go(t.dataset.go); });

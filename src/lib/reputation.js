@@ -215,7 +215,7 @@ async function inherit(conn, userId, which = 'heir') {
 /** Protokoll für die Oberfläche: die letzten Einträge mit Text. */
 async function ledger(userId, limit = 30) {
   const rows = await db.query('SELECT id, kind, reason, delta, n, ref, created_at FROM reputation_log WHERE user_id = ? ORDER BY id DESC LIMIT ?', [userId, Math.max(1, Math.min(200, limit))]);
-  return rows.map((r) => ({ id: r.id, kind: r.kind, reason: r.reason, label: labelOf(r.reason, r.ref), delta: Math.round(Number(r.delta) * 10) / 10, n: r.n, at: new Date(r.created_at).getTime() }));
+  return rows.map((r) => ({ id: r.id, kind: r.kind, reason: r.reason, label: labelOf(r.reason, r.ref), why: (R.REASONS[r.reason] || {}).why || '', delta: Math.round(Number(r.delta) * 10) / 10, n: r.n, at: new Date(r.created_at).getTime() }));
 }
 function labelOf(reason, ref) {
   if (reason === 'inherit') return 'Familienruf: Der Erbe übernimmt einen Teil des Rufs';

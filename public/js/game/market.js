@@ -1,5 +1,6 @@
 /* Spielermarkt: Angebote, Verkaufspreis, Versteigerungen. Preise laufen intern in „Wert von 1945“ (real); angezeigt wird in eigener Währung. */
 import { html, raw, icon, api, on, modal, toast, money, esc, infoBtn } from './ui.js';
+import { repBadge } from './reputation.js';
 
 const k = (ctx) => ctx.view.idx || 1;
 const m = (ctx, real) => money(Math.round(real * k(ctx)), ctx.view.currency);
@@ -59,11 +60,11 @@ export function openBid(ctx, a, onDone) {
 export function renderMarket(ctx, d) {
   const cityName = (id) => { const c = ctx.world.cityById.get(id); return c ? c.label : '–'; };
   const offer = (o) => html`<div class="firm" style="align-items:flex-start"><div class="grow"><b data-i18n-skip>${o.name}</b> <span class="chip">${kindName(o.kind)}</span>
-      <div class="dim small">${o.mine ? 'Dein ' + (o.iAmBuyer ? 'Kaufangebot' : 'Verkaufsangebot') + ' an ' + o.other : (o.parent ? 'Gegenangebot von ' : (o.iAmBuyer ? 'Verkaufsangebot von ' : 'Kaufangebot von ')) + o.other} · läuft bis ${new Date(o.expires).toLocaleDateString('de-DE')}</div>
+      <div class="dim small">${o.mine ? 'Dein ' + (o.iAmBuyer ? 'Kaufangebot' : 'Verkaufsangebot') + ' an ' + o.other : (o.parent ? 'Gegenangebot von ' : (o.iAmBuyer ? 'Verkaufsangebot von ' : 'Kaufangebot von ')) + o.other} ${repBadge(o.iAmBuyer ? o.sellerId : o.buyerId)} · läuft bis ${new Date(o.expires).toLocaleDateString('de-DE')}</div>
       ${o.message ? html`<div class="small" data-i18n-skip>„${o.message}“</div>` : ''}<div class="row small" style="margin-top:.3rem"><b class="mono">${m(ctx, o.price)}</b></div></div>
     <div class="row nowrap">${o.mine ? html`<button class="btn sm ghost" data-moff="withdraw" data-id="${o.id}">Zurückziehen</button>` : html`<button class="btn sm primary" data-moff="accept" data-id="${o.id}">Annehmen</button><button class="btn sm" data-moff="counter" data-id="${o.id}" data-price="${o.price}">Gegenangebot</button><button class="btn sm ghost" data-moff="decline" data-id="${o.id}">Ablehnen</button>`}</div></div>`;
   const own = (kind, x) => html`<div class="firm"><div class="grow"><b data-i18n-skip>${x.name}</b> <span class="dim small">${cityName(x.cityId)}${x.abandoned ? ' · verlassen' : ''}</span><div class="small dim">Wert ${m(ctx, x.value)}${x.ask != null ? html` · <span class="chip accent">Zu verkaufen für ${m(ctx, x.ask)}</span>` : ''}</div></div><button class="btn sm" data-sell="${kind}:${x.id}" data-name="${x.name}" data-value="${x.value}" data-ask="${x.ask == null ? '' : x.ask}">Verkaufen …</button></div>`;
-  const auc = (a) => html`<div class="firm"><div class="grow"><b data-i18n-skip>${a.name}</b> <span class="chip ${a.reason === 'estate' ? 'warn' : ''}">${a.reason === 'estate' ? 'Zwangsversteigerung' : 'Versteigerung'}</span> <span class="dim small">${cityName(a.cityId)} · ${a.seller}</span>
+  const auc = (a) => html`<div class="firm"><div class="grow"><b data-i18n-skip>${a.name}</b> <span class="chip ${a.reason === 'estate' ? 'warn' : ''}">${a.reason === 'estate' ? 'Zwangsversteigerung' : 'Versteigerung'}</span> <span class="dim small">${cityName(a.cityId)} · ${a.seller}</span> ${repBadge(a.sellerId)}
       <div class="small dim">Wert ${m(ctx, a.value)} · ${a.lead != null ? 'Höchstgebot ' + m(ctx, a.lead) + (a.leading ? ' (du)' : '') : 'ab ' + m(ctx, a.min)} · endet in ${left(a.ends)}</div></div>${a.mine ? html`<span class="chip">deine</span>` : html`<button class="btn sm primary" data-bid="${a.id}">Bieten</button>`}</div>`;
   return html`<div class="grid c2" style="--gap:1rem">
     <section class="card"><div class="card-title">${icon('handshake')} Angebote ${infoBtn(['Kaufangebote gehen an den Eigentümer, der annehmen, ablehnen oder ein Gegenangebot machen kann.', 'Beträge sind intern auf den Wert von 1945 umgerechnet; jede Seite zahlt und erhält in ihrer eigenen Währung.', 'Gebühren trägt der Käufer: Immobilien 3,5 % Grunderwerbsteuer, Betriebe 1,5 % Beurkundung.'], 'Angebote')}</div>

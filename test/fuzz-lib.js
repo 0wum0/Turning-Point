@@ -88,6 +88,19 @@ function invariants(s, prev) {
     for (const e of (s.pending && s.pending.supply) || []) need(Number.isFinite(e.real) && e.real >= 0 && Number.isInteger(e.userId), `Vormerkung ${JSON.stringify(e)}`);
     for (const c of s.companies) need(c.autoBuy === undefined || typeof c.autoBuy === 'boolean', 'autoBuy');
   }
+  { // Ansehen: Warteschlange klein und sauber, Zwischenspeicher endlich und im Bereich
+    const q = s.pending && s.pending.rep;
+    if (q !== undefined) {
+      need(Array.isArray(q) && q.length <= 40, `Ansehen-Warteschlange ${Array.isArray(q) ? q.length : typeof q}`);
+      for (const e of q || []) need(['rel', 'trade', 'civic', 'office', 'scandal'].includes(e.k) && Number.isFinite(e.d) && Number.isInteger(e.n) && e.n >= 1, `Ansehen-Eintrag ${JSON.stringify(e)}`);
+    }
+    if (s.rep !== undefined) {
+      const r = s.rep;
+      need(Number.isFinite(r.s) && r.s >= -100 && r.s <= 100 && Number.isFinite(r.l) && r.l >= -100 && r.l <= 100, `Ansehen-Wert ${JSON.stringify(r)}`);
+      need(Number.isInteger(r.lv) && r.lv >= -2 && r.lv <= 4 && Number.isInteger(r.ll) && r.ll >= -2 && r.ll <= 4, 'Ansehen-Stufe');
+      need(Array.isArray(r.c) && r.c.length === 5 && r.c.every((x) => Number.isFinite(x) && x >= -40 && x <= 100), 'Ansehen-Bestandteile');
+    }
+  }
   const h = s.housing;
   if (h.type === 'own') need(s.properties.some((p) => p.id === h.propertyId), 'Wohnsitz ohne Immobilie');
   if (s.occupation && s.occupation.ownCompanyId) need(s.companies.some((c) => c.id === s.occupation.ownCompanyId), 'Beruf ohne Firma');
@@ -208,6 +221,17 @@ function runScenario(seed, steps = 300, opts = {}) {
     }, user, { cycle: 1 });
   };
   let s;
+  // Ansehen: Die vorgemerkten Ereignisse laufen wie beim Speichern durch das reine Modell (Tagesgrenzen, Abflauen); der Zwischenspeicher wirkt zurück
+  const RP = require('../src/game/reputation'); const RC = settings.get('ruf');
+  let repRec = { c: RP.blank(), caps: null, pts: 0 }; let repDay = 20000;
+  const repStep = () => {
+    if (!s || !s.pending) return;
+    repDay++; repRec.c = RP.decay(repRec.c, 1, RC); repRec.pts *= 0.985;
+    const q = s.pending.rep || []; s.pending.rep = [];
+    for (const e of q) { const x = RP.applyEvent({ c: repRec.c, caps: repRec.caps }, { kind: e.k, delta: e.d, reason: e.r }, RC, repDay); repRec.c = x.c; repRec.caps = x.caps; repRec.pts += RP.pointsOf(x.kind || e.k, x.applied, RC); }
+    if (r() < 0.04) { const x = RP.applyEvent({ c: repRec.c, caps: repRec.caps }, { reason: pickOf(r, Object.keys(RP.REASONS)), delta: (r() - 0.4) * 60 }, RC, repDay); repRec.c = x.c; repRec.caps = x.caps; }
+    s.rep = RP.makeSnap(repRec.c, repRec.pts, RC);
+  };
   try {
     s = start();
     // Zeitreise in andere Epoche: Startjahr verschieben ist nicht möglich, daher früh weit vorspulen
@@ -230,13 +254,13 @@ function runScenario(seed, steps = 300, opts = {}) {
           if (est.share * est.n > est.total) fail('Pflichtanteile übersteigen den Nachlass');
           if (res.state.loans && res.state.loans.length) fail('Kredite wurden vererbt');
         }
-        s = res.state; trace(`Erbe gen ${s.generation}`);
+        s = res.state; repRec.c = RP.inherit(repRec.c, 50); repRec.pts *= 0.5; trace(`Erbe gen ${s.generation}`);
         const bad = invariants(s, null); if (bad.length) fail(`Erbe: ${bad.join('; ')}`);
         prev = clone(s); continue;
       }
       if (s.status === 'gameover') {
         st.gameovers++;
-        s = start(); trace('Neustart nach Game Over');
+        s = start(); repRec.c = RP.inherit(repRec.c, 25); repRec.pts *= 0.25; trace('Neustart nach Game Over');
         const bad = invariants(s, null); if (bad.length) fail(`Neustart: ${bad.join('; ')}`);
         prev = clone(s); continue;
       }
@@ -293,6 +317,7 @@ function runScenario(seed, steps = 300, opts = {}) {
         fail(`unerwartete Ausnahme in ${label}: ${e && e.stack ? e.stack.split('\n').slice(0, 4).join(' | ') : e}`);
       }
       if (s.status === 'dead') st.deaths++;
+      repStep();
       const bad = invariants(s, prev).concat(opts.cityEcon ? cityEconInvariants(world, s) : []);
       if (bad.length) fail(`Invariante nach ${label}: ${bad.slice(0, 5).join('; ')}`, { state: s });
       // present darf nie werfen; Zustand ist idempotent aufwertbar
@@ -445,4 +470,40 @@ function runSupplyScenario(seed, rounds = 30) {
   return failures;
 }
 
-module.exports = { world, runScenario, runTradeScenario, runSupplyScenario, runCityEconScenario, invariants, inputFor, JUNK, clone };
+/** Ansehen (reines Modell): zufällige, auch unsinnige Ereignisse, Abflauen, Erbe – Werte bleiben endlich, im Bereich, Tagesgrenzen gelten, Protokoll bleibt begrenzt. */
+function runRepScenario(seed, days = 400) {
+  const failures = []; const r = mulberry32(seed ^ 0x51ed270b); const RP = require('../src/game/reputation'); const C = settings.get('ruf');
+  const reasons = Object.keys(RP.REASONS); let rec = { c: RP.blank(), caps: null }; let pts = 0;
+  const used = {}; let day = 20000; const logPerDay = {};
+  const bad = (m) => failures.push({ seed, msg: m });
+  for (let d = 0; d < days; d++) {
+    day++; const dec = RP.decay(rec.c, 1, C);
+    for (const k of RP.KINDS) if (Math.abs(dec[k]) > Math.abs(rec.c[k]) + 1e-9) bad(`Abflauen vergrößert ${k}: ${rec.c[k]} -> ${dec[k]}`);
+    rec = { c: dec, caps: rec.caps }; pts *= 0.985;
+    const n = Math.floor(r() * 12);
+    for (let i = 0; i < n; i++) {
+      const reason = reasons[Math.floor(r() * reasons.length)];
+      const delta = r() < 0.1 ? [NaN, Infinity, -Infinity, 1e12, -1e12, 0, '5', null][Math.floor(r() * 8)] : (r() - 0.45) * 50;
+      const x = RP.applyEvent(rec, { reason, delta, pairKey: r() < 0.3 ? Math.floor(r() * 3) : undefined }, C, day);
+      rec = { c: x.c, caps: x.caps }; pts += RP.pointsOf(x.kind || 'rel', x.applied || 0, C);
+      const key = `${day}|${reason}`; used[key] = (used[key] || 0) + Math.abs(x.applied || 0);
+      const cap = (C.caps || {})[reason] != null ? C.caps[reason] : RP.REASONS[reason].cap;
+      if (used[key] > cap + 1e-9) bad(`Tagesgrenze überschritten: ${reason} ${used[key]} > ${cap}`);
+      if (x.applied) logPerDay[day] = (logPerDay[day] || new Set()).add(reason);
+      for (const k of RP.KINDS) if (!Number.isFinite(x.c[k])) bad(`Bestandteil ${k} nicht endlich`);
+    }
+    if (r() < 0.02) { rec = { c: RP.inherit(rec.c, r() < 0.5 ? 50 : 25), caps: null }; pts *= 0.5; }
+    const sn = RP.makeSnap(rec.c, Math.max(-100, Math.min(100, pts)), C);
+    if (!(sn.s >= -100 && sn.s <= 100 && sn.l >= -100 && sn.l <= 100 && sn.lv >= -2 && sn.lv <= 4 && sn.ll >= -2 && sn.ll <= 4)) bad(`Snapshot außerhalb: ${JSON.stringify(sn)}`);
+    for (const k of RP.KINDS) if (rec.c[k] > 100 + 1e-9 || rec.c[k] < -40 - 1e-9 || (k === 'scandal' && rec.c[k] < -1e-9)) bad(`Bestandteil ${k} außerhalb: ${rec.c[k]}`);
+    if ((logPerDay[day] || new Set()).size > reasons.length) bad('Protokoll je Tag nicht begrenzt');
+    // Wirkungen im Rahmen
+    for (const lv of [sn.lv, sn.ll]) {
+      const fx = [RP.creditRateDelta(lv, C), RP.creditLimitMult(lv, C), RP.contractBandPad(lv, C), RP.tenantDemandMult(lv, C), RP.arrearsMult(lv, C), RP.voteWeight(sn.s, rec.c.scandal, r() < 0.5, C)];
+      if (!fx.every(Number.isFinite) || Math.abs(fx[0]) > 3 || fx[1] < 0.5 || fx[1] > 1.3 || Math.abs(fx[2]) > 5 || fx[3] < 0.6 || fx[3] > 1.3 || fx[4] < 0.3 || fx[4] > 2 || fx[5] < 0.75 || fx[5] > 1.1) bad(`Wirkung außerhalb der Grenzen: ${fx}`);
+    }
+  }
+  return failures;
+}
+
+module.exports = { runRepScenario, world, runScenario, runTradeScenario, runSupplyScenario, runCityEconScenario, invariants, inputFor, JUNK, clone };

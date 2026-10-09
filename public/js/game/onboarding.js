@@ -121,6 +121,7 @@ export const SPOTS = {
   supply: { sel: '[data-supply-find], [data-contract-find]', text: 'Tippe bei einer Zutat auf „Lieferant suchen“.' },
   lease: { sel: '[data-lease="on"]', text: 'Tippe auf „Vermieten“.' },
   market: { pre: (ctx) => soc(ctx, 'market'), sel: '.soc-tabs [data-tab="market"]', text: 'Im Stadtverzeichnis kannst du Eigentümern ein Angebot machen.' },
+  standing: { sel: '#repCard', text: 'Hier siehst du dein Ansehen – und warum es sich verändert.' },
   elections: { pre: (ctx) => soc(ctx, 'elections'), sel: '[data-evote], [data-erun]', text: 'Wähle jemanden oder kandidiere selbst.' },
 };
 let spotTimer = 0; let spotEls = [];

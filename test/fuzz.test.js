@@ -5,7 +5,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert');
-const { runScenario, runTradeScenario, runSupplyScenario, runCityEconScenario } = require('./fuzz-lib');
+const { runScenario, runTradeScenario, runSupplyScenario, runCityEconScenario, runRepScenario } = require('./fuzz-lib');
 
 const report = (failures) => failures.map((f) => `Seed ${f.seed}: ${f.msg}\n  Spur: ${(f.trace || []).slice(-6).join(' | ')}`).join('\n');
 
@@ -59,6 +59,13 @@ test('Fuzz: Stadtindizes bleiben endlich und in den Grenzen (Modell, Politik, Mi
 test('Fuzz: Aktionsfolgen mit zufälligen Stadtindizes halten alle Invarianten ein', () => {
   for (const seed of [51, 52]) {
     const { failures } = runScenario(seed, 100, { lifeline: seed % 2 === 0, cityEcon: true });
+    assert.deepStrictEqual(failures, [], report(failures));
+  }
+});
+
+test('Fuzz: Ansehen bleibt endlich und im Bereich (Tagesgrenzen, Abflauen, Erbe, Wirkungen, unsinnige Beträge)', () => {
+  for (const seed of [61, 62, 63, 64]) {
+    const failures = runRepScenario(seed, 400);
     assert.deepStrictEqual(failures, [], report(failures));
   }
 });

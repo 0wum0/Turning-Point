@@ -42,6 +42,12 @@ function hintsFor(state, flows) {
   return h;
 }
 
+/** Mindestansehen für ein Amt (Anzeige): nötige Stufe, Name und ob sie erreicht ist. */
+function officeRep(state, i) {
+  const R = require('./reputation'); const need = R.officeMin(i); const st = R.stand(state);
+  const lv = i >= (settings.get('elections').firstNationalOffice || 3) ? st.lv : st.ll;
+  return { need, name: need >= 0 ? R.levelName(need) : null, ok: !R.block(lv, need), hint: R.block(lv, need) };
+}
 const r2 = (x) => Math.round(x * 100) / 100;
 /** Versorgung eines Betriebs in einfachen Zahlen für die Oberfläche (Mengen je Tag, Beträge in Cent heutiger Preise). */
 function supplyView(sp) {
@@ -180,7 +186,7 @@ function present(world, state, user, now) {
       return {
         influence: infl, elections: !!settings.get('elections').enabled, chanceOff: !!settings.get('elections').disableChance, minAge: pc.minAge, termDays: pc.termDays, ageOk: age >= pc.minAge,
         term: t ? { name: pc.offices[t.idx].name, idx: t.idx, daysLeft: Math.max(0, t.endDay - state.day), income: society.officeEffects(world, state, year).income } : null,
-        offices: pc.offices.map((o, i) => ({ idx: i, name: o.name, campaign: scale(o.campaign, idx), income: scale(o.income + o.termBonus * society.completed(state, i), idx), done: society.completed(state, i), unlocked: i === 0 || society.completed(state, i - 1) > 0, chance: Math.round(society.winChance(world, state, infl, i) * 100), rest: o.rest })),
+        offices: pc.offices.map((o, i) => ({ idx: i, name: o.name, campaign: scale(o.campaign, idx), income: scale(o.income + o.termBonus * society.completed(state, i), idx), done: society.completed(state, i), unlocked: i === 0 || society.completed(state, i - 1) > 0, chance: Math.round(society.winChance(world, state, infl, i) * 100), rest: o.rest, rep: officeRep(state, i) })),
       };
     })(),
     gambling: { ticket: scale(econ.gambling.ticket, idx), casino: year >= econ.gambling.casinoFromYear && age >= econ.gambling.casinoMinAge, casinoFrom: econ.gambling.casinoFromYear, minAge: econ.gambling.casinoMinAge, lost: state.stats.gambled || 0 },

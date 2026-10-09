@@ -351,7 +351,7 @@ async function overview(userId) {
 
 async function auctions(userId, cityId) {
   const rows = await db.query(`SELECT a.*, ps.name seller_name FROM market_auctions a LEFT JOIN player_stats ps ON ps.user_id = a.seller_id WHERE a.status = 'open' ${cityId ? 'AND a.city_id = ?' : ''} ORDER BY a.ends_at ASC LIMIT 40`, cityId ? [cityId] : []);
-  return rows.map((a) => ({ id: a.id, kind: a.kind, name: a.name, cityId: a.city_id, reason: a.reason, seller: a.seller_id ? (a.seller_name || 'Spieler') : 'Insolvenzmasse', mine: a.seller_id === userId, min: Number(a.min_real), value: Number(a.value_real), lead: a.lead_real == null ? null : Number(a.lead_real), leading: a.lead_user === userId, ends: a.ends_at, round: a.round }));
+  return rows.map((a) => ({ id: a.id, kind: a.kind, name: a.name, cityId: a.city_id, reason: a.reason, sellerId: a.seller_id || 0, seller: a.seller_id ? (a.seller_name || 'Spieler') : 'Insolvenzmasse', mine: a.seller_id === userId, min: Number(a.min_real), value: Number(a.value_real), lead: a.lead_real == null ? null : Number(a.lead_real), leading: a.lead_user === userId, ends: a.ends_at, round: a.round }));
 }
 
 async function expire() {

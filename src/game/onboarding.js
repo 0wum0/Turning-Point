@@ -43,6 +43,7 @@ const QUESTS = [
   { id: 'fridge7', title: 'Eine Woche lang den Kühlschrank gefüllt halten', why: 'Regelmäßig einkaufen ist die wichtigste Gewohnheit des Spiels: Es hält dich gesund und glücklich.', tab: 'household', spot: 'food', reward: { efs: 4 }, done: (s, q) => q.fridgeSince != null && s.day - q.fridgeSince >= 7 },
   { id: 'friend', title: 'Einen Partner oder Freund finden', why: 'Partner, Freunde und später Kinder machen glücklich – und Kinder sind die Erben deines Lebenswerks.', tab: 'newspaper', spot: 'listing:contact', reward: { efs: 4 }, done: (s, q) => !!s.partner || !!q.seen.friend },
   { id: 'save', title: 'Das Zehnfache deines Startgelds sparen', why: 'Rücklagen schützen dich bei Notfällen und sind die Grundlage für alles Größere: ein Haus, eine Firma, ein Amt.', tab: 'overview', spot: 'money', reward: { efs: 5 }, done: (s, q, k) => s.money >= 10 * (k.startMoney || 4000) },
+  { id: 'standing', title: 'Erreiche Ansehen: Anständig', why: 'Wer Miete und Steuern pünktlich zahlt und fair handelt, genießt Vertrauen: Die Bank gibt bessere Zinsen, Mieter und Geschäftspartner kommen leichter, und Ämter stehen dir offen.', tab: 'overview', spot: 'standing', reward: { efs: 5 }, done: (s) => require('./reputation').stand(s).lv >= 1 },
   { id: 'skill2', title: 'Einen zweiten Beruf lernen', why: 'Jeder Beruf ist ein Schlüssel: Er bestimmt, welche Firmen du später führen darfst.', tab: 'work', spot: 'course', reward: { efs: 5 }, done: (s, q) => s.skills && s.skills.learned.length > (q.baseLearned == null ? 1 : q.baseLearned) },
   { id: 'business', title: 'Gründe dein erstes Unternehmen', why: 'Eine eigene Firma verdient auch dann Geld, wenn du gerade nicht arbeitest – der Weg zum Vermächtnis. Unter „Unternehmen“ gründest du sie mit einem Klick.', tab: 'business', spot: 'found', reward: { efs: 6 }, done: (s, q) => (s.companies || []).length > 0 || !!q.acts.buyBiz },
   { id: 'hire', title: 'Einen Mitarbeiter einstellen', why: 'Mitarbeiter lassen den Betrieb wachsen und bringen mehr Gewinn.', tab: 'business', spot: 'hire', reward: { efs: 6 }, done: (s, q) => !!q.acts.bizHire },
@@ -190,6 +191,13 @@ function advise(v, nextQuest, opts) {
   if (cr && cr.loans && cr.loans.length) {
     const small = cr.loans.slice().sort((a, b) => a.left - b.left)[0];
     if (v.flows && v.flows.net > 0 && v.money > small.left * 2) add(45, { id: 'loan', level: 'info', icon: 'landmark', title: 'Du kannst einen Kredit zurückzahlen', why: `Du hast ${dm(v.money, cur)} und schuldest nur noch ${dm(small.left, cur)}. Das spart Zinsen.`, cta: { kind: 'bank', label: 'Zur Bank' } });
+  }
+  // Ansehen: pünktlich zahlen schützt den Ruf; ein angeschlagener Ruf ist ein eigener Hinweis
+  if (v.housing && v.housing.type === 'rent' && v.flows && v.flows.exp && v.flows.exp.lodging > 0 && v.money < v.flows.exp.lodging * 6) {
+    add(83, { id: 'rentrisk', level: 'warn', icon: 'clock', title: 'Deine Miete ist in Gefahr', why: 'Reicht das Geld nicht für die Miete, verlierst du die Wohnung – und dein Ansehen leidet. Pünktlich zahlen dagegen stärkt es.', cta: { kind: 'go', label: 'Einnahmen verbessern', tab: 'work' } });
+  }
+  if (v.rep && v.rep.lv <= -1) {
+    add(65, { id: 'repbad', level: 'warn', icon: 'badge-check', title: 'Dein Ruf ist angeschlagen', why: 'Banken, Vermieter und Wähler misstrauen dir. Zahle Rechnungen pünktlich und halte Verträge ein, dann erholt sich dein Ansehen mit der Zeit.', cta: { kind: 'go', label: 'Mein Ansehen', tab: 'overview', spot: 'standing' } });
   }
   if (v.flows && v.flows.net < 0 && v.money < -v.flows.net * 10) add(82, { id: 'cash', level: 'warn', icon: 'wallet', title: 'Dein Geld reicht nicht mehr lange', why: 'Du gibst pro Tag mehr aus, als du einnimmst. Bei null Geld endet das Spiel.', cta: { kind: 'go', label: 'Einnahmen verbessern', tab: 'work' } });
   if (v.partner && v.partner.sat < 45) add(55, { id: 'partner', level: 'warn', icon: 'heart', title: `${v.partner.name} ist unzufrieden`, why: 'Zeit zusammen und kleine Geschenke heben die Stimmung in der Beziehung.', cta: { kind: 'go', label: 'Zur Familie', tab: 'family' } });

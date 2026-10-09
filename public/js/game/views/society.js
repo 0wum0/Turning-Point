@@ -1,5 +1,6 @@
 import { html, icon, money, infoBtn, bar, on, yearsText, signed } from '../ui.js';
 import { policyBox, bindPolicy } from '../policy.js';
+import { honorSkeleton, bindHonor } from '../reputation.js';
 
 export default {
   id: 'society', label: 'Gesellschaft', icon: 'landmark',
@@ -16,10 +17,12 @@ export default {
       ${p.elections ? html`<div class="alert info mt">${icon('info')}<div>Ämter werden in Echtzeit von den Spielern gewählt. <a href="#/social" data-elections>Zu den Wahlen</a></div></div>` : ''}
       <div class="stack mt" style="--gap:.6rem">${p.offices.map((o) => html`<div class="office ${o.unlocked ? '' : 'locked'}"><div class="lic sm">${icon(o.unlocked ? 'landmark' : 'lock')}</div>
         <div class="grow"><b>${o.name}</b><div class="dim small">Wahlkampf ${money(o.campaign, cur)} · Einkommen ${o.income ? money(o.income, cur) + ' / Tag' : 'unbezahlt'} · Kraft −${o.rest}/Tag${o.done ? ' · ' + o.done + '× absolviert' : ''}</div></div>
-        <div class="row nowrap"><span class="chip">${o.chance} %</span><button class="btn sm primary" data-run="${o.idx}" ${(p.chanceOff || !o.unlocked || p.term || !p.ageOk || v.money < o.campaign) ? 'disabled' : ''}>Kandidieren</button></div></div>`)}</div>
+        <div class="row nowrap">${o.rep && o.rep.need > 0 ? html`<span class="chip ${o.rep.ok ? 'good' : 'warn'}" title="${o.rep.ok ? 'Ansehen reicht' : o.rep.hint}">${icon(o.rep.ok ? 'badge-check' : 'lock')} ${o.rep.name}</span>` : ''}<span class="chip">${o.chance} %</span><button class="btn sm primary" data-run="${o.idx}" ${(p.chanceOff || !o.unlocked || p.term || !p.ageOk || v.money < o.campaign || (o.rep && !o.rep.ok)) ? 'disabled' : ''} ${o.rep && !o.rep.ok ? html`title="${o.rep.hint}"` : ''}>Kandidieren</button></div></div>`)}</div>
+      ${p.offices.some((o) => o.rep && !o.rep.ok && o.unlocked) ? html`<div class="alert info mt small">${icon('badge-check')}<div>${(p.offices.find((o) => o.rep && !o.rep.ok && o.unlocked) || {}).rep.hint} <a href="#/overview" data-repopen>Mein Ansehen</a></div></div>` : ''}
     </section>
 
     ${policyBox()}
+    ${honorSkeleton()}
 
     <div class="grid c2 mt" style="--gap:1rem">
       <section class="card"><div class="card-title">${icon('ticket')} Lotto ${infoBtn(['Lotto ist freiwillig – und statistisch ein Verlustgeschäft.', 'Es gibt kleine Gewinne, selten große. Sehr selten winkt ein Vermögen.', 'Setze nur, was du verschmerzen kannst.'], 'Lotto')}</div>
@@ -31,7 +34,8 @@ export default {
     </div>`;
   },
   bind(root, ctx) {
-    bindPolicy(root, ctx);
+    bindPolicy(root, ctx); bindHonor(root, ctx);
+    on(root, 'click', '[data-repopen]', (e) => { e.preventDefault(); import('../reputation.js').then((m) => m.openStanding(ctx)); });
     on(root, 'click', '[data-elections]', (e) => { e.preventDefault(); ctx.ui.soc = Object.assign(ctx.ui.soc || { cat: 'wealth', scope: 'all', box: 'in', page: 1 }, { tab: 'elections' }); ctx.go('social'); });
     on(root, 'click', '[data-run]', (e, t) => ctx.act('runOffice', { idx: Number(t.dataset.run) }));
     const rs = root.querySelector('#resign'); if (rs) rs.onclick = async () => { if (await ctx.confirm({ title: 'Zurücktreten?', text: 'Die laufende Amtszeit zählt dann nicht.', ok: 'Zurücktreten', danger: true })) ctx.act('resignOffice', {}); };

@@ -2,6 +2,7 @@
  * Preise in Verträgen sind „Wert von 1945“ (real); angezeigt wird in eigener Währung.
  * Für die englische Oberfläche stehen Zahlen, Einheiten und Namen in eigenen Elementen, damit jeder Textknoten einzeln übersetzbar ist. */
 import { html, icon, api, on, modal, toast, money, infoBtn, term } from './ui.js';
+import { repBadge } from './reputation.js';
 
 const EN = () => document.documentElement.lang === 'en';
 /** Zahl mit passendem Dezimalzeichen; kleine Mengen mit zwei, große ohne Nachkommastellen. */
@@ -42,7 +43,7 @@ const daysLeft = (d) => Math.max(0, Math.round(d.daysLeft == null ? d.term || 0 
 function dealLine(x, buy, ctx) {
   const who = x.other || x.otherName || 'Spieler';
   const firm = x.otherFirm;
-  return html`<div class="grow small"><div><b>${buy ? 'Du kaufst' : 'Du verkaufst'}</b> ${qty(x.qty, x.unit)} <b>${x.name || x.goodName}</b> <span>pro Tag ${buy ? 'von' : 'an'}</span> <span data-i18n-skip>${who}${firm ? ` (${firm})` : ''}</span></div>
+  return html`<div class="grow small"><div><b>${buy ? 'Du kaufst' : 'Du verkaufst'}</b> ${qty(x.qty, x.unit)} <b>${x.name || x.goodName}</b> <span>pro Tag ${buy ? 'von' : 'an'}</span> <span data-i18n-skip>${who}${firm ? ` (${firm})` : ''}</span> ${repBadge(x.otherUser || x.sellerId)}</div>
     <div class="dim"><span>${price(ctx, x.priceReal)}</span> <span>je</span> <span>${x.unit}</span> · ${x.status === 'offer' ? html`<span>${`${x.term} Tage`}</span>` : (x.daysLeft != null || x.term) ? html`<span>${`noch ${daysLeft(x)} Tage`}</span>` : ''}${x.auto ? html` · <span>verlängert sich</span>` : ''}${x.fill != null && x.fill < 0.98 && x.status !== 'offer' ? html` · <span>${`liefert zu ${Math.round(x.fill * 100)} %`}</span>` : ''}</div></div>`;
 }
 const dealRow = (d, buy, ctx) => html`<div class="firm sup-deal">${dealLine(d, buy, ctx)}<span class="deal-st">${statusChip(d)}</span><button class="btn sm ghost" data-contract-cancel="${d.id}" title="Vertrag kündigen">${icon('x')}</button></div>`;
@@ -168,7 +169,7 @@ async function openPartners(ctx, companyId, good, side, after) {
   body.className = '';
   body.innerHTML = html`<p class="small"><b>${d.good}</b>: <span>${supplier ? 'Diese Betriebe stellen die Ware her.' : 'Diese Betriebe brauchen die Ware.'}</span> <span>Im Vertrag legt ihr Menge, Preis und Laufzeit fest.</span> <span>Richtpreis:</span> <b class="mono">${price(ctx, d.baseReal)}</b> <span>je</span> <span>${d.unit}</span></p>
     <div class="stack" style="--gap:.5rem">${d.list.length ? d.list.map((p, i) => html`<div class="firm" style="align-items:flex-start"><div class="grow small"><b data-i18n-skip>${p.firm}</b> ${p.sameCity ? html`<span class="chip good">in deiner Stadt</span>` : ''}
-      <div class="dim" data-i18n-skip>${p.city} · ${p.owner}</div>
+      <div class="dim"><span data-i18n-skip>${p.city} · ${p.owner}</span> ${repBadge(p.userId)}</div>
       <div class="dim"><span>${supplier ? 'Kann etwa liefern:' : 'Braucht etwa:'}</span> ${qty(p.units, d.unit)} <span>pro Tag</span>${p.deals ? html` · <span>${p.deals} Verträge bisher</span>` : html` · <span>neu am Markt</span>`}${p.linked ? html` · <span>Vertrag besteht</span>` : ''}</div></div>
       <button class="btn sm primary" data-pick="${i}" ${p.linked ? 'disabled' : ''}>Vertrag anbieten</button></div>`) : html`<div class="alert info small">${icon('info')}<div>${d.note || 'Gerade bietet niemand in deiner Region diese Ware an. Der Großhandel springt ein, solange „Automatisch einkaufen“ an ist.'}</div></div>`}</div>`.__raw;
   on(dlg.el, 'click', '[data-pick]', (e, t) => { const p = d.list[Number(t.dataset.pick)]; dlg.close(); openOffer(ctx, c, p, d, supplier, need, after); });
@@ -182,6 +183,7 @@ function openOffer(ctx, c, p, d, supplier, need, after) {
     <div class="field"><label for="of-t">Laufzeit</label><select id="of-t">${[30, 60, 90, 180, 365].map((n) => html`<option value="${n}" ${n === 90 ? 'selected' : ''}>${n} Tage</option>`)}</select></div></div>
     <div class="field"><label for="of-p">Preis: <b id="of-pv"></b></label><input id="of-p" type="range" min="${d.min}" max="${d.max}" step="1" value="100"></div>
     <div class="small dim" id="of-sum"></div>
+    ${d.band && d.band.pad ? html`<div class="small dim mt">${icon('badge-check')} <span>Dein Ansehen</span> „${d.band.name}“ <span>${d.band.pad > 0 ? 'weitet den erlaubten Preisrahmen' : 'verengt den erlaubten Preisrahmen'}:</span> ${d.min}–${d.max} %</div>` : ''}
     <label class="sup-auto mt"><input type="checkbox" id="of-a" checked><span><b>Automatisch verlängern</b><br><span class="dim small">Der Vertrag läuft nach Ablauf von selbst weiter, bis jemand kündigt.</span></span></label>
     <div class="row end mt"><button class="btn ghost" data-close="no">Abbrechen</button><button class="btn primary" id="of-go">Angebot senden</button></div>`);
   const q = dlg.el.querySelector('#of-q'); const pr = dlg.el.querySelector('#of-p');

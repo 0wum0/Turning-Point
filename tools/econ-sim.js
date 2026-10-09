@@ -26,6 +26,7 @@ const ONLY = String(arg('only', 'employee,landlord0,landlord,owner,mixed')).spli
 const JSON_OUT = argv.includes('--json');
 // Stadtwirtschaft: off = ohne Stadtindizes (wie vor Schritt 2), era = nur deterministischer Epochenfaktor, live = Indizes folgen Nachfrage/Angebot der Simulation
 const CITY = String(arg('city', 'live'));
+const REP = arg('rep', 'on') !== 'off'; // Ruf und Ansehen (src/game/reputation.js) mitrechnen: --rep off für die Werte ohne Ansehen
 const OTHERS = Number(arg('others', 12)); // andere lebende Charaktere in der Stadt des Spielers
 const cityecon = require('../src/game/cityecon');
 const CE_STATE = new Map();
@@ -72,6 +73,14 @@ function makeRun(name, pkey, policy) {
   let bad = null;
   const startDay = s.day;
   const maxDays = YEARS * 365;
+  // Ansehen: 365 Spieltage = 1 echter Tag. Vorgemerkte Ereignisse laufen mit Tagesgrenzen durch das reine Modell, der Zwischenspeicher wirkt zurück.
+  const RP = require('../src/game/reputation'); const RC = require('../src/settings').get('ruf');
+  const rstate = { c: RP.blank(), caps: null, pts: 0, day: 0, seen: {} }; const repLog = [];
+  const repDay = () => {
+    const q = s.pending.rep || []; s.pending.rep = [];
+    for (const e of q) { const r = RP.applyEvent({ c: rstate.c, caps: rstate.caps }, { kind: e.k, delta: e.d, reason: e.r }, RC, rstate.day); rstate.c = r.c; rstate.caps = r.caps; rstate.pts += RP.pointsOf(r.kind || e.k, r.applied, RC); if (e.u) continue; }
+    s.rep = RP.makeSnap(rstate.c, rstate.pts, RC);
+  };
   const snap = (year) => {
     const idx = w.idx(year);
     const props = s.properties.reduce((a, p) => a + core.propertyValue(w, s, p, year), 0);
@@ -96,6 +105,9 @@ function makeRun(name, pkey, policy) {
     const m0 = s.money;
     const cash0 = (s.companies || []).reduce((a, c) => a + c.cash, 0);
     advance(w, s, 1); s.interrupts = [];
+    if (REP) {
+      if (d % 365 === 364) { repDay(); rstate.day++; rstate.c = RP.decay(rstate.c, 1, RC); rstate.pts *= 0.985; s.rep = RP.makeSnap(rstate.c, rstate.pts, RC); if ((rstate.day) % 10 === 0) repLog.push({ year: yearOf(s.day, s.startYear), s: s.rep.s, lv: s.rep.lv, c: s.rep.c }); }
+    } else s.pending.rep = [];
     // Flüsse (aufgelaufen laut dailyFlows) in Cent heutiger Preise → durch idx später normiert
     acc.wage += f.inc.wage; acc.rent += f.inc.rent; acc.tax += f.exp.tax; acc.loan += f.exp.loan; acc.upkeep += f.exp.upkeep;
     for (const c of s.companies || []) if (!c.abandoned) { const cf = biz.companyFlows(w, s, c, year); acc.bizProfit += cf.profit; acc.bizTax += cf.tax; acc.bizWages += cf.wages; acc.bizInputs += cf.inputs || 0; }
@@ -114,7 +126,7 @@ function makeRun(name, pkey, policy) {
   }
   const year = yearOf(s.day, s.startYear);
   rows.push({ ...snap(year), final: true, status: s.status, reason: s.death && s.death.reason });
-  return { name, rows, state: s };
+  return { name, rows, state: s, repLog };
 }
 
 /* ---------- Politik der Archetypen ---------- */
@@ -305,7 +317,7 @@ for (const name of ONLY) {
   console.log(`\n=== ${name} (${P.pkey}) – Werte in DM von 1945 (Preisindex bereinigt); Flüsse = Jahreswerte im Schnitt des Jahrzehnts ===`);
   console.log(['Jahr', 'Geld', 'Immo', 'Firmen', 'Schuld', 'Netto', 'Immos', 'Firmen#', 'Lohn', 'Miete', 'Steuer', 'Kreditrate', 'Betr.Gewinn', 'Betr.Lohn', 'Waren'].map((x) => x.padStart(10)).join(''));
   for (const r of res.rows) {
-    if (r.final) { console.log(`Ende ${r.year}: ${r.status}${r.reason ? ' (' + r.reason + ')' : ''}  Netto ${f0(r.net)}`); continue; }
+    if (r.final) { console.log(`Ende ${r.year}: ${r.status}${r.reason ? ' (' + r.reason + ')' : ''}  Netto ${f0(r.net)}${REP && res.repLog.length ? `  · Ansehen: ${res.repLog.map((x) => `${x.year}:${x.s}`).join(' ')}` : ''}`); continue; }
     console.log([r.year, f0(r.money), f0(r.props), f0(r.firms), f0(r.debt), f0(r.net), r.nProps, r.nFirms, f0(r.wage), f0(r.rent), f0(r.tax), f0(r.loan), f0(r.bizProfit), f0(r.bizWages), f0(r.bizInputs)].map((x) => String(x).padStart(10)).join(''));
   }
 }

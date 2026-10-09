@@ -483,3 +483,20 @@ html { scroll-padding-top: calc(var(--hud-h, 62px) + 10px); }
 .econ-city { margin: .5rem 0 0; font-size: 1.25rem; }
 .found-market { padding: .6rem .75rem; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); display: grid; gap: .25rem; }
 .found-market .chip { white-space: normal; text-align: left; height: auto; }
+
+/* ---- Ruf und Ansehen ---- */
+.chip.rep { gap: .3rem; white-space: nowrap; font-size: .72rem; padding: .12rem .5rem; }
+.chip.rep .i { width: .95em; height: .95em; }
+.chip.rep.gold { color: var(--accent-2); border-color: color-mix(in srgb, var(--accent) 55%, transparent); background: color-mix(in srgb, var(--accent) 12%, var(--surface-2)); }
+.chip.rep.dim { color: var(--text-dim); opacity: .85; }
+.chip.rep.now { box-shadow: 0 0 0 2px var(--accent); }
+.rep-badge { display: inline-flex; vertical-align: middle; min-height: 1.2em; }
+.rep-badge .chip { margin: 0; }
+.rep-card .rep-level { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.rep-card .rep-level .chip { font-size: .9rem; padding: .25rem .75rem; }
+.rep-top .rep-chg, .rep-log .rep-chg { display: flex; align-items: center; gap: .6rem; padding: .3rem 0; border-top: 1px solid var(--border); font-size: .88rem; }
+.rep-chg b { min-width: 3.2rem; font-variant-numeric: tabular-nums; } .rep-chg .grow { min-width: 0; }
+.rep-ladder { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .5rem; }
+.rep-two { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; }
+.rep-modal .kv dd { text-align: right; }
+@media (max-width: 480px) { .rep-chg .btn { padding: .25rem .5rem; } .rep-two { gap: .5rem; } }
