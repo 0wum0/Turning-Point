@@ -268,6 +268,20 @@ function suggestName(world, state, pkey, tier) {
 }
 const foundPrice = (world, city, tier, idx, year) => { const base = Math.round(tiersOf(world)[tier].price * city.price_factor * require('./cityecon').buildMult(city.id, year)); return { base, price: Math.round(base * idx) }; };
 
+/**
+ * Marktlage vor Ort für eine Gründung: Nachfrage (Obergrenze der Stadt in Räumen) gegen vorhandene Betriebe dieser Art (Spieler und Bots),
+ * dazu das Preisniveau des Sektors (Stadtwirtschaft). state: crowded (viel Konkurrenz) · busy · ok · free (kaum Konkurrenz).
+ */
+function localMarket(world, city, pkey, rooms, year) {
+  const ce = require('./cityecon'); const c0 = require('./competition').info(world, city.id, pkey, 0);
+  const sat0 = c0.total / c0.cap; const sat1 = (c0.total + rooms) / c0.cap;
+  const sec = ce.sectorOfPkey(world, pkey);
+  return {
+    state: sat1 > 1.15 ? 'crowded' : sat0 < 0.35 ? 'free' : sat1 > 0.8 ? 'busy' : 'ok', firms: c0.firms, total: c0.total, cap: c0.cap, sat: Math.round(sat1 * 100) / 100,
+    sector: sec, sectorName: sec ? ce.META[sec].name : null, level: sec ? Math.round(ce.level(city.id, sec, year) * 100) / 100 : 1,
+  };
+}
+
 /** Berufe, aus denen man gründen darf (wie die Zeitung: kein Akademiker-/Helferberuf, nur mit Betriebsart, nur in der Epoche). */
 function foundKeys(world, state, year) {
   const keys = new Set(state.skills.learned);
@@ -305,7 +319,7 @@ function foundOptions(world, state) {
           upkeep: Math.round((price * econ.upkeepYearPct) / 100 / 365), profit: f ? f.profit : null, income: f ? f.income : null, wages: f ? f.wages : null, inputsCost: f ? f.inputs : null, staff: probe.staff,
           inputs: ar.inputs.map((i) => ({ good: i.good, name: goods.good(i.good).name, icon: goods.good(i.good).icon })),
           outputs: ar.out.map((o) => ({ good: o.good, name: goods.good(o.good).name, service: !!goods.good(o.good).service })),
-          affordable: state.money >= price, missing: Math.max(0, price - state.money),
+          affordable: state.money >= price, missing: Math.max(0, price - state.money), market: localMarket(world, city, p.pkey, rooms, year),
         });
       }
       if (!lv.length) continue;

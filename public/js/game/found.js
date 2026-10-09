@@ -6,6 +6,15 @@ import { html, icon, money, modal, on, signed, mount } from './ui.js';
 const LEVELS = ['Anfänger', 'Geselle', 'Fachkraft', 'Meister', 'Altmeister'];
 const names = (list) => list.map((x, i) => html`${i ? ', ' : ''}<span>${x.name}</span>`);
 
+/* Marktlage vor Ort (Nachfrage und Konkurrenz) in einem Satz plus Kennzahlen */
+const MARKET = {
+  crowded: ['warn', 'Viel Konkurrenz – die Nachfrage ist knapp'],
+  busy: ['', 'Einige Betriebe dieser Art – es wird eng'],
+  ok: ['good', 'Die Nachfrage reicht für einen weiteren Betrieb'],
+  free: ['good', 'Kaum Konkurrenz – die Nachfrage ist frei'],
+};
+const marketChip = (m) => (m ? html`<span class="chip ${MARKET[m.state][0]}" title="Betriebe dieser Art in der Stadt (Spieler und Bots) gegen die Nachfrage der Stadt">${MARKET[m.state][1]}</span>` : '');
+
 function explainNoQualification(v) {
   return html`<h3>${icon('store')} Unternehmen gründen</h3>
     <div class="found-help">
@@ -34,6 +43,7 @@ function step1(v) {
       <span class="fc-body"><b>${top.tierName}</b>
         <span class="small dim">${sell.length ? html`<span>Stellt</span> ${names(sell)} <span>her und verkauft es an die Stadt.</span>` : html`<span>Bietet Dienstleistungen an und verkauft sie an die Stadt.</span>`}</span>
         <span class="small fc-meta">${multi ? html`<span>ab</span> ` : ''}<b>${money(min, cur)}</b> · <span>${o.tiers[0].rooms} Räume</span> · <span>${multi ? 'Berufsstufe ab' : 'Berufsstufe'}</span> <span>${LEVELS[o.tiers[0].minLevel]}</span></span>
+        <span class="small fc-meta">${marketChip(top.market)}</span>
         ${can ? '' : html`<span class="small neg">${f.full ? html`<span>Höchstzahl an Unternehmen erreicht</span>` : html`<span>Dir fehlen</span> <b>${money(min - v.money, cur)}</b>`}</span>`}
       </span></button>`;
   });
@@ -59,6 +69,8 @@ function step2(v, o, tierIdx, name) {
       <dt>Unterhalt pro Tag</dt><dd class="neg">${money(t.upkeep, cur)}</dd>
       <dt>Zutaten</dt><dd>${t.inputs.length ? names(t.inputs) : html`<span>keine – der Betrieb stellt alles selbst her</span>`}</dd>
       <dt>Erzeugnis</dt><dd>${sell.length ? names(sell) : html`<span>Dienstleistung (wird direkt an Kunden verkauft)</span>`}</dd>
+      ${t.market ? html`<dt>Nachfrage vor Ort</dt><dd>${marketChip(t.market)}<div class="small dim"><span>${t.market.firms} Betriebe dieser Art in der Stadt · Nachfrage ${t.market.total} von ${t.market.cap} Räumen</span></div></dd>` : ''}
+      ${t.market && t.market.sector ? html`<dt>Preisniveau der Branche</dt><dd><span>${t.market.sectorName}</span> <b>${t.market.level >= 1 ? '+' : '−'}${Math.round(Math.abs(t.market.level - 1) * 100)} %</b> <span class="dim small">(wirkt auf deinen Umsatz)</span></dd>` : ''}
       ${t.profit != null ? html`<dt>Gewinn pro Tag*</dt><dd class="${t.profit >= 0 ? 'pos' : 'neg'}"><b>${signed(t.profit, cur)}</b></dd>` : ''}
     </dl>
     ${t.profit != null ? html`<div class="small dim mt"><span>* Bei voller Besetzung, nach Zutaten, Löhnen, Unterhalt und Steuern. Zu Beginn hast du noch keine Mitarbeiter: Arbeite zuerst selbst im Betrieb und stelle dann nach und nach Leute ein.</span> <span>Nötige Mitarbeiter:</span> <span>${t.staff}</span> <span>und ein Manager.</span></div>` : ''}

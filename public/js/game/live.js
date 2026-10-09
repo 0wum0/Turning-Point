@@ -12,6 +12,7 @@ export function startLive(ctx, hooks) {
       es.addEventListener(type, () => {
         if (type === 'social' || type === 'chat') hooks.pollSocial();
         if (type === 'chat') window.dispatchEvent(new CustomEvent('tp-live-chat'));
+        if (type === 'economy') window.dispatchEvent(new CustomEvent('tp-live-economy'));
         if (SOFT_ROUTES[type].includes(ctx.route)) soft();
         else if (type === 'market' || type === 'exchange') hooks.refreshHud();
       });

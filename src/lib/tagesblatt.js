@@ -28,10 +28,13 @@ async function stats() {
   const vol = await one('SELECT COALESCE(SUM(shares * price_real),0) n FROM stock_trades WHERE created_at > NOW() - INTERVAL 1 DAY');
   const auctions = await one("SELECT COUNT(*) n FROM market_auctions WHERE status = 'open'");
   const debt = await one("SELECT COUNT(*) n FROM player_stats WHERE status = 'alive' AND wealth < 0");
+  let prices = [];
+  try { prices = require('./cityecon').summary(world); } catch (_) { /* Stadtwirtschaft ist optional */ }
   return {
     online: Number(online.n), activeDay: Number(day.n), players: Number(total.n), alive: Number(alive.n),
     money: Math.round(money / 100), wealth: Math.round(Number(wealth.n) / 100), firms: Number(firms.n), firmValue: Math.round(Number(firms.v) / 100), props: Number(props.n),
     trades: Number(trades.n), listed: Number(listed.n), stockVolume: Math.round(Number(vol.n) / 100), auctions: Number(auctions.n), indebted: Number(debt.n),
+    prices, // Stadtwirtschaft: Preisniveau der aktiven Städte je Sektor (Prozent gegenüber dem Normalniveau)
   };
 }
 

@@ -2,6 +2,7 @@ import { bindPlaceSearch } from '../places.js';
 import { html, icon, money, infoBtn, bar, on, api, num, yearsText, modal } from '../ui.js';
 import { paginate } from '../paginate.js';
 import { openProfile } from './social.js';
+import { econSkeleton, bindEcon } from '../economy.js';
 
 const LONG = 520;
 const teaser = (t) => { const first = String(t).split(/\n{2,}/)[0].trim(); return first.length > 260 ? `${first.slice(0, 260).replace(/\s+\S*$/, '')} …` : `${first} …`; };
@@ -36,7 +37,7 @@ function openReader(n, e) {
   show(0);
 }
 
-const TABS = ['news', 'jobs', 'housing', 'partners', 'biz', 'guide'];
+const TABS = ['news', 'jobs', 'housing', 'partners', 'biz', 'economy', 'guide'];
 
 function jobCard(j, v, here) {
   const cur = v.currency;
@@ -107,7 +108,7 @@ export default {
     const L = e.labels;
     const pn = (e.playerNews || []).map((n) => ({ type: 'player', section: n.section, title: n.title, text: n.text, ago: Math.max(0, Math.floor((Date.now() - new Date(n.at).getTime()) / 3600000)), userId: n.userId, username: n.username }));
     const list = [...e.news.filter((n) => n.type === 'custom'), ...pn, ...e.news.filter((n) => n.type !== 'custom')]; data._list = list;
-    const tabs = [['news', L.news, 'newspaper'], ['jobs', L.jobs, 'briefcase'], ['housing', L.housing, 'house'], ['partners', L.partners, 'heart'], ['biz', L.biz, 'store'], ['guide', 'Ratgeber', 'lightbulb']];
+    const tabs = [['news', L.news, 'newspaper'], ['jobs', L.jobs, 'briefcase'], ['housing', L.housing, 'house'], ['partners', L.partners, 'heart'], ['biz', L.biz, 'store'], ['economy', 'Wirtschaft', 'trending-up'], ['guide', 'Ratgeber', 'lightbulb']];
     const body = {
       news: () => html`<div class="news-grid">${list.length ? list.map((n, i) => html`<article class="news-item ${n.type === 'forecast' ? 'warn' : ''} ${n.type === 'player' ? 'player' : ''} ${n.flash ? 'flash' : ''} ${i === 0 ? 'lead' : ''}">
           <div class="kicker">${n.type === 'player' ? `SPIELERWELT · ${String(n.section || 'Lokales').toUpperCase()} · ${n.ago < 1 ? 'GERADE EBEN' : n.ago < 24 ? 'VOR ' + n.ago + ' STD.' : 'VOR ' + Math.floor(n.ago / 24) + ' TAGEN'}` : n.type === 'press' ? `${String(n.section || 'Lokales').toUpperCase()} · ${n.ago === 0 ? 'HEUTE' : n.ago === 1 ? 'GESTERN' : 'VOR ' + n.ago + ' TAGEN'}` : n.type === 'custom' ? (n.flash ? e.kickers.flash : e.kickers.custom) : n.type === 'forecast' ? 'WARNUNG' : n.ago === 0 ? 'HEUTE' : n.ago === 1 ? 'GESTERN' : 'VOR ' + n.ago + ' TAGEN'}</div>
@@ -118,6 +119,7 @@ export default {
         <h4 class="sec">Zu verkaufen</h4><div class="listings">${e.housing.sale.map((h) => housingCard(h, v, here))}</div>`,
       partners: () => v.partner ? html`<div class="empty-note">${icon('heart')}<span>Du bist mit ${v.partner.name} zusammen.</span></div>` : html`<p class="dim">Ein Treffen kostet eine kleine Aufmerksamkeit. Ob es funkt, hängt von deiner Stimmung, deiner Lage und etwas Glück ab.</p><div class="listings">${e.partners.map((p) => partnerCard(p, v, here))}</div>`,
       biz: () => html`<div class="alert info small">${icon('info')}<div>Du musst nicht auf ein Angebot warten: Unter „Unternehmen“ kannst du jederzeit selbst gründen. <button class="btn sm" data-go-found="1">Unternehmen gründen</button></div></div>${e.biz.length ? html`<p class="dim">Betriebe darfst du nur mit passender Qualifikation führen. Die Angebote richten sich nach deinen Berufen (und dem deines Partners).</p><div class="listings">${e.biz.map((b) => bizCard(b, v, here))}</div>` : html`<div class="empty-note">${icon('store')}<span>Gerade keine passenden Betriebe zum Verkauf. Mit einem erlernten Beruf (z. B. Wirt, Bäcker, Tischler) kannst du selbst gründen.</span></div>`}`,
+      economy: () => html`<p class="dim">Was kostet das Leben in ${e.city.name}? Das Preisbarometer vergleicht Lebensmittel, Mieten, Dienste, Baukosten und Löhne mit dem Rest des Landes.</p>${econSkeleton('econBox')}`,
       guide: () => html`<div class="grid c2">${e.tutorial.length ? e.tutorial.map((t) => html`<article class="card flat"><h4>${t.title} ${infoBtn(t.info, t.title)}</h4><p class="dim small mb0">${t.text}</p></article>`) : html`<div class="dim">Der Ratgeber ist ausgeblendet.</div>`}</div>
         <div class="row mt"><button class="btn sm ghost" data-act="tutorial" data-on="${e.tutorial.length ? '0' : '1'}">${e.tutorial.length ? 'Ratgeber ausblenden' : 'Ratgeber wieder einblenden'}</button></div>`,
     }[tab]();
@@ -133,6 +135,7 @@ export default {
     </section>`;
   },
   bind(root, ctx, data) {
+    if (root.querySelector('#econBox')) bindEcon(root, ctx, data.edition.city.id);
     on(root, 'click', '[data-gosoc]', (ev, t) => { ctx.ui.soc = ctx.ui.soc || {}; ctx.ui.soc.tab = t.dataset.gosoc; ctx.go('social'); });
     on(root, 'click', '[data-profile]', (ev, t) => { ev.preventDefault(); openProfile(ctx, Number(t.dataset.profile)); });
     on(root, 'click', '[data-read]', (ev, t) => { const n = data._list[Number(t.dataset.read)]; if (n) openReader(n, data.edition); });

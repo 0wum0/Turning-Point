@@ -108,6 +108,7 @@ export const SPOTS = {
   'listing:job': { pre: news('jobs'), sel: '[data-act="apply"]:not([disabled])', text: 'Such dir eine Stelle aus und bewirb dich.' },
   'listing:contact': { pre: news('partners'), sel: '[data-act="meet"]:not([disabled])', text: 'Triff jemanden – ob es funkt, hängt von deiner Lage ab.' },
   'listing:biz': { pre: news('biz'), sel: '[data-act="buyBiz"]:not([disabled])', text: 'Such dir einen Betrieb aus, der zu deinem Beruf passt.' },
+  prices: { sel: '#econBox', text: 'Hier siehst du, wie teuer Essen, Wohnen und Löhne in deiner Stadt sind – und wo es günstiger ist.' },
   time: { sel: '.time-card', text: 'Hier läuft die Zeit. Der Lohn kommt automatisch, sobald ein Tag vergeht.' },
   advisor: { sel: '#advisor .btn.primary', text: 'Das ist dein nächster sinnvoller Schritt.' },
   primary: { sel: '.btn.primary:not([disabled]):not([data-quest-show]):not([data-adv])', text: 'Der wichtigste Knopf dieser Seite.' },

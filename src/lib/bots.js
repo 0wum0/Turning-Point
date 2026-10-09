@@ -115,6 +115,11 @@ function decide(ctx, P) {
     if (rents.length) tryAct(ctx, 'rent', { listingId: rents[0].id });
     else if (h.type === 'street' || h.type === 'workplace') { const pen = E.housing.pension.filter((l) => s.money > l.perDay * 6).sort((a, b) => a.perDay - b.perDay)[0]; if (pen) tryAct(ctx, 'rent', { listingId: pen.id }); }
   }
+  // Stadtwirtschaft: Wer zur Miete wohnt und eine deutlich günstigere Nachbarstadt kennt, zieht gelegentlich um (nur ohne Besitz, Betriebe und Partner)
+  if (h.type === 'rent' && !s.properties.length && !(s.companies || []).length && !s.partner && chance(0.03)) {
+    const tip = require('../game/cityecon').tips(w, s, year, require('../game/core').dailyFlows(w, s).exp.lodging).find((t) => t.kind === 'rent' && t.pct >= 15);
+    if (tip && s.money > 6000 * idx) tryAct(ctx, 'move', { cityId: tip.cityId });
+  }
   // Arbeit
   const occ = s.occupation;
   if (!occ) {
@@ -136,7 +141,7 @@ function decide(ctx, P) {
   // Betriebe
   const wantBiz = (s.companies || []).length < P.maxBiz;
   if (wantBiz) {
-    const b = (E.biz || []).filter((x) => x.qualified && s.money > x.price * 1.6).sort((a, c) => c.price - a.price)[0];
+    const b = (E.biz || []).filter((x) => x.qualified && s.money > x.price * 1.6 && (!x.comp || x.comp.sat <= 1.1)).sort((a, c) => c.price - a.price)[0]; // nicht in eine übersättigte Stadt (Nachfrage knapp)
     if (b && chance(0.5)) tryAct(ctx, 'buyBiz', { listingId: b.id });
   }
   for (const c of s.companies || []) {

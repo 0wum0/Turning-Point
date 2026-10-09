@@ -141,12 +141,12 @@ const DEFAULTS = {
     tauHours: 24,                 // Zeitkonstante der Annäherung ans Gleichgewicht (24 Stunden = ca. 1 Spieljahr)
     min: 0.75, max: 1.6,          // Grenzen der Indizes (relativ zum festen Stadtfaktor)
     strength: { food: 0.35, rent: 0.5, services: 0.4, build: 0.4, wage: 0.4 }, // Wirkung des Verhältnisses Nachfrage/Angebot (Exponent)
-    npcRooms: { food: 5, rent: 8, services: 6, build: 4, wage: 10 },           // Grundangebot der Stadt (NPC) je Sektor, in Vielfachen der Konkurrenz-Obergrenze (competition.cap)
-    playerDemand: 0.6,            // Nachfrage je lebendem Charakter in der Stadt (in Räumen)
-    firmWeight: 0.7,              // Gewicht eines Betriebsraums auf der Angebotsseite (die Sättigung der eigenen Betriebsart steckt schon in „Konkurrenz“)
+    npcRooms: { food: 8, rent: 10, services: 14, build: 6, wage: 20 },           // Grundangebot der Stadt (NPC) je Sektor, in Vielfachen der Konkurrenz-Obergrenze (competition.cap)
+    playerDemand: 1,            // Nachfrage je lebendem Charakter in der Stadt (in Räumen)
+    firmWeight: 0.3,              // Gewicht eines Betriebsraums auf der Angebotsseite (die Sättigung der eigenen Betriebsart steckt schon in „Konkurrenz“)
     noisePct: 1.5,                // kleines deterministisches Rauschen auf dem Zielwert (Prozent)
     eraPct: 3, eraTrendPct: 4,    // Epochenwelle und Langzeittrend je Stadt (Prozent, deterministisch, Mittel = 1)
-    pass: { revenue: 0.6, property: 0.5, goods: 0.4, household: 1 }, // Durchschlag: Umsatz der Betriebe, Immobilienpreise, Warenpreise (Lebensmittel/Bau), Haushaltskosten
+    pass: { revenue: 0.35, property: 0.5, goods: 0.4, household: 1 }, // Durchschlag: Umsatz der Betriebe, Immobilienpreise, Warenpreise (Lebensmittel/Bau), Haushaltskosten
     histPoints: 60,               // Verlaufspunkte je Index (ein Punkt je Spielmonat)
     newsPct: 4,                   // Zeitungsmeldung ab so vielen Prozent Veränderung gegenüber dem Vorjahr
     policy: { rentCapOptions: [0, 2, 4], zoneOptions: [5, 10, 15], programOptions: [5, 10, 15], brakeOptions: [-2, -1, 1, 2], capSupplyPenaltyPct: 6, zoneBuildPct: 50, brakeWagePct: 70 },

@@ -24,6 +24,11 @@ const YEARS = Number(arg('years', 85));
 const SEED = Number(arg('seed', 7));
 const ONLY = String(arg('only', 'employee,landlord0,landlord,owner,mixed')).split(',');
 const JSON_OUT = argv.includes('--json');
+// Stadtwirtschaft: off = ohne Stadtindizes (wie vor Schritt 2), era = nur deterministischer Epochenfaktor, live = Indizes folgen Nachfrage/Angebot der Simulation
+const CITY = String(arg('city', 'live'));
+const OTHERS = Number(arg('others', 12)); // andere lebende Charaktere in der Stadt des Spielers
+const cityecon = require('../src/game/cityecon');
+const CE_STATE = new Map();
 
 function mulberry(a) { return () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 
@@ -37,8 +42,26 @@ function supply(s) {
   competition.setSupply([...m.values()]);
 }
 
+/** Stadtindizes der Simulation: einmal je Spieljahr aus den eigenen Betrieben, den „anderen Spielern“ und dem Grundangebot fortschreiben. */
+function cityLive(s, yearsElapsed) {
+  if (CITY !== 'live') return;
+  const cap = cityecon.capOf(w, s.cityId);
+  const inp = { players: OTHERS + 1, rooms: { food: 0.5 * cap, services: 0.5 * cap, build: 0.25 * cap, all: 1.5 * cap } }; // andere Betriebe: kleines Gefolge der Stadt
+  for (const c of s.companies || []) { if (c.abandoned) continue; const sec = cityecon.sectorOfPkey(w, c.pkey); inp.rooms.all += c.rooms; if (sec === 'food' || sec === 'services' || sec === 'build') inp.rooms[sec] += c.rooms; }
+  const now = yearsElapsed * 24 * 3600000;
+  for (const sec of cityecon.SECTORS) {
+    const old = CE_STATE.get(cityecon.key(s.cityId, sec));
+    const tgt = cityecon.target(w, s.cityId, sec, inp, null, now);
+    const e = cityecon.advanceEntry(old, tgt, now, null); e.cityId = s.cityId; e.sector = sec;
+    CE_STATE.set(cityecon.key(s.cityId, sec), e);
+  }
+  cityecon.setState(new Map(CE_STATE), new Map([[s.cityId, inp]]));
+  if (process.env.DBG_CITY && yearsElapsed % 10 === 0) console.log('CITY', yearsElapsed, JSON.stringify(inp.rooms), cityecon.SECTORS.map((k) => k + '=' + CE_STATE.get(cityecon.key(s.cityId, k)).v.toFixed(2)).join(' '));
+}
+
 function makeRun(name, pkey, policy) {
   Math.random = mulberry(SEED * 1000 + name.length * 17 + pkey.length);
+  CE_STATE.clear(); cityecon.reset(); if (CITY !== 'off') cityecon.prime();
   const s = createCharacter(w, input(w, { professionKey: pkey }), user());
   s.life.baseYears = 900; s.life.rare = false;
   const act = (n, i) => { try { const m0 = s.money; const rr = actions.run(n, { world: w, state: s, input: i, user: user(), now: Date.now() }); if (process.env.TRACE2 && ['buy', 'maintain', 'repair', 'sell', 'loanTake'].includes(n)) console.log('ACT', n, yearOf(s.day, s.startYear), Math.round((s.money - m0) / w.idx(yearOf(s.day, s.startYear)) / 100)); return rr; } catch (e) { if (process.env.DBG) console.log('ACT FAIL', n, e.message); return null; } };
@@ -66,6 +89,7 @@ function makeRun(name, pkey, policy) {
   acc.days = 0; acc.idxSum = 0;
   for (let d = 0; d < maxDays && s.status === 'alive'; d++) {
     const year = yearOf(s.day, s.startYear); const idx = w.idx(year);
+    if (d % 365 === 0) cityLive(s, d / 365);
     if (d % 14 === 0) { policy({ s, act, year, idx, w, edition }); supply(s); }
     s.meters.fridge = 100; s.meters.rest = Math.max(s.meters.rest, 60); s.meters.health = Math.max(s.meters.health, 80);
     const f = core.dailyFlows(w, s);
@@ -238,8 +262,39 @@ function goodsTable() {
   }
 }
 
+/** Stadtwirtschaft: gleicher Betrieb in verschiedenen Städten und Lagen (Tagesgewinn in DM von 1945) sowie Lohn, Miete und Lebensmittel. */
+function cityTable() {
+  const pick = (slug) => w.cityList.find((c) => c.slug === slug);
+  const big = pick('muenchen'); const small = pick('cottbus'); const mid = pick('braunschweig');
+  const s0 = createCharacter(w, input(w, { professionKey: 'wirt' }), user()); s0.day = 35 * 365; s0.skills.days.wirt = 4000; s0.contracts = { buys: [], sells: [] };
+  const year = yearOf(s0.day, s0.startYear); const idx = w.idx(year);
+  const scenarios = [
+    ['Großstadt München, ruhig', big, { players: 0, rooms: { food: 0, services: 0, build: 0, all: 0 } }],
+    ['Kleinstadt Cottbus, ruhig', small, { players: 0, rooms: { food: 0, services: 0, build: 0, all: 0 } }],
+    ['Cottbus, 20 Spieler, wenig Betriebe', small, { players: 20, rooms: { food: 4, services: 4, build: 2, all: 12 } }],
+    ['Cottbus, viele Gaststätten und Läden', small, { players: 6, rooms: { food: 40, services: 60, build: 6, all: 120 } }],
+    ['Braunschweig, 40 Spieler, viele Bauten', mid, { players: 40, rooms: { food: 20, services: 20, build: 60, all: 150 } }],
+    ['München, 40 Spieler (verträgt viel)', big, { players: 40, rooms: { food: 20, services: 20, build: 20, all: 80 } }],
+  ];
+  console.log(`\n=== Stadtwirtschaft: Gleichgewicht der Indizes und Wirkung (${year}, Wirtshaus Stufe 1 mit Personal + Manager, DM von 1945 je Tag) ===`);
+  console.log(['Szenario', 'Essen', 'Miete', 'Dienste', 'Bau', 'Löhne', 'Umsatz', 'Lohnkosten', 'Gewinn', 'Gewinn ohne'].map((x, i) => (i ? x.padStart(11) : x.padEnd(40))).join(''));
+  for (const [label, city, inp] of scenarios) {
+    cityecon.reset(); cityecon.prime();
+    const m = new Map(); const eq = {};
+    for (const sec of cityecon.SECTORS) { let e = null; const tgt = cityecon.target(w, city.id, sec, inp, null, 0); for (let i = 1; i <= 240; i++) e = cityecon.advanceEntry(e, tgt, i * 3600000); eq[sec] = e.v; m.set(cityecon.key(city.id, sec), { ...e, cityId: city.id, sector: sec }); }
+    cityecon.setState(m, new Map());
+    const mk = () => { const c = { id: 1, pkey: 'wirt', tier: 0, cityId: city.id, rooms: biz.tiersOf(w)[0].rooms, staff: 0, manager: true, cash: 0, base: 1, abandoned: null }; c.staff = biz.staffNeeded(w, c); return c; };
+    const on = biz.companyFlows(w, s0, mk(), year);
+    cityecon.reset(); const off = biz.companyFlows(w, s0, mk(), year);
+    const per = (v) => (v / idx / 100).toFixed(1);
+    console.log([label.padEnd(40), ...cityecon.SECTORS.map((k) => eq[k].toFixed(2).padStart(11)), per(on.income).padStart(11), per(on.wages).padStart(11), per(on.profit).padStart(11), per(off.profit).padStart(11)].join(''));
+  }
+  cityecon.reset();
+}
+
 const f0 = (v) => (v == null ? '' : Math.round(v).toLocaleString('de-DE'));
 const out = [];
+if (!JSON_OUT && (argv.includes('--city-table') || !argv.includes('--no-static'))) cityTable();
 if (!JSON_OUT && !argv.includes('--no-static')) staticTables();
 if (!JSON_OUT && (argv.includes('--goods') || !argv.includes('--no-static'))) goodsTable();
 for (const name of ONLY) {

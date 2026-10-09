@@ -449,3 +449,35 @@ html { scroll-padding-top: calc(var(--hud-h, 62px) + 10px); }
 .sup-contracts { margin-top: .8rem; padding: .6rem .7rem; border: 1px dashed var(--border); border-radius: 12px; }
 .sup-contracts .deal-st { flex: none; }
 @media (max-width: 480px) { .found-bar .btn.primary { width: 100%; } .found-grid { grid-template-columns: 1fr; } }
+
+/* ---------- Stadtwirtschaft: Preisbarometer, Vergleich, Hinweise ---------- */
+.econ-card .mt0 { margin-top: .3rem; }
+.econ-rows { list-style: none; margin: .8rem 0 0; padding: 0; display: grid; gap: .55rem; }
+.econ-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: .7rem; align-items: center; padding: .6rem .7rem; border: 1px solid var(--border); border-radius: 14px; background: color-mix(in srgb, var(--surface-2) 70%, transparent); }
+.er-ic { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent-2); }
+.er-ic .i { width: 20px; height: 20px; }
+.er-main { min-width: 0; } .er-sub { display: flex; flex-wrap: wrap; gap: .1rem .4rem; align-items: center; margin-top: .15rem; }
+.er-side { display: grid; justify-items: end; gap: .05rem; text-align: right; } .er-side b { font-size: 1.02rem; } .er-side small { font-size: .7rem; }
+.er-spark { color: var(--text-dim); line-height: 0; } .er-spark.good { color: var(--good); } .er-spark.warn { color: var(--warn); }
+.spark { width: 84px; height: 26px; }
+.trend { display: inline-flex; align-items: center; gap: .25rem; } .trend .i { width: 15px; height: 15px; }
+.trend.good, .mono.good, td.v.good { color: var(--good); } .trend.warn, .mono.warn, td.v.warn { color: var(--warn); }
+.econ-tip { margin: 0; }
+.econ-tbl-wrap { margin-top: .6rem; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; background: var(--surface); }
+.econ-tbl { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: .82rem; }
+.econ-tbl th, .econ-tbl td { padding: .4rem .3rem; text-align: center; border-bottom: 1px solid var(--border); }
+.econ-tbl tbody tr:last-child > * { border-bottom: 0; }
+.econ-tbl th:first-child, .econ-tbl td:first-child { width: 34%; text-align: left; padding-left: .6rem; }
+.econ-tbl thead th { font-weight: 600; background: var(--surface-2); }
+.econ-tbl thead button { display: inline-flex; flex-direction: column; align-items: center; gap: .1rem; min-height: 40px; min-width: 40px; width: 100%; background: none; border: 0; color: var(--text-dim); font: inherit; font-size: .68rem; cursor: pointer; border-radius: 8px; }
+.econ-tbl thead button.on { color: var(--accent-2); } .econ-tbl thead button .i { width: 17px; height: 17px; }
+.econ-tbl tbody th { font-weight: 500; position: relative; } .econ-tbl tbody th b { display: block; overflow-wrap: anywhere; line-height: 1.2; } .econ-tbl tbody th small { font-size: .7rem; }
+.econ-tbl tr.here > * { background: color-mix(in srgb, var(--accent) 9%, var(--surface)); }
+.econ-tbl td.v { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.econ-tbl .x { position: absolute; right: 2px; top: 2px; width: 22px; height: 22px; display: grid; place-items: center; background: none; border: 0; color: var(--text-faint); cursor: pointer; border-radius: 50%; } .econ-tbl .x .i { width: 12px; height: 12px; }
+@media (max-width: 560px) {
+  .econ-row { grid-template-columns: auto minmax(0, 1fr); } .er-side { grid-column: 1 / -1; grid-template-columns: auto auto 1fr; align-items: center; justify-items: start; text-align: left; gap: .5rem; padding-top: .3rem; border-top: 1px dashed var(--border); }
+  .er-side .er-spark { justify-self: end; }
+  .econ-tbl { font-size: .76rem; } .econ-tbl th:first-child, .econ-tbl td:first-child { width: 30%; }
+}
+.econ-city { margin: .5rem 0 0; font-size: 1.25rem; }

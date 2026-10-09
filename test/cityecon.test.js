@@ -49,14 +49,14 @@ test('Gleichgewicht: viel Konkurrenz senkt, viele Einwohner heben den Index; ohn
   withCfg({ noisePct: 0 }, () => {
     for (const s of ce.SECTORS) assert.ok(Math.abs(ce.target(w, c.id, s, calm, null, 0) - 1) < 1e-9, s);
     const small = city('braunschweig');
-    const crowded = { players: 0, rooms: { food: 400, services: 400, build: 400, all: 1200 } };
+    const crowded = { players: 0, rooms: { food: 600, services: 600, build: 600, all: 4000 } };
     assert.ok(ce.target(w, small.id, 'food', crowded, null, 0) < 0.8, 'Überangebot Lebensmittel');
-    assert.ok(ce.target(w, small.id, 'wage', crowded, null, 0) > 1.2, 'viele Firmen treiben die Löhne');
+    assert.ok(ce.target(w, small.id, 'wage', crowded, null, 0) > 1.15, 'viele Firmen treiben die Löhne');
     const people = { players: 300, rooms: { food: 0, services: 0, build: 0, all: 0 } };
     assert.ok(ce.target(w, small.id, 'rent', people, null, 0) > 1.2, 'viele Einwohner treiben die Mieten');
     assert.ok(ce.target(w, small.id, 'wage', people, null, 0) < 0.85, 'viele Arbeitssuchende drücken die Löhne');
     // Großstadt verträgt dieselbe Aktivität besser als eine kleine Stadt
-    const mid = { players: 40, rooms: { food: 60, services: 60, build: 20, all: 150 } };
+    const mid = { players: 90, rooms: { food: 60, services: 60, build: 20, all: 150 } };
     assert.ok(Math.abs(ce.target(w, c.id, 'rent', mid, null, 0) - 1) < Math.abs(ce.target(w, small.id, 'rent', mid, null, 0) - 1));
   });
 });

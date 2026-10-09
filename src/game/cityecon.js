@@ -39,10 +39,10 @@ function C() {
     on: c.enabled !== false, lo, hi,
     intervalMs: num(c.intervalMinutes, 60, 1, 1440) * 60000, tauMs: num(c.tauHours, 24, 0.1, 24 * 90) * 3600000,
     strength: Object.fromEntries(SECTORS.map((k) => [k, num(s[k], { food: 0.35, rent: 0.5, services: 0.4, build: 0.4, wage: 0.4 }[k], 0, 2)])),
-    npc: Object.fromEntries(SECTORS.map((k) => [k, num(n[k], { food: 5, rent: 8, services: 6, build: 4, wage: 10 }[k], 0.5, 100)])),
-    pd: num(c.playerDemand, 0.6, 0, 20), fw: num(c.firmWeight, 0.7, 0, 5),
+    npc: Object.fromEntries(SECTORS.map((k) => [k, num(n[k], { food: 8, rent: 10, services: 14, build: 6, wage: 20 }[k], 0.5, 100)])),
+    pd: num(c.playerDemand, 1, 0, 20), fw: num(c.firmWeight, 0.3, 0, 5),
     noise: num(c.noisePct, 1.5, 0, 20) / 100, eraAmp: num(c.eraPct, 3, 0, 20) / 100, eraTrend: num(c.eraTrendPct, 4, 0, 30) / 100,
-    pass: { revenue: num(p.revenue, 0.6, 0, 2), property: num(p.property, 0.5, 0, 2), goods: num(p.goods, 0.4, 0, 2), household: num(p.household, 1, 0, 2) },
+    pass: { revenue: num(p.revenue, 0.35, 0, 2), property: num(p.property, 0.5, 0, 2), goods: num(p.goods, 0.4, 0, 2), household: num(p.household, 1, 0, 2) },
     hist: Math.round(num(c.histPoints, 60, 14, 400)), newsPct: num(c.newsPct, 4, 0.5, 50),
     policy: {
       rentCap: list(pol.rentCapOptions, [0, 2, 4]), zone: list(pol.zoneOptions, [5, 10, 15]), program: list(pol.programOptions, [5, 10, 15]), brake: list(pol.brakeOptions, [-2, -1, 1, 2]),
@@ -178,7 +178,7 @@ function balance(world, cityId, sector, inp, pol) {
     D += players * c.pd * 1.5; S += (r.build || 0) * c.fw * 0.5 + B * (P.zone / 100) * 2;
     if (P.rentCap != null) S *= 1 - c.policy.capPenalty;
   } else if (sector === 'build') {
-    D += players * c.pd * 0.5 + (r.all || 0) * 0.15 + B * (P.zone / 100) * c.policy.zoneBuild; S += (r.build || 0) * c.fw;
+    D += players * c.pd * 0.5 + (r.all || 0) * 0.06 + B * (P.zone / 100) * c.policy.zoneBuild; S += (r.build || 0) * c.fw;
   } else if (sector === 'wage') { D += (r.all || 0) * 0.5 * c.fw; S += players * c.pd; }
   return { D, S, ratio: S > 0 ? D / S : 1 };
 }
@@ -268,7 +268,7 @@ function barometer(world, cityId, year, series = 8) {
     const spark = [];
     for (let k = series - 1; k >= 0; k--) {
       const d = e ? e.hist[Math.max(0, e.hist.length - 1 - 12 * k)] : 1;
-      spark.push(Math.round(st * clamp((e ? d : 1) * era(cityId, s, year - k, c), c.lo, c.hi) * 1000) / 1000);
+      spark.push(Math.round(st * clamp((e ? d : 1) * era(cityId, s, Math.max(1945, year - k), c), c.lo, c.hi) * 1000) / 1000);
     }
     const rel = nat[s] > 0 ? lv / nat[s] : 1;
     return {
@@ -280,13 +280,13 @@ function barometer(world, cityId, year, series = 8) {
 }
 
 const NEAR = new Map(); let NEARWORLD = null;
-/** Die nächsten Orte (nach Luftlinie × 1,25), zwischengespeichert je Stadt. */
+/** Die nächsten Städte (ab 10.000 Einwohnern, nach Luftlinie × 1,25), zwischengespeichert je Stadt. */
 function nearest(world, cityId, n = 40) {
   if (NEARWORLD !== world) { NEAR.clear(); NEARWORLD = world; }
   if (NEAR.has(cityId)) return NEAR.get(cityId);
   const { haversineKm } = require('./economy'); const me = world.city(cityId); if (!me) return [];
   const all = [];
-  for (const c of world.cityList) if (c.id !== cityId) all.push({ c, km: haversineKm(me, c) });
+  for (const c of world.cityList) if (c.id !== cityId && ((Number(c.pop) || 0) >= 10000 || (c.size_tier || 1) >= 2)) all.push({ c, km: haversineKm(me, c) }); // nur Städte, keine Weiler
   all.sort((a, b) => a.km - b.km);
   const out = all.slice(0, n).map((x) => ({ id: x.c.id, km: Math.round(x.km) }));
   if (NEAR.size > 400) NEAR.clear();

@@ -5,16 +5,19 @@ import { dec } from './supply.js';
 
 const ROLES = [
   ['Ortsbeirat', 'Berät die Stadt – noch keine Macht über die Wirtschaft.'],
-  ['Stadtrat', 'Gewerbesteuer-Zuschlag in der Stadt.'],
-  ['Bürgermeister', 'Gewerbesteuer-Zuschlag und Subvention für eine Ware in der Stadt.'],
-  ['Landtagsabgeordneter', 'Preisstützung für eine Ware im Bundesland.'],
+  ['Stadtrat', 'Gewerbesteuer-Zuschlag und Baulandausweisung in der Stadt.'],
+  ['Bürgermeister', 'Gewerbesteuer-Zuschlag, Subvention, Mietpreisbremse und Baulandausweisung in der Stadt.'],
+  ['Landtagsabgeordneter', 'Preisstützung für eine Ware und Wohnungsbauprogramm im Bundesland.'],
   ['Bundestagsabgeordneter', 'Rahmen: Obergrenzen für Zuschläge und Subventionen im ganzen Land.'],
-  ['Bundeskanzler', 'Mehrwertsteuer auf Waren, Einfuhrzoll und Branchen-Subvention.'],
+  ['Bundeskanzler', 'Mehrwertsteuer auf Waren, Einfuhrzoll, Branchen-Subvention und Preisbremse.'],
 ];
 
 export const policyBox = () => html`<section class="card mt" id="polBox"><div class="dim small">Lade …</div></section>`;
 
 const num = (n, d) => html`<b>${dec(n, d)}</b>`;
+const sg = (p) => (p > 0 ? `+${dec(p, 1)}` : p < 0 ? `−${dec(-p, 1)}` : '0');
+/* Wirkung auf die Zielwerte der Preisindizes (Vorschau der Stadtwirtschaft) */
+const fxList = (b) => html`<ul class="pol-ex">${(b || []).map((e) => html`<li><b>${e.name}</b>: <span>Zielwert</span> <b>${sg(e.pct)} %</b></li>`)}</ul>`;
 function effectLine(l, pv) {
   switch (l.key) {
     case 'surcharge':
@@ -34,6 +37,13 @@ function effectLine(l, pv) {
     case 'tariff':
       return html`<li>${l.a === 0 ? html`<span>Keine Änderung beim Einfuhrzoll.</span>` : html`<span>Der Zoll trifft nur den importierten Anteil einer Ware. Beispiele:</span>`}
         ${l.a !== 0 ? html`<ul class="pol-ex">${(l.b || []).map((e) => html`<li><b>${e.name}</b> <span>(Importanteil</span> ${e.imp} <span>%):</span> <b>${e.up > 0 ? '+' : ''}${dec(e.up, 1)} %</b></li>`)}</ul><div class="dim small"><span>Heimische Erzeuger verkaufen dadurch etwas besser.</span></div>` : ''}</li>`;
+    case 'rentcap': return html`<li><span>Das Mietniveau in deiner Stadt darf höchstens um</span> <b>${dec(l.a)}</b> <span>% pro Jahr steigen (0 heißt: eingefroren).</span></li>
+      <li class="dim"><span>Nebenwirkung: Vermieter bauen und vermieten weniger, das Wohnungsangebot sinkt um</span> <b>${dec(l.c)}</b> <span>%. Der Druck auf die Mieten wächst, und nach der Amtszeit holt der Markt auf. Auch deine eigenen Mieteinnahmen steigen nur langsam.</span>${fxList(l.b)}</li>`;
+    case 'landzone': return html`<li><span>Neues Bauland: Das Wohnungsangebot in deiner Stadt wächst um</span> <b>${dec(l.a)}</b> <span>%. Die Mieten tendieren nach unten.</span>${fxList(l.b)}</li>
+      <li class="dim"><span>Nebenwirkung: Viele wollen gleichzeitig bauen – Bauen wird etwas teurer (auch für deine Betriebe).</span></li>`;
+    case 'housing': return html`<li><span>Wohnungsbauprogramm: Das Wohnungsangebot in allen Städten deines Bundeslandes wächst um</span> <b>${dec(l.a)}</b> <span>%. Wirkung zeigt sich zuerst in Städten mit vielen Einwohnern.</span>${fxList(l.b)}</li>`;
+    case 'pricebrake': return html`<li>${l.a < 0 ? html`<span>Preisbremse: Das Preisniveau aller Städte wird nach unten geschoben – Wohnen, Essen, Dienste und Bauen.</span>` : html`<span>Höheres Inflationsziel: Das Preisniveau aller Städte wird nach oben geschoben.</span>`}${fxList(l.b)}</li>
+      <li class="dim"><span>Nebenwirkung: Die Preise der Betriebe folgen – bei einer Bremse verdienen sie etwas weniger, die Löhne folgen abgeschwächt.</span></li>`;
     case 'frame': return html`<li><span>Obergrenzen im ganzen Land: Gewerbesteuer-Zuschlag höchstens</span> ${num(l.a)} <span>Punkte, Subventionen höchstens</span> ${num(l.b)} <span>%.</span></li>`;
     default: return '';
   }
@@ -49,6 +59,11 @@ function control(p) {
     return html`<div class="grid c2" style="--gap:.6rem"><div class="field"><label for="pg-${p.kind}">Ware</label><select id="pg-${p.kind}">${p.goods.map((g) => html`<option value="${g.key}">${g.name}</option>`)}</select></div>
       <div class="field"><label for="pp-${p.kind}">${p.kind === 'support' ? 'Aufschlag auf den Verkaufspreis' : 'Zuschuss auf den Einkauf'}</label><select id="pp-${p.kind}">${p.options.map((o) => html`<option value="${o}">${o} %</option>`)}</select></div></div>`;
   }
+  if (p.kind === 'rentcap' || p.kind === 'landzone' || p.kind === 'housing' || p.kind === 'pricebrake') {
+    const lbl = p.kind === 'rentcap' ? 'Erlaubter Anstieg der Mieten' : p.kind === 'pricebrake' ? 'Preisniveau verschieben um' : 'Zusätzliches Wohnungsangebot';
+    const txt = (o) => (p.kind === 'rentcap' ? (o === 0 ? 'Mieten eingefroren (0 % pro Jahr)' : `höchstens ${o} % pro Jahr`) : p.kind === 'pricebrake' ? `${o > 0 ? '+' : '−'}${Math.abs(o)} Punkte` : `+${o} %`);
+    return html`<div class="field"><label for="pq-${p.kind}">${lbl}</label><select id="pq-${p.kind}">${p.options.map((o, i) => html`<option value="${o}" ${i === (p.kind === 'pricebrake' ? 1 : 0) ? 'selected' : ''}>${txt(o)}</option>`)}</select></div>`;
+  }
   if (p.kind === 'frame') {
     return html`<div class="field"><label for="pf-frame">Rahmen</label><select id="pf-frame">${p.frames.map((f) => html`<option value="${f.key}">${f.name} – Zuschlag bis ${f.maxSurcharge}, Subvention bis ${f.maxSubsidy} %</option>`)}</select></div>`;
   }
@@ -57,6 +72,7 @@ function control(p) {
 function valueOf(root, p) {
   if (p.kind === 'surcharge' || p.kind === 'vat' || p.kind === 'tariff') return { kind: p.kind, value: Number(root.querySelector(`#pv-${p.kind}`).value) };
   if (p.kind === 'frame') return { kind: p.kind, good: root.querySelector('#pf-frame').value, value: 1 };
+  if (p.kind === 'rentcap' || p.kind === 'landzone' || p.kind === 'housing' || p.kind === 'pricebrake') return { kind: p.kind, value: Number(root.querySelector(`#pq-${p.kind}`).value) };
   return { kind: p.kind, good: root.querySelector(`#pg-${p.kind}`).value, value: Number(root.querySelector(`#pp-${p.kind}`).value) };
 }
 
@@ -68,7 +84,7 @@ export async function bindPolicy(root, ctx) {
   const o = d.office;
   const loc = d.local;
   const active = d.active.length ? html`<div class="card-title mt" style="margin-bottom:.3rem">Aktuelle Beschlüsse bei dir</div><div class="stack" style="--gap:.4rem">${d.active.map((a) => html`<div class="firm"><div class="grow small"><b>${a.text}</b><div class="dim"><span data-i18n-skip>${a.office}${a.holder ? ` · ${a.holder}` : ''}</span> · <span>gilt noch</span> ${a.hours} <span>Std.</span></div></div></div>`)}</div>` : html`<div class="dim small mt">Zurzeit hat kein Amtsinhaber einen Beschluss gefasst, der bei dir gilt.</div>`;
-  const effects = (loc.surcharge || loc.levy || loc.vat || loc.tariff) ? html`<div class="small mt dim"><span>Bei dir gilt gerade:</span> ${loc.surcharge ? html`<span class="chip ${loc.surcharge > 0 ? 'warn' : 'good'}">Gewerbesteuer ${loc.surcharge > 0 ? '+' : ''}${loc.surcharge}</span> ` : ''}${loc.levy ? html`<span class="chip warn">Umlage +${dec(loc.levy, 1)}</span> ` : ''}${loc.vat ? html`<span class="chip ${loc.vat > 0 ? 'warn' : 'good'}">Mehrwertsteuer ${loc.vat > 0 ? '+' : ''}${loc.vat}</span> ` : ''}${loc.tariff ? html`<span class="chip ${loc.tariff > 0 ? 'warn' : 'good'}">Zoll ${loc.tariff > 0 ? '+' : ''}${loc.tariff} %</span>` : ''}</div>` : '';
+  const effects = (loc.surcharge || loc.levy || loc.vat || loc.tariff || loc.zone || loc.rentCap != null || loc.brake) ? html`<div class="small mt dim"><span>Bei dir gilt gerade:</span> ${loc.surcharge ? html`<span class="chip ${loc.surcharge > 0 ? 'warn' : 'good'}">Gewerbesteuer ${loc.surcharge > 0 ? '+' : ''}${loc.surcharge}</span> ` : ''}${loc.levy ? html`<span class="chip warn">Umlage +${dec(loc.levy, 1)}</span> ` : ''}${loc.vat ? html`<span class="chip ${loc.vat > 0 ? 'warn' : 'good'}">Mehrwertsteuer ${loc.vat > 0 ? '+' : ''}${loc.vat}</span> ` : ''}${loc.tariff ? html`<span class="chip ${loc.tariff > 0 ? 'warn' : 'good'}">Zoll ${loc.tariff > 0 ? '+' : ''}${loc.tariff} %</span> ` : ''}${loc.rentCap != null ? html`<span class="chip good">Mietpreisbremse ${loc.rentCap} % pro Jahr</span> ` : ''}${loc.zone ? html`<span class="chip good">Wohnungsangebot +${loc.zone} %</span> ` : ''}${loc.brake ? html`<span class="chip ${loc.brake < 0 ? 'good' : 'warn'}">Preisniveau ${loc.brake > 0 ? '+' : '−'}${Math.abs(loc.brake)} Punkte</span>` : ''}</div>` : '';
   const help = infoBtn(['Gewählte Amtsinhaber bestimmen die Wirtschaftspolitik: Steuern, Zölle, Zuschüsse für eine Ware.', 'Pro Amtszeit darf jeder Amtsinhaber einen Beschluss fassen. Er gilt, solange er im Amt ist, und wirkt auf alle Betriebe im Gebiet – auch auf deine eigenen. Die Spieler wählen mit.', 'Prüfe die Wirkung vor dem Beschluss: Du siehst genau, was sich ändert.'], 'Wirtschaftspolitik');
   if (!o) {
     box.innerHTML = html`<div class="card-title">${icon('scale')} Was Ämter in der Wirtschaft bestimmen ${help}</div>
@@ -93,7 +109,7 @@ export async function bindPolicy(root, ctx) {
     const input = valueOf(box, p);
     let pv;
     try { pv = await api('POST', '/api/supply/policy/preview', input); } catch (err) { toast(err.message, 'bad'); return; }
-    const dlg = modal(html`<h3>${icon('scale')} <span>${p.name}</span>: <span>Das passiert</span></h3><p class="small"><b>${pv.text}</b></p><ul class="pol-fx">${pv.preview.lines.map((l) => effectLine(l, pv.preview))}</ul>
+    const dlg = modal(html`<h3 style="flex-wrap:wrap">${icon('scale')} <span>${p.name}</span>: <span>Das passiert</span></h3><p class="small"><b>${pv.text}</b></p><ul class="pol-fx">${pv.preview.lines.map((l) => effectLine(l, pv.preview))}</ul>
       <p class="small dim">Der Beschluss gilt bis zum Ende deiner Amtszeit und kann in dieser Amtszeit nicht zurückgenommen werden. Er wirkt auch auf deine eigenen Betriebe.</p>
       <div class="row end mt"><button class="btn ghost" data-close="no">Abbrechen</button><button class="btn primary" id="pol-go">Beschließen</button></div>`);
     dlg.el.querySelector('#pol-go').onclick = async () => {

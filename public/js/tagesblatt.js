@@ -11,6 +11,7 @@
   function load() {
     fetch('/tagesblatt.json?n=' + (feed && feed.dataset.n || 60)).then(function (r) { return r.json(); }).then(function (j) {
       document.querySelectorAll('[data-k]').forEach(function (el) { var v = j.stats[el.dataset.k]; if (v != null) el.textContent = fmt(el.dataset.k, v); });
+      (j.stats.prices || []).forEach(function (p) { var el = document.querySelector('[data-pk="' + p.sector + '"]'); if (el) el.textContent = (p.avgPct > 0 ? '+' : p.avgPct < 0 ? '−' : '') + String(Math.abs(p.avgPct)).replace('.', ',') + ' %'; });
       if (feed && j.news) feed.innerHTML = j.news.map(function (n) { var t = new Date(n.at); return '<article class="tb-item"><div class="tb-meta"><span class="tb-sec">' + esc(n.section) + '</span>' + (n.city ? '<span>· ' + esc(n.city) + '</span>' : '') + '<time>· ' + t.toLocaleString(LOC, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + '</time></div><h3>' + esc(n.title) + '</h3><p>' + esc(n.text) + '</p></article>'; }).join('') || '';
     }).catch(function () {});
   }
