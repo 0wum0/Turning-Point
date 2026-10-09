@@ -1,5 +1,6 @@
 /* Glossar: kurze Erklärungen für Fachwörter. term('EFS') im Text → antippbares Wort; „Glossar“ im Hilfe-Menü listet alles. */
 import { html, icon, modal, on } from './ui.js';
+import { GLOSSARY_GOODS } from './glossary-goods.js';
 
 /* key = Anzeigewort; text = ein bis zwei Sätze in einfacher Sprache */
 export const GLOSSARY = [
@@ -32,7 +33,7 @@ export const GLOSSARY = [
   ['Streubesitz', 'Streubesitz', 'Der Teil der Anteile, der an andere Spieler verkauft wird.'],
   ['Treuhand', 'Treuhand (Escrow)', 'Das Geld wird sicher verwahrt, bis ein Handel abgeschlossen ist. So kann niemand betrügen.'],
   ['Vermächtnis', 'Vermächtnis', 'Das, was deine Familie über viele Generationen aufbaut. Ziel des Spiels ist ein starkes Vermächtnis bis zum Jahr 2100.'],
-];
+].concat(GLOSSARY_GOODS);
 const byKey = new Map(GLOSSARY.map((g) => [g[0], g]));
 
 const entry = (g) => html`<div class="gl-entry" id="gl-${encodeURIComponent(g[0])}"><b>${g[1]}</b><div class="dim">${g[2]}</div></div>`;

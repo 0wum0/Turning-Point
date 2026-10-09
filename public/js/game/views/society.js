@@ -1,4 +1,5 @@
 import { html, icon, money, infoBtn, bar, on, yearsText, signed } from '../ui.js';
+import { policyBox, bindPolicy } from '../policy.js';
 
 export default {
   id: 'society', label: 'Gesellschaft', icon: 'landmark',
@@ -18,6 +19,8 @@ export default {
         <div class="row nowrap"><span class="chip">${o.chance} %</span><button class="btn sm primary" data-run="${o.idx}" ${(p.chanceOff || !o.unlocked || p.term || !p.ageOk || v.money < o.campaign) ? 'disabled' : ''}>Kandidieren</button></div></div>`)}</div>
     </section>
 
+    ${policyBox()}
+
     <div class="grid c2 mt" style="--gap:1rem">
       <section class="card"><div class="card-title">${icon('ticket')} Lotto ${infoBtn(['Lotto ist freiwillig – und statistisch ein Verlustgeschäft.', 'Es gibt kleine Gewinne, selten große. Sehr selten winkt ein Vermögen.', 'Setze nur, was du verschmerzen kannst.'], 'Lotto')}</div>
         <p class="dim small">Ein Tipp kostet <b>${money(g.ticket, cur)}</b>. Gewinne: ×2, ×10, ×300, selten ×10.000.</p>
@@ -28,6 +31,7 @@ export default {
     </div>`;
   },
   bind(root, ctx) {
+    bindPolicy(root, ctx);
     on(root, 'click', '[data-elections]', (e) => { e.preventDefault(); ctx.ui.soc = Object.assign(ctx.ui.soc || { cat: 'wealth', scope: 'all', box: 'in', page: 1 }, { tab: 'elections' }); ctx.go('social'); });
     on(root, 'click', '[data-run]', (e, t) => ctx.act('runOffice', { idx: Number(t.dataset.run) }));
     const rs = root.querySelector('#resign'); if (rs) rs.onclick = async () => { if (await ctx.confirm({ title: 'Zurücktreten?', text: 'Die laufende Amtszeit zählt dann nicht.', ok: 'Zurücktreten', danger: true })) ctx.act('resignOffice', {}); };

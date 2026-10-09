@@ -135,7 +135,14 @@ async function saveCharacter(conn, row, state) {
  * Führt fn(ctx) transaktional auf dem aktuellen Charakter des Nutzers aus.
  * ctx = {world, state, user, row, sync, now}; fn darf state/user verändern, das wird gespeichert.
  */
-async function withCharacter(userId, fn, { needAlive = false } = {}) {
+async function withCharacter(userId, fn, opts = {}) {
+  // Zwei Spieler, die sich gleichzeitig etwas gutschreiben (Lieferverträge, Aufträge), können sich in der Datenbank kurz verklemmen:
+  // die Transaktion wird dann vollständig zurückgerollt und noch einmal ausgeführt.
+  for (let attempt = 0; ; attempt++) {
+    try { return await withCharacterOnce(userId, fn, opts); } catch (e) { if (!(e && (e.code === 'ER_LOCK_DEADLOCK' || e.errno === 1213)) || attempt >= 2) throw e; }
+  }
+}
+async function withCharacterOnce(userId, fn, { needAlive = false } = {}) {
   const w = await world.get();
   const now = Date.now();
   return db.tx(async (conn) => {
@@ -164,6 +171,7 @@ async function withCharacter(userId, fn, { needAlive = false } = {}) {
       // Gutschriften an andere Spieler (Bauaufträge, Dividenden) VOR dem Speichern verbuchen: Die Listen werden dabei geleert,
       // und das muss im gespeicherten Stand ankommen – sonst würden sie bei jedem weiteren Aufruf erneut ausgezahlt.
       try { await require('../game/contractors').flush(conn, state); } catch (e) { require('../lib/log').warn(`[contractors] ${e.message}`); }
+      try { await require('../lib/supply').flush(conn, user, state); } catch (e) { require('../lib/log').warn(`[supply] ${e.message}`); }
       try { await require('../lib/exchange').flushDividends(conn, state); } catch (e) { require('../lib/log').warn(`[exchange] ${e.message}`); }
       await saveCharacter(conn, row, state);
       const social = require('../lib/social');

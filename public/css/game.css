@@ -398,3 +398,36 @@ html { scroll-padding-top: calc(var(--hud-h, 62px) + 10px); }
 .tab-intro { display: flex; gap: .7rem; align-items: center; padding: .7rem .9rem; margin-bottom: 1rem; border-radius: 14px; border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border)); background: color-mix(in srgb, var(--accent) 7%, var(--surface)); }
 .tab-intro > .i { width: 20px; height: 20px; flex: none; color: var(--accent-2); } .tab-intro .tx { flex: 1; font-size: .93rem; line-height: 1.45; } .tab-intro .tx b { display: block; font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--text-faint); }
 @media (max-width: 640px) { .tab-intro { flex-wrap: wrap; } .tab-intro .tx { flex-basis: calc(100% - 40px); } }
+
+/* ---------- Warenkreislauf: Versorgung, Lieferketten, Verträge, Wirtschaftspolitik ---------- */
+.nw { white-space: nowrap; }
+.sup { margin-top: .8rem; border: 1px solid var(--border); border-left-width: 4px; border-radius: 14px; padding: .65rem .8rem; background: color-mix(in srgb, var(--surface-2) 70%, transparent); }
+.sup.good { border-left-color: var(--good); } .sup.warn { border-left-color: var(--warn); } .sup.bad { border-left-color: var(--bad); }
+.sup > summary, .sup-panel > summary { cursor: pointer; list-style: none; } .sup > summary::-webkit-details-marker, .sup-panel > summary::-webkit-details-marker { display: none; }
+.sup-caret { transition: transform .2s; flex: none; } details[open] > summary .sup-caret { transform: rotate(180deg); }
+.sup-lead { margin: .6rem 0 .4rem; }
+.sup-need { display: flex; flex-direction: column; gap: .3rem; padding: .5rem .6rem; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); }
+.sup-need-top, .sup-need-bot { display: flex; align-items: center; justify-content: space-between; gap: .5rem; flex-wrap: wrap; }
+.sup-need .nm { display: inline-flex; align-items: center; gap: .4rem; min-width: 0; }
+.sup-need .chips { display: inline-flex; gap: .3rem; flex-wrap: wrap; }
+.sup-need .cost { font-size: .9rem; }
+.sup-auto { display: flex; gap: .65rem; align-items: flex-start; padding: .6rem .7rem; border: 1px solid var(--border); border-radius: 12px; cursor: pointer; background: var(--surface); }
+.sup-auto input { margin-top: .2rem; width: 1.2rem; height: 1.2rem; flex: none; accent-color: var(--accent); }
+.sup-deal { align-items: flex-start; } .sup-deal .btn { flex: none; }
+.sup-panel { margin-top: 0; } .sup-panel[open] > summary { margin-bottom: .2rem; }
+.sup-steps { margin: .4rem 0 0; padding-left: 1.2rem; display: grid; gap: .3rem; }
+.chain-steps { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem; }
+.chain .step { display: inline-flex; align-items: center; gap: .35rem; padding: .3rem .65rem; border-radius: 99px; border: 1px solid var(--border); background: var(--surface-2); font-size: .82rem; }
+.chain .step small { font-size: .68rem; opacity: .85; } .chain .step.mine { border-color: var(--accent-2); color: var(--accent-2); background: color-mix(in srgb, var(--accent-2) 12%, transparent); }
+.chain .arr { color: var(--text-dim); display: inline-flex; }
+.sup-prices { display: grid; gap: 0; } .sup-prices .pr { display: grid; grid-template-columns: minmax(0, 1fr) auto 4.6rem 4.4rem; gap: .4rem; align-items: center; padding: .32rem 0; border-bottom: 1px solid var(--border); }
+.sup-prices .pr:last-child { border-bottom: 0; }
+.pol { padding: .8rem .9rem; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-2); }
+.pol input[type=range] { width: 100%; accent-color: var(--accent); }
+.pol-fx { margin: .4rem 0; padding-left: 1.1rem; display: grid; gap: .4rem; } .pol-ex { margin: .3rem 0 0; padding-left: 1.1rem; }
+@media (max-width: 560px) {
+  .sup-prices .pr { grid-template-columns: minmax(0, 1fr) auto; } .sup-prices .pr .chip:empty, .sup-prices .pr > span:empty { display: none; }
+  .sup-need-bot .btn { width: 100%; justify-content: center; }
+}
+.modal input[type=range] { width: 100%; accent-color: var(--accent); }
+@media (max-width: 560px) { .sup-prices .pr { display: flex; flex-wrap: wrap; gap: .2rem .5rem; } .sup-prices .pr > span:first-child { flex: 1 1 auto; } }

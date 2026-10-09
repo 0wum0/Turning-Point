@@ -184,6 +184,7 @@ function settleContracts(state, c, f, idxNow) {
   if (!sp || !K) return;
   const idx = Math.max(0.0001, idxNow || 1);
   for (const p of sp.pays || []) {
+    const bb = (K.buys || []).find((x) => x.id === p.id); if (bb) bb.take = Math.round(Math.max(0, Math.min(1, p.take == null ? 1 : p.take)) * 1000) / 1000;
     if (!(p.cents > 0) || !p.sellerId) continue;
     const q = state.pending.supply || (state.pending.supply = []);
     let e = q.find((x) => x.id === p.id);
@@ -193,6 +194,7 @@ function settleContracts(state, c, f, idxNow) {
   for (const s of K.sells || []) if (s.firmId === c.id && sp.fills && sp.fills[s.id] != null) s.fill = Math.round(sp.fills[s.id] * 1000) / 1000;
   for (const b of K.buys || []) {
     if (b.firmId !== c.id || b.ended) continue;
+    if (sp.on && !(sp.pays || []).some((p) => p.id === b.id)) b.take = 0; // Bedarf schon anderweitig gedeckt: der Verkäufer muss nichts zurückhalten
     b.daysLeft = (b.daysLeft == null ? b.term || 30 : b.daysLeft) - 1;
     if (b.daysLeft <= 0) { if (b.auto) b.daysLeft = b.term || 30; else b.ended = true; }
   }

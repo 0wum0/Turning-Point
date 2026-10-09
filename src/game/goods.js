@@ -380,11 +380,12 @@ function buyPlan(world, state, c, year, rPot, ar, w) {
     for (const b of mine) {
       if (left <= 1e-9) break;
       const fill = b.fill == null ? 1 : Math.max(0, Math.min(1, Number(b.fill) || 0));
-      const give = Math.min(left, Math.max(0, Number(b.qty) || 0) * fill);
-      if (give <= 1e-9) continue;
+      const want = Math.min(left, Math.max(0, Number(b.qty) || 0)); // so viel Ware will der Betrieb aus diesem Vertrag
+      const give = want * fill;
+      if (want <= 1e-9) continue;
       const cc = Math.round(give * (Number(b.price) || 0) * idx);
       used.push({ id: b.id, units: give, cents: cc, sellerId: b.sellerId, sellerFirm: b.sellerFirm, sellerName: b.sellerName });
-      pays.push({ id: b.id, sellerId: b.sellerId, sellerFirm: b.sellerFirm, cents: cc, units: give });
+      pays.push({ id: b.id, sellerId: b.sellerId, sellerFirm: b.sellerFirm, cents: cc, units: give, take: Math.max(0, Number(b.qty) || 0) > 0 ? want / Number(b.qty) : 0 });
       byC += give; left -= give; cents += cc;
     }
     const byW = auto ? Math.max(0, left) : 0;
@@ -418,12 +419,12 @@ function sellPlan(world, state, c, year, rAct, ar, w) {
     const unitSell = priceReal(g, year) * idx * (1 - w.discount);
     const units = unitSell > 0 ? (rAct * o.share) / unitSell : 0;
     const mine = g.service ? [] : sells.filter((s) => s.good === g.key);
-    const committed = mine.reduce((s, x) => s + Math.max(0, Number(x.qty) || 0), 0);
+    const committed = mine.reduce((s, x) => s + Math.max(0, Number(x.qty) || 0) * (x.take == null ? 1 : Math.max(0, Math.min(1, Number(x.take) || 0))), 0); // nur, was der Käufer wirklich abnimmt
     const fill = committed > 0 ? Math.min(1, units / committed) : 1;
     const phi = units > 0 ? Math.min(committed, units) / units : 0;
     npcShare -= o.share * phi;
     let ci = 0;
-    for (const s of mine) { fills[s.id] = fill; ci += Math.max(0, Number(s.qty) || 0) * fill * (Number(s.price) || 0) * idx; }
+    for (const s of mine) { fills[s.id] = fill; ci += Math.max(0, Number(s.qty) || 0) * (s.take == null ? 1 : Math.max(0, Math.min(1, Number(s.take) || 0))) * fill * (Number(s.price) || 0) * idx; }
     contractIncome += ci;
     outputs.push({ good: g.key, name: g.name, unit: g.unit, icon: g.icon, service: g.service, units, share: o.share, byContract: Math.min(committed, units), committed, fill, income: Math.round(ci) });
   }
@@ -503,7 +504,7 @@ function previewPolicy(world, row, year) {
   const out = { kind: row.kind, good: g ? g.name : null, value: row.val, unit: g ? g.unit : null, lines: [] };
   const L = (key, a, b, c) => out.lines.push({ key, a, b, c });
   if (row.kind === 'surcharge') L('surcharge', row.val, Math.round(row.val * 10) / 10); // Punkte, Euro je 100 Gewinn
-  else if (row.kind === 'subsidy' || row.kind === 'natsubsidy') { L('subsidy', row.val, g.name); L('levy', Math.round(row.val * lev * 10) / 10); }
+  else if (row.kind === 'subsidy' || row.kind === 'natsubsidy') { L(row.kind, row.val, g.name); L('levy', Math.round(row.val * lev * 10) / 10); }
   else if (row.kind === 'support') { L('support', row.val, g.name); L('levy', Math.round(row.val * lev * 0.7 * 10) / 10); }
   else if (row.kind === 'vat') L('vat', row.val);
   else if (row.kind === 'tariff') {

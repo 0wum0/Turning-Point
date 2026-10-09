@@ -178,7 +178,11 @@ async function playGame(userId, { budget, rounds = 8 } = {}) {
     if (s.status === 'alive') await service.withSold(ctx, () => decide(ctx, P));
   });
 }
-async function playGameSafe(userId, opts) { try { await playGame(userId, opts); } catch (e) { log.warn(`[bots] Spiel von ${userId}: ${e.message}`); } }
+async function playGameSafe(userId, opts) {
+  try { await playGame(userId, opts); } catch (e) { log.warn(`[bots] Spiel von ${userId}: ${e.message}`); }
+  // Lieferverträge laufen außerhalb der Spielstand-Transaktion (eigene Datenbankzugriffe), daher erst nach der Sitzung
+  try { await require('./supply').botRound(userId); } catch (e) { log.warn(`[bots] Lieferverträge von ${userId}: ${e.message}`); }
+}
 
 async function lifeCycle(userId) {
   const row = await db.one('SELECT * FROM characters WHERE user_id = ? ORDER BY id DESC LIMIT 1', [userId]);

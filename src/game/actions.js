@@ -547,6 +547,11 @@ A.bizManager = ({ state, input }) => {
   if (!c.manager && state.occupation && state.occupation.ownCompanyId !== c.id) { /* nichts */ }
   return { msg: c.manager ? 'Ein Manager führt den Betrieb jetzt selbstständig.' : 'Manager entlassen.' };
 };
+A.bizSupply = ({ state, input }) => {
+  const c = company(state, input.id); needActive(c);
+  c.autoBuy = !!input.on;
+  return { msg: c.autoBuy ? 'Automatisch einkaufen ist an: Was Verträge nicht liefern, kauft der Betrieb beim günstigsten Anbieter (im Zweifel im Großhandel).' : 'Automatisch einkaufen ist aus: Der Betrieb nutzt nur seine Lieferverträge. Fehlen Zutaten, sinkt die Leistung.', level: c.autoBuy ? 'good' : 'warn' };
+};
 A.bizExpand = ({ world, state, input, user }) => {
   const c = company(state, input.id); needActive(c);
   const t = biz.tiersOf(world)[c.tier];

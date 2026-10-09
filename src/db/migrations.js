@@ -657,6 +657,53 @@ const MIGRATIONS = [
       KEY idx_sold_created (created_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
   ] },
+  { id: '026_goods_supply', up: [
+    // Warenkreislauf: Lieferverträge zwischen Betrieben (Käufer zahlt täglich, Gutschrift über pending_credits) und Beschlüsse politischer Ämter.
+    // Preise sind „Wert von 1945“ (Cent je Einheit); Mengen in Einheiten je Spieltag. fill = Lieferfähigkeit des Verkäufers (0–1), take = tatsächliche Abnahme des Käufers (0–1).
+    `CREATE TABLE IF NOT EXISTS supply_contracts (
+      id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      seller_id INT UNSIGNED NOT NULL,
+      seller_company INT UNSIGNED NOT NULL,
+      buyer_id INT UNSIGNED NOT NULL,
+      buyer_company INT UNSIGNED NOT NULL,
+      proposer_id INT UNSIGNED NOT NULL,
+      good VARCHAR(30) NOT NULL,
+      qty DOUBLE NOT NULL,
+      price_real DOUBLE NOT NULL,
+      term_days INT NOT NULL DEFAULT 90,
+      days_left INT NOT NULL DEFAULT 0,
+      auto_renew TINYINT(1) NOT NULL DEFAULT 0,
+      fill DOUBLE NOT NULL DEFAULT 1,
+      take DOUBLE NOT NULL DEFAULT 1,
+      status ENUM('offer','active','ended','declined','cancelled','expired') NOT NULL DEFAULT 'offer',
+      end_reason VARCHAR(60) NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      accepted_at DATETIME NULL,
+      ended_at DATETIME NULL,
+      KEY idx_sc_buyer (buyer_id, status),
+      KEY idx_sc_seller (seller_id, status),
+      KEY idx_sc_status (status, created_at),
+      CONSTRAINT fk_sc_seller FOREIGN KEY (seller_id) REFERENCES users(id) ON DELETE CASCADE,
+      CONSTRAINT fk_sc_buyer FOREIGN KEY (buyer_id) REFERENCES users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    // Ein Beschluss je Amtszeit und Amtsinhaber (UNIQUE): kind = surcharge | subsidy | support | frame | vat | tariff | natsubsidy
+    `CREATE TABLE IF NOT EXISTS goods_policies (
+      id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      user_id INT UNSIGNED NOT NULL,
+      term_key VARCHAR(60) NOT NULL,
+      office_idx TINYINT NOT NULL,
+      kind VARCHAR(20) NOT NULL,
+      good VARCHAR(30) NULL,
+      val INT NOT NULL DEFAULT 0,
+      scope_city INT NOT NULL DEFAULT 0,
+      region VARCHAR(80) NULL,
+      expires_at BIGINT NOT NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY uq_gp_term (user_id, term_key),
+      KEY idx_gp_exp (expires_at),
+      CONSTRAINT fk_gp_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+  ] },
 ];
 
 async function ensureTable(db) {

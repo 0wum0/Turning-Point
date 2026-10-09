@@ -229,7 +229,7 @@ async function finish(electionId) {
         const { state } = ctx;
         if (!state || state.status !== 'alive' || state.politics.term) return { seated: false };
         const pc = world.econ.politics;
-        state.politics.term = { idx: el.office_idx, startDay: state.day, endDay: state.day + pc.termDays };
+        state.politics.term = { idx: el.office_idx, startDay: state.day, endDay: state.day + pc.termDays, cityId: el.city_id || 0 };
         state.fx.influence = (state.fx.influence || 0) + 2;
         award(state, 'partner');
         chronicle(state, `${state.person.first} wird zum ${o.name} gewählt.`, 'politics');

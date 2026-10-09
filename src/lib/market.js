@@ -350,12 +350,14 @@ async function expire() {
 async function refreshSupply() {
   const rows = await db.query('SELECT city_id, pkey, SUM(rooms) rooms, COUNT(*) firms FROM player_firms WHERE abandoned = 0 GROUP BY city_id, pkey');
   require('../game/competition').setSupply(rows);
+  try { await require('./policies').refresh(); } catch (e) { log.warn(`[policies] ${e.message}`); }
   const world = await worldP(); const bau = world.professions.filter((p) => p.category === 'bau').map((p) => p.pkey);
   if (bau.length) require('../game/contractors').set(await db.query(`SELECT user_id, company_id, name, city_id FROM player_firms WHERE abandoned = 0 AND staff > 0 AND pkey IN (${bau.map(() => '?').join(',')})`, bau));
 }
 
 function start() {
   refreshSupply().catch(() => {});
+  try { require('./supply').start(); } catch (_) { /* optional */ }
   setInterval(() => { refreshSupply().catch(() => {}); }, 120000).unref();
   setInterval(() => { settleAuctions().catch((e) => log.warn(`[market] ${e.message}`)); }, 60000).unref();
   setInterval(() => { expire().catch(() => {}); }, 3600000).unref();

@@ -41,6 +41,36 @@ function hintsFor(state, flows) {
   return h;
 }
 
+const r2 = (x) => Math.round(x * 100) / 100;
+/** Versorgung eines Betriebs in einfachen Zahlen für die Oberfläche (Mengen je Tag, Beträge in Cent heutiger Preise). */
+function supplyView(sp) {
+  if (!sp) return null;
+  return {
+    on: sp.on, primary: sp.primary, status: sp.status, ratio: r2(sp.ratio), factor: r2(sp.factor), auto: sp.auto, cost: sp.cost, costContract: sp.costContract, costWholesale: sp.costWholesale, subsidy: sp.subsidy, contractIncome: sp.contractIncome, policy: sp.policy,
+    needs: sp.needs.map((n) => ({ good: n.good, name: n.name, unit: n.unit, icon: n.icon, need: r2(n.need), byContract: r2(n.byContract), byWholesale: r2(n.byWholesale), missing: r2(n.missing), price: Math.round(n.price * 100) / 100, scar: n.scarLabel, subsidyPct: n.subsidyPct, cost: n.costContract + n.costWholesale - n.subsidy })),
+    outputs: sp.outputs.map((o) => ({ good: o.good, name: o.name, unit: o.unit, icon: o.icon, service: o.service, units: r2(o.units), byContract: r2(o.byContract), committed: r2(o.committed), fill: r2(o.fill), income: o.income })),
+  };
+}
+/** Laufende Lieferverträge einer Firma (aus dem Spielstand gespiegelt). */
+function dealsView(state, firmId) {
+  const K = state.contracts || { buys: [], sells: [] };
+  const g = require('./goods');
+  const one = (x, buy) => ({ id: x.id, good: x.good, name: (g.good(x.good) || {}).name || x.good, unit: (g.good(x.good) || {}).unit || '', qty: r2(x.qty), priceReal: x.price, fill: x.fill == null ? 1 : x.fill, take: x.take == null ? 1 : x.take, other: buy ? x.sellerName : x.buyerName, otherFirm: buy ? x.sellerFirmName : x.buyerFirmName, daysLeft: x.daysLeft, term: x.term, auto: !!x.auto });
+  return { buys: (K.buys || []).filter((x) => x.firmId === firmId && !x.ended).map((x) => one(x, true)), sells: (K.sells || []).filter((x) => x.firmId === firmId).map((x) => one(x, false)) };
+}
+/** Warenkreislauf für die Übersicht: Preise der Waren in der Stadt des Spielers, Beispielketten mit eigenen Betrieben. */
+function goodsView(world, state, year) {
+  const g = require('./goods'); const w = g.W();
+  const keys = new Set();
+  for (const c of state.companies || []) { if (c.abandoned) continue; const ar = g.activeRecipe(world, c.pkey, year, c.cityId); ar.inputs.forEach((i) => keys.add(i.good)); ar.out.forEach((o) => { if (!g.good(o.good).service) keys.add(o.good); }); }
+  const own = new Set((state.companies || []).filter((c) => !c.abandoned).map((c) => c.pkey));
+  return {
+    enabled: g.enabled(), markupPct: Math.round(w.markup * 100), discountPct: Math.round(w.discount * 100), floorPct: Math.round(w.floor * 100),
+    prices: g.enabled() ? g.priceList(world, state.cityId, year, [...keys]) : [],
+    chains: g.CHAINS.map((ch) => ({ name: ch.name, steps: ch.steps.filter((s) => { const gd = g.good(s.good); return gd && g.inEra(gd, year) && (!s.pkey || (world.prof(s.pkey) && world.prof(s.pkey).era_from <= year && year <= world.prof(s.pkey).era_to)); }).map((s) => ({ label: s.label, good: g.good(s.good).name, icon: g.good(s.good).icon, mine: !!s.pkey && own.has(s.pkey) })) })).filter((ch) => ch.steps.length >= 2),
+  };
+}
+
 function present(world, state, user, now) {
   const year = yearOf(state.day, state.startYear);
   const idx = world.idx(year);
@@ -130,8 +160,11 @@ function present(world, state, user, now) {
         qualified: biz.qualification(world, state, c.pkey, c.tier).ok,
         next: nt ? { name: biz.chainNames(world, c.pkey)[c.tier + 1], cost: Math.max(0, Math.round((nt.price - t.price) * idx * (city ? city.price_factor : 1))), minLevel: nt.minLevel, qualified: biz.qualification(world, state, c.pkey, c.tier + 1).ok } : null,
         reactivateCost: Math.round(c.base * idx * (econ.companies.reactivatePct / 100)),
+        autoBuy: c.autoBuy !== false, supply: supplyView(f.supply), inputs: f.inputs || 0, vat: f.vat || 0, contractIncome: f.contractIncome || 0, profitAll: f.profitAll == null ? f.profit : f.profitAll,
+        deals: dealsView(state, c.id),
       };
     }),
+    goods: goodsView(world, state, year),
     politics: (() => {
       const pc = econ.politics; const infl = (user.meta.influence || 0) + (state.fx.influence || 0); const t = state.politics.term;
       return {

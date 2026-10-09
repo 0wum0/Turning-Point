@@ -32,6 +32,7 @@ router.use(anticheat.middleware);
 router.get('/live', (req, res) => require('../lib/live').connect(req, res));
 router.use('/social', require('./social'));
 router.use('/push', require('./push'));
+router.use('/supply', require('./supply'));
 
 router.get('/state', wrap(async (req, res) => {
   const r = await service.getView(req.user.id);

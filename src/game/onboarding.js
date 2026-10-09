@@ -45,6 +45,7 @@ const QUESTS = [
   { id: 'skill2', title: 'Einen zweiten Beruf lernen', why: 'Jeder Beruf ist ein Schlüssel: Er bestimmt, welche Firmen du später führen darfst.', tab: 'work', spot: 'course', reward: { efs: 5 }, done: (s, q) => s.skills && s.skills.learned.length > (q.baseLearned == null ? 1 : q.baseLearned) },
   { id: 'business', title: 'Den ersten Betrieb eröffnen', why: 'Eine eigene Firma verdient auch dann Geld, wenn du gerade nicht arbeitest – der Weg zum Vermächtnis.', tab: 'newspaper', spot: 'listing:biz', reward: { efs: 6 }, done: (s, q) => (s.companies || []).length > 0 || !!q.acts.buyBiz },
   { id: 'hire', title: 'Einen Mitarbeiter einstellen', why: 'Mitarbeiter lassen den Betrieb wachsen und bringen mehr Gewinn.', tab: 'business', spot: 'hire', reward: { efs: 6 }, done: (s, q) => !!q.acts.bizHire },
+  { id: 'contract', title: 'Schließe deinen ersten Liefervertrag', why: 'Ein Liefervertrag bringt dir Zutaten günstiger als der Großhandel – oder bessere Preise für deine Waren. So wächst dein Betrieb in die Lieferkette hinein.', tab: 'business', spot: 'supply', reward: { efs: 6 }, done: (s, q) => !!(s.contracts && ((s.contracts.buys || []).length || (s.contracts.sells || []).length)) || !!q.seen.contract },
   { id: 'let', title: 'Eine Immobilie vermieten', why: 'Mieter zahlen dir jeden Tag Miete – ein ruhiges Einkommen ohne Arbeit.', tab: 'housing', spot: 'lease', reward: { efs: 6 }, done: (s, q) => (s.properties || []).some((p) => p.lease && p.lease.on) || !!q.acts.letOn },
   { id: 'market', title: 'Ein erstes Angebot auf dem Markt einstellen', why: 'Auf dem Markt handelst du mit anderen echten Spielern – Häuser, Firmen, Gelegenheiten.', tab: 'social', spot: 'market', reward: { efs: 6 }, done: (s, q) => !!q.seen.marketOffer },
   { id: 'vote', title: 'Bei einer Wahl abstimmen oder kandidieren', why: 'Bürgermeister, Landrat, Kanzler: Ämter werden von den Spielern gewählt. Du kannst mitentscheiden.', tab: 'social', spot: 'elections', reward: { coins: 1 }, done: (s, q) => !!q.seen.vote || !!(s.politics && (s.politics.term || Object.values(s.politics.completed || {}).some((n) => n > 0))) },
@@ -176,6 +177,14 @@ function advise(v, nextQuest, opts) {
   }
   const kids = (v.children || []).filter((k) => k.pendingSchool || k.pendingPath || k.status === 'runaway');
   if (kids.length) add(75, { id: 'kids', level: 'warn', icon: 'baby', title: kids.length === 1 ? `Bei ${kids[0].name} steht eine Entscheidung an` : 'Bei deinen Kindern stehen Entscheidungen an', why: 'Schule und Ausbildung deiner Kinder entscheiden, was später aus ihnen wird.', cta: { kind: 'go', label: 'Zur Familie', tab: 'family' } });
+  const short = (v.companies || []).filter((c) => !c.abandoned && c.supply && c.supply.status && c.supply.status !== 'ok' && c.supply.status !== 'none').sort((a, b) => a.supply.ratio - b.supply.ratio)[0];
+  if (short) {
+    const lack = (short.supply.needs || []).filter((n) => n.missing > 0).map((n) => n.name).slice(0, 2).join(' und ');
+    const missing = short.supply.status === 'missing';
+    add(missing ? 78 : 62, { id: 'supply', level: missing ? 'bad' : 'warn', icon: 'package', title: missing ? `${short.name}: Zutaten fehlen` : `${short.name}: Zutaten werden knapp`,
+      why: `${lack ? `Es fehlt vor allem ${lack}. ` : ''}Ohne Zutaten sinkt die Leistung des Betriebs. Schalte „Automatisch einkaufen“ ein oder schließe einen Liefervertrag.`,
+      cta: { kind: 'go', label: 'Zur Versorgung', tab: 'business', spot: 'supply' } });
+  }
   const cr = v.credit;
   if (cr && cr.loans && cr.loans.length) {
     const small = cr.loans.slice().sort((a, b) => a.left - b.left)[0];
