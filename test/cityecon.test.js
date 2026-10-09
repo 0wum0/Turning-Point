@@ -238,3 +238,45 @@ test('Engine-Lauf mit Stadtindizes bleibt endlich, lebt und ändert die Bilanz n
   assert.ok(Number.isFinite(a.money) && Number.isFinite(b.money));
   assert.strictEqual(b.status, 'alive');
 });
+
+test('Einsteiger: Aufgabe „Preise vergleichen“ und Hinweis auf günstigere Nachbarstadt', () => {
+  const ob = require('../src/game/onboarding');
+  const s = { day: 0, status: 'alive', money: 4000, hunger: 0, meters: { fridge: 45, health: 100 }, housing: { type: 'rent' }, occupation: { kind: 'work' }, skills: { learned: ['baecker'] }, stats: { earned: 1 }, properties: [], companies: [], children: [], partner: null, politics: { term: null, completed: {} }, flags: {}, fx: { coins: 0, efs: 0, influence: 0 } };
+  ob.initFresh(s); const u = { meta: {} };
+  assert.ok(ob.QUESTS.some((q) => q.id === 'prices') && ob.SEEN_KEYS.includes('prices'));
+  ob.tick(s, u); // erledigt Wohnung, Arbeit und Lohn
+  assert.ok(!s.flags.quests.done.prices);
+  ob.markSeen(s, u, 'prices');
+  assert.ok(ob.tick(s, u).includes('prices'));
+  const v = { currency: 'DM', hunger: 0, meters: { fridge: 60, health: 90 }, money: 90000, status: 'alive', housing: { type: 'rent' }, occupation: { kind: 'work' }, properties: [], companies: [], children: [], flows: { net: 100, expense: 900 }, notices: [],
+    econ: { on: true, rentShare: 0.4, tips: [{ kind: 'rent', cityId: 5, city: 'Teltow', km: 20, savePerDay: 250, pct: 22 }] } };
+  const a = ob.advise(v, null, {});
+  assert.strictEqual(a.top.id, 'cheaper-city'); assert.match(a.top.why, /40 %.*Teltow.*22 %/); assert.strictEqual(a.top.cta.tab, 'city');
+  for (const t of [a.top.title, a.top.why, a.top.cta.label]) assert.notStrictEqual(require('../src/i18n-game').tr(t), t, `übersetzt: ${t.slice(0, 40)}`);
+  for (const q of ob.QUESTS.filter((x) => x.id === 'prices')) for (const t of [q.title, q.why]) assert.notStrictEqual(require('../src/i18n-game').tr(t), t);
+  v.econ.rentShare = 0.1; assert.notStrictEqual(ob.advise(v, null, {}).top.id, 'cheaper-city', 'bei niedriger Mietbelastung kein Hinweis');
+  v.econ = { on: false, tips: [], rentShare: 0 }; assert.notStrictEqual(ob.advise(v, null, {}).top.id, 'cheaper-city');
+});
+
+test('Englisch: Beschlüsse, Zeitungsmeldungen, Aufgaben und Oberflächentexte sind übersetzt', () => {
+  const g = require('../src/i18n-game');
+  const missing = [];
+  const need = (t) => { if (g.tr(t) === t) missing.push(t); };
+  for (const k of ['rentcap', 'landzone', 'housing', 'pricebrake']) { need(goods.KINDS[k].name); need(goods.KINDS[k].what); }
+  const c = city('braunschweig');
+  for (const row of [{ kind: 'rentcap', val: 2, scope_city: c.id }, { kind: 'landzone', val: 10, scope_city: c.id }, { kind: 'housing', val: 5, region: c.state }, { kind: 'pricebrake', val: -1 }, { kind: 'pricebrake', val: 2 }]) need(require('../src/lib/policies').describe(w, row));
+  ce.prime();
+  for (const s of ce.SECTORS) for (const up of [true, false]) {
+    const m = new Map(); m.set(ce.key(c.id, s), { v: up ? 1.4 : 0.8, t: 0, pt: 0, hist: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, up ? 1.4 : 0.8], cityId: c.id, sector: s }); ce.setState(m, new Map());
+    for (const n of ce.news(w, c.id, 1970)) { need(n.title); need(n.text); }
+  }
+  assert.throws(() => goods.normalizePolicy(w, 2, c, 1950, { kind: 'rentcap', value: 3 }), (e) => { need(e.message); return true; });
+  const cl = require('../src/i18n-data/client-L');
+  for (const [re] of cl.patterns) assert.doesNotThrow(() => new RegExp(re));
+  assert.deepStrictEqual(missing, []);
+  // Glossareinträge der Stadtwirtschaft sind in der Oberfläche übersetzt
+  const src = require('fs').readFileSync(require('path').join(__dirname, '../public/js/game/glossary-city.js'), 'utf8');
+  const texts = [...src.matchAll(/^  \['[^']+', '([^']+)', '([^']+)'\],$/gm)];
+  assert.strictEqual(texts.length, 6);
+  for (const [, title, text] of texts) { assert.ok(cl.exact[title], title); assert.ok(cl.exact[text], text.slice(0, 40)); }
+});

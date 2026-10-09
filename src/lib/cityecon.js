@@ -85,9 +85,9 @@ async function refresh(nowMs = Date.now()) {
         const e = ce.advanceEntry(old, tgt, nowMs, s === 'rent' ? ef.rentCap : null);
         e.cityId = id; e.sector = s; e.target = tgt;
         const b = ce.balance(world, id, s, inp, pol); e.demand = b.D; e.supply = b.S;
-        rows[s] = e; maxDev = Math.max(maxDev, Math.abs(e.v - 1), Math.abs(tgt - 1));
+        rows[s] = e; maxDev = Math.max(maxDev, Math.abs(e.v - 1)); // das Rauschen im Ziel zählt nicht: eine ruhige Stadt wird wieder neutral
       }
-      const quiet = !inputs.has(id) && !pcs.has(id) && maxDev < 0.004;
+      const quiet = !inputs.has(id) && !pcs.has(id) && maxDev < 0.012;
       if (quiet) continue; // wieder neutral und ohne Aktivität: Zeile entfällt
       for (const s of ce.SECTORS) { next.set(ce.key(id, s), rows[s]); keep.push(rows[s]); }
     }

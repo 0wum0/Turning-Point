@@ -136,7 +136,10 @@ test('Warenkreislauf gegen echte Datenbank', { skip }, async (t) => {
   await t.test('Amtsinhaber: ein Beschluss je Amtszeit, wirkt auf Steuern, erlischt mit dem Amt', async () => {
     await service.withCharacter(C, async (ctx) => { ctx.state.politics.term = { idx: 1, startDay: ctx.state.day, endDay: ctx.state.day + 1460, cityId: city }; });
     const ov = await policies.overview(C);
-    assert.deepStrictEqual(ov.office.powers.map((p) => p.kind), ['surcharge']);
+    assert.deepStrictEqual(ov.office.powers.map((p) => p.kind), ['surcharge', 'landzone']);
+    const lz = await policies.preview(C, { kind: 'landzone', value: 10 });
+    assert.strictEqual(lz.preview.lines[0].key, 'landzone'); assert.ok(lz.preview.lines[0].b.some((e) => e.sector === 'rent') && /Baulandausweisung/.test(lz.text));
+    await assert.rejects(policies.preview(C, { kind: 'rentcap', value: 2 }), /Befugnis/);
     const pv = await policies.preview(C, { kind: 'surcharge', value: 3 });
     assert.strictEqual(pv.preview.lines[0].key, 'surcharge');
     await assert.rejects(policies.set(C, { kind: 'surcharge', value: 9 }), /Erlaubt/);
