@@ -149,7 +149,9 @@ async function withCharacter(userId, fn, opts = {}) {
 async function withCharacterOnce(userId, fn, { needAlive = false } = {}) {
   const w = await world.get();
   const now = Date.now();
-  return db.tx(async (conn) => {
+  const repAfter = []; // Ruf-Buchungen für andere Konten und Benachrichtigungen: erst nach dem Commit (src/lib/reputation.js)
+  const out = await db.tx(async (conn) => {
+    conn.repAfter = repAfter;
     const user = await loadUser(conn, userId);
     if (!user) throw new actions.ActionError('Nutzer nicht gefunden.');
     const row = await activeRow(conn, userId);
@@ -158,7 +160,7 @@ async function withCharacterOnce(userId, fn, { needAlive = false } = {}) {
     // Zuerst mit der Datenbank abgleichen (beendete Mietverträge/Anstellungen, Gutschriften), dann die Spielzeit laufen lassen:
     // Sonst würden Miete oder Lohn für Verhältnisse, die schon beendet sind, noch für die gesamte Abwesenheit gebucht.
     const bonds = require('../lib/bonds');
-    if (state) { await bonds.reconcile(conn, user, row, state, w); flush(user, state); }
+    if (state) { await bonds.reconcile(conn, user, row, state, w); flush(user, state); await loadRep(conn, user, state); }
     const sync = syncEfs(user, state, now, w);
     if (state) flush(user, state);
     if (needAlive && (!state || state.status !== 'alive')) throw new actions.ActionError('Dein Charakter lebt nicht mehr.');
@@ -166,12 +168,13 @@ async function withCharacterOnce(userId, fn, { needAlive = false } = {}) {
     const wasAlive = !!(state && state.status === 'alive');
     const result = (await fn(ctx)) || {};
     state = ctx.state;
-    if (wasAlive && state && state.status === 'gameover') { const nm = user.social_public ? `${state.person.first} ${state.person.last}` : 'Ein Bürger'; await require('../lib/tagesblatt').post('life', 'Insolvenz', `${nm} ist zahlungsunfähig. Besitz kommt unter den Hammer.`, state.cityId, conn); }
+    if (wasAlive && state && state.status === 'gameover') { try { require('./reputation').queue(state, 'scandal', null, 'bankrupt'); } catch (_) { /* optional */ } const nm = user.social_public ? `${state.person.first} ${state.person.last}` : 'Ein Bürger'; await require('../lib/tagesblatt').post('life', 'Insolvenz', `${nm} ist zahlungsunfähig. Besitz kommt unter den Hammer.`, state.cityId, conn); }
     else if (wasAlive && state && state.status === 'dead' && user.social_public) { await require('../lib/tagesblatt').post('life', 'Todesfall', `${state.person.first} ${state.person.last} ist verstorben.`, state.cityId, conn); }
     if (state && row) {
       if (state.status === 'gameover' && ((state.properties || []).length || (state.companies || []).length)) { try { await require('../lib/market').estate(conn, user, state, w); } catch (e) { require('../lib/log').warn(`[market] Insolvenzmasse: ${e.message}`); } }
       try { require('./onboarding').tick(state, user); } catch (e) { require('../lib/log').warn(`[onboarding] ${e.message}`); }
       flush(user, state); await bonds.beforeSave(conn, user, state, w);
+      try { await require('../lib/reputation').flush(conn, user, state); } catch (e) { require('../lib/log').warn(`[ruf] ${e.message}`); }
       // Gutschriften an andere Spieler (Bauaufträge, Dividenden) VOR dem Speichern verbuchen: Die Listen werden dabei geleert,
       // und das muss im gespeicherten Stand ankommen – sonst würden sie bei jedem weiteren Aufruf erneut ausgezahlt.
       try { await require('../game/contractors').flush(conn, state); } catch (e) { require('../lib/log').warn(`[contractors] ${e.message}`); }
@@ -185,6 +188,13 @@ async function withCharacterOnce(userId, fn, { needAlive = false } = {}) {
     await saveUser(conn, user);
     return { ...result, sync, view: state ? present(w, state, user, now) : null, coins: user.coins, efsPool: user.efs_pool };
   });
+  await require('../lib/reputation').runAfter(repAfter);
+  return out;
+}
+
+/** Zwischenspeicher des Rufs (state.rep) für die Wirkungen in der Simulation (Kreditrahmen, Mieternachfrage …). */
+async function loadRep(conn, user, state) {
+  try { const r = await require('../lib/reputation').snapshot(conn, user.id, state.cityId); if (r) state.rep = r; else delete state.rep; } catch (e) { require('../lib/log').warn(`[ruf] ${e.message}`); }
 }
 
 async function getView(userId) {
@@ -194,7 +204,9 @@ async function getView(userId) {
 async function create(userId, input) {
   const w = await world.get();
   const now = Date.now();
-  return db.tx(async (conn) => {
+  const repAfter = [];
+  const out = await db.tx(async (conn) => {
+    conn.repAfter = repAfter;
     const user = await loadUser(conn, userId);
     const row = await activeRow(conn, userId);
     if (row && row.status !== 'gameover') throw new actions.ActionError('Du hast bereits einen Charakter.');
@@ -202,6 +214,8 @@ async function create(userId, input) {
     if (err.length) throw new actions.ActionError(err.join(' '));
     const cycle = row ? row.cycle + 1 : 1;
     const state = createCharacter(w, input, user, { cycle });
+    if (row) { try { await require('../lib/reputation').inherit(conn, userId, 'restart'); } catch (e) { require('../lib/log').warn(`[ruf] ${e.message}`); } }
+    await loadRep(conn, user, state);
     user.efs_accrued_at = now;
     user.efs_carry = 0;
     const today = actions.berlinDay(now);
@@ -217,6 +231,8 @@ async function create(userId, input) {
     await require('../lib/tagesblatt').post('life', 'Neu in der Stadt', `${user.social_public ? `${state.person.first} ${state.person.last}` : 'Ein neuer Bürger'} beginnt ein neues Leben in ${(w.city(state.cityId) || {}).label || 'der Stadt'}.`, state.cityId, conn);
     return { view: present(w, state, user, now), id: r.insertId };
   });
+  await require('../lib/reputation').runAfter(repAfter);
+  return out;
 }
 
 async function doAction(userId, name, input) {
@@ -252,13 +268,18 @@ async function doAdvance(userId, days) {
 async function chooseHeir(userId, childId, bequest) {
   const w = await world.get();
   const now = Date.now();
-  return db.tx(async (conn) => {
+  const repAfter = [];
+  const out = await db.tx(async (conn) => {
+    conn.repAfter = repAfter;
     const user = await loadUser(conn, userId);
     const row = await activeRow(conn, userId);
     if (!row || row.status !== 'dead') throw new actions.ActionError('Es steht kein Erbe an.');
     const old = parseState(row.state);
     const { state } = createHeirState(w, old, childId, Array.isArray(bequest) ? bequest : []);
     flush(user, state);
+    // Familienruf: Der Erbe übernimmt einen Teil des Ansehens der Eltern
+    try { await require('../lib/reputation').inherit(conn, userId, 'heir'); } catch (e) { require('../lib/log').warn(`[ruf] ${e.message}`); }
+    await loadRep(conn, user, state);
     await conn.query(
       'INSERT INTO characters (user_id, parent_id, cycle, generation, status, name, state, game_day, money) VALUES (?,?,?,?,?,?,?,?,?)',
       [userId, row.id, state.cycle, state.generation, 'alive', `${state.person.first} ${state.person.last}`, JSON.stringify(state), state.day, state.money],
@@ -269,6 +290,8 @@ async function chooseHeir(userId, childId, bequest) {
     await require('../lib/social').upsertStats(conn, user, newRow, state, w);
     return { view: present(w, state, user, now) };
   });
+  await require('../lib/reputation').runAfter(repAfter);
+  return out;
 }
 
 async function previewHeir(userId, childId, bequest) {

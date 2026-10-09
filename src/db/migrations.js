@@ -720,6 +720,48 @@ const MIGRATIONS = [
       PRIMARY KEY (city_id, sector)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
   ] },
+  { id: '028_reputation', up: [
+    // Ruf und Ansehen: fünf Bestandteile je Konto (Familienruf), örtliche Punkte je Stadt und ein Protokoll der letzten Ereignisse
+    `CREATE TABLE IF NOT EXISTS reputation (
+      user_id INT UNSIGNED NOT NULL PRIMARY KEY,
+      rel DOUBLE NOT NULL DEFAULT 0,
+      trade DOUBLE NOT NULL DEFAULT 0,
+      civic DOUBLE NOT NULL DEFAULT 0,
+      office DOUBLE NOT NULL DEFAULT 0,
+      scandal DOUBLE NOT NULL DEFAULT 0,
+      score DOUBLE NOT NULL DEFAULT 0,
+      lvl TINYINT NOT NULL DEFAULT 0,
+      caps TEXT NULL,
+      decay_day INT NOT NULL DEFAULT 0,
+      updated_at BIGINT NOT NULL DEFAULT 0,
+      CONSTRAINT fk_rep_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    `CREATE TABLE IF NOT EXISTS reputation_city (
+      user_id INT UNSIGNED NOT NULL,
+      city_id INT UNSIGNED NOT NULL,
+      pts DOUBLE NOT NULL DEFAULT 0,
+      decay_day INT NOT NULL DEFAULT 0,
+      PRIMARY KEY (user_id, city_id),
+      KEY idx_repc_city (city_id),
+      CONSTRAINT fk_repc_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    // Protokoll: gleiche Ereignisse eines Tages werden zusammengefasst (n = Anzahl), kind/reason sind feste Schlüssel
+    `CREATE TABLE IF NOT EXISTS reputation_log (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      user_id INT UNSIGNED NOT NULL,
+      kind VARCHAR(10) NOT NULL,
+      reason VARCHAR(30) NOT NULL,
+      delta DOUBLE NOT NULL,
+      n INT NOT NULL DEFAULT 1,
+      ref VARCHAR(60) NULL,
+      city_id INT UNSIGNED NULL,
+      day_no INT NOT NULL DEFAULT 0,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      KEY idx_replog_user (user_id, id),
+      KEY idx_replog_at (created_at),
+      CONSTRAINT fk_replog_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+  ] },
 ];
 
 async function ensureTable(db) {

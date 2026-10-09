@@ -359,6 +359,7 @@ function start() {
   refreshSupply().catch(() => {});
   try { require('./supply').start(); } catch (_) { /* optional */ }
   try { require('./cityecon').start(); } catch (_) { /* optional */ }
+  try { require('./reputation').start(); } catch (_) { /* optional */ }
   setInterval(() => { refreshSupply().catch(() => {}); }, 120000).unref();
   setInterval(() => { settleAuctions().catch((e) => log.warn(`[market] ${e.message}`)); }, 60000).unref();
   setInterval(() => { expire().catch(() => {}); }, 3600000).unref();

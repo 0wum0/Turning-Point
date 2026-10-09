@@ -34,6 +34,7 @@ router.use('/social', require('./social'));
 router.use('/push', require('./push'));
 router.use('/supply', require('./supply'));
 router.use('/economy', require('./economy'));
+router.use('/reputation', require('./reputation'));
 
 router.get('/state', wrap(async (req, res) => {
   const r = await service.getView(req.user.id);

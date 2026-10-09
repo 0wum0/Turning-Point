@@ -151,6 +151,26 @@ const DEFAULTS = {
     newsPct: 4,                   // Zeitungsmeldung ab so vielen Prozent Veränderung gegenüber dem Vorjahr
     policy: { rentCapOptions: [0, 2, 4], zoneOptions: [5, 10, 15], programOptions: [5, 10, 15], brakeOptions: [-2, -1, 1, 2], capSupplyPenaltyPct: 6, zoneBuildPct: 50, brakeWagePct: 70 },
   },
+  // Ruf und Ansehen (src/game/reputation.js, src/lib/reputation.js): fünf Bestandteile je Familie, Stufen von „Verrufen“ bis „Ehrenbürger“.
+  // Ereignisse (Tabelle REASONS im Code) ändern einen Bestandteil; mult skaliert einzelne Ereignisse, caps begrenzt sie je Tag (Obergrenze der Beträge vor dem Abflauen).
+  ruf: {
+    enabled: true,
+    weights: { rel: 0.35, trade: 0.2, civic: 0.25, office: 0.2, scandal: 0.9 }, // Gewicht der Bestandteile im Gesamtwert (Skandal wird abgezogen)
+    levels: [-30, -10, 12, 32, 55, 78],   // Grenzen: Verrufen < -30 ≤ Zweifelhaft < -10 ≤ Unbekannt < 12 ≤ Anständig < 32 ≤ Angesehen < 55 ≤ Honoratior < 78 ≤ Ehrenbürger
+    decayPct: { rel: 2, trade: 2, civic: 1.5, office: 0.8, scandal: 1.5 }, // Abflauen zur Mitte in Prozent je echtem Tag
+    scandalFlat: 0.3,                      // zusätzlich: Skandal sinkt je Tag um so viele Punkte
+    capDefault: 5, caps: {}, mult: {},     // Tagesgrenze je Ereignis (Betrag) – caps/mult überschreiben einzelne Ereignisse (Schlüssel siehe Admin-Werkzeug)
+    pairCapPct: 50,                        // je Gegenüber höchstens so viel Prozent der Tagesgrenze
+    compDayCap: 14,                        // je Bestandteil höchstens so viele Punkte Zuwachs pro Tag
+    maxEvent: 40, localShare: 50,          // größter Einzelbetrag; Anteil (%) der örtlichen Punkte am örtlichen Ansehen
+    inherit: { heirPct: 50, restartPct: 25 }, // Erben übernehmen so viel Prozent der Bestandteile (Neustart nach Insolvenz weniger)
+    minAccountHours: 12, blockSameIp: true,  // Handlungen mit Konten gleicher IP oder neuen Konten zählen nicht
+    ledgerKeep: 80, ledgerDays: 90,          // Einträge je Spieler im Protokoll
+    offices: [0, 1, 2, 2, 3, 3],             // Mindeststufe je Amt (Ortsbeirat … Bundeskanzler): 0 Unbekannt, 1 Anständig, 2 Angesehen, 3 Honoratior
+    minIpo: 1, minTakeover: 0, minContract: 0, minOffer: 0, minLoan: -1, minHire: -1, // Mindeststufen weiterer Aktionen (-1 = alles außer „Verrufen“)
+    honor: { minLevel: 1, localPts: 15, civic: 8, perTerm: 1 },  // Ehrenbürgerwürde des Bürgermeisters
+    effects: { strength: 1, credit: true, contracts: true, landlord: true, elections: true, jobs: true }, // strength 0 = alle Wirkungen aus; 2 = doppelt
+  },
   cycles: { realEstate: [[1945, 0.75], [1950, 0.85], [1957, 1.0], [1965, 1.08], [1973, 1.15], [1976, 1.05], [1985, 1.0], [1990, 1.2], [1993, 1.3], [1996, 1.0], [2005, 0.9], [2010, 1.0], [2015, 1.2], [2021, 1.5], [2023, 1.35], [2035, 1.4], [2060, 1.5], [2100, 1.6]] },
   exchange: { enabled: true, shares: 1000, minValueReal: 300000, minGameDays: 90, minFloatPct: 10, maxFloatPct: 49, makerSpreadPct: 5, makerDailyPct: 5, maxOrderShares: 500, openOrdersMax: 12, takeoverPct: 50,
     // Grenzen des Marktteilnehmers: Tageslimit je Nutzer (Gesamtwert real in Cent, 0 = kein Limit), Mindest-Haltedauer vor dem Rückverkauf an ihn,
