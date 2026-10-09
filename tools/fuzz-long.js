@@ -7,7 +7,7 @@
  *   node tools/fuzz-long.js --seed 37 --steps 3000 --verbose   # einen Seed nachspielen
  * Ein Seed spielt deterministisch immer denselben Verlauf; die Fehlermeldung nennt Seed und die letzten Schritte.
  */
-const { runScenario, runTradeScenario } = require('../test/fuzz-lib');
+const { runScenario, runTradeScenario, runSupplyScenario } = require('../test/fuzz-lib');
 
 const arg = (name, d) => { const i = process.argv.indexOf(`--${name}`); return i > 0 ? Number(process.argv[i + 1]) : d; };
 const flag = (name) => process.argv.includes(`--${name}`);
@@ -32,6 +32,7 @@ for (let seed = from; seed <= to; seed++) {
   if (seed % 25 === 0) process.stderr.write(`… Seed ${seed}\n`);
 }
 for (const f of runTradeScenario(from, 60)) { const key = `trade:${f.msg.slice(0, 80)}`; if (!seen.has(key)) seen.set(key, { first: f, count: 0 }); seen.get(key).count++; }
+for (let seed = from; seed <= to; seed += 5) for (const f of runSupplyScenario(seed, 4)) { const key = `supply:${String(f.msg).replace(/\d+/g, '#').slice(0, 80)}`; if (!seen.has(key)) seen.set(key, { first: f, count: 0 }); seen.get(key).count++; }
 
 console.log(JSON.stringify({ ...agg, seconds: Math.round((Date.now() - t0) / 1000) }));
 for (const [, v] of seen) console.log(`\n${v.count}× — Seed ${v.first.seed}: ${v.first.msg}\n  Spur: ${(v.first.trace || []).slice(-8).join('\n        ')}`);

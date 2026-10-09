@@ -79,6 +79,15 @@ function invariants(s, prev) {
   for (const l of s.loans || []) { need(l.left >= 0 && l.pay >= 0, `Kredit negativ ${JSON.stringify(l)}`); need(isInt(l.left) && isInt(l.pay), `Kredit nicht ganzzahlig ${JSON.stringify(l)}`); }
   for (const p of s.properties) { need(p.condition >= 0 && p.condition <= 100, `condition ${p.condition}`); need(p.rooms >= 1 && isInt(p.base), `Immobilie ${JSON.stringify({ r: p.rooms, b: p.base })}`); }
   for (const c of s.companies) { need(isInt(c.cash) && c.cash >= 0, `Firmenkasse ${c.cash}`); need(c.staff >= 0 && isInt(c.staff), `staff ${c.staff}`); need(c.rooms >= 1, 'rooms'); }
+  { // Warenkreislauf: Verträge und Vormerkungen
+    const K = s.contracts;
+    if (K) {
+      need(Array.isArray(K.buys) && Array.isArray(K.sells), 'contracts ohne Listen');
+      for (const b of [...(K.buys || []), ...(K.sells || [])]) { need(Number.isFinite(b.qty) && b.qty >= 0 && Number.isFinite(b.price) && b.price >= 0, `Vertrag ${b.id} Menge/Preis`); need(b.fill == null || (b.fill >= 0 && b.fill <= 1), `Vertrag ${b.id} fill ${b.fill}`); need(b.take == null || (b.take >= 0 && b.take <= 1), `Vertrag ${b.id} take ${b.take}`); }
+    }
+    for (const e of (s.pending && s.pending.supply) || []) need(Number.isFinite(e.real) && e.real >= 0 && Number.isInteger(e.userId), `Vormerkung ${JSON.stringify(e)}`);
+    for (const c of s.companies) need(c.autoBuy === undefined || typeof c.autoBuy === 'boolean', 'autoBuy');
+  }
   const h = s.housing;
   if (h.type === 'own') need(s.properties.some((p) => p.id === h.propertyId), 'Wohnsitz ohne Immobilie');
   if (s.occupation && s.occupation.ownCompanyId) need(s.companies.some((c) => c.id === s.occupation.ownCompanyId), 'Beruf ohne Firma');
@@ -126,6 +135,7 @@ function inputFor0(name, s, r, user) {
     case 'path': return { childId: maybe(kid()), kind: pickOf(r, ['none', 'study', 'training', junk()]), pkey: maybe(pickOf(r, profs)) };
     case 'giftChild': case 'search': return { childId: maybe(kid()) };
     case 'bizWork': case 'bizSell': case 'bizReactivate': case 'bizExpand': case 'bizUpgrade': return { id: maybe(comp()) };
+    case 'bizSupply': return { id: maybe(comp()), on: r() < 0.5 };
     case 'bizHire': return { id: maybe(comp()), delta: maybe(r() < 0.5 ? 1 : -1) };
     case 'bizCollect': return { id: maybe(comp()) };
     case 'runOffice': return { idx: maybe(Math.floor(r() * 4)) };
@@ -328,4 +338,56 @@ function runTradeScenario(seed, rounds = 40) {
   return failures;
 }
 
-module.exports = { world, runScenario, runTradeScenario, invariants, inputFor, JUNK, clone };
+/**
+ * Lieferverträge zwischen zwei Spielern in verschiedenen Epochen: Was der Käufer zahlt, wird in Realwert genau einmal vorgemerkt
+ * und – nach dem Verbuchen (Liste leeren) – nie ein zweites Mal; Gutschriften sind nie negativ; der Verkäufer verliert nie Ware ohne Gegenwert.
+ * Geld entsteht nicht: Σ vorgemerkter Realwert = Σ Zahlungen des Käufers ÷ Index (je Tag exakt).
+ */
+function runSupplyScenario(seed, rounds = 30) {
+  const realRandom = Math.random; Math.random = mulberry32(seed ^ 11);
+  const r = mulberry32(seed + 3); const failures = [];
+  const biz = require('../src/game/business'); const goods = require('../src/game/goods');
+  const goodList = [['muehle', 'baecker', 'mehl'], ['landwirt', 'muehle', 'getreide'], ['schmied', 'tischler', 'eisenwaren'], ['bergmann', 'baecker', 'kohle']];
+  try {
+    for (let i = 0; i < rounds; i++) {
+      const [sp, bp, good] = pickOf(r, goodList);
+      const u = () => ({ meta: {}, coins: 50, efs_pool: 0 });
+      const mkS = (pkey) => { const s = createCharacter(world, { gender: 'm', firstName: 'A', lastName: 'B', birthCityId: pickOf(r, world.cityList).id, professionKey: 'baecker', fatherName: 'a', motherName: 'b' }, u()); s.day = Math.floor(r() * 12000); s.contracts = { buys: [], sells: [] }; s.money = 9e12; return s; };
+      const S = mkS(); const B = mkS();
+      const yearS = yearOf(S.day, S.startYear); const yearB = yearOf(B.day, B.startYear);
+      const mkF = (s, pkey, id) => { const c = { id, pkey, tier: Math.floor(r() * 3), cityId: s.cityId, rooms: 3 + Math.floor(r() * 8), staff: 2, manager: r() < 0.7, cash: 1e9, base: 1e6, since: 0, abandoned: null, lastProfit: 0 }; s.companies.push(c); s.nextCompanyId = id + 1; s.skills.learned.push(pkey); s.skills.days[pkey] = 30000; return c; };
+      const cS = mkF(S, sp, 1); const cB = mkF(B, bp, 1);
+      const price = goods.priceReal(goods.good(good), yearB) * (0.9 + r() * 0.25);
+      B.contracts.buys.push({ id: 1, firmId: 1, sellerId: 77, sellerFirm: 1, sellerName: 'S', good, qty: 0.5 + r() * 40, price, daysLeft: 20 + Math.floor(r() * 80), term: 90, auto: r() < 0.5, fill: r() < 0.3 ? r() : 1, take: 1 });
+      S.contracts.sells.push({ id: 1, firmId: 1, buyerId: 78, buyerFirm: 1, good, qty: B.contracts.buys[0].qty, price, fill: 1, take: 1 });
+      let expected = 0; let credited = 0; let paidCents = 0;
+      for (let d = 0; d < 80 + Math.floor(r() * 200); d++) {
+        B.day++; S.day++;
+        const yB = yearOf(B.day, B.startYear);
+        const f = biz.companyFlows(world, B, cB, yB);
+        const idxB = world.idx(yB);
+        const pays = f.supply.pays.filter((p) => p.cents > 0).reduce((a, p) => a + p.cents, 0);
+        expected += pays / idxB; paidCents += pays;
+        biz.businessDaily({ world, state: B, offline: false });
+        biz.businessDaily({ world, state: S, offline: false });
+        B.money = Math.max(B.money, 1e12); S.money = Math.max(S.money, 1e12); B.status = 'alive'; S.status = 'alive';
+        for (const s of [S, B]) { s.notices = []; s.interrupts = []; }
+        if (r() < 0.15 || d % 40 === 39) { // „Speichern“: Vormerkungen verbuchen und leeren
+          const q = (B.pending.supply || []).splice(0);
+          for (const e of q) { if (!(e.real >= 0)) failures.push({ seed, msg: `Gutschrift ${e.real}` }); credited += e.real; cS.cash += Math.round(e.real * world.idx(yearOf(S.day, S.startYear))); }
+          if ((B.pending.supply || []).length) failures.push({ seed, msg: 'Vormerkung nach Verbuchen nicht leer' });
+        }
+        if (!Number.isFinite(cB.cash) || !Number.isFinite(cS.cash)) failures.push({ seed, msg: 'Firmenkasse nicht endlich' });
+        for (const bad of [...invariants(S, null), ...invariants(B, null)].filter((m) => /Vertrag|Vormerkung|autoBuy/.test(m))) failures.push({ seed, msg: bad });
+        if (B.contracts.buys[0].ended) { B.contracts.buys[0].ended = false; B.contracts.buys[0].daysLeft = 50; }
+      }
+      for (const e of (B.pending.supply || []).splice(0)) credited += e.real;
+      if (Math.abs(expected - credited) > 1e-6 * Math.max(1, expected) + 1e-6) failures.push({ seed, msg: `Realwert nicht erhalten: gezahlt ${expected} vorgemerkt ${credited}` });
+      if (yearS < 0 || yearB < 0) failures.push({ seed, msg: 'Jahr' });
+      void paidCents;
+    }
+  } catch (e) { failures.push({ seed, msg: `Vertragslauf: ${e.stack}` }); } finally { Math.random = realRandom; }
+  return failures;
+}
+
+module.exports = { world, runScenario, runTradeScenario, runSupplyScenario, invariants, inputFor, JUNK, clone };

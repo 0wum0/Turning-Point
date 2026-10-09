@@ -5,7 +5,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert');
-const { runScenario, runTradeScenario } = require('./fuzz-lib');
+const { runScenario, runTradeScenario, runSupplyScenario } = require('./fuzz-lib');
 
 const report = (failures) => failures.map((f) => `Seed ${f.seed}: ${f.msg}\n  Spur: ${(f.trace || []).slice(-6).join(' | ')}`).join('\n');
 
@@ -40,4 +40,11 @@ test('Fuzz: gleicher Seed → identischer Verlauf (deterministischer Replay)', (
 test('Fuzz: Handel zwischen Spielern verschiedener Epochen erhält den Realwert', () => {
   const failures = runTradeScenario(21, 12);
   assert.deepStrictEqual(failures, [], report(failures));
+});
+
+test('Fuzz: Lieferverträge erhalten den Realwert zwischen Epochen (genau einmal, nie negativ, nichts aus dem Nichts)', () => {
+  for (const seed of [31, 32, 33]) {
+    const failures = runSupplyScenario(seed, 6);
+    assert.deepStrictEqual(failures, [], report(failures));
+  }
 });
