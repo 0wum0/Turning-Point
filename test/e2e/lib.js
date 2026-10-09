@@ -47,7 +47,7 @@ function portFree(port) {
 async function startApp() {
   if (!(await portFree(PORT))) throw new Error(`Port ${PORT} ist belegt (läuft noch eine alte Testinstanz?). Setze TP_E2E_PORT auf einen freien Port.`);
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tp-e2e-'));
-  const env = { ...E, TP_DB_HOST: DBX.host, TP_DB_PORT: String(DBX.port), TP_DB_USER: DBX.user, TP_DB_PASS: DBX.password, TP_DB_NAME: DBX.database, TP_DATA_DIR: dataDir, PORT: String(PORT), TP_API_RATE: '1000000', TP_SITE_URL: BASE, NODE_ENV: 'test' };
+  const env = { ...E, TP_REP_CACHE_MS: '0', TP_DB_HOST: DBX.host, TP_DB_PORT: String(DBX.port), TP_DB_USER: DBX.user, TP_DB_PASS: DBX.password, TP_DB_NAME: DBX.database, TP_DATA_DIR: dataDir, PORT: String(PORT), TP_API_RATE: '1000000', TP_SITE_URL: BASE, NODE_ENV: 'test' };
   const prep = spawnSync(process.execPath, [path.join(__dirname, 'prepare-db.js')], { env, encoding: 'utf8' });
   if (prep.status !== 0) throw new Error(`Datenbank konnte nicht vorbereitet werden:\n${prep.stdout}\n${prep.stderr}`);
   // config.json im Daten-Ordner, damit die App nicht versehentlich eine andere Installation findet

@@ -25,6 +25,7 @@ async function take(tenantId, ownerId, propId) {
   const world = await worldP();
   const rel = await social.relation(tenantId, ownerId); if (rel === 'blocked' || rel === 'blocked_by') fail('Dieser Spieler ist nicht erreichbar.');
   if (await social.sameIp(tenantId, ownerId)) { anticheat.flag(tenantId, 'gift_ring', `Mietversuch bei Konto gleicher IP (Nutzer ${ownerId})`); fail('Zwischen Konten mit derselben Internetverbindung ist das nicht erlaubt.'); }
+  { const RP = require('../game/reputation'); const bl = RP.block((await require('./reputation').get(tenantId)).level, -1); if (bl) fail(`Vermieter nehmen dich so nicht. ${bl}`); } // „Verrufen“: kein Mietvertrag mit Spielern
   return db.tx(async (conn) => {
     const { rowA, sA, rowB, sB } = await social.lockPair(conn, ownerId, tenantId);
     if (sA.status !== 'alive' || sB.status !== 'alive') fail('Beide Seiten brauchen einen lebenden Charakter.');

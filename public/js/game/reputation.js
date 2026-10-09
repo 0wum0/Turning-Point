@@ -86,7 +86,7 @@ export async function bindStanding(root, ctx) {
   const top = d.top.length ? d.top : [];
   body.innerHTML = html`
     ${p.next != null ? html`${bar(p.pct * 100, i.tone === 'bad' || i.tone === 'warn' ? 'bad' : '')}<div class="dim small"><span>Noch</span> <b>${num1(Math.max(0, p.next - d.score))}</b> <span>Punkte bis</span> <b>${d.nextName}</b> · <span>Punktestand</span> <b>${num1(d.score)}</b></div>` : html`<div class="dim small"><span>Höchste Stufe erreicht</span> · <span>Punktestand</span> <b>${num1(d.score)}</b></div>`}
-    <div class="rep-top mt">${top.length ? html`<div class="small dim">Das hat sich zuletzt am meisten geändert:</div>${top.map((e) => changeRow(e, d.ledger.indexOf(e)))}` : html`<div class="dim small">Noch keine Veränderungen. Zahle Miete und Steuern pünktlich, handle fair und hilf anderen – so wächst dein Ansehen.</div>`}</div>`.__raw;
+    <div class="rep-top mt">${top.length ? html`<div class="small dim">Das hat sich zuletzt am meisten geändert:</div>${top.map((e) => changeRow(e, d.ledger.findIndex((x) => x.id === e.id)))}` : html`<div class="dim small">Noch keine Veränderungen. Zahle Miete und Steuern pünktlich, handle fair und hilf anderen – so wächst dein Ansehen.</div>`}</div>`.__raw;
   on(card, 'click', '[data-rep-why]', (e, t) => { const en = d.ledger[Number(t.dataset.repWhy)]; if (en) whyDialog(en); });
 }
 

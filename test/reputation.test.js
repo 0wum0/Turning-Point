@@ -116,6 +116,15 @@ test('Warteschlange im Spielstand: zusammengefasst, begrenzt, ohne Wirkung wenn 
   R.queue({}, 'rel', 1, 'rent_paid'); // ohne pending: kein Fehler
 });
 
+test('Anfänger-Schutz: in den ersten Spieltagen kostet Pech kein Ansehen, Gutes zählt', () => {
+  const st = { pending: {}, day: 10 };
+  R.queue(st, 'rel', null, 'rent_missed'); R.queue(st, 'rel', null, 'loan_missed');
+  assert.ok(!st.pending.rep || st.pending.rep.length === 0, 'Negatives zählt nicht');
+  R.queue(st, 'rel', null, 'rent_paid');
+  assert.strictEqual(st.pending.rep.length, 1);
+  const old = { pending: {}, day: 4000 }; R.queue(old, 'rel', null, 'rent_missed'); assert.strictEqual(old.pending.rep.length, 1);
+});
+
 test('Wirkungen bleiben in ihren Grenzen und sind monoton', () => {
   const cc = C();
   for (let lv = -2; lv <= 4; lv++) {

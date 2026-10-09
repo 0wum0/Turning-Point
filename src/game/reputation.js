@@ -196,6 +196,8 @@ function queue(state, kind, delta, reason, ref, extra) {
   if (!state || !state.pending || !cfg().enabled) return;
   const R = REASONS[reason]; const k = isKind(kind) ? kind : R && R.kind; if (!k) return;
   const d = delta != null ? Number(delta) : R && R.d; if (!Number.isFinite(d) || d === 0) return;
+  // Anfänger-Schutz: In den ersten Spieltagen kostet Pech (leeres Konto, verlorene Wohnung) noch kein Ansehen
+  if (d < 0 && k !== 'scandal' && Number(state.day) < (Number(settings.get('game.newbie_protect_days')) || 0)) return;
   const q = state.pending.rep || (state.pending.rep = []);
   const x = extra || {}; const u = x.user || 0; const o = x.other || 0; const rf = ref == null ? '' : String(ref).slice(0, 60);
   const e = q.find((y) => y.k === k && y.r === reason && (y.u || 0) === u && (y.o || 0) === o && (y.f || '') === rf);

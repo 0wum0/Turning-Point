@@ -22,9 +22,9 @@ const today = () => R.isDay(Date.now());
 const parse = (s) => { try { const o = s ? JSON.parse(s) : null; return o && typeof o === 'object' ? o : null; } catch (_) { return null; } };
 const pick = (r) => ({ rel: Number(r.rel) || 0, trade: Number(r.trade) || 0, civic: Number(r.civic) || 0, office: Number(r.office) || 0, scandal: Number(r.scandal) || 0 });
 
-/* ---- kleiner Zwischenspeicher (20 s) für die Werte je Spieler; add() leert ihn ---- */
+/* ---- kleiner Zwischenspeicher (15 s) für die Werte je Spieler; add() leert ihn ---- */
 const cache = new Map(); // userId -> Map(cityId -> {at, snap})
-const TTL = 20000;
+const TTL = process.env.TP_REP_CACHE_MS != null && process.env.TP_REP_CACHE_MS !== '' ? Math.max(0, Number(process.env.TP_REP_CACHE_MS) || 0) : 15000; // Tests ändern die Datenbank direkt: dort TP_REP_CACHE_MS=0
 function cacheGet(uid, city) { const m = cache.get(uid); const e = m && m.get(city); return e && Date.now() - e.at < TTL ? e.snap : null; }
 function cachePut(uid, city, snap) {
   if (cache.size > 3000) cache.clear();

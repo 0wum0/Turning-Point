@@ -32,6 +32,7 @@ const bcrypt = require('bcryptjs');
       market: { minGameDays: 0, blockSameIp: false, offerMinPct: 1 },
       exchange: { minGameDays: 0, minValueReal: 100 },
       goods: { contracts: { minAccountHours: 0, blockSameIp: false } },
+      elections: { minAccountHours: 0 },
       ruf: { minAccountHours: 0, blockSameIp: false, minIpo: -1 }, // Ansehen: Testkonten sind brandneu und teilen die Adresse; Börsengang ohne Mindestansehen
     };
     for (const [k, v] of Object.entries(relax)) if (v) await conn.query('INSERT INTO settings (`key`, value) VALUES (?, ?)', [k, JSON.stringify(v)]);

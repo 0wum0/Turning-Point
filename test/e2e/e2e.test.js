@@ -507,6 +507,79 @@ describe('E2E Turning Point', { concurrency: false }, () => {
     });
   });
 
+  describe('Ruf und Ansehen', () => {
+    let r;
+    before(async () => {
+      r = await L.newPlayer(browser, app, 'rita');
+      await L.register(r, { username: 'rita_e2e', email: 'rita@e2e.test', password: 'rita-pass-123456' });
+      await L.createCharacter(r, { first: 'Rita', last: 'Roth', city: 'Berlin', gender: 'f' });
+      await L.showAll(r);
+    });
+    after(async () => { if (r) await r.ctx.close(); });
+
+    it('Übersicht zeigt die Ansehen-Karte; das Detailfenster erklärt Bestandteile, Wirkungen und Tipps', async () => {
+      await L.nav(r, 'overview');
+      await r.page.waitForSelector('#repCard .rep-level .chip');
+      assert.match(await text(r, '#repCard'), /Unbekannt/);
+      await r.page.waitForFunction(() => !document.querySelector('#repCard .skel'));
+      await r.page.click('#repCard [data-rep-open]');
+      await r.page.waitForSelector('.rep-modal');
+      const t = await text(r, '.rep-modal');
+      for (const w of [/fünf bestandteile/i, /Zuverlässigkeit/, /Skandal/i, /was dein ansehen bewirkt/i, /so steigerst du dein ansehen/i, /Ehrenbürger/]) assert.match(t, w);
+      await L.closeModals(r);
+      noErrors(r);
+    });
+
+    it('Gutes Verhalten hebt die Stufe: Karte, Plakette im Stadtverzeichnis und Einsteiger-Aufgabe', async () => {
+      const id = await L.userId(app, 'rita_e2e');
+      await app.sql("INSERT INTO reputation (user_id, rel, trade, civic, office, scandal, score, lvl, decay_day, updated_at) VALUES (?,60,20,30,0,0,32,2,?,?) ON DUPLICATE KEY UPDATE rel=60, trade=20, civic=30, office=0, scandal=0, score=32, lvl=2, decay_day=VALUES(decay_day)", [id, Math.floor(Date.now() / 86400000), Date.now()]);
+      await app.sql("INSERT INTO reputation_log (user_id, kind, reason, delta, n, day_no) VALUES (?, 'rel', 'rent_paid', 3.4, 7, ?)", [id, Math.floor(Date.now() / 86400000)]);
+      await L.reloadGame(r);
+      await L.nav(r, 'overview');
+      await r.page.waitForFunction(() => /Angesehen/.test(document.querySelector('#repCard .rep-level').innerText));
+      await r.page.waitForSelector('#repCard .rep-chg');
+      assert.match(await text(r, '#repCard'), /Miete pünktlich gezahlt/);
+      await r.page.click('#repCard [data-rep-why]');
+      await r.page.waitForSelector('.modal .info-steps');
+      assert.match(await text(r, '.modal'), /warum ist das wichtig/i);
+      await L.closeModals(r);
+      // Plakette im Stadtverzeichnis (Einwohner der eigenen Stadt)
+      await L.nav(r, 'city');
+      await r.page.waitForFunction(() => document.querySelector('#dirBody .rep-badge .chip'), null, { timeout: 12000 });
+      assert.match(await text(r, '#dirBody'), /Angesehen|Unbekannt/);
+      const [q] = await app.sql("SELECT state FROM characters WHERE user_id = ? AND status = 'alive'", [id]);
+      assert.ok(L.json(q.state).rep && L.json(q.state).rep.lv >= 1, 'Zwischenspeicher im Spielstand');
+      noErrors(r);
+    });
+
+    it('Gesperrte Aktion: Mit dem Ruf „Verrufen“ vergibt die Bank keinen Kredit – mit Hinweis im Fenster und Absage vom Server', async () => {
+      const id = await L.userId(app, 'rita_e2e');
+      await app.sql("UPDATE reputation SET scandal = 90, rel = -20, trade = 0, civic = 0, score = -82, lvl = -2, decay_day = ? WHERE user_id = ?", [Math.floor(Date.now() / 86400000), id]);
+      await L.setMoney(app, 'rita_e2e', 5000000);
+      await L.reloadGame(r);
+      await L.nav(r, 'overview');
+      await r.page.waitForFunction(() => /Verrufen/.test(document.querySelector('#repCard .rep-level').innerText));
+      await r.page.click('[data-bank]');
+      await r.page.waitForSelector('.modal #ln-go');
+      assert.match(await text(r, '.modal'), /Mit dem Ruf „Verrufen“ ist das gesperrt/);
+      assert.equal(await r.page.locator('.modal #ln-go').isDisabled(), true);
+      const res = await L.api(r, 'POST', '/api/action/loanTake', { amount: 100000, years: 3 });
+      assert.equal(res.status, 400);
+      assert.match(res.json.error, /Verrufen|Ansehen/);
+      await L.closeModals(r);
+      noErrors(r);
+    });
+
+    it('Ämter verlangen Ansehen: Der Server nennt die nötige Stufe', async () => {
+      const res = await L.api(r, 'POST', '/api/social/elections/run', { idx: 1, platform: '' });
+      assert.equal(res.status, 400);
+      assert.ok(/Zuerst|Ansehen|Mindestalter/.test(res.json.error), res.json.error);
+      const ov = await L.api(r, 'GET', '/api/reputation');
+      assert.equal(ov.json.level, -2);
+      assert.ok(ov.json.gates.some((g) => g.key === 'loan' && !g.ok));
+    });
+  });
+
   describe('Sicherheit (live)', () => {
     it('POST ohne CSRF-Token wird abgelehnt, mit Token nicht', async () => {
       const r = await a.page.evaluate(async () => (await fetch('/api/social/profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })).status);

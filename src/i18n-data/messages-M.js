@@ -79,6 +79,7 @@ pairs.push(
   ['Arbeitgeber stellen dich so nicht ein. ${bl}', 'Employers will not hire you like this. ${bl}'],
   ['Die Börse nimmt dich so nicht auf. ${bl}', 'The stock exchange will not admit you like this. ${bl}'],
   ['Eine Übernahme ist dir so nicht möglich. ${bl}', 'A takeover is not possible for you like this. ${bl}'],
+  ['Vermieter nehmen dich so nicht. ${bl}', 'Landlords will not take you like this. ${bl}'],
   ['Verkäufer reden mit dir so nicht. ${bl}', 'Sellers will not talk to you like this. ${bl}'],
   ['Lieferverträge sind dir so nicht möglich. ${band.blocked}', 'Supply contracts are not possible for you like this. ${band.blocked}'],
   ['Der Preis muss zwischen ${lo} % und ${hi} % des Marktpreises liegen. (Dein Ansehen „${band.name}“ weitet den Rahmen.)', 'The price must be between ${lo} % and ${hi} % of the market price. (Your standing “${band.name}” widens the range.)'],
