@@ -431,3 +431,21 @@ html { scroll-padding-top: calc(var(--hud-h, 62px) + 10px); }
 }
 .modal input[type=range] { width: 100%; accent-color: var(--accent); }
 @media (max-width: 560px) { .sup-prices .pr { display: flex; flex-wrap: wrap; gap: .2rem .5rem; } .sup-prices .pr > span:first-child { flex: 1 1 auto; } }
+
+/* Unternehmen gründen und Lieferverträge je Betrieb */
+.found-bar { display: flex; gap: .8rem; align-items: center; justify-content: space-between; flex-wrap: wrap; border: 1px solid var(--accent, var(--border)); }
+.found-bar .grow { flex: 1; min-width: 200px; }
+.found-bar .btn.primary { min-height: 44px; font-weight: 700; }
+.found-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: .6rem; max-height: 56vh; overflow-y: auto; padding: 2px; }
+.found-card { display: flex; gap: .7rem; align-items: flex-start; text-align: left; padding: .7rem; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); color: inherit; cursor: pointer; font: inherit; }
+.found-card:hover:not(:disabled), .found-card:focus-visible { border-color: var(--accent, currentColor); }
+.found-card.off { opacity: .55; cursor: not-allowed; }
+.found-card .fc-ic { flex: none; width: 2.2rem; height: 2.2rem; display: grid; place-items: center; border-radius: 10px; background: var(--surface-2, var(--border)); }
+.found-card .fc-body { display: flex; flex-direction: column; gap: .15rem; min-width: 0; }
+.found-help p { margin: .5rem 0; }
+.chip-btn { border: 1px solid var(--border); background: var(--surface); color: inherit; border-radius: 999px; padding: .35rem .8rem; font: inherit; cursor: pointer; min-height: 36px; }
+.chip-btn.on { border-color: var(--accent, currentColor); font-weight: 700; }
+.chip-btn:disabled { opacity: .5; cursor: not-allowed; }
+.sup-contracts { margin-top: .8rem; padding: .6rem .7rem; border: 1px dashed var(--border); border-radius: 12px; }
+.sup-contracts .deal-st { flex: none; }
+@media (max-width: 480px) { .found-bar .btn.primary { width: 100%; } .found-grid { grid-template-columns: 1fr; } }

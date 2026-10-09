@@ -118,6 +118,7 @@ function inputFor0(name, s, r, user) {
     case 'buy': return { listingId: maybe(listing(ed.housing.sale)) };
     case 'meet': return { listingId: maybe(listing(ed.partners)) };
     case 'buyBiz': return { listingId: maybe(listing(ed.biz)) };
+    case 'foundBiz': { const fo = require('../src/game/business').foundOptions(world, s).options; const o = fo.length ? pickOf(r, fo) : null; return { pkey: maybe(o ? o.pkey : 'baecker'), tier: maybe(o ? pickOf(r, o.tiers).tier : 0), name: maybe(pickOf(r, ['', 'Brot & Spiele', '<script>alert(1)</script>', 'www.x.de', 'ab', 'Müllers Laden', 'x'.repeat(80), '\u0000\u0007'])) }; }
     case 'study': case 'course': return { pkey: maybe(pickOf(r, profs)), kind: pickOf(r, ['unlock', 'skill', junk()]) };
     case 'moveIn': case 'sell': case 'letOff': case 'maintain': case 'repair': return { propertyId: maybe(prop()) };
     case 'letOn': case 'letPrice': return { propertyId: maybe(prop()), mult: maybe(0.5 + r() * 1.5) };
@@ -170,6 +171,7 @@ function smartMoves(s, r, user) {
   for (const c of s.children) { if (c.pendingSchool) mv.push(['school', { childId: c.id, type: pickOf(r, ['haupt', 'real', 'gym']) }]); if (c.pendingPath) mv.push(['path', { childId: c.id, kind: 'training', pkey: pickOf(r, ['baecker', 'schlosser', 'tischler']) }]); if (c.status === 'runaway') mv.push(['search', { childId: c.id }]); }
   if (s.money > 5e6 && r() < 0.5) { const l = ed.housing.sale[0]; if (l) mv.push(['buy', { listingId: l.id }]); }
   if (s.money > 2e6 && r() < 0.3) { const l = ed.biz[0]; if (l) mv.push(['buyBiz', { listingId: l.id }]); }
+  if (s.money > 2e6 && r() < 0.3) mv.push(['foundBiz', inputFor0('foundBiz', s, r, null)]);
   if (s.properties.length) { const p = pickOf(r, s.properties); mv.push(['moveIn', { propertyId: p.id }], ['letOn', { propertyId: p.id, mult: 1 }], ['maintain', { propertyId: p.id }], ['sell', { propertyId: p.id }]); }
   if (s.companies.length) { const c = pickOf(r, s.companies); mv.push(['bizHire', { id: c.id, delta: 1 }], ['bizManager', { id: c.id, on: true }], ['bizCollect', { id: 'all' }], ['bizWork', { id: c.id }], ['bizSell', { id: c.id }]); }
   if (r() < 0.2) mv.push(['loanTake', { amount: Math.round(s.money * 0.5) + 1e5, years: 10 }]);

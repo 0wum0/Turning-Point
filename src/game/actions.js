@@ -521,6 +521,17 @@ A.buyBiz = ({ world, state, input }) => {
   press.story(world, state, 'business_open', { firm: l.name, cityId: l.cityId });
   return { msg: `${l.name} gehört dir. Arbeite selbst im Betrieb oder stelle Mitarbeiter ein.` };
 };
+A.foundBiz = ({ world, state, input }) => {
+  const r = biz.checkFound(world, state, input);
+  if (!r.ok) fail(r.err);
+  pay(state, r.price);
+  const c = { id: state.nextCompanyId++, pkey: r.pkey, tier: r.tier, name: r.name, cityId: r.city.id, rooms: r.rooms, staff: 0, manager: false, cash: 0, base: r.base, since: state.day, abandoned: null, lastProfit: 0 };
+  state.companies.push(c);
+  award(state, 'buy_property', 'biz');
+  chronicle(state, `${state.person.first} gründet ${r.name} (${r.city.name}).`, 'business');
+  press.story(world, state, 'business_open', { firm: r.name, cityId: r.city.id });
+  return { msg: `${r.name} ist gegründet. Arbeite selbst im Betrieb oder stelle Mitarbeiter ein.` };
+};
 A.bizWork = ({ world, state, input }) => {
   const c = company(state, input.id); needActive(c);
   if (c.cityId !== state.cityId) fail('Du musst vor Ort wohnen, um selbst zu arbeiten.');

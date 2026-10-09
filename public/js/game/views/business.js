@@ -1,5 +1,6 @@
 import { html, icon, money, infoBtn, bar, on, signed } from '../ui.js';
-import { supplyBox, cyclePanel, bindSupply } from '../supply.js';
+import { supplyBox, cyclePanel, bindSupply, contractsSection, contractsPanel } from '../supply.js';
+import { foundBar, bindFound } from '../found.js';
 
 function card(c, v, ctx) {
   const cur = v.currency; const f = c.flows;
@@ -9,7 +10,8 @@ function card(c, v, ctx) {
       <div class="dim small">${c.city} · ${c.tierName} · Wert verfällt</div>
       <dl class="kv small mt"><dt>Aktueller Wert</dt><dd>${money(c.value, cur)}</dd><dt>Reaktivierung</dt><dd>${money(c.reactivateCost, cur)}</dd></dl>
       <div class="row mt"><button class="btn primary sm" data-b="bizReactivate" data-id="${c.id}" ${c.qualified ? '' : 'disabled'}>Wiederbeleben</button><button class="btn sm" data-psell="${c.id}" data-name="${c.name}" data-value="${Math.round(c.value / (v.idx || 1))}">An Spieler …</button><button class="btn sm danger" data-sell="${c.id}">Verkaufen</button></div>
-      ${c.qualified ? '' : html`<div class="small neg mt">Dir fehlt die Qualifikation (${c.profession}).</div>`}</article>`;
+      ${c.qualified ? '' : html`<div class="small neg mt">Dir fehlt die Qualifikation (${c.profession}).</div>`}
+      ${contractsSection(c, v, ctx)}</article>`;
   }
   return html`<article class="card biz ${c.profitAll < 0 ? 'loss' : ''}">
     <div class="row nowrap spread"><h3>${c.name}</h3><span class="chip accent">${c.tierName}</span></div>
@@ -19,6 +21,7 @@ function card(c, v, ctx) {
     ${c.comp ? html`<div class="small mt ${c.comp.factor < 0.9 ? 'neg' : 'dim'}">${icon('users')} Konkurrenz: ${c.comp.firms} Betriebe dieser Art in ${c.city}, ${c.comp.total} von ${c.comp.cap} Räumen Nachfrage${c.comp.factor < 1 ? html` – Umsatz ×${String(Math.round(c.comp.factor * 100) / 100).replace('.', ',')}` : ''}</div>` : ''}
     <div class="mt small">Auslastung ${Math.round(f.efficiency * 100)} %</div>${bar(f.efficiency * 100, f.efficiency < 0.5 ? 'bad' : 'good')}
     ${supplyBox(c, v, ctx)}
+    ${contractsSection(c, v, ctx)}
     <dl class="kv small mt"><dt>Umsatz / Tag</dt><dd>${money(f.income, cur)}</dd>${c.inputs > 0 ? html`<dt>Wareneinkauf</dt><dd class="neg">${money(c.inputs, cur)}</dd>` : ''}<dt>Löhne + Unterhalt</dt><dd class="neg">${money(f.wages + f.upkeep, cur)}</dd>${c.vat ? html`<dt>Mehrwertsteuer</dt><dd class="${c.vat > 0 ? 'neg' : 'pos'}">${c.vat > 0 ? '' : '+'}${money(Math.abs(c.vat), cur)}</dd>` : ''}${f.tax > 0 ? html`<dt>Steuern</dt><dd class="neg">${money(f.tax, cur)}</dd>` : ''}${c.contractIncome > 0 ? html`<dt>Einnahmen aus Lieferverträgen</dt><dd class="pos">${money(c.contractIncome, cur)}</dd>` : ''}<dt><b>Gewinn / Tag</b></dt><dd class="${c.profitAll >= 0 ? 'pos' : 'neg'}">${signed(c.profitAll, cur)}</dd><dt>Firmenkasse</dt><dd>${money(c.cash, cur)}</dd><dt>Wert</dt><dd>${money(c.value, cur)}</dd></dl>
     <div class="row mt">
       <button class="btn sm primary" data-b="bizCollect" data-id="${c.id}" ${c.cash > 0 ? '' : 'disabled'}>${icon('hand-coins')} Abholen</button>
@@ -44,14 +47,17 @@ export default {
     const cash = cs.reduce((s, c) => s + c.cash, 0);
     return html`
     <div class="panel-head"><div><h2>Unternehmen</h2><p>Vom Wirtshaus zum Hotel: Qualifikation, Räume, Mitarbeiter, Manager.</p></div>
-      ${infoBtn(['Betriebe darfst du nur mit passender Qualifikation führen – etwa Wirt → Wirtshaus → Restaurant → Hotel. Der Beruf des Partners kann Betriebe der Einstiegsstufe eröffnen.', 'Du kannst zuerst selbst arbeiten und später Mitarbeiter und Manager einsetzen. Verlierst du die Qualifikation (z. B. durch Trennung oder beim Erben), wird der Betrieb zum Lost Place und verfällt über etwa zehn Jahre.', 'Betriebe zum Verkauf stehen in der Zeitung unter „Gewerbe“. Räume schaltest du mit Geld und Coins frei.'], 'Unternehmen')}</div>
-    ${cs.length ? html`<div class="grid c3" style="--gap:1rem"><div class="card flat"><div class="card-title">Betriebe</div><div class="big-money">${cs.length}</div></div><div class="card flat"><div class="card-title">Gewinn / Tag</div><div class="big-money ${profit >= 0 ? 'pos' : 'neg'}">${signed(profit, cur)}</div></div><div class="card flat"><div class="card-title">Firmenkassen</div><div class="big-money">${money(cash, cur)}</div>${cash > 0 ? html`<button class="btn sm primary mt" data-b="bizCollect" data-id="all">Alles abholen</button>` : ''}</div></div>
+      ${infoBtn(['Betriebe darfst du nur mit passender Qualifikation führen – etwa Wirt → Wirtshaus → Restaurant → Hotel. Der Beruf des Partners kann Betriebe der Einstiegsstufe eröffnen.', 'Du kannst zuerst selbst arbeiten und später Mitarbeiter und Manager einsetzen. Verlierst du die Qualifikation (z. B. durch Trennung oder beim Erben), wird der Betrieb zum Lost Place und verfällt über etwa zehn Jahre.', 'Du gründest selbst mit „Unternehmen gründen“ (Betriebsart und Name frei wählbar) oder kaufst einen bestehenden Betrieb aus der Zeitung unter „Gewerbe“. Räume schaltest du mit Geld und Coins frei.'], 'Unternehmen')}</div>
+    ${foundBar(v)}
+    <div class="mt">${contractsPanel(v)}</div>
+    ${cs.length ? html`<div class="grid c3 mt" style="--gap:1rem"><div class="card flat"><div class="card-title">Betriebe</div><div class="big-money">${cs.length}</div></div><div class="card flat"><div class="card-title">Gewinn / Tag</div><div class="big-money ${profit >= 0 ? 'pos' : 'neg'}">${signed(profit, cur)}</div></div><div class="card flat"><div class="card-title">Firmenkassen</div><div class="big-money">${money(cash, cur)}</div>${cash > 0 ? html`<button class="btn sm primary mt" data-b="bizCollect" data-id="all">Alles abholen</button>` : ''}</div></div>
       <div class="mt">${cyclePanel(v, ctx)}</div>
       <div class="grid auto mt" style="--gap:1rem;grid-template-columns:repeat(auto-fill,minmax(340px,1fr))">${cs.map((c) => card(c, v, ctx))}</div>`
-    : html`<div class="card empty-note">${icon('store', 'lg')}<span>Du besitzt noch keinen Betrieb. Mit Qualifikation (z. B. als Wirt oder Bäcker) findest du in der Zeitung unter „Gewerbe“ passende Angebote.</span><button class="btn primary sm" data-go="newspaper">Zur Zeitung</button></div>`}`;
+    : html`<div class="card empty-note mt">${icon('store', 'lg')}<span>Du besitzt noch keinen Betrieb. Gründe dein eigenes Unternehmen mit dem Knopf oben – oder schau, ob in der Zeitung unter „Gewerbe“ ein Betrieb zum Verkauf steht.</span><button class="btn sm" data-go="newspaper">Zur Zeitung</button></div>`}`;
   },
   bind(root, ctx) {
     bindSupply(root, ctx);
+    bindFound(root, ctx);
     on(root, 'click', '[data-go]', (e, t) => { ctx.ui.newsTab = 'biz'; ctx.go(t.dataset.go); });
     on(root, 'click', '[data-b]', (e, t) => {
       const input = { id: t.dataset.id === 'all' ? 'all' : Number(t.dataset.id) };

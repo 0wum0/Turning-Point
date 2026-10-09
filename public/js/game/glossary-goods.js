@@ -8,4 +8,5 @@ export const GLOSSARY_GOODS = [
   ['Mehrwertsteuer', 'Mehrwertsteuer auf Waren', 'Eine Steuer auf die Wertschöpfung eines Betriebs: Umsatz minus Wareneinkauf. Der Bundeskanzler kann den Satz ändern.'],
   ['Subvention', 'Subvention (Zuschuss)', 'Ein Zuschuss auf den Einkauf einer Ware. Bürgermeister, Kanzler und andere Amtsinhaber können ihn beschließen. Dafür zahlen alle Betriebe im Gebiet ein wenig mehr Gewerbesteuer.'],
   ['Gewerbesteuer', 'Gewerbesteuer', 'Steuer auf den Gewinn eines Betriebs. Stadtrat und Bürgermeister können einen Zuschlag beschließen, der für alle Betriebe der Stadt gilt.'],
+  ['Gründen', 'Unternehmen gründen', 'Mit einer passenden Qualifikation (erlernter Beruf) und genug Geld eröffnest du jederzeit einen eigenen Betrieb – ohne auf ein Zeitungsangebot zu warten. Betriebsart und Name wählst du selbst, der Preis steht fest.'],
 ];

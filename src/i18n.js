@@ -40,6 +40,8 @@ function dictScript(req, res) {
   try { ii = require('./i18n-data/client-I'); } catch (_) { /* optional */ }
   let jj = { exact: {}, patterns: [] };
   try { jj = require('./i18n-data/client-J'); } catch (_) { /* optional */ }
-  res.type('application/javascript').set('Cache-Control', 'public, max-age=300').send('window.TP_I18N=' + JSON.stringify({ exact: Object.assign({}, jj.exact, ii.exact, hh.exact, gg.exact, fx.exact, phase.exact, extra.exact, more.exact, EN.EXACT), patterns: jj.patterns.concat(ii.patterns, hh.patterns, EN.PATTERNS, extra.patterns || [], more.patterns, phase.patterns, fx.patterns) }) + ';');
+  let kk = { exact: {}, patterns: [] };
+  try { kk = require('./i18n-data/client-K'); } catch (_) { /* optional */ }
+  res.type('application/javascript').set('Cache-Control', 'public, max-age=300').send('window.TP_I18N=' + JSON.stringify({ exact: Object.assign({}, kk.exact, jj.exact, ii.exact, hh.exact, gg.exact, fx.exact, phase.exact, extra.exact, more.exact, EN.EXACT), patterns: kk.patterns.concat(jj.patterns, ii.patterns, hh.patterns, EN.PATTERNS, extra.patterns || [], more.patterns, phase.patterns, fx.patterns) }) + ';');
 }
 module.exports = { middleware, setLang, dictScript, detect };

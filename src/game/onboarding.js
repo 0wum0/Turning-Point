@@ -43,7 +43,7 @@ const QUESTS = [
   { id: 'friend', title: 'Einen Partner oder Freund finden', why: 'Partner, Freunde und später Kinder machen glücklich – und Kinder sind die Erben deines Lebenswerks.', tab: 'newspaper', spot: 'listing:contact', reward: { efs: 4 }, done: (s, q) => !!s.partner || !!q.seen.friend },
   { id: 'save', title: 'Das Zehnfache deines Startgelds sparen', why: 'Rücklagen schützen dich bei Notfällen und sind die Grundlage für alles Größere: ein Haus, eine Firma, ein Amt.', tab: 'overview', spot: 'money', reward: { efs: 5 }, done: (s, q, k) => s.money >= 10 * (k.startMoney || 4000) },
   { id: 'skill2', title: 'Einen zweiten Beruf lernen', why: 'Jeder Beruf ist ein Schlüssel: Er bestimmt, welche Firmen du später führen darfst.', tab: 'work', spot: 'course', reward: { efs: 5 }, done: (s, q) => s.skills && s.skills.learned.length > (q.baseLearned == null ? 1 : q.baseLearned) },
-  { id: 'business', title: 'Den ersten Betrieb eröffnen', why: 'Eine eigene Firma verdient auch dann Geld, wenn du gerade nicht arbeitest – der Weg zum Vermächtnis.', tab: 'newspaper', spot: 'listing:biz', reward: { efs: 6 }, done: (s, q) => (s.companies || []).length > 0 || !!q.acts.buyBiz },
+  { id: 'business', title: 'Gründe dein erstes Unternehmen', why: 'Eine eigene Firma verdient auch dann Geld, wenn du gerade nicht arbeitest – der Weg zum Vermächtnis. Unter „Unternehmen“ gründest du sie mit einem Klick.', tab: 'business', spot: 'found', reward: { efs: 6 }, done: (s, q) => (s.companies || []).length > 0 || !!q.acts.buyBiz },
   { id: 'hire', title: 'Einen Mitarbeiter einstellen', why: 'Mitarbeiter lassen den Betrieb wachsen und bringen mehr Gewinn.', tab: 'business', spot: 'hire', reward: { efs: 6 }, done: (s, q) => !!q.acts.bizHire },
   { id: 'contract', title: 'Schließe deinen ersten Liefervertrag', why: 'Ein Liefervertrag bringt dir Zutaten günstiger als der Großhandel – oder bessere Preise für deine Waren. So wächst dein Betrieb in die Lieferkette hinein.', tab: 'business', spot: 'supply', reward: { efs: 6 }, done: (s, q) => !!(s.contracts && ((s.contracts.buys || []).length || (s.contracts.sells || []).length)) || !!q.seen.contract },
   { id: 'let', title: 'Eine Immobilie vermieten', why: 'Mieter zahlen dir jeden Tag Miete – ein ruhiges Einkommen ohne Arbeit.', tab: 'housing', spot: 'lease', reward: { efs: 6 }, done: (s, q) => (s.properties || []).some((p) => p.lease && p.lease.on) || !!q.acts.letOn },
@@ -118,20 +118,20 @@ const showWelcome = (state, user) => !(user && user.meta && user.meta.welcomed) 
 const UNLOCKS = [
   { key: 'bank', label: 'Bank & Kredite', cond: 'du deinen ersten Lohn bekommen hast', ok: (d) => d.wage },
   { key: 'market', label: 'Markt', cond: 'du eine Wohnung gemietet oder gekauft hast', ok: (d, s) => d.home || (s.properties || []).length > 0 },
-  { key: 'business', label: 'Unternehmen', cond: 'du das Zehnfache deines Startgelds gespart hast', ok: (d, s) => d.save || d.skill2 || (s.companies || []).length > 0 },
+  { key: 'business', label: 'Unternehmen', cond: 'du das Zehnfache deines Startgelds gespart hast', ok: (d, s, x) => d.save || d.skill2 || (s.companies || []).length > 0 || !!(x && x.canFound) },
   { key: 'society', label: 'Gesellschaft', cond: 'du das Zehnfache deines Startgelds gespart hast', ok: (d, s) => d.save || d.skill2 || d.business || !!(s.politics && s.politics.term) },
   { key: 'elections', label: 'Wahlen', cond: 'du das Zehnfache deines Startgelds gespart hast', ok: (d, s) => d.save || d.skill2 || d.business || !!(s.politics && s.politics.term) },
   { key: 'exchange', label: 'Börse', cond: 'du deinen ersten Betrieb führst', ok: (d, s) => d.business || (s.companies || []).length > 0 },
   { key: 'rivalry', label: 'Wettbewerb', cond: 'du einen Betrieb führst und Mitarbeiter eingestellt hast', ok: (d, s) => (d.business || (s.companies || []).length > 0) && d.hire },
 ];
 
-function unlocks(state, doneIds, showAll) {
+function unlocks(state, doneIds, showAll, extra) {
   const d = {}; for (const id of QUEST_IDS) d[id] = doneIds.has ? doneIds.has(id) : !!doneIds[id];
   const years = Math.floor(state.day / 365);
   const timeOpen = years >= OPEN_AFTER_YEARS;
   const out = {};
   for (const u of UNLOCKS) {
-    const open = !!showAll || timeOpen || !!u.ok(d, state);
+    const open = !!showAll || timeOpen || !!u.ok(d, state, extra || {});
     out[u.key] = { open, label: u.label, hint: open ? '' : `Wird freigeschaltet, wenn ${u.cond}. Spätestens öffnet es sich nach ${OPEN_AFTER_YEARS} Spieljahren.` };
   }
   return out;
@@ -200,7 +200,10 @@ function advise(v, nextQuest, opts) {
     const expense = Math.max(1, (v.flows && v.flows.expense) || 1);
     const start = (opts && opts.startMoney) || 4000;
     if (home && !(v.properties || []).length && v.money > expense * 120 && v.money > 20 * start) add(35, { id: 'idle-home', level: 'info', icon: 'house', title: 'Dein Geld liegt brach – kauf dir ein Zuhause', why: 'Eigentum verliert nicht an Wert und spart dir die Miete. Auch vermieten ist möglich.', cta: { kind: 'go', label: 'Immobilien ansehen', tab: 'housing' } });
-    else if ((v.properties || []).length && !(v.companies || []).length && v.money > expense * 200 && v.money > 20 * start) add(30, { id: 'idle-biz', level: 'info', icon: 'store', title: 'Du hast Rücklagen – wie wäre es mit einer Firma?', why: 'Ein Betrieb verdient auch dann, wenn du nicht arbeitest.', cta: { kind: 'go', label: 'Zur Zeitung', tab: 'newspaper', spot: 'listing:biz' } });
+    else if ((v.properties || []).length && !(v.companies || []).length && v.money > expense * 200 && v.money > 20 * start) add(30, { id: 'idle-biz', level: 'info', icon: 'store', title: 'Du hast Rücklagen – wie wäre es mit einer Firma?', why: 'Ein Betrieb verdient auch dann, wenn du nicht arbeitest.', cta: { kind: 'go', label: 'Unternehmen gründen', tab: 'business', spot: 'found' } });
+  }
+  if (v.found && v.found.canAfford && !(v.companies || []).length && v.status === 'alive' && v.occupation && (v.meters || {}).fridge >= 15) {
+    add(34, { id: 'found', level: 'good', icon: 'store', title: 'Gründe dein erstes Unternehmen', why: `Du hast die Qualifikation und genug Geld (ab ${dm(v.found.cheapest, cur)}). Eine eigene Firma verdient auch, wenn du nicht arbeitest.`, cta: { kind: 'go', label: 'Unternehmen gründen', tab: 'business', spot: 'found' } });
   }
   if (nextQuest) add(20, { id: 'quest', level: 'info', icon: 'flag', title: `Nächster Schritt: ${nextQuest.title}`, why: nextQuest.why, cta: { kind: 'go', label: 'Zeig mir’s', tab: nextQuest.tab, spot: nextQuest.spot } });
   c.sort((a, b) => b.prio - a.prio);
@@ -227,7 +230,7 @@ function view(world, state, user, v) {
     doneCount: done.size, total: QUESTS.length,
     seen: q.seen,
     advisor: adv,
-    unlocks: unlocks(state, done, showAll),
+    unlocks: unlocks(state, done, showAll, { canFound: !!(v.found && v.found.canAfford) }),
     openAfterYears: OPEN_AFTER_YEARS,
   };
 }

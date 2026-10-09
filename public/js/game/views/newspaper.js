@@ -117,7 +117,7 @@ export default {
         <h4 class="sec">Mietwohnungen</h4><div class="listings">${e.housing.rent.map((h) => housingCard(h, v, here))}</div>
         <h4 class="sec">Zu verkaufen</h4><div class="listings">${e.housing.sale.map((h) => housingCard(h, v, here))}</div>`,
       partners: () => v.partner ? html`<div class="empty-note">${icon('heart')}<span>Du bist mit ${v.partner.name} zusammen.</span></div>` : html`<p class="dim">Ein Treffen kostet eine kleine Aufmerksamkeit. Ob es funkt, hängt von deiner Stimmung, deiner Lage und etwas Glück ab.</p><div class="listings">${e.partners.map((p) => partnerCard(p, v, here))}</div>`,
-      biz: () => e.biz.length ? html`<p class="dim">Betriebe darfst du nur mit passender Qualifikation führen. Die Angebote richten sich nach deinen Berufen (und dem deines Partners).</p><div class="listings">${e.biz.map((b) => bizCard(b, v, here))}</div>` : html`<div class="empty-note">${icon('store')}<span>Gerade keine passenden Betriebe. Mit einem erlernten Beruf (z. B. Wirt, Bäcker, Tischler) erscheinen hier Angebote.</span></div>`,
+      biz: () => html`<div class="alert info small">${icon('info')}<div>Du musst nicht auf ein Angebot warten: Unter „Unternehmen“ kannst du jederzeit selbst gründen. <button class="btn sm" data-go-found="1">Unternehmen gründen</button></div></div>${e.biz.length ? html`<p class="dim">Betriebe darfst du nur mit passender Qualifikation führen. Die Angebote richten sich nach deinen Berufen (und dem deines Partners).</p><div class="listings">${e.biz.map((b) => bizCard(b, v, here))}</div>` : html`<div class="empty-note">${icon('store')}<span>Gerade keine passenden Betriebe zum Verkauf. Mit einem erlernten Beruf (z. B. Wirt, Bäcker, Tischler) kannst du selbst gründen.</span></div>`}`,
       guide: () => html`<div class="grid c2">${e.tutorial.length ? e.tutorial.map((t) => html`<article class="card flat"><h4>${t.title} ${infoBtn(t.info, t.title)}</h4><p class="dim small mb0">${t.text}</p></article>`) : html`<div class="dim">Der Ratgeber ist ausgeblendet.</div>`}</div>
         <div class="row mt"><button class="btn sm ghost" data-act="tutorial" data-on="${e.tutorial.length ? '0' : '1'}">${e.tutorial.length ? 'Ratgeber ausblenden' : 'Ratgeber wieder einblenden'}</button></div>`,
     }[tab]();
@@ -136,6 +136,7 @@ export default {
     on(root, 'click', '[data-gosoc]', (ev, t) => { ctx.ui.soc = ctx.ui.soc || {}; ctx.ui.soc.tab = t.dataset.gosoc; ctx.go('social'); });
     on(root, 'click', '[data-profile]', (ev, t) => { ev.preventDefault(); openProfile(ctx, Number(t.dataset.profile)); });
     on(root, 'click', '[data-read]', (ev, t) => { const n = data._list[Number(t.dataset.read)]; if (n) openReader(n, data.edition); });
+    on(root, 'click', '[data-go-found]', () => { ctx.ui.openFound = true; ctx.go('business'); });
     on(root, 'click', '[data-tab]', (e, t) => { ctx.ui.newsTab = t.dataset.tab; ctx.rerender(); });
     bindPlaceSearch(root.querySelector('#nCity'), root.querySelector('#nCityRes'), ctx, { year: ctx.view.date.year, onPick: (c) => { ctx.ui.newsCity = c.id; ctx.rerender(); } });
     const nh = root.querySelector('#nHome'); if (nh) nh.onclick = () => { ctx.ui.newsCity = null; ctx.rerender(); };

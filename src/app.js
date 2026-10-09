@@ -35,7 +35,7 @@ function createApp(cfg) {
   app.set('views', path.join(config.APP_ROOT, 'views'));
   app.locals.icon = (n, c = '') => `<svg class="i ${c}" aria-hidden="true"><use href="/img/icons.svg#i-${n}"/></svg>`;
   app.locals.esc = escapeHtml;
-  app.locals.assetV = APP_VERSION;
+  app.locals.assetV = require('./lib/assetver').assetVersion(config.APP_ROOT, APP_VERSION);
 
   app.use(helmet({
     contentSecurityPolicy: {
@@ -59,7 +59,8 @@ function createApp(cfg) {
 
   const pub = path.join(config.APP_ROOT, 'public');
   app.use('/fonts', express.static(path.join(pub, 'fonts'), { maxAge: '365d', immutable: true }));
-  app.use(express.static(pub, { maxAge: '1h' }));
+  // JS/CSS werden bei jedem Aufruf beim Server nachgefragt (ETag → 304): Updates erreichen die Spieler sofort, auch die per import geladenen Module ohne ?v=.
+  app.use(express.static(pub, { maxAge: '1h', setHeaders: (res, file) => { if (/\.(js|css)$/.test(file)) res.setHeader('Cache-Control', 'no-cache'); } }));
   // Bilder liegen ausserhalb der App (Hostinger-sicher): <daten>/uploads
   app.use('/media', express.static(config.paths.uploadsDir, { maxAge: '30d', index: false, dotfiles: 'deny', fallthrough: false, setHeaders: (res) => res.setHeader('X-Content-Type-Options', 'nosniff') }));
 

@@ -241,4 +241,100 @@ function bizListings(world, state, city, week) {
   return out;
 }
 
-module.exports = { settleContracts, marketPhase, qualification, companyValue, companyFlows, staffNeeded, businessDaily, bizListings, tierName, chainNames, netBusinessValue, tiersOf, cityMult };
+/* ------------------------------------------------------------------ Gründen (ohne Zeitungsangebot) ------------------------------------------------------------------ */
+const NAME_MIN = 3; const NAME_MAX = 40;
+/** Firmenname aus Spielereingabe: Steuer-/HTML-Zeichen weg, Leerraum bereinigt. Gibt '' zurück, wenn nichts Brauchbares bleibt. */
+function cleanName(raw) {
+  if (typeof raw !== 'string') return '';
+  return raw.normalize('NFC').replace(/<[^>]*>/g, ' ').replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e\u2060-\u206f\ufeff]/g, ' ').replace(/[<>&"'`\\{}[\]|^~]/g, '').replace(/\s+/g, ' ').trim().slice(0, NAME_MAX).trim();
+}
+const URLISH = /(https?:|ftp:|www\.|:\/\/|@|\b[a-z0-9-]+\.(com|de|net|org|info|io|ru|xyz|me|to|ly|gg|tk|cc|shop|site|online|app)\b)/i;
+function validName(state, raw) {
+  const n = cleanName(raw);
+  if (n.length < NAME_MIN) return { ok: false, err: `Der Name ist zu kurz (mindestens ${NAME_MIN} Zeichen).` };
+  if (!/[\p{L}\p{N}]{2,}/u.test(n)) return { ok: false, err: 'Der Name braucht mindestens ein richtiges Wort.' };
+  if (URLISH.test(n)) return { ok: false, err: 'Der Name darf keine Internetadresse enthalten.' };
+  if ((state.companies || []).some((c) => String(c.name).toLowerCase() === n.toLowerCase())) return { ok: false, err: 'Eine deiner Firmen heißt schon so. Wähle einen anderen Namen.' };
+  return { ok: true, name: n };
+}
+function suggestName(world, state, pkey, tier) {
+  const base = `${chainNames(world, pkey)[tier]} ${state.person.last || ''}`.trim().slice(0, NAME_MAX);
+  for (let i = 1; i < 40; i++) {
+    const cand = i === 1 ? base : `${base.slice(0, NAME_MAX - 4)} ${['', '', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'][i] || i}`;
+    if (validName(state, cand).ok) return cand;
+  }
+  return base;
+}
+const foundPrice = (world, city, tier, idx) => { const base = Math.round(tiersOf(world)[tier].price * city.price_factor); return { base, price: Math.round(base * idx) }; };
+
+/** Berufe, aus denen man gründen darf (wie die Zeitung: kein Akademiker-/Helferberuf, nur mit Betriebsart, nur in der Epoche). */
+function foundKeys(world, state, year) {
+  const keys = new Set(state.skills.learned);
+  if (state.partner && state.partner.pkey) keys.add(state.partner.pkey);
+  return [...keys].map((k) => world.prof(k)).filter((p) => p && !p.academic && p.pkey !== 'helfer' && p.unlocks && p.era_from <= year && year <= p.era_to);
+}
+
+/**
+ * Gründungsoptionen: für jede Betriebsart, die der Spieler führen darf, die Stufen mit Preis (fest, ohne Zufall).
+ * Preis = Stufenpreis × Stadtfaktor × Preisindex. Eine Option je Beruf (höchste erlaubte Stufe) mit allen erlaubten Stufen darunter.
+ */
+function foundOptions(world, state) {
+  const year = yearOf(state.day, state.startYear);
+  const idx = world.idx(year);
+  const city = world.city(state.cityId);
+  const econ = world.econ.companies;
+  const tiers = tiersOf(world);
+  const goods = require('./goods');
+  const count = (state.companies || []).length;
+  const full = count >= econ.maxCompanies;
+  const options = [];
+  if (city) {
+    for (const p of foundKeys(world, state, year)) {
+      const lv = [];
+      for (let t = 0; t < tiers.length; t++) {
+        const q = qualification(world, state, p.pkey, t);
+        if (!q.ok) continue;
+        const { base, price } = foundPrice(world, city, t, idx);
+        const rooms = tiers[t].rooms;
+        const probe = { id: -1, pkey: p.pkey, tier: t, name: '', cityId: city.id, rooms, staff: staffNeeded(world, { rooms, tier: t }), manager: true, cash: 0, base, since: state.day, abandoned: null };
+        let f = null; try { f = companyFlows(world, state, probe, year); } catch (_) { f = null; }
+        const ar = goods.activeRecipe(world, p.pkey, year, city.id);
+        lv.push({
+          tier: t, tierName: chainNames(world, p.pkey)[t], suggest: suggestName(world, state, p.pkey, t), price, base, rooms, minLevel: tiers[t].minLevel, via: q.via,
+          upkeep: Math.round((price * econ.upkeepYearPct) / 100 / 365), profit: f ? f.profit : null, income: f ? f.income : null, wages: f ? f.wages : null, inputsCost: f ? f.inputs : null, staff: probe.staff,
+          inputs: ar.inputs.map((i) => ({ good: i.good, name: goods.good(i.good).name, icon: goods.good(i.good).icon })),
+          outputs: ar.out.map((o) => ({ good: o.good, name: goods.good(o.good).name, service: !!goods.good(o.good).service })),
+          affordable: state.money >= price, missing: Math.max(0, price - state.money),
+        });
+      }
+      if (!lv.length) continue;
+      const top = lv[lv.length - 1];
+      options.push({ pkey: p.pkey, profession: p.name, icon: p.icon, desc: p.description || '', tier: top.tier, tiers: lv, ...top, name: suggestName(world, state, p.pkey, top.tier) });
+    }
+  }
+  options.sort((a, b) => a.price - b.price || a.profession.localeCompare(b.profession, 'de'));
+  const cheapest = options.length ? Math.min(...options.map((o) => Math.min(...o.tiers.map((x) => x.price)))) : null;
+  return { cityId: state.cityId, city: city ? city.name : null, count, max: econ.maxCompanies, full, options, cheapest, canAfford: cheapest != null && state.money >= cheapest, nameMin: NAME_MIN, nameMax: NAME_MAX };
+}
+
+/** Gründung prüfen (gleiche Regeln wie der Kauf aus der Zeitung); wirft nicht, sondern liefert { ok, err | c-Daten }. */
+function checkFound(world, state, input) {
+  const inp = input && typeof input === 'object' ? input : {};
+  const pkey = typeof inp.pkey === 'string' ? inp.pkey : '';
+  const tier = typeof inp.tier === 'number' || (typeof inp.tier === 'string' && /^\d$/.test(inp.tier)) ? Number(inp.tier) : NaN;
+  if (!pkey || !Number.isInteger(tier) || tier < 0 || tier >= tiersOf(world).length) return { ok: false, err: 'Bitte wähle eine Betriebsart.' };
+  const year = yearOf(state.day, state.startYear);
+  const p = foundKeys(world, state, year).find((x) => x.pkey === pkey);
+  if (!p) return { ok: false, err: 'Diese Betriebsart kannst du nicht gründen.' };
+  const city = world.city(state.cityId);
+  if (!city) return { ok: false, err: 'Du musst in einer Stadt wohnen.' };
+  if ((state.companies || []).length >= world.econ.companies.maxCompanies) return { ok: false, err: 'Du besitzt bereits die maximale Anzahl an Unternehmen.' };
+  if (!qualification(world, state, pkey, tier).ok) return { ok: false, err: 'Dir fehlt die Qualifikation für diesen Betrieb.' };
+  const nm = inp.name == null || inp.name === '' ? { ok: true, name: suggestName(world, state, pkey, tier) } : validName(state, inp.name);
+  if (!nm.ok) return nm;
+  const { base, price } = foundPrice(world, city, tier, world.idx(year));
+  if (state.money < price) return { ok: false, err: 'Dafür reicht dein Geld nicht.' };
+  return { ok: true, pkey, tier, name: nm.name, city, base, price, rooms: tiersOf(world)[tier].rooms };
+}
+
+module.exports = { foundOptions, checkFound, cleanName, validName, suggestName, settleContracts, marketPhase, qualification, companyValue, companyFlows, staffNeeded, businessDaily, bizListings, tierName, chainNames, netBusinessValue, tiersOf, cityMult };

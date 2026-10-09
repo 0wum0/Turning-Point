@@ -165,6 +165,7 @@ function present(world, state, user, now) {
       };
     }),
     goods: goodsView(world, state, year),
+    found: biz.foundOptions(world, state),
     politics: (() => {
       const pc = econ.politics; const infl = (user.meta.influence || 0) + (state.fx.influence || 0); const t = state.politics.term;
       return {
