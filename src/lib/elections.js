@@ -18,6 +18,7 @@ const { rngFor } = require('../game/rng');
 const { scale } = require('../game/economy');
 const { yearOf, ageYears } = require('../game/calendar');
 const { notice, chronicle, award } = require('../game/core');
+const RP = require('../game/reputation');
 
 const cfg = () => settings.get('elections');
 const fail = (m) => { throw new ActionError(m); };
@@ -39,13 +40,14 @@ function windowAt(now, c) {
  * Sieger: meiste Stimmen, dann Einfluss, dann niedrigere Nutzer-ID. Ohne jede Stimme gewinnt nur ein einzelner Kandidat.
  */
 function tally(cands, votes = {}, bots = {}) {
-  const rows = cands.map((c) => ({ userId: c.userId, influence: c.influence || 0, human: votes[c.userId] || 0, bots: bots[c.userId] || 0 }));
-  rows.forEach((r) => { r.votes = r.human + r.bots; });
-  rows.sort((a, b) => b.votes - a.votes || b.influence - a.influence || a.userId - b.userId);
+  // weight (optional, Standard 1): Gewicht aus dem Ansehen des Kandidaten (±10 %, Amtsinhaber mit Skandal bis −15 % zusätzlich) – siehe game/reputation.voteWeight
+  const rows = cands.map((c) => ({ userId: c.userId, influence: c.influence || 0, human: votes[c.userId] || 0, bots: bots[c.userId] || 0, weight: Number.isFinite(c.weight) && c.weight > 0 ? c.weight : 1 }));
+  rows.forEach((r) => { r.votes = r.human + r.bots; r.score = r.votes * r.weight; });
+  rows.sort((a, b) => b.score - a.score || b.votes - a.votes || b.influence - a.influence || a.userId - b.userId);
   const total = rows.reduce((s, r) => s + r.votes, 0);
   let winnerId = null; let tie = false;
   if (rows.length === 1) winnerId = rows[0].userId;
-  else if (total > 0) { winnerId = rows[0].userId; tie = rows[0].votes === rows[1].votes; }
+  else if (total > 0) { winnerId = rows[0].userId; tie = Math.abs(rows[0].score - rows[1].score) < 1e-9; }
   return { ranking: rows, winnerId, tie, total };
 }
 
@@ -77,7 +79,13 @@ function runBlock(world, state, idx, c, accountHours) {
   if (state.politics.term) return 'Du bist bereits im Amt.';
   if (ageYears(state.person.birthDay, state.day) < pc.minAge) return `Mindestalter für Ämter: ${pc.minAge} Jahre.`;
   if (idx > 0 && !(state.politics.completed[idx - 1] > 0)) return `Zuerst musst du eine Amtszeit als ${pc.offices[idx - 1].name} absolvieren.`;
-  return null;
+  return standingBlock(state, idx, c);
+}
+
+/** Ansehen für ein Amt: städtische Ämter brauchen örtliches, höhere landesweites Ansehen (rein; nutzt state.rep). */
+function standingBlock(state, idx, c) {
+  const st = RP.stand(state); const lv = idx >= c.firstNationalOffice ? st.lv : st.ll;
+  return RP.block(lv, RP.officeMin(idx));
 }
 
 /** Wahlrecht (rein). ps = player_stats-Zeile des Wählers. */
@@ -114,6 +122,7 @@ async function overview(world, userId) {
     const o = pc.offices[idx]; const sc = scopeCity(c, idx, cityId);
     const el = await db.one("SELECT * FROM elections WHERE office_idx = ? AND city_id = ? AND status = 'open' ORDER BY id DESC LIMIT 1", [idx, sc]);
     const cands = el ? await candidatesOf(el.id) : [];
+    const cbadge = await require('./reputation').many(cands.map((x) => x.user_id), sc);
     const myVote = el ? await db.one('SELECT candidate_id FROM election_votes WHERE election_id = ? AND voter_id = ?', [el.id, userId]) : null;
     const voting = el ? now >= Number(el.vote_start) && now < Number(el.vote_end) : win.phase === 'voting';
     const block = state ? runBlock(world, state, idx, c, acc.h) : 'Du brauchst einen lebenden Charakter.';
@@ -127,7 +136,8 @@ async function overview(world, userId) {
     list.push({
       idx, name: o.name, national: !sc, cityId: sc, city: cityName(world, sc), electionId: el ? el.id : null,
       voteStart: el ? Number(el.vote_start) : win.voteStart, voteEnd: el ? Number(el.vote_end) : win.voteEnd, voting, fee,
-      candidates: cands.map((x) => ({ userId: x.user_id, name: x.name, username: x.username, influence: x.influence, platform: x.platform, mine: x.user_id === userId })),
+      minLevel: RP.officeMin(idx), minName: RP.officeMin(idx) >= 0 ? RP.levelName(RP.officeMin(idx)) : null,
+      candidates: cands.map((x) => ({ userId: x.user_id, name: x.name, username: x.username, influence: x.influence, platform: x.platform, mine: x.user_id === userId, lv: (cbadge.get(x.user_id) || {})[sc ? 'll' : 'lv'] || 0 })),
       isCandidate: !!(el && cands.some((x) => x.user_id === userId)), myVote: myVote ? myVote.candidate_id : null,
       canRun: !why, whyNot: why || null,
       canVote: voting && !!el && !voteBlock(ps, acc.h, el, 0, c) && !myVote,
@@ -216,7 +226,12 @@ async function finish(electionId) {
   let botCount = 0;
   if (c.botVotes) botCount = Number((await db.one(`SELECT COUNT(*) n FROM player_stats ps JOIN users u ON u.id = ps.user_id WHERE u.is_bot = 1 AND u.banned = 0 AND ps.status = 'alive' ${el.city_id ? 'AND ps.city_id = ?' : ''}`, el.city_id ? [el.city_id] : [])).n);
   const bots = botVotesFor(electionId, cands.map((x) => ({ userId: x.user_id, influence: x.influence })), botCount, humanTotal, c);
-  const t = tally(cands.map((x) => ({ userId: x.user_id, influence: x.influence })), human, bots);
+  // Gewicht aus dem Ansehen: Wähler achten auf den Ruf (örtlich bei Stadtämtern); Amtsinhaber verlieren nach Skandalen zusätzlich
+  const wmap = await require('./reputation').many(cands.map((x) => x.user_id), el.city_id);
+  const incumbent = new Set();
+  for (const x of cands) { try { const pk = await service.peek(x.user_id); const tm = pk && pk.state && pk.state.politics && pk.state.politics.term; if (tm && tm.idx === el.office_idx) incumbent.add(x.user_id); } catch (_) { /* ohne Amtsangabe */ } }
+  const weightOf = (uid) => { const m = wmap.get(uid) || { s: 0, l: 0, scandal: 0 }; return RP.voteWeight(el.city_id ? m.l : m.s, m.scandal, incumbent.has(uid)); };
+  const t = tally(cands.map((x) => ({ userId: x.user_id, influence: x.influence, weight: weightOf(x.user_id) })), human, bots);
   const nameOf = new Map(cands.map((x) => [x.user_id, x.name]));
   const ranking = t.ranking.map((r) => ({ userId: r.userId, name: nameOf.get(r.userId), votes: r.votes, human: r.human, bots: r.bots }));
   const winner = t.winnerId ? nameOf.get(t.winnerId) : null;
@@ -231,6 +246,7 @@ async function finish(electionId) {
         const pc = world.econ.politics;
         state.politics.term = { idx: el.office_idx, startDay: state.day, endDay: state.day + pc.termDays, cityId: el.city_id || 0 };
         state.fx.influence = (state.fx.influence || 0) + 2;
+        RP.queue(state, 'office', 3 + el.office_idx, 'office_won', `e${electionId}`);
         award(state, 'partner');
         chronicle(state, `${state.person.first} wird zum ${o.name} gewählt.`, 'politics');
         press.story(world, state, 'elected', { office: o.name });
@@ -248,6 +264,7 @@ async function finish(electionId) {
   }
   for (const x of cands) {
     const won = x.user_id === t.winnerId;
+    if (!won) await require('./reputation').add(x.user_id, 'office', null, 'office_run', `e${electionId}`, { cityId: el.city_id });
     const subject = won ? `Wahl gewonnen: ${o.name}` : `Wahl verloren: ${o.name}`;
     const body = won ? `Glückwunsch! Du hast die Wahl zum ${o.name} in ${place} gewonnen.${seated ? '' : ' Das Amt konntest du nicht antreten.'}` : `Die Wahl zum ${o.name} in ${place} ist entschieden: ${winner ? `Es gewann ${winner}.` : 'Es wurde niemand gewählt.'} Ergebnis: ${sum}.`;
     try { await social.sendSystemLetter(x.user_id, subject, body); } catch (_) { /* Briefe sind optional */ }
@@ -270,4 +287,4 @@ async function tick() {
 
 function start() { setInterval(() => { tick().catch((e) => log.warn(`[elections] ${e.message}`)); }, 60000).unref(); }
 
-module.exports = { windowAt, tally, botVotesFor, runBlock, voteBlock, scopeCity, overview, run, withdraw, vote, finish, tick, start };
+module.exports = { standingBlock, windowAt, tally, botVotesFor, runBlock, voteBlock, scopeCity, overview, run, withdraw, vote, finish, tick, start };

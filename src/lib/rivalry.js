@@ -106,6 +106,8 @@ async function perform(attackerId, targetId, companyId, action) {
     }[action];
     if (action !== 'spy' || caught) notice(sB, { level: caught ? 'warn' : 'bad', title: `${label}: ${c.name}`, text: `${tText}${caught ? ` Täter: ${nameA}.` : ' Der Täter ist unbekannt.'}${!success ? ' Der Angriff wurde abgewehrt.' : ''}`, tab: 'business', interrupt: true });
     if (caught) chronicle(sA, `${sA.person.first} wird bei einem Anschlag auf ${c.name} erwischt.`, 'business');
+    // Ansehen: Erwischte Täter verlieren Ruf (Sabotage am meisten); die Buchung folgt beim nächsten Laden des Täters, genau einmal
+    if (caught) { const RP = require('../game/reputation'); RP.queue(sA, 'scandal', null, action === 'sabotage' ? 'sabotage_caught' : action === 'spy' ? 'spy_caught' : 'fine', `u${targetId}`); if (fine > 0 && action !== 'sabotage') RP.queue(sA, 'scandal', null, 'fine', `r${companyId}`); }
     await service.saveCharacter(conn, rowA, sA); await service.saveCharacter(conn, rowB, sB);
     const uA = await service.loadUser(conn, attackerId); const uB = await service.loadUser(conn, targetId);
     await social.upsertStats(conn, uA, rowA, sA, world); await social.upsertStats(conn, uB, rowB, sB, world);

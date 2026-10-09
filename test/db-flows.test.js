@@ -60,7 +60,7 @@ test('Mehrspieler gegen echte Datenbank', { skip }, async (t) => {
 
   await t.test('Börse: Teilausführung lässt den Rest offen; Übernahme und Ausbuchung erstatten reservierte Mittel', async () => {
     const settings = require('../src/settings'); const ex = require('../src/lib/exchange');
-    const X = settings.get('exchange'); X.minGameDays = 0; X.minValueReal = 100; X.blockSameIp = false; X.takeoverPct = 25;
+    const X = settings.get('exchange'); X.minGameDays = 0; X.minValueReal = 100; X.blockSameIp = false; X.takeoverPct = 25; settings.get('ruf').minIpo = -1;
     for (const u of [A, B, C]) await service.withCharacter(u, async (ctx) => { ctx.state.housing = { type: 'rent', cityId: city, base: 70, rooms: 3 }; ctx.state.skills.days.baecker = 4000; ctx.state.money = 9e10; });
     const l = edition(world, await state(C), city).biz.find((x) => x.qualified);
     await service.doAction(C, 'buyBiz', { listingId: l.id });

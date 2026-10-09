@@ -105,6 +105,7 @@ async function apply(world, userId, offerId, message) {
   if (ps.city_id !== o.city_id) fail('Du musst in derselben Stadt wohnen wie der Betrieb.');
   if (ps.days < J.minGameDays) fail(`Dein Charakter muss mindestens ${J.minGameDays} Spieltage alt sein.`);
   if (J.blockSameIp && await social.sameIp(userId, o.owner_id)) fail('Zwischen Konten mit derselben Internetverbindung sind keine Spielerjobs erlaubt.');
+  { const rp = require('./reputation'); const R = require('../game/reputation'); const bl = R.block((await rp.get(userId, ps.city_id)).level, R.minFor('hire')); if (bl) fail(`Arbeitgeber stellen dich so nicht ein. ${bl}`); }
   const cur = await db.one("SELECT id FROM employments WHERE employee_id = ? AND status = 'active'", [userId]); if (cur) fail('Du bist bereits bei einem Spielerbetrieb angestellt. Kündige zuerst.');
   const n = (await db.one('SELECT COUNT(*) n FROM job_apps WHERE user_id = ? AND created_at > NOW() - INTERVAL 1 DAY', [userId])).n; if (n >= J.applicationsPerDay) fail('Heute hast du schon genug Bewerbungen verschickt.');
   const ex = await db.one('SELECT id, status, kind FROM job_apps WHERE offer_id = ? AND user_id = ?', [offerId, userId]);
@@ -152,6 +153,7 @@ async function decide(world, userId, appId, accept) {
   await social.sendSystemLetter(applicantId, 'Willkommen im Team!', `Du arbeitest jetzt bei „${firm.name}“ (${own.name}) als ${ROLE[a.role]}.`, a.owner_id);
   await social.sendSystemLetter(a.owner_id, 'Neue Mitarbeit', `${ps.name} arbeitet jetzt bei „${firm.name}“.`, applicantId);
   if (cfg().news.publicEvents) await db.query("INSERT INTO public_news (city_id, user_id, section, title, text) VALUES (?,?,?,?,?)", [a.city_id, a.owner_id, 'Wirtschaft', `Neue Kraft bei ${firm.name}`, `${own.name} stellt ${ps.name} als ${ROLE[a.role]} bei „${firm.name}“ ein. Die Belegschaft heißt die Verstärkung willkommen.`]);
+  await require('./reputation').add(a.owner_id, 'civic', null, 'hire', applicantId, { other: applicantId, cityId: a.city_id }); // Arbeitsplatz geschaffen
   return { accepted: true, employmentId: r.insertId };
 }
 async function withdraw(userId, appId) { await db.query("UPDATE job_apps SET status = 'withdrawn' WHERE id = ? AND user_id = ? AND status = 'pending'", [appId, userId]); }
@@ -166,7 +168,13 @@ async function endEmployment(conn, id, reason, byUser) {
   return e;
 }
 async function quit(userId) { const e = await db.one("SELECT id FROM employments WHERE employee_id = ? AND status = 'active'", [userId]); if (!e) fail('Du hast keine Stelle bei einem Spielerbetrieb.'); await endEmployment(db, e.id, 'quit', userId); }
-async function fire(ownerId, empId) { const e = await db.one("SELECT id FROM employments WHERE id = ? AND owner_id = ? AND status = 'active'", [empId, ownerId]); if (!e) fail('Mitarbeiter nicht gefunden.'); await endEmployment(db, e.id, 'fired', ownerId); }
+async function fire(ownerId, empId) {
+  const e = await db.one("SELECT id, employee_id, city_id, started_at FROM employments WHERE id = ? AND owner_id = ? AND status = 'active'", [empId, ownerId]); if (!e) fail('Mitarbeiter nicht gefunden.');
+  await endEmployment(db, e.id, 'fired', ownerId);
+  // Wer jemanden gleich nach der Einstellung wieder entlässt, schadet seinem Ansehen (Schonfrist in Stunden: ruf.fireGraceHours)
+  const grace = Number((require('../settings').get('ruf') || {}).fireGraceHours); const hrs = (Date.now() - new Date(e.started_at).getTime()) / 3600000;
+  if (hrs < (Number.isFinite(grace) ? grace : 72)) await require('./reputation').add(ownerId, 'civic', null, 'fire_unfair', e.employee_id, { cityId: e.city_id });
+}
 async function adminEnd(empId) { await endEmployment(db, empId, 'admin', null); }
 
 /* ====================================================================================

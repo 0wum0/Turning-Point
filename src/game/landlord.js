@@ -43,12 +43,13 @@ function incomeToday(world, state, year) {
   return sum;
 }
 
-function demand(world, p) {
+function demand(world, p, state) {
+  const rp = require('./reputation'); const mult = rp.tenantDemandMult(rp.stand(state).ll); // örtliches Ansehen des Vermieters
   const city = world.city(p.cityId) || { size_tier: 2 };
   const price = Math.pow(clamp(1.15 / clamp(p.lease.mult || 1, MIN_MULT, MAX_MULT), 0.2, 2.5), 2);
   const cond = 0.4 + (p.condition / 100) * 0.8;
   const tier = [0.7, 0.7, 0.85, 1, 1.1, 1.2][city.size_tier] || 1;
-  return 0.03 * price * cond * tier;
+  return 0.03 * price * cond * tier * mult;
 }
 
 /**
@@ -60,7 +61,7 @@ function settleIncome(ctx) {
   const { world, state } = ctx; const core = require('./core');
   const f = core.dailyFlows(world, state);
   if (f.inc.rent > 0) { state.money += f.inc.rent; state.stats.earned += f.inc.rent; }
-  if (f.exp.tax > 0) { const t = ctx.offline ? Math.min(f.exp.tax, Math.max(0, state.money)) : f.exp.tax; state.money -= t; state.stats.spent += t; }
+  if (f.exp.tax > 0) { const t = ctx.offline ? Math.min(f.exp.tax, Math.max(0, state.money)) : f.exp.tax; state.money -= t; state.stats.spent += t; if (t >= f.exp.tax) require('./reputation').queue(state, 'civic', null, 'tax_paid'); }
 }
 
 function landlordDaily(ctx) {
@@ -85,14 +86,14 @@ function landlordDaily(ctx) {
         continue;
       }
       L.total = (L.total || 0) + rentPerDay(world, state, p, year);
-      if (r() < 0.00022) {
+      if (r() < 0.00022 * require('./reputation').arrearsMult(require('./reputation').stand(state).ll)) {
         T.arrears = 45 + Math.floor(r() * 60);
         notice(state, { level: 'bad', title: `${p.name}: Mieter zahlt nicht`, text: `${T.name} bleibt die Miete schuldig.`, tab: 'housing', info: ['Mietausfall: Ein Mieter zahlt nicht mehr.', 'Du erhältst vorerst keine Miete, der Unterhalt läuft weiter.', 'Das passiert selten. Du kannst den Preis senken und gepflegte Wohnungen anbieten.'] });
       } else if (p.condition < 25 && r() < 0.01) { // Mieter bleiben, solange das Haus bewohnbar ist; die Miete läuft unbefristet
         L.tenant = null; L.vacantSince = state.day;
         if (state.day - (state.pending.tenantMsg || -99) >= 30) { state.pending.tenantMsg = state.day; notice(state, { level: 'info', title: `${p.name}: Mieter zieht aus`, text: `${T.name} zieht nach ${Math.round((state.day - T.since) / 365 * 10) / 10} Jahren aus. Die Wohnung wird neu angeboten.`, tab: 'housing' }); }
       }
-    } else if (r() < demand(world, p)) {
+    } else if (r() < demand(world, p, state)) {
       const female = r() < 0.5;
       const name = `${randomFirstName(r, year - 25 - Math.floor(r() * 30), female ? 'f' : 'm')} ${require('./content').LAST[Math.floor(r() * require('./content').LAST.length)]}`;
       L.tenant = { name, since: state.day, until: 1e9, arrears: 0 }; // unbefristet

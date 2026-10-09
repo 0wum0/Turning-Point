@@ -29,4 +29,14 @@ router.get('/badges', wrap(async (req, res) => {
   res.json({ ok: true, badges: out });
 }));
 
+/** Ehrenbürgerwürde (nur Bürgermeister): Kandidaten, Vorschau, Verleihung. */
+const honor = require('../lib/honor');
+router.get('/honor', wrap(async (req, res) => res.json({ ok: true, ...(await honor.overview(req.user.id)) })));
+router.post('/honor/preview', wrap(async (req, res) => res.json({ ok: true, ...(await honor.preview(req.user.id, int(req.body.userId))) })));
+router.post('/honor/grant', wrap(async (req, res) => {
+  const r = await honor.grant(req.user.id, int(req.body.userId));
+  const v = await service.getView(req.user.id);
+  res.json({ ok: true, ...r, view: v.view });
+}));
+
 module.exports = router;

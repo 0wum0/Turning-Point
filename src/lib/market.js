@@ -134,6 +134,13 @@ async function executeSale(conn, world, { kind, sellerId, buyerId, itemId, snap,
   return { placed, cost, fee, got, value, via };
 }
 
+/** Ansehen: ein abgeschlossenes Geschäft zählt für beide Seiten (Konten gleicher IP und ganz neue Konten zählen nicht). */
+async function repTrade(buyerId, sellerId, ref) {
+  const rp = require('./reputation');
+  if (buyerId) await rp.add(buyerId, 'trade', null, 'trade_done', ref, { other: sellerId || undefined });
+  if (sellerId) await rp.add(sellerId, 'trade', null, 'trade_done', ref, { other: buyerId || undefined });
+}
+
 async function guards(userId, otherId) {
   const C = cfg(); if (!C.enabled) fail('Der Spielermarkt ist gerade geschlossen.');
   if (userId === otherId) fail('Mit dir selbst kannst du nicht handeln.');
@@ -146,6 +153,7 @@ async function guards(userId, otherId) {
 /* ---------------------------- Angebote ---------------------------- */
 async function makeOffer(buyerId, { kind, ownerId, itemId, priceReal, message }) {
   const C = cfg(); await guards(buyerId, ownerId);
+  { const RP = require('../game/reputation'); const bl = RP.block((await require('./reputation').get(buyerId)).level, RP.minFor('offer')); if (bl) fail(`Verkäufer reden mit dir so nicht. ${bl}`); }
   if (!['prop', 'firm'].includes(kind)) fail('Unbekannte Art.');
   priceReal = int(priceReal); if (priceReal < 100) fail('Der Preis ist zu klein.');
   const world = await worldP();
@@ -174,12 +182,13 @@ async function respondOffer(userId, id, action, counterReal) {
   if (userId !== o.buyer_id && userId !== o.seller_id) fail('Das darfst du nicht entscheiden.');
   const other = userId === o.buyer_id ? o.seller_id : o.buyer_id;
   const notify = (subject, body) => social.sendSystemLetter(other, subject, body, userId);
-  if (action === 'decline') { await db.query("UPDATE market_offers SET status = 'declined' WHERE id = ?", [id]); await notify('Angebot abgelehnt', `Für „${o.item_name}“ hat es diesmal nicht geklappt.`); return { status: 'declined' }; }
+  if (action === 'decline') { await db.query("UPDATE market_offers SET status = 'declined' WHERE id = ?", [id]); await notify('Angebot abgelehnt', `Für „${o.item_name}“ hat es diesmal nicht geklappt.`); await require('./reputation').add(userId, 'trade', null, 'offer_answered', id, { other }); return { status: 'declined' }; }
   if (action === 'counter') {
     const p = int(counterReal); if (p < 100) fail('Der Preis ist zu klein.');
     await db.query("UPDATE market_offers SET status = 'countered' WHERE id = ?", [id]);
     const r = await db.query("INSERT INTO market_offers (kind, buyer_id, seller_id, item_id, item_name, price_real, proposer, status, parent_id, expires_at) VALUES (?,?,?,?,?,?,?, 'open', ?, DATE_ADD(NOW(), INTERVAL ? DAY))", [o.kind, o.buyer_id, o.seller_id, o.item_id, o.item_name, p, userId, id, cfg().offerExpireDays]);
     await notify('Gegenangebot', `Zu „${o.item_name}“ gibt es ein Gegenangebot. Antworte unter „Spieler → Markt“.`);
+    await require('./reputation').add(userId, 'trade', null, 'offer_answered', id, { other });
     return { status: 'countered', id: r.insertId };
   }
   if (action !== 'accept') fail('Unbekannte Antwort.');
@@ -188,6 +197,7 @@ async function respondOffer(userId, id, action, counterReal) {
     await conn.query("UPDATE market_offers SET status = 'accepted' WHERE id = ?", [id]);
     return r;
   });
+  await repTrade(o.buyer_id, o.seller_id, `m${id}`);
   return { status: 'accepted', cost: res.cost };
 }
 
@@ -210,7 +220,9 @@ async function buyNow(buyerId, sellerId, kind, itemId) {
   const t = kind === 'prop' ? ['player_props', 'prop_id'] : ['player_firms', 'company_id'];
   const row = await db.one(`SELECT ask_real FROM ${t[0]} WHERE user_id = ? AND ${t[1]} = ?`, [sellerId, itemId]);
   if (!row || row.ask_real == null) fail('Dieser Gegenstand steht nicht (mehr) zum Verkauf.');
-  return db.tx((conn) => executeSale(conn, world, { kind, sellerId, buyerId, itemId, priceReal: Number(row.ask_real), via: 'ask' }));
+  const res = await db.tx((conn) => executeSale(conn, world, { kind, sellerId, buyerId, itemId, priceReal: Number(row.ask_real), via: 'ask' }));
+  await repTrade(buyerId, sellerId, `${kind}${itemId}`);
+  return res;
 }
 
 /* ---------------------------- Versteigerungen ---------------------------- */
@@ -265,10 +277,11 @@ async function settleAuctions() {
           const claimed = await db.query("UPDATE market_auctions SET status = 'sold' WHERE id = ? AND status = 'open'", [a.id]); if (!claimed.affectedRows) { sold = true; break; }
           await db.tx((conn) => executeSale(conn, world, { kind: a.kind, sellerId: null, buyerId: b.user_id, snap: item, priceReal: Number(b.price_real), via: 'auction' }));
           if (a.seller_id) await returnProceeds(world, a.seller_id, Number(b.price_real), a.name);
+          await repTrade(b.user_id, a.seller_id || 0, `a${a.id}`);
           sold = true; break;
         } catch (e) {
           await db.query("UPDATE market_auctions SET status = 'open' WHERE id = ? AND status = 'sold'", [a.id]);
-          if (e instanceof ActionError) await social.sendSystemLetter(b.user_id, 'Zuschlag verfallen', `Den Zuschlag für „${a.name}“ konntest du nicht annehmen: ${e.message}`); else throw e;
+          if (e instanceof ActionError) { await social.sendSystemLetter(b.user_id, 'Zuschlag verfallen', `Den Zuschlag für „${a.name}“ konntest du nicht annehmen: ${e.message}`); await require('./reputation').add(b.user_id, 'rel', null, 'auction_default', `a${a.id}`); } else throw e;
         }
       }
       if (sold) continue;

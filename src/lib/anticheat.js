@@ -71,6 +71,8 @@ async function flag(userId, ruleName, detail, weightOverride) {
     else await db.query('INSERT INTO cheat_flags (user_id, rule, weight, detail) VALUES (?,?,?,?)', [userId, ruleName, weight, text.slice(0, 2000)]);
     const score = await risk(userId, true);
     await applyAuto(userId, score);
+    // Ansehen: Verdachtsfälle kosten Ruf (nach Gewicht, mit Tagesgrenze; Bots und Team sind oben schon ausgenommen)
+    await require('./reputation').add(userId, 'scandal', Math.max(0.5, Math.min(6, weight / 10)), 'flagged', ruleName);
     return score;
   } catch (e) { log.error('[anticheat] flag fehlgeschlagen', e); return null; }
 }

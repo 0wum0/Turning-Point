@@ -164,6 +164,7 @@ const DEFAULTS = {
     compDayCap: 14,                        // je Bestandteil höchstens so viele Punkte Zuwachs pro Tag
     maxEvent: 40, localShare: 50,          // größter Einzelbetrag; Anteil (%) der örtlichen Punkte am örtlichen Ansehen
     inherit: { heirPct: 50, restartPct: 25 }, // Erben übernehmen so viel Prozent der Bestandteile (Neustart nach Insolvenz weniger)
+    fireGraceHours: 72,                      // Entlassung eines Spieler-Mitarbeiters innerhalb dieser Stunden nach der Einstellung schadet dem Ruf
     minAccountHours: 12, blockSameIp: true,  // Handlungen mit Konten gleicher IP oder neuen Konten zählen nicht
     ledgerKeep: 80, ledgerDays: 90,          // Einträge je Spieler im Protokoll
     offices: [0, 1, 2, 2, 3, 3],             // Mindeststufe je Amt (Ortsbeirat … Bundeskanzler): 0 Unbekannt, 1 Anständig, 2 Angesehen, 3 Honoratior

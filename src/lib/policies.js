@@ -113,6 +113,7 @@ async function set(userId, input) {
         [userId, key, row.office_idx, row.kind, row.good, row.val, row.scope_city, row.region, expires]);
     } catch (e) { if (e && e.code === 'ER_DUP_ENTRY') fail('In dieser Amtszeit hast du schon einen Beschluss gefasst.'); throw e; }
     const text = describe(world, row);
+    { const RP = require('../game/reputation'); const mood = RP.policyMood(row.kind, row.val); if (mood) RP.queue(state, 'office', null, mood > 0 ? 'policy_popular' : 'policy_unpopular', row.kind); } // beliebte Beschlüsse mehren das Ansehen
     t.policy = { kind: row.kind, good: row.good, val: row.val, day: state.day, text };
     const office = world.econ.politics.offices[t.idx].name;
     chronicle(state, `${state.person.first} beschließt als ${office}: ${text}.`, 'politics');

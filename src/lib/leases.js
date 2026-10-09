@@ -67,7 +67,9 @@ async function evict(ownerId, propId) {
     const { state: s, conn } = ctx; const p = s.properties.find((x) => x.id === propId);
     if (!p || !p.lease || !p.lease.tenant || !p.lease.tenant.userId) fail('Hier wohnt kein Spieler zur Miete.');
     await conn.query("UPDATE player_leases SET status = 'ended', ended_by = 'owner' WHERE owner_id = ? AND prop_id = ? AND status = 'active'", [ownerId, propId]);
+    const tenantId = p.lease.tenant.userId;
     p.lease.tenant = null; p.lease.vacantSince = s.day;
+    require('../game/reputation').queue(s, 'scandal', null, 'evict', `u${tenantId}`); // Rauswurf eines Mieters schadet dem Ruf
     return {};
   });
 }

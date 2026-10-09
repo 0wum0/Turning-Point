@@ -13,6 +13,7 @@ const { applyTownEvents, rollPrivateEvent } = require('./events');
 const { familyDaily, endLife, ageOfChild } = require('./family');
 const { businessDaily } = require('./business');
 const society = require('./society');
+const rep = require('./reputation');
 
 /** Lebenserwartung (Tage). Medizin wird ab ~1955 besser, gesunder Lebensstil gibt Jahre. */
 function lifespanDays(state, year) {
@@ -62,9 +63,11 @@ function dayStep(ctx) {
   if (['rent', 'pension', 'workplace'].includes(h.type) && flows.exp.lodging > 0) {
     if (state.money >= flows.exp.lodging) {
       state.money -= flows.exp.lodging; state.stats.spent += flows.exp.lodging;
+      if (h.type === 'rent') rep.queue(state, 'rel', null, 'rent_paid');
     } else {
       const was = h.type;
       state.housing = { type: 'street', cityId: state.cityId };
+      if (was === 'rent') rep.queue(state, 'rel', null, 'rent_missed');
       notice(state, {
         level: 'bad', title: 'Wohnung verloren', tab: 'housing', interrupt: true,
         text: `Du konntest die ${was === 'rent' ? 'Miete' : 'Unterkunft'} nicht mehr bezahlen und stehst auf der Straße.`,

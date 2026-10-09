@@ -156,6 +156,7 @@ async function place(userId, stockId, side, shares, limitReal) {
       await conn.query('UPDATE stock_orders SET left_shares = ?, status = ? WHERE id = ?', [left, left > 0 ? 'open' : 'filled', ord]);
     }
     await syncOutside(conn, st, ctx);
+    if (moved) require('../game/reputation').queue(s, 'trade', null, 'exchange_trade', `s${stockId}`);
     return { moved, left, limits };
   });
 }
@@ -191,6 +192,7 @@ async function ipo(userId, companyId, floatPct, divPct) {
   return service.withCharacter(userId, async (ctx) => {
     const { conn, state: s } = ctx; if (!s || s.status !== 'alive') fail('Du brauchst einen lebenden Charakter.');
     if (s.day < X.minGameDays) fail(`Dein Charakter muss mindestens ${X.minGameDays} Spieltage alt sein.`);
+    { const RP = require('../game/reputation'); const bl = RP.block(RP.stand(s).lv, RP.minFor('ipo')); if (bl) fail(`Die Börse nimmt dich so nicht auf. ${bl}`); }
     const c = (s.companies || []).find((x) => x.id === companyId); if (!c) fail('Diesen Betrieb besitzt du nicht.');
     if (c.abandoned) fail('Ein leerstehender Betrieb kann nicht an die Börse.'); if (c.stock) fail('Dieser Betrieb ist schon börsennotiert.');
     const valueReal = market.valueReal(world, s, 'firm', c); if (valueReal < X.minValueReal) fail(`Für den Börsengang muss der Betrieb mindestens ${Math.round(X.minValueReal / 100)} (Wert 1945) wert sein.`);
@@ -200,6 +202,7 @@ async function ipo(userId, companyId, floatPct, divPct) {
     await conn.query('INSERT INTO stock_holdings (stock_id, user_id, shares, avg_real) VALUES (?,?,?,?)', [st, userId, X.shares - floatN, price]);
     await conn.query("INSERT INTO stock_orders (stock_id, user_id, side, shares, left_shares, limit_real) VALUES (?,?,'sell',?,?,?)", [st, userId, floatN, floatN, price]);
     c.stock = { id: st, divPct, outside: floatN };
+    require('../game/reputation').queue(s, 'trade', null, 'ipo', `c${c.id}`);
     chronicle(s, `${c.name} geht an die Börse.`, 'business');
     try { await conn.query('INSERT INTO public_news (city_id, user_id, section, title, text) VALUES (?,?,?,?,?)', [c.cityId, userId, 'Wirtschaft', `${c.name} geht an die Börse`, `${floatN} von ${X.shares} Anteilen kommen zum Kurs von ${Math.round(price / 100)} (Wert 1945) in den Handel.`]); } catch (_) { /* Zugabe */ }
     notice(s, { level: 'good', title: `Börsengang: ${c.name}`, text: `${floatN} Anteile stehen zum Verkauf. Du erhältst den Erlös bei jedem Verkauf.`, tab: 'business' });
@@ -223,6 +226,8 @@ async function delist(userId, companyId) {
 /** Mehrheitsaktionär übernimmt den Betrieb; der bisherige Eigentümer bleibt mit seinen Anteilen Minderheitsaktionär. */
 async function takeover(userId, stockId) {
   const X = cfg(); const world = await worldP();
+  const RP = require('../game/reputation'); const rep = await require('./reputation').get(userId);
+  { const bl = RP.block(rep.level, RP.minFor('takeover')); if (bl) fail(`Eine Übernahme ist dir so nicht möglich. ${bl}`); }
   return db.tx(async (conn) => {
     const st = await conn.one("SELECT * FROM stocks WHERE id = ? AND status = 'active' FOR UPDATE", [stockId]); if (!st) fail('Diese Aktie gibt es nicht (mehr).');
     if (st.user_id === userId) fail('Du bist schon Eigentümer.');
@@ -248,7 +253,7 @@ async function takeover(userId, stockId) {
     await service.saveCharacter(conn, rowA, sA); await service.saveCharacter(conn, rowB, sB);
     const social = require('./social');
     await social.upsertStats(conn, await service.loadUser(conn, st.user_id), rowA, sA, world); await social.upsertStats(conn, await service.loadUser(conn, userId), rowB, sB, world);
-    try { await conn.query('INSERT INTO public_news (city_id, user_id, section, title, text) VALUES (?,?,?,?,?)', [st.city_id, userId, 'Wirtschaft', `Übernahme: ${st.name}`, `${nameB} übernimmt als Mehrheitsaktionär ${st.name} von ${nameA}.`]); } catch (_) { /* Zugabe */ }
+    try { await conn.query('INSERT INTO public_news (city_id, user_id, section, title, text) VALUES (?,?,?,?,?)', [st.city_id, userId, 'Wirtschaft', `Übernahme: ${st.name}`, `${nameB}${rep.level >= 2 || rep.level <= -1 ? ` (${rep.levelName})` : ''} übernimmt als Mehrheitsaktionär ${st.name} von ${nameA}.`]); } catch (_) { /* Zugabe */ }
     return { stockId: st.id };
   });
 }

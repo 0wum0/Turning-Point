@@ -3,6 +3,7 @@
 const settings = require('../settings');
 const { scale, isEuroDay } = require('./economy');
 const { yearOf } = require('./calendar');
+const rep = require('./reputation');
 
 const cfg = () => settings.get('credit');
 const BASE = [[1945, 6], [1960, 6.5], [1970, 8], [1980, 8.5], [1990, 7], [2000, 5], [2010, 2.5], [2020, 4], [2030, 3.5], [2100, 3.5]];
@@ -15,14 +16,14 @@ const debt = (state) => (state.loans || []).reduce((s, l) => s + l.left, 0);
 const dailyPay = (state) => (state.loans || []).reduce((s, l) => s + l.pay, 0);
 
 /** Zinssatz (Prozent p. a.) für neue Kredite – steigt mit der Auslastung des Rahmens. */
-function rateFor(year, utilisation) { return Math.round((baseRate(year) + cfg().spread + SURCHARGE * Math.max(0, Math.min(1, utilisation))) * 10) / 10; }
+function rateFor(year, utilisation, lv = 0) { return Math.max(0.5, Math.round((baseRate(year) + cfg().spread + SURCHARGE * Math.max(0, Math.min(1, utilisation)) + rep.creditRateDelta(lv)) * 10) / 10); }
 
 function limitOf(world, state, year) {
   const { propertyValue } = require('./core'); const biz = require('./business');
   const props = state.properties.reduce((s, p) => s + propertyValue(world, state, p, year), 0);
   const firms = (state.companies || []).reduce((s, c) => s + biz.companyValue(world, state, c, year), 0);
   const income = Math.max(0, require('./core').dailyFlows(world, state).inc.wage + require('./core').dailyFlows(world, state).inc.rent);
-  return Math.max(0, Math.round(cfg().assetPct / 100 * (props + firms) + cfg().incomeDays * income));
+  return Math.max(0, Math.round((cfg().assetPct / 100 * (props + firms) + cfg().incomeDays * income) * rep.creditLimitMult(rep.stand(state).lv)));
 }
 
 /** Laufendes Einkommen pro Tag (Cent): Lohn, Miete und die Gewinne der Betriebe. */
@@ -33,19 +34,20 @@ function incomePerDay(world, state) {
 
 function view(world, state) {
   const year = yearOf(state.day, state.startYear); const limit = limitOf(world, state, year); const d = debt(state);
-  const util = limit > 0 ? d / limit : 1;
-  return { enabled: cfg().enabled, limit, debt: d, available: Math.max(0, limit - d), rate: rateFor(year, util), minAmount: scale(cfg().minAmount, world.idx(year)), maxYears: cfg().maxYears,
+  const util = limit > 0 ? d / limit : 1; const lv = rep.stand(state).lv;
+  return { enabled: cfg().enabled, limit, debt: d, available: Math.max(0, limit - d), rate: rateFor(year, util, lv), standing: { lv, name: rep.levelName(lv), rateDelta: rep.creditRateDelta(lv), limitMult: rep.creditLimitMult(lv), blocked: rep.block(lv, rep.minFor('loan')) }, minAmount: scale(cfg().minAmount, world.idx(year)), maxYears: cfg().maxYears,
     loans: (state.loans || []).map((l) => ({ id: l.id, left: l.left, pay: l.pay, rate: l.rate, days: l.daysLeft, taken: l.principal })) };
 }
 
 function take(world, state, amount, years) {
   if (!cfg().enabled) throw new Error('Die Bank vergibt gerade keine Kredite.');
+  const blocked = rep.block(rep.stand(state).lv, rep.minFor('loan')); if (blocked) throw new Error(`Die Bank vergibt keinen Kredit. ${blocked}`);
   const year = yearOf(state.day, state.startYear); const v = view(world, state);
   amount = Math.round(amount);
   if (!(amount >= v.minAmount)) throw new Error('Der Betrag ist zu klein.');
   if (amount > v.available) throw new Error('Das übersteigt deinen Kreditrahmen.');
   const y = Math.max(1, Math.min(cfg().maxYears, Math.round(years || 5))); const n = y * 365;
-  const rate = rateFor(year, (v.debt + amount) / Math.max(1, v.limit)); const r = rate / 100 / 365;
+  const rate = rateFor(year, (v.debt + amount) / Math.max(1, v.limit), rep.stand(state).lv); const r = rate / 100 / 365;
   const pay = Math.max(1, Math.round((amount * r) / (1 - Math.pow(1 + r, -n))));
   // Tragbarkeit: alle Raten zusammen dürfen höchstens 60 % des Jahreseinkommens (Lohn, Miete, Betriebsgewinne) plus ein Viertel der Barmittel kosten
   const capacity = 0.6 * incomePerDay(world, state) * 365 + 0.25 * Math.max(0, state.money);
@@ -60,7 +62,7 @@ function repay(state, id, amount) {
   const l = (state.loans || []).find((x) => x.id === id); if (!l) throw new Error('Kredit nicht gefunden.');
   const a = Math.min(Math.round(amount), l.left, state.money); if (!(a >= 1)) throw new Error('Dir fehlt das Geld für die Rückzahlung.');
   state.money -= a; const f = (l.left - a) / l.left; l.left -= a; l.pay = Math.max(1, Math.round(l.pay * f));
-  if (l.left < 1) state.loans = state.loans.filter((x) => x.id !== id);
+  if (l.left < 1) { state.loans = state.loans.filter((x) => x.id !== id); rep.queue(state, 'rel', null, 'loan_cleared'); }
   return a;
 }
 
@@ -79,6 +81,8 @@ function creditDaily(ctx) {
     state.money -= paid; if (state.stats) state.stats.spent += paid;
     if (paid >= due) l.left = Math.max(0, Math.round(l.left - principalPart)); else l.left = Math.round(l.left + interest); // immer ganze Cent
     l.daysLeft--;
+    rep.queue(state, 'rel', null, paid >= due ? 'loan_paid' : 'loan_missed');
+    if (l.left < 1 && paid >= due) rep.queue(state, 'rel', null, 'loan_cleared');
   }
   state.loans = state.loans.filter((l) => l.left >= 1 && l.daysLeft > -365);
 }

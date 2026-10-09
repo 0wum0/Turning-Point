@@ -418,7 +418,7 @@ async function gift(from, to, amountMoney) {
   const rel = await relation(from, to); if (rel === 'blocked' || rel === 'blocked_by') fail('Dieser Spieler ist nicht erreichbar.');
   if (G.blockSameIp && await sameIp(from, to)) { anticheat.flag(from, 'gift_ring', `Geschenkversuch an ein Konto mit gleicher IP (Nutzer ${to})`); fail('Zwischen Konten, die dieselbe Internetverbindung nutzen, sind keine Geschenke erlaubt.'); }
   const cents = Math.round(Number(amountMoney) * 100); if (!Number.isFinite(cents) || cents < 100) fail('Der Betrag ist zu klein.');
-  return db.tx(async (conn) => {
+  const res = await db.tx(async (conn) => {
     const { rowA, rowB, sA, sB } = await lockPair(conn, from, to);
     if (sA.day < G.minGameDays) fail(`Dein Charakter muss mindestens ${G.minGameDays} Spieltage alt sein.`);
     const idxA = world.idx(yearOf(sA.day, sA.startYear)); const idxB = world.idx(yearOf(sB.day, sB.startYear));
@@ -440,8 +440,11 @@ async function gift(from, to, amountMoney) {
     await conn.query("INSERT INTO messages (from_user, to_user, kind, subject, body) VALUES (?,?, 'system', 'Geschenk', ?)", [from, to, `${sA.person.first} ${sA.person.last} hat dir ${fmt(got, sB)} geschenkt.`]);
     const pairN = await conn.one("SELECT COUNT(*) n FROM social_log WHERE kind = 'gift' AND from_user = ? AND to_user = ? AND created_at > NOW() - INTERVAL 7 DAY", [from, to]);
     if (pairN.n >= 5) anticheat.flag(from, 'gift_ring', `${pairN.n} Geschenke an dieselbe Person in 7 Tagen (Nutzer ${to})`);
-    return { sent: cents, received: got, view: null, stateA: sA };
+    return { sent: cents, received: got, view: null, stateA: sA, cityId: sA.cityId };
   });
+  // Ansehen: Großzügigkeit zählt fürs Gemeinwohl (Tagesgrenze, je Empfänger nur zum Teil; Konten gleicher IP und neue Konten zählen nicht)
+  await require('./reputation').add(from, 'civic', null, 'gift', to, { other: to, cityId: res.cityId });
+  return res;
 }
 
 async function visit(visitor, owner, companyId) {
@@ -453,7 +456,7 @@ async function visit(visitor, owner, companyId) {
   if (await sameIp(visitor, owner)) { anticheat.flag(visitor, 'gift_ring', `Besuch im Betrieb eines Kontos mit gleicher IP (Nutzer ${owner})`); fail('Bei Konten mit derselben Internetverbindung ist das nicht erlaubt.'); }
   const cd = await db.one("SELECT created_at FROM social_log WHERE kind = 'visit' AND from_user = ? AND ref = ? AND created_at > NOW() - INTERVAL ? MINUTE ORDER BY id DESC LIMIT 1", [visitor, `${owner}:${companyId}`, V.cooldownMin]);
   if (cd) fail(`Du warst gerade erst dort – komm in ${V.cooldownMin} Minuten wieder.`);
-  return db.tx(async (conn) => {
+  const res = await db.tx(async (conn) => {
     const { rowA, rowB, sA, sB } = await lockPair(conn, visitor, owner);
     const c = (sB.companies || []).find((x) => x.id === companyId); if (!c || c.abandoned) fail('Der Betrieb hat geschlossen.');
     if (sA.cityId !== c.cityId) fail('Dafür musst du in derselben Stadt wohnen.');
@@ -468,8 +471,10 @@ async function visit(visitor, owner, companyId) {
     notice(sB, { level: 'good', title: `Gast bei ${c.name}`, text: `${sA.person.first} ${sA.person.last} war zu Besuch – ${(income / 100).toLocaleString('de-DE', { minimumFractionDigits: 2 })} wanderten in die Firmenkasse.`, tab: 'business' });
     await service.saveCharacter(conn, rowA, sA); await service.saveCharacter(conn, rowB, sB);
     await conn.query("INSERT INTO social_log (kind, from_user, to_user, amount, ref) VALUES ('visit',?,?,?,?)", [visitor, owner, Math.round(real), `${owner}:${companyId}`]);
-    return { paid: price, boost, name: c.name, stateA: sA };
+    return { paid: price, boost, name: c.name, stateA: sA, cityId: sA.cityId };
   });
+  await require('./reputation').add(visitor, 'civic', null, 'visit', owner, { other: owner, cityId: res.cityId });
+  return res;
 }
 
 async function firmsInCity(userId, cityId) {

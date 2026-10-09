@@ -4,6 +4,7 @@ const press = require('./press');
 const { yearOf, ageYears } = require('./calendar');
 const { scale, formatMoney } = require('./economy');
 const { notice, chronicle, award, clamp } = require('./core');
+const rep = require('./reputation');
 
 const cfg = (world) => world.econ.politics;
 const gcfg = (world) => world.econ.gambling;
@@ -40,6 +41,7 @@ function politicsDaily(ctx) {
   state.politics.term = null;
   const gain = 2 * (t.idx + 1);
   state.fx.influence = (state.fx.influence || 0) + gain;
+  rep.queue(state, 'office', 4 + 2 * t.idx, 'office_term', `o${t.idx}`); // Amtszeit ordentlich zu Ende gebracht
   chronicle(state, `${state.person.first} beendet die Amtszeit als ${o.name}.`, 'politics');
   press.story(world, state, 'term_end', { office: o.name });
   notice(state, {
@@ -61,6 +63,7 @@ function install(A, fail, helpers) {
     if (state.politics.term) fail('Du bist bereits im Amt.');
     if (ageYears(state.person.birthDay, state.day) < c.minAge) fail(`Mindestalter für Ämter: ${c.minAge} Jahre.`);
     if (idx > 0 && completed(state, idx - 1) < 1) fail(`Zuerst musst du eine Amtszeit als ${c.offices[idx - 1].name} absolvieren.`);
+    { const st = rep.stand(state); const bl = rep.block(idx >= (require('../settings').get('elections').firstNationalOffice || 3) ? st.lv : st.ll, rep.officeMin(idx)); if (bl) fail(bl); }
     const year = yr(state);
     const cost = scale(o.campaign, world.idx(year));
     if (state.money < cost) fail('Für den Wahlkampf reicht dein Geld nicht.');
@@ -71,6 +74,7 @@ function install(A, fail, helpers) {
     if (!chance(r, p)) { state.fx.influence = (state.fx.influence || 0) + 1; return { msg: `Die Wahl zum ${o.name} ging verloren (Chance war ${Math.round(p * 100)} %). Du gewinnst 1 Einfluss durch die Erfahrung.`, level: 'warn' }; }
     state.politics.term = { idx, startDay: state.day, endDay: state.day + c.termDays };
     state.fx.influence = (state.fx.influence || 0) + 1;
+    rep.queue(state, 'office', 2 + idx, 'office_won', `o${idx}`);
     award(state, 'partner');
     chronicle(state, `${state.person.first} wird zum ${o.name} gewählt.`, 'politics');
     press.story(world, state, 'elected', { office: o.name });
@@ -78,6 +82,7 @@ function install(A, fail, helpers) {
   };
   A.resignOffice = ({ state }) => {
     if (!state.politics.term) fail('Du hast kein Amt.');
+    rep.queue(state, 'office', null, 'office_quit', `o${state.politics.term.idx}`);
     state.politics.term = null;
     return { msg: 'Du bist zurückgetreten.', level: 'warn' };
   };

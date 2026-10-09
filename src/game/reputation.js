@@ -237,6 +237,16 @@ function minFor(what, C = cfg()) {
   return strength(C) > 0 ? clamp(Math.round(v), -2, 4) : -2;
 }
 
+/** Wie kommt ein Beschluss an? +1 beliebt, −1 umstritten, 0 neutral (steuert den Ruf des Amtsinhabers). */
+function policyMood(kind, val) {
+  const v = Number(val) || 0;
+  switch (kind) {
+    case 'surcharge': case 'vat': case 'tariff': case 'pricebrake': return v < 0 ? 1 : v > 0 ? -1 : 0;
+    case 'rentcap': case 'landzone': case 'housing': return 1;
+    default: return 0;
+  }
+}
+
 const levelName = (lv) => levelInfo(lv).name;
 /** Satz für gesperrte Aktionen. */
 function needText(minLv) {
@@ -265,5 +275,5 @@ function brief(state) {
 
 module.exports = {
   KINDS, KIND_LABEL, KIND_HINT, LEVELS, REASONS, TIPS, levelInfo, levelName, blank, score, levelOf, progress, localScore, decay, inherit, applyEvent, pointsOf,
-  makeSnap, stand, queue, brief, creditRateDelta, creditLimitMult, contractBandPad, tenantDemandMult, arrearsMult, voteWeight, officeMin, minFor, needText, block, strength, isDay, cfg,
+  makeSnap, stand, queue, brief, policyMood, creditRateDelta, creditLimitMult, contractBandPad, tenantDemandMult, arrearsMult, voteWeight, officeMin, minFor, needText, block, strength, isDay, cfg,
 };

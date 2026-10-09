@@ -82,6 +82,8 @@ test('Politik: Stufen nacheinander, Amtszeit gibt Einfluss und Einkommen', () =>
   assert.strictEqual(s.politics.term, null);
   assert.ok(s.fx.influence > before);
   assert.strictEqual(s.politics.completed[0], 1);
+  assert.throws(() => act(s, 'runOffice', { idx: 1 }), /Ansehen: Anständig/, 'Stadtrat braucht Ansehen');
+  s.rep = { s: 20, l: 20, lv: 1, ll: 1 };
   assert.doesNotThrow(() => act(s, 'runOffice', { idx: 1 }));
 });
 

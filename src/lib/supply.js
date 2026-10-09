@@ -223,6 +223,15 @@ async function checkDeal(world, sellerFirm, buyerFirm, goodKey, ignoreId = 0) {
   return g;
 }
 
+/** Erlaubtes Preisband in % des Marktpreises: Das Ansehen des Anbietenden weitet den Rahmen (oder verengt ihn). */
+async function bandFor(userId) {
+  const c = ccfg(); const RP = require('../game/reputation');
+  const base = { lo: num(c.minPricePct, 90, 50, 100), hi: num(c.maxPricePct, 115, 100, 300) };
+  let lv = 0; try { lv = (await require('./reputation').get(userId)).level; } catch (_) { /* ohne Ruf */ }
+  const pad = RP.contractBandPad(lv);
+  return { lo: Math.max(50, Math.round((base.lo - pad) * 10) / 10), hi: Math.min(300, Math.round((base.hi + pad) * 10) / 10), pad, lv, name: RP.levelName(lv), blocked: RP.block(lv, RP.minFor('contract')) };
+}
+
 async function guard(userId, otherId) {
   const a = await social.accountAgeHours(userId);
   if (a.mute > Date.now()) fail('Du bist vorübergehend stummgeschaltet.');
@@ -256,8 +265,10 @@ async function offer(userId, input) {
   const qty = num(input.qty, 0, 0, 1e7);
   if (!(qty > 0)) fail('Bitte eine Menge pro Tag angeben.');
   const pct = num(input.pricePct, 100, 0, 1000);
-  const lo = num(c.minPricePct, 90, 50, 100); const hi = num(c.maxPricePct, 115, 100, 300);
-  if (pct < lo || pct > hi) fail(`Der Preis muss zwischen ${lo} % und ${hi} % des Marktpreises liegen.`);
+  const band = await bandFor(userId);
+  const lo = band.lo; const hi = band.hi;
+  if (band.blocked) fail(`Lieferverträge sind dir so nicht möglich. ${band.blocked}`);
+  if (pct < lo || pct > hi) fail(`Der Preis muss zwischen ${lo} % und ${hi} % des Marktpreises liegen.${band.pad ? ` (Dein Ansehen „${band.name}“ ${band.pad > 0 ? 'weitet' : 'verengt'} den Rahmen.)` : ''}`);
   const term = Math.round(num(input.termDays, 90, 1, 3650));
   const tmin = int(c.minTermDays, 30); const tmax = int(c.maxTermDays, 730);
   if (term < tmin || term > tmax) fail(`Die Laufzeit muss zwischen ${tmin} und ${tmax} Tagen liegen.`);
@@ -306,6 +317,8 @@ async function cancel(userId, id) {
     if (row.proposer_id !== userId) await social.sendSystemLetter(other, 'Lieferangebot abgelehnt', `Dein Lieferangebot über ${g ? g.name : row.good} wurde abgelehnt.`, userId);
   } else {
     await db.query("UPDATE supply_contracts SET status = 'cancelled', end_reason = 'cancel', ended_at = NOW() WHERE id = ? AND status = 'active'", [row.id]);
+    // Wer einen laufenden Vertrag vorzeitig kündigt (mehr als 10 Tage Restlaufzeit), schadet seiner Zuverlässigkeit
+    if (Number(row.days_left) > 10) await require('./reputation').add(userId, 'rel', null, 'contract_cancel', `c${row.id}`, { other });
     await social.sendSystemLetter(other, 'Liefervertrag gekündigt', `Der Liefervertrag über ${g ? g.name : row.good} wurde vom Vertragspartner gekündigt. Ab sofort kaufst du im Großhandel (wenn „Automatisch einkaufen“ an ist).`, userId);
   }
   live.publish('business', {}, other);
@@ -331,7 +344,8 @@ async function mine(userId) {
     };
   };
   const list = rows.map(f);
-  return { enabled: on(), maxPerFirm: int(ccfg().maxPerFirm, 4), contracts: list.filter((x) => x.status === 'active'), offers: list.filter((x) => x.status === 'offer') };
+  const band = await bandFor(userId);
+  return { enabled: on(), maxPerFirm: int(ccfg().maxPerFirm, 4), band: { lo: band.lo, hi: band.hi, pad: band.pad, name: band.name, blocked: band.blocked }, contracts: list.filter((x) => x.status === 'active'), offers: list.filter((x) => x.status === 'offer') };
 }
 
 /** Veraltete Angebote ablaufen lassen, alte beendete Verträge löschen. */
@@ -356,8 +370,10 @@ async function botRound(userId, rnd = Math.random) {
     if (rnd() > 0.5) continue; // nicht sofort: wie ein Mensch, der später antwortet
     const pct = (o.price_real / goods.priceReal(goods.good(o.good) || { base: 1, trend: null }, ps.year)) * 100;
     const iBuy = o.buyer_id === userId;
-    const fair = iBuy ? pct <= 109 : pct >= 96;
-    try { await respond(userId, o.id, fair && rnd() < 0.8); } catch (_) { /* Partner/Ware nicht mehr passend */ }
+    // Bots schauen auch auf den Ruf des Anbietenden: Wer als unzuverlässig gilt, bekommt eine Absage; wer angesehen ist, eher eine Zusage
+    let rl = 0; try { rl = (await require('./reputation').get(o.proposer_id)).level; } catch (_) { /* ohne Ruf */ }
+    const fair = (iBuy ? pct <= 109 : pct >= 96) && rl >= 0;
+    try { await respond(userId, o.id, fair && rnd() < (rl >= 2 ? 0.92 : 0.8)); } catch (_) { /* Partner/Ware nicht mehr passend */ }
   }
   // 2) Selten selbst ein Angebot machen (Einkauf der wichtigsten Zutat)
   if (rnd() > 0.2) return;

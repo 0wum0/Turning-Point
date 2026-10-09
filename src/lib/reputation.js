@@ -109,7 +109,7 @@ async function ensureRow(conn, userId) {
 
 /** Kern: bucht ein Ereignis in der Transaktion conn. Gibt den angewendeten Betrag zurück (0, wenn nichts zählte). */
 async function addConn(conn, userId, kind, delta, reason, ref, opts = {}) {
-  const C = cfg(); if (!on()) return 0;
+  const C = cfg(); if (!on() || !R.REASONS[reason]) return 0; // nur bekannte Ereignisse (feste Liste, jedes mit Tagesgrenze)
   const sign = Number(delta != null ? delta : (R.REASONS[reason] || {}).d);
   const positive = (kind === 'scandal' || (R.REASONS[reason] && R.REASONS[reason].kind === 'scandal')) ? sign < 0 : sign > 0;
   if (opts.other && positive && !(await countsFor(userId, opts.other))) return 0;
@@ -256,6 +256,29 @@ async function prune() {
   await db.query('DELETE FROM reputation_city WHERE ABS(pts) < 0.5 AND decay_day < ?', [today() - 14]);
 }
 
+/** Örtliche Punkte direkt anheben (z. B. Ehrenbürgerwürde); bleibt im Bereich −100 … 100. */
+async function bumpLocal(userId, cityId, pts) {
+  if (!on() || !userId || !cityId) return;
+  await db.tx(async (conn) => {
+    await ensureRow(conn, userId);
+    const row = await readRow(conn, userId, cityId, true);
+    const st = settle(row, row.c_day != null ? { pts: row.c_pts, decay_day: row.c_day } : null);
+    const v = Math.max(-100, Math.min(100, st.pts + Number(pts || 0)));
+    await conn.query('INSERT INTO reputation_city (user_id, city_id, pts, decay_day) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE pts = VALUES(pts), decay_day = VALUES(decay_day)', [userId, cityId, v, today()]);
+  });
+  invalidate(userId); live.publish('rep', {}, userId);
+}
+
+/**
+ * Haken für spätere Gerichte und Misstrauensvoten (Schritt 4): Vertrauen in einen Amtsinhaber 0 … 1 aus Gesamtwert und Skandal.
+ * Wer das Amt entziehen will, ruft confidence() ab und kann den Ruf über punish() belasten (gleiche Grenzen wie alle Ereignisse).
+ */
+async function confidence(userId, cityId = 0) {
+  const d = await get(userId, cityId);
+  return { value: Math.max(0, Math.min(1, (d.local + 50) / 100)), level: d.localLevel, scandal: d.comps.scandal, score: d.local };
+}
+function punish(userId, reason, delta, ref, opts) { return add(userId, 'scandal', delta, reason || 'fine', ref, opts); }
+
 /** Admin: Werte setzen/zurücksetzen. */
 async function adminReset(userId, comps = null) {
   const c = comps || R.blank();
@@ -274,4 +297,4 @@ async function adminDeleteEntry(userId, id) { await db.query('DELETE FROM reputa
 
 function start() { setInterval(() => { prune().catch((e) => log.warn(`[ruf] ${e.message}`)); }, 6 * 3600000).unref(); }
 
-module.exports = { add, addConn, get, many, badge, snapshot, flush, runAfter, inherit, ledger, view, prune, adminReset, adminDeleteEntry, describe, start, countsFor, labelOf, invalidate, REASONS: R.REASONS };
+module.exports = { bumpLocal, confidence, punish, add, addConn, get, many, badge, snapshot, flush, runAfter, inherit, ledger, view, prune, adminReset, adminDeleteEntry, describe, start, countsFor, labelOf, invalidate, REASONS: R.REASONS };

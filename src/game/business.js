@@ -6,6 +6,7 @@ const { scale, formatMoney, currencyOf, isEuroDay } = require('./economy');
 const { notice, chronicle, isLearned, levelIndex } = require('./core');
 const { LAST } = require('./content');
 const EVD = require('./event-defaults');
+const rep = require('./reputation');
 
 const tiersOf = (world) => world.econ.companies.tiers;
 const cityMult = (city) => 0.7 + 0.15 * (city ? city.size_tier : 2);
@@ -122,7 +123,7 @@ function bizEvents(ctx, c, year) {
       notice(state, { level: 'good', title: `Inspektion bei ${c.name}`, tab: 'business', text: 'Das Amt findet nichts zu beanstanden und lobt den Betrieb.' });
     } else {
       const fine = scale(B.fineBase + c.rooms * B.finePerRoom, idx);
-      c.cash -= fine;
+      c.cash -= fine; rep.queue(state, 'scandal', 2, 'fine', `insp${c.id}`);
       notice(state, { level: 'warn', title: `Inspektion bei ${c.name}`, tab: 'business', text: `Zu wenig Personal oder keine Leitung: ${formatMoney(fine, cur)} Strafe aus der Firmenkasse.`, info: ['Ämter prüfen Hygiene, Arbeitsschutz und Besetzung.', 'Mit genug Personal und einem Manager passiert dir das nicht.', 'Stelle Mitarbeiter ein oder setze einen Manager ein.'] });
     }
   } else if (kind === 'strike' && c.staff >= B.strikeMinStaff) {
@@ -167,6 +168,7 @@ function businessDaily(ctx) {
     c.cash += f.profit;
     c.lastProfit = f.profit;
     settleContracts(state, c, f, world.idx(year));
+    if (c.staff > 0) rep.queue(state, 'civic', Math.min(0.5, 0.1 * c.staff), 'staff_kept'); // Arbeitsplätze zählen fürs Gemeinwohl
     if (c.stock) require('../lib/exchange').dividend(ctx, c, f.profit);
     if (c.cash < 0) {
       state.money += c.cash; state.stats.spent += -c.cash; c.cash = 0;
@@ -187,17 +189,24 @@ function settleContracts(state, c, f, idxNow) {
   for (const p of sp.pays || []) {
     const bb = (K.buys || []).find((x) => x.id === p.id); if (bb) bb.take = Math.round(Math.max(0, Math.min(1, p.take == null ? 1 : p.take)) * 1000) / 1000;
     if (!(p.cents > 0) || !p.sellerId) continue;
+    rep.queue(state, 'trade', 0.15, 'supply_ok', `c${p.id}`); // Käufer zahlt pünktlich
     const q = state.pending.supply || (state.pending.supply = []);
     let e = q.find((x) => x.id === p.id);
     if (!e) { e = { id: p.id, userId: p.sellerId, firm: p.sellerFirm, real: 0, what: c.name }; q.push(e); }
     e.real += p.cents / idx;
   }
-  for (const s of K.sells || []) if (s.firmId === c.id && sp.fills && sp.fills[s.id] != null) s.fill = Math.round(sp.fills[s.id] * 1000) / 1000;
+  for (const s of K.sells || []) {
+    if (s.firmId === c.id && sp.fills && sp.fills[s.id] != null) {
+      s.fill = Math.round(sp.fills[s.id] * 1000) / 1000;
+      // Verkäufer: verlässlich liefern zählt, dauerhaft zu wenig liefern schadet (nur wenn der Käufer wirklich abnimmt)
+      if ((s.take == null ? 1 : s.take) > 0.2) { if (s.fill >= 0.95) rep.queue(state, 'trade', 0.15, 'supply_ok', `c${s.id}`); else if (s.fill < 0.6) rep.queue(state, 'trade', 0.3, 'supply_short', `c${s.id}`) ; }
+    }
+  }
   for (const b of K.buys || []) {
     if (b.firmId !== c.id || b.ended) continue;
     if (sp.on && !(sp.pays || []).some((p) => p.id === b.id)) b.take = 0; // Bedarf schon anderweitig gedeckt: der Verkäufer muss nichts zurückhalten
     b.daysLeft = (b.daysLeft == null ? b.term || 30 : b.daysLeft) - 1;
-    if (b.daysLeft <= 0) { if (b.auto) b.daysLeft = b.term || 30; else b.ended = true; }
+    if (b.daysLeft <= 0) { if (b.auto) b.daysLeft = b.term || 30; else { b.ended = true; rep.queue(state, 'rel', null, 'contract_done', `c${b.id}`); rep.queue(state, 'rel', null, 'contract_done', `c${b.id}`, { user: b.sellerId }); } }
   }
 }
 
