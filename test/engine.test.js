@@ -40,12 +40,15 @@ test('Arbeit + Pension: Geld wächst, Meter bleiben stabil', () => {
   act(s, 'rent', { listingId: e.housing.pension[0].id });
   act(s, 'buyFood', { tier: 1 });
   const start = s.money;
-  for (let i = 0; i < 30; i++) {
-    if (s.meters.fridge < 40) act(s, 'buyFood', { tier: 1 });
-    const r = advance(w, s, 1);
-    s.interrupts = [];
-    assert.strictEqual(s.status, 'alive', `lebt an Tag ${i}`);
-  }
+  const ev = w.econ.events; w.econ.events = { ...(ev || {}), private: { rate: 1e12, poorRate: 1e12 } }; // Zufallsereignisse (Krankheit, Fund) würden die Bilanz verfälschen
+  try {
+    for (let i = 0; i < 30; i++) {
+      if (s.meters.fridge < 40) act(s, 'buyFood', { tier: 1 });
+      const r = advance(w, s, 1);
+      s.interrupts = [];
+      assert.strictEqual(s.status, 'alive', `lebt an Tag ${i}`);
+    }
+  } finally { w.econ.events = ev; }
   assert.ok(s.money > start, `Geld ${start} → ${s.money}`);
   assert.ok(s.meters.health > 60, `Gesundheit ${s.meters.health}`);
   assert.ok(s.meters.wellbeing > 40, `Wohlbefinden ${s.meters.wellbeing}`);
