@@ -38,7 +38,7 @@ function can(role, method, rawPath) {
 /* Admin-Pfade, die ein bestimmtes Konto („user“) oder den Charakter eines Kontos („char“) als Ziel haben */
 const TARGET_PATHS = [
   [/^\/users\/(\d+)(?:\/|$)/, 'user'], [/^\/anticheat\/user\/(\d+)(?:\/|$)/, 'user'], [/^\/community\/user\/(\d+)(?:\/|$)/, 'user'],
-  [/^\/rivalry\/ban\/(\d+)(?:\/|$)/, 'user'], [/^\/characters\/(\d+)(?:\/|$)/, 'char'],
+  [/^\/rivalry\/ban\/(\d+)(?:\/|$)/, 'user'], [/^\/court\/user\/(\d+)(?:\/|$)/, 'user'], [/^\/characters\/(\d+)(?:\/|$)/, 'char'],
 ];
 /** Welches Konto/Charakter betrifft dieser Admin-Pfad? → { kind, id } oder null. */
 function targetOf(rawPath) {
