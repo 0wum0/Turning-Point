@@ -387,6 +387,11 @@ async function botRound(userId, rnd = Math.random) {
     const fair = (iBuy ? pct <= 109 : pct >= 96) && rl >= 0;
     try { await respond(userId, o.id, fair && rnd() < (rl >= 2 ? 0.92 : 0.8)); } catch (_) { /* Partner/Ware nicht mehr passend */ }
   }
+  // Gelegentlich (selten) ein laufender Vertrag vorzeitig gekündigt – ein mildes Vergehen, das Spuren hinterlässt
+  if (rnd() < 0.012) {
+    const act = await db.one("SELECT id FROM supply_contracts WHERE status = 'active' AND days_left > 10 AND (buyer_id = ? OR seller_id = ?) ORDER BY RAND() LIMIT 1", [userId, userId]);
+    if (act) { try { await cancel(userId, act.id); } catch (_) { /* weg */ } return; }
+  }
   // 2) Selten selbst ein Angebot machen (Einkauf der wichtigsten Zutat)
   if (rnd() > 0.2) return;
   const firms = await db.query('SELECT * FROM player_firms WHERE user_id = ? AND abandoned = 0 ORDER BY RAND() LIMIT 1', [userId]);

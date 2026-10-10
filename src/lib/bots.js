@@ -317,6 +317,12 @@ async function handleMarket(bot, P, c) {
   }
 }
 
+/** Gericht: Bots erstatten Anzeige bei bekanntem Täter, nehmen Anwälte, bieten und beantworten Vergleiche – wie Spieler. */
+async function handleCourt(bot) {
+  if (!chance(0.5)) return;
+  try { await require('./court').botRound(bot.id); } catch (_) { /* Geld, Limits */ }
+}
+
 /** Börse: Bots kaufen gelegentlich wenige Anteile unter dem fairen Wert und verkaufen mit Gewinn – zurückhaltend, damit echte Spieler den Kurs prägen. */
 async function handleExchange(bot, P) {
   const ex = require('./exchange'); if (!require('../settings').get('exchange').enabled) return;
@@ -341,7 +347,7 @@ async function session(bot) {
   const state = await lifeCycle(bot.id);
   if (state === 'alive' || state === 'new' || state === 'heir') {
     if (chance(0.55)) await playGameSafe(bot.id, {});
-    await handleLetters(bot, P, c); await handleFriends(bot, P, c); await handleJobs(bot, P, c); await handleVisit(bot, P, c); await handleMarket(bot, P, c); await handleExchange(bot, P); await handleChat(bot, P, bm, c);
+    await handleLetters(bot, P, c); await handleFriends(bot, P, c); await handleJobs(bot, P, c); await handleVisit(bot, P, c); await handleMarket(bot, P, c); await handleExchange(bot, P); await handleCourt(bot); await handleChat(bot, P, bm, c);
   }
   await patch(bot.id, (b) => { b.next = nextIn(7, 38); });
 }
