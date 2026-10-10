@@ -11,6 +11,7 @@ const { yearOf } = require('./calendar');
 const { scale } = require('./economy');
 const { clamp, notice, chronicle, award, isLearned, learn, levelIndex, dailyFlows } = require('./core');
 const { LEVELS } = require('./content');
+const TL = require('./talents');
 
 const cfg = () => settings.get('career');
 const yr = (state) => yearOf(state.day, state.startYear);
@@ -39,12 +40,12 @@ function workerOcc(state) {
 /** Chance einer Bewerbung auf eine bessere Stelle (rein). */
 function applyChance(state, pkey) {
   const c = cfg();
-  const p = c.applyBasePct + c.applyPerLevelPct * levelIndex(state, pkey) + (state.meters.wellbeing - 50) / 5 + (state.partner ? 1 : 0);
+  const p = c.applyBasePct + c.applyPerLevelPct * levelIndex(state, pkey) + (state.meters.wellbeing - 50) / 5 + (state.partner ? 1 : 0) + TL.applyPts(state.talents);
   return clamp(p, 10, 95) / 100;
 }
 function raiseChance(state, occ) {
   const tenure = Math.max(0, state.day - (occ.since || state.day));
-  const p = 0.2 + levelIndex(state, occ.pkey) * 0.05 + Math.min(0.2, tenure / 3650) + (state.meters.wellbeing - 50) / 400 + (state.meters.health - 70) / 600 + (state.meters.rest > 40 ? 0.04 : 0);
+  const p = 0.2 + levelIndex(state, occ.pkey) * 0.05 + Math.min(0.2, tenure / 3650) + (state.meters.wellbeing - 50) / 400 + (state.meters.health - 70) / 600 + (state.meters.rest > 40 ? 0.04 : 0) + TL.raiseBonus(state.talents);
   return clamp(p, 0.08, 0.8);
 }
 
@@ -116,7 +117,7 @@ function install(A, fail, { pay }) {
     const fee = scale(p.base_wage, idx, kind === 'unlock' ? k.unlockFeeDays : k.courseFeeDays);
     if (state.money < fee) fail('Für die Kursgebühr reicht dein Geld nicht.');
     pay(state, fee);
-    const days = kind === 'unlock' ? k.unlockDays : k.courseDays;
+    const days = Math.max(14, Math.round((kind === 'unlock' ? k.unlockDays : k.courseDays) * TL.studyMult(state.talents)));
     c.courses[year] = (c.courses[year] || 0) + 1;
     c.course = { pkey: p.pkey, kind, endDay: state.day + days, days };
     return { msg: kind === 'unlock' ? `Umschulung zum ${p.name} gebucht (${days} Tage).` : `Fortbildung als ${p.name} gebucht (${days} Tage).` };

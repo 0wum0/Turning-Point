@@ -8,6 +8,7 @@ const { addPerson } = require('./state');
 const { yearOf } = require('./calendar');
 const bizMod = require('./business');
 const { SCHOOLS } = require('./content');
+const TL = require('./talents');
 
 const ageOfChild = (state, c) => Math.floor((state.day - c.born) / 365);
 const partnerAge = (state) => Math.floor((state.day - state.partner.born) / 365);
@@ -40,7 +41,7 @@ function partnerDaily(ctx, env) {
   const short = state.children.length && roomsAvailable(state) < roomsNeeded(state);
   let target = 50 + 0.3 * (state.meters.wellbeing - 50) + env.fm.wellbeing * 1.5 + env.h.comfort * 0.8
     + (short ? -12 : 0) + (env.runway > 20 ? 5 : env.runway < 5 ? -10 : 0) + (p.married ? 4 : 0) + (p.giftBoost || 0)
-    + (p.cohabit ? 0 : -14) + (env.hunger ? -20 : 0);
+    + (p.cohabit ? 0 : -14) + (env.hunger ? -20 : 0) + TL.partnerPts(state.talents); // Charme und Bildung halten eine Beziehung lebendig
   target = clamp(target, 0, 100);
   p.sat = clamp(p.sat + (target - p.sat) * 0.12, 0, 100);
   p.giftBoost = Math.max(0, (p.giftBoost || 0) - 1.5);
@@ -106,6 +107,8 @@ function bornChild(ctx, r, opts = {}) {
   const child = {
     id, personId: person.id, name: first, gender, born, cityId: state.cityId, status: 'home', sat: 75, school: null,
     pendingSchool: false, path: null, pendingPath: false, pkey: null, daysLeft: 0, giftBoost: 0, unhappy: 0, coinsGranted: true,
+    // Begabungen: Mittel der Eltern (zur Mitte hin gezogen, mit Mutation); Adoptivkinder haben zufällige Anlagen
+    tal: opts.adopt || !state.talents ? TL.newProfile(rngFor('tal-adopt', state.seed, id)) : TL.fromParents(state.talents, state.partner && state.partner.tal ? state.partner.tal : TL.newProfile(rngFor('tal-other', state.seed, id)), rngFor('tal-child', state.seed, id)),
   };
   if (state.partner && state.partner.linked) { child.shared = true; child.sid = `${state.seed}-${id}`; }
   state.children.push(child);
@@ -130,7 +133,7 @@ function childrenDaily(ctx, env) {
     const age = ageOfChild(state, c);
     // Stimmung
     let target = 55 + env.fm.wellbeing * 1.2 + env.h.comfort * 0.5 + (c.giftBoost || 0) + (short ? -15 : 0) + (env.hunger ? -30 : 0)
-      + (state.housing.type === 'street' ? -25 : 0) + (env.runway < 3 ? -8 : 0);
+      + (state.housing.type === 'street' ? -25 : 0) + (env.runway < 3 ? -8 : 0) + TL.childPts(state.talents);
     c.sat = clamp(c.sat + (clamp(target, 0, 100) - c.sat) * 0.1, 0, 100);
     c.giftBoost = Math.max(0, (c.giftBoost || 0) - 1.5);
     if (c.sat < 40 && state.day - (c.lastWarn || -99) >= 9) {
@@ -144,6 +147,11 @@ function childrenDaily(ctx, env) {
     if (c.sat < 15 && age >= 8) c.unhappy++; else if (c.sat > 30) c.unhappy = 0;
     if (c.unhappy >= 20) { runaway(ctx, c); continue; }
 
+    // Förderprogramm abgeschlossen
+    if (c.foster && c.tal) {
+      const done = TL.fosterDaily(world, state, c);
+      if (done) notice(state, { level: 'good', title: `${c.name} hat das Förderprogramm beendet`, tab: 'family', text: done.gain ? `${(TL.C().labels || {})[done.key] || done.key} +${done.gain}. ${c.name} ist stolz auf sich.` : `${c.name} hat viel Spaß gehabt – in diesem Bereich ist aber kaum mehr zu holen.` });
+    }
     // Schule
     if (age >= 6 && !c.school && !c.path && !c.pendingSchool && !c.schoolDone) { c.school = 'grund'; }
     if (c.school === 'grund' && age >= 10) { c.school = null; c.pendingSchool = true; c.pendingSince = state.day; notice(state, { level: 'info', title: `${c.name}: weiterführende Schule`, tab: 'family', interrupt: true, text: 'Die Grundschule ist zu Ende. Welche Schule soll es werden?', info: ['Die Grundschulzeit ist vorbei.', 'Hauptschule, Realschule oder Gymnasium bestimmen die Möglichkeiten danach – das Gymnasium ermöglicht ein Studium, kostet aber mehr.', 'Wähle unter „Familie“ eine Schulform.'] }); }

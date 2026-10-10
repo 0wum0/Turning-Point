@@ -12,6 +12,7 @@ const biz = require('../src/game/business');
 const goods = require('../src/game/goods');
 const competition = require('../src/game/competition');
 
+settings.DEFAULTS.talente.effects.strength = 0; // exakte Rechnungen: ohne Talentwirkung
 const base = testWorld();
 const extra = seed.ERA_PROFESSIONS.map((p, i) => ({ id: 1000 + i, pkey: p[0], name: p[1], category: p[2], icon: p[3], era_from: p[4], era_to: p[5], base_wage: p[6], training_days: p[7], tuition_day: p[8], academic: p[9], replaces: p[10], lodging: p[11], unlocks: p[12], description: p[13], active: 1 }));
 const w = buildWorld(base.cityList, [...base.professions.values(), ...extra]);
@@ -213,8 +214,8 @@ test('Rahmen des Bundestags begrenzt Zuschlag und Subventionen', () => {
 test('Befugnisse: Ämter und Prüfung der Beschlüsse', () => {
   reset();
   assert.deepStrictEqual(goods.powersOf(w, 0, 1950), []);
-  assert.deepStrictEqual(goods.powersOf(w, 1, 1950).map((p) => p.kind), ['surcharge', 'landzone']);
-  assert.deepStrictEqual(goods.powersOf(w, 5, 1950).map((p) => p.kind), ['vat', 'tariff', 'natsubsidy', 'pricebrake']);
+  assert.deepStrictEqual(goods.powersOf(w, 1, 1950).map((p) => p.kind), ['surcharge', 'landzone', 'edu_city']);
+  assert.deepStrictEqual(goods.powersOf(w, 5, 1950).map((p) => p.kind), ['vat', 'tariff', 'natsubsidy', 'pricebrake', 'edu_nation']);
   const c = city();
   const row = goods.normalizePolicy(w, 2, c, 1950, { kind: 'subsidy', good: 'mehl', value: 15 });
   assert.deepStrictEqual([row.kind, row.good, row.val, row.scope_city], ['subsidy', 'mehl', 15, c.id]);

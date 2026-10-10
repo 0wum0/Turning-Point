@@ -70,7 +70,7 @@ A.apply = ({ world, state, input }) => {
     cur.notice = { endDay: state.day + days, reason: 'switch' };
     return { msg: `Zusage von ${l.employer}! Nach Ablauf der Kündigungsfrist (${days} Tage) wechselst du als ${p.name}.`, level: 'good' };
   }
-  state.occupation = { kind: l.kind, pkey: l.pkey, employer: l.employer, cityId: l.cityId, factor: l.factor, lodging: l.lodging, since: state.day, daysLeft: l.kind === 'training' ? p.training_days : 0 };
+  state.occupation = { kind: l.kind, pkey: l.pkey, employer: l.employer, cityId: l.cityId, factor: l.factor, lodging: l.lodging, since: state.day, daysLeft: l.kind === 'training' ? Math.max(30, Math.round(p.training_days * require('./talents').studyMult(state.talents))) : 0 };
   if (state.housing.type === 'workplace' && !l.lodging) state.housing = { type: 'street', cityId: state.cityId };
   award(state, l.kind === 'training' ? 'training_start' : 'job_start');
   press.story(world, state, l.kind === 'training' ? 'training_start' : 'job_new', { employer: l.employer, job: p.name });
@@ -92,7 +92,7 @@ A.study = ({ world, state, input }) => {
   const idx = world.idx(yr(state));
   const day = scale(p.tuition_day, idx);
   if (state.money < day * 60) fail('Für ein Studium brauchst du einen Puffer von mindestens 60 Tagen Studiengebühren.');
-  state.occupation = { kind: 'study', pkey: p.pkey, employer: 'Universität', cityId: state.cityId, factor: 1, lodging: false, since: state.day, daysLeft: p.training_days };
+  state.occupation = { kind: 'study', pkey: p.pkey, employer: 'Universität', cityId: state.cityId, factor: 1, lodging: false, since: state.day, daysLeft: Math.max(60, Math.round(p.training_days * require('./talents').studyMult(state.talents))) };
   if (state.housing.type === 'workplace') state.housing = { type: 'street', cityId: state.cityId };
   award(state, 'training_start');
   press.story(world, state, 'study_start', { job: p.name });
@@ -375,7 +375,8 @@ A.meet = ({ world, state, input }) => {
   }
   const born = state.day - l.age * 365 - Math.floor(r() * 300);
   const person = addPerson(state, { name: l.name, gender: l.gender, born, role: 'partner', jobs: [l.profession], parents: [] });
-  state.partner = { personId: person.id, name: l.name, gender: l.gender, born, pkey: l.pkey, profession: l.profession, sat: 65, married: false, cohabit: false, giftBoost: 0, unhappyDays: 0, since: state.day };
+  const TT = require('./talents'); const tilt = {}; for (const [k, x] of Object.entries(TT.weightsFor(world, l.pkey))) tilt[k] = Math.round(16 * x); // der Beruf des Partners färbt die Begabungen
+  state.partner = { personId: person.id, name: l.name, gender: l.gender, born, pkey: l.pkey, profession: l.profession, sat: 65, married: false, cohabit: false, giftBoost: 0, unhappyDays: 0, since: state.day, tal: TT.newProfile(rngFor('tal-partner', state.seed, person.id), tilt) };
   const me = state.tree.persons.find((x) => x.id === state.person.id);
   if (me) me.partnerId = person.id;
   award(state, 'partner');
@@ -463,13 +464,13 @@ A.path = ({ world, state, input }) => {
   if (input.kind === 'study') {
     if (!p.academic) fail('Das ist kein Studium.');
     if (c.schoolDone !== 'gym') fail('Ein Studium setzt das Gymnasium voraus.');
-    c.pendingPath = false; c.path = 'study'; c.pkey = p.pkey; c.daysLeft = p.training_days;
+    c.pendingPath = false; c.path = 'study'; c.pkey = p.pkey; c.daysLeft = Math.max(60, Math.round(p.training_days * require('./talents').studyMult(c.tal)));
     return { msg: `${c.name} beginnt das Studium: ${p.name}.` };
   }
   if (input.kind === 'training') {
     if (p.academic) fail('Das ist ein Studium.');
     if (!world.activeProfessions(yr(state)).includes(p)) fail('Diesen Beruf gibt es gerade nicht.');
-    c.pendingPath = false; c.path = 'training'; c.pkey = p.pkey; c.daysLeft = p.training_days || 365;
+    c.pendingPath = false; c.path = 'training'; c.pkey = p.pkey; c.daysLeft = Math.max(30, Math.round((p.training_days || 365) * require('./talents').studyMult(c.tal)));
     return { msg: `${c.name} beginnt eine Ausbildung zum ${p.name}.` };
   }
   fail('Unbekannter Weg.');

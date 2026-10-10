@@ -4,6 +4,7 @@ const { rngFor, int, chance } = require('./rng');
 const { notice, chronicle, learn } = require('./core');
 const { randomFirstName } = require('./content');
 const onboarding = require('./onboarding');
+const T = require('./talents');
 
 const TEXT = (v, max) => String(v == null ? '' : v).replace(/[<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, max);
 
@@ -76,8 +77,10 @@ function createCharacter(world, input, user, { cycle = 1 } = {}) {
   const father = addPerson(state, { name: `${v.parents.fatherName} ${v.last}`, gender: 'm', born: state.person.birthDay - 26 * 365, role: 'parent', jobs: [v.parents.fatherJob], died: -1, note: 'im Krieg umgekommen', status: 'dead' });
   const mother = addPerson(state, { name: `${v.parents.motherName} ${v.last}`, gender: 'f', born: state.person.birthDay - 24 * 365, role: 'parent', jobs: [v.parents.motherJob], died: -1, note: 'im Krieg umgekommen', status: 'dead' });
   father.partnerId = mother.id; mother.partnerId = father.id;
+  father.tal = T.newProfile(rngFor('tal-per', seed, father.id)); mother.tal = T.newProfile(rngFor('tal-per', seed, mother.id));
   const me = addPerson(state, { name: `${v.first} ${v.last}`, gender: v.gender, born: state.person.birthDay, bornCity: v.cityId, role: 'player', gen: 1, parents: [father.id, mother.id], jobs: [] });
   state.person.id = me.id;
+  state.talents = T.fromParents(father.tal, mother.tal, rngFor('tal-me', seed, me.id));
   learn(state, v.prof);
   for (const d of user.meta.degrees || []) learn(state, d);
   me.jobs.push(world.prof(v.prof).name);
@@ -107,6 +110,7 @@ function upgradeState(s) {
   if (!s.career) s.career = { applied: {}, hire: null, lastRaise: -9999, courses: {}, course: null, benefit: null };
   if (!s.press) { s.press = []; s.nextPressId = 0; }
   if (!s.flags) s.flags = {};
+  T.ensureAll(s); // Talente: Altstände bekommen feste, aus dem Spielstand-Samen abgeleitete Profile (idempotent)
   onboarding.ensure(s); // Altstände: Einsteiger-Aufgaben werden beim nächsten Abgleich still nachgeführt (kein Belohnungsregen)
   return s;
 }

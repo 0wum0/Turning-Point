@@ -24,7 +24,7 @@ const META = {
 /** Förderprogramme für Kinder: Schlüssel → Talent. */
 const FOSTER = {
   nachhilfe: { key: 'bildung', label: 'Nachhilfe', icon: 'book-open' },
-  sport: { key: 'kondition', label: 'Sportverein', icon: 'dumbbell' },
+  sport: { key: 'kondition', label: 'Sportverein', icon: 'activity' },
   musik: { key: 'charme', label: 'Musik und Theater', icon: 'music' },
   werkstatt: { key: 'handwerk', label: 'Werkstatt-AG', icon: 'hammer' },
   kaufmann: { key: 'handel', label: 'Kaufmannsladen', icon: 'store' },

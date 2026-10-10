@@ -7,6 +7,7 @@ const { notice, chronicle, isLearned, levelIndex } = require('./core');
 const { LAST } = require('./content');
 const EVD = require('./event-defaults');
 const rep = require('./reputation');
+const TL = require('./talents');
 
 const tiersOf = (world) => world.econ.companies.tiers;
 const cityMult = (city) => 0.7 + 0.15 * (city ? city.size_tier : 2);
@@ -55,6 +56,7 @@ function companyFlows(world, state, c, year) {
   const econ = world.econ.companies;
   const t = tiersOf(world)[c.tier];
   if (c.abandoned) return { income: 0, wages: 0, upkeep: 0, profit: 0, efficiency: 0, needed: 0, inputs: 0, vat: 0, contractIncome: 0, profitAll: 0 };
+  TL.syncTeam(world, state, c); // Talente: benannte Mitarbeiter passend zur Kopfzahl (deterministisch aus dem Spielstand-Samen)
   const needed = staffNeeded(world, c);
   const ownerHere = state.occupation && state.occupation.ownCompanyId === c.id ? 1 : 0;
   const ps = c.playerStaff || [];
@@ -63,17 +65,17 @@ function companyFlows(world, state, c, year) {
   const comp = require('./competition').info(world, c.cityId, c.pkey, c.rooms);
   const hit = c.hit && state.day < c.hit.until ? c.hit.factor : 1; const outage = c.outageUntil && state.day < c.outageUntil ? 0 : 1;
   const ce = require('./cityecon'); // Stadtwirtschaft: Sektor-Index (Umsatz, abgeschwächt) und örtliches Lohnniveau; ohne Stadtindizes = 1
-  const raw = c.rooms * t.incomePerRoom * idx * cityMult(world.city(c.cityId)) * eff * marketPhase(year).factor * strike * comp.factor * hit * outage * ce.revenueMult(world, c.cityId, c.pkey, year);
+  const goods = require('./goods'); const gw = goods.W(); const ef = goods.effectsFor(world, c.cityId);
+  const tfx = TL.firmEffects(world, state, c, ef.edu); // Talente: Teamqualität → Umsatz (±12 %), Lieferverlässlichkeit, Lohnsumme
+  const raw = tfx.rev * c.rooms * t.incomePerRoom * idx * cityMult(world.city(c.cityId)) * eff * marketPhase(year).factor * strike * comp.factor * hit * outage * ce.revenueMult(world, c.cityId, c.pkey, year);
   // Warenkreislauf: Rezept, Versorgung, Verträge, Politik (siehe goods.js). Ohne Rezeptzutaten/aus: identisch zur früheren Rechnung.
-  const goods = require('./goods'); const gw = goods.W();
   const ar = goods.activeRecipe(world, c.pkey, year, c.cityId);
-  const ef = goods.effectsFor(world, c.cityId);
   const rPot = Math.round(raw * ar.mult * goods.outputFactor(ar, year, ef));
   const buy = goods.buyPlan(world, state, c, year, rPot, ar, gw);
   const rAct = Math.round(rPot * buy.factor);
-  const sell = goods.sellPlan(world, state, c, year, rAct, ar, gw);
+  const sell = goods.sellPlan(world, state, c, year, rAct, ar, gw, tfx.rel);
   const income = Math.round(rAct * sell.npcShare);
-  const wages = Math.round((c.staff * econ.staffWage * idx + (c.manager ? econ.managerWage * idx : 0)) * ce.wageMult(c.cityId, year) + ps.reduce((s, x) => s + x.wage * idx, 0) + (c.playerManager ? c.playerManager.wage * idx : 0));
+  const wages = Math.round(((tfx.wageUnits == null ? c.staff : tfx.wageUnits) * econ.staffWage * idx + (c.manager ? econ.managerWage * idx : 0)) * ce.wageMult(c.cityId, year) + ps.reduce((s, x) => s + x.wage * idx, 0) + (c.playerManager ? c.playerManager.wage * idx : 0));
   const upkeep = Math.round((companyValue(world, state, c, year) * econ.upkeepYearPct) / 100 / 365) + (c.security ? Math.round(c.rooms * t.incomePerRoom * idx * 0.04) : 0);
   const inputs = buy.cost;
   const vat = Math.round((ef.vat / 100) * Math.max(0, income - inputs));
@@ -163,6 +165,7 @@ function businessDaily(ctx) {
       }
     }
     if (c.abandoned) continue;
+    for (const n of TL.firmDaily(world, state, c, { offline: ctx.offline })) notice(state, { tab: 'business', ...n });
     if (!ctx.offline) bizEvents(ctx, c, year);
     const f = companyFlows(world, state, c, year);
     c.cash += f.profit;

@@ -199,7 +199,8 @@ function stand(state) {
 function queue(state, kind, delta, reason, ref, extra) {
   if (!state || !state.pending || !cfg().enabled) return;
   const R = REASONS[reason]; const k = isKind(kind) ? kind : R && R.kind; if (!k) return;
-  const d = delta != null ? Number(delta) : R && R.d; if (!Number.isFinite(d) || d === 0) return;
+  let d = delta != null ? Number(delta) : R && R.d; if (!Number.isFinite(d) || d === 0) return;
+  if (d > 0 && state.talents) d *= require('./talents').repGain(state.talents); // Charme: Zuwächse an Ansehen um bis zu 15 % größer/kleiner
   // Anfänger-Schutz: In den ersten Spieltagen kostet Pech (leeres Konto, verlorene Wohnung) noch kein Ansehen
   if (d < 0 && k !== 'scandal' && Number(state.day) < (Number(settings.get('game.newbie_protect_days')) || 0)) return;
   const q = state.pending.rep || (state.pending.rep = []);
@@ -248,7 +249,7 @@ function policyMood(kind, val) {
   const v = Number(val) || 0;
   switch (kind) {
     case 'surcharge': case 'vat': case 'tariff': case 'pricebrake': return v < 0 ? 1 : v > 0 ? -1 : 0;
-    case 'rentcap': case 'landzone': case 'housing': return 1;
+    case 'rentcap': case 'landzone': case 'housing': case 'edu_city': case 'edu_region': case 'edu_nation': return 1;
     default: return 0;
   }
 }

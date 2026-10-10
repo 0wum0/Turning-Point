@@ -14,13 +14,14 @@ const { familyDaily, endLife, ageOfChild } = require('./family');
 const { businessDaily } = require('./business');
 const society = require('./society');
 const rep = require('./reputation');
+const TL = require('./talents');
 
 /** Lebenserwartung (Tage). Medizin wird ab ~1955 besser, gesunder Lebensstil gibt Jahre. */
 function lifespanDays(state, year) {
   const era = clamp((year - 1955) / 45, 0, 1) * 10;
   const avg = state.life.healthDays ? state.life.healthSum / state.life.healthDays : 70;
   const style = clamp((avg - 60) / 10, -3, 4);
-  return Math.round((state.life.baseYears + era + style) * 365 + state.life.extraDays);
+  return Math.round((state.life.baseYears + era + style) * 365 + state.life.extraDays + TL.lifeDays(state.talents));
 }
 
 function advance(world, state, n, { mode = 'online' } = {}) {
@@ -138,6 +139,7 @@ function dayStep(ctx) {
   if (occKind === 'work') restDelta -= 18; else if (occKind === 'training') restDelta -= 16; else if (occKind === 'study') restDelta -= 10;
   { const oe = society.officeEffects(world, state, year); restDelta -= oe.rest; state.mods.officeHealth = oe.health; }
   restDelta -= kidsAtHome(state).filter((c) => ageOfChild(state, c) < 18).length * 1.2;
+  restDelta += TL.restPts(state.talents); // Kondition: etwas mehr Erholung
   m.rest = clamp(m.rest + restDelta, 0, 100);
   if (m.rest === 0) state.restZero++; else state.restZero = 0;
 
@@ -162,7 +164,7 @@ function dayStep(ctx) {
     if (ctx.offline) m.health = Math.max(25, m.health - 4);
     else m.health -= 100 / settings.get('game.street_survival_days') + 1;
   } else {
-    const ht = 55 + 0.22 * m.wellbeing + 0.12 * m.rest + fm.health + eh.health * 3 + medicine - agePenalty - (state.life.illness ? 25 : 0);
+    const ht = 55 + 0.22 * m.wellbeing + 0.12 * m.rest + fm.health + eh.health * 3 + medicine - agePenalty - (state.life.illness ? 25 : 0) + TL.healthPts(state.talents);
     m.health += (clamp(ht, 0, 100) - m.health) * 0.07;
   }
   if (state.hunger > 0) m.health -= ctx.offline ? 2 : 6;
@@ -368,6 +370,7 @@ function newYear(ctx, year, econ) {
     });
     if (gained.length || lost.length) { chronicle(state, `Berufswandel ${year}: ${[...gained, ...lost.map((x) => x + ' (entfällt)')].join(', ')}.`, 'epoch'); press.story(world, state, 'epoch', { change: [...gained, ...lost.map((x) => x + ' (entfällt)')].join(', ') }); }
   }
+  for (const n of TL.yearly(world, state)) notice(state, { tab: 'business', ...n });
   if (year === 2002) {
     notice(state, { level: 'info', title: 'Das Internet ersetzt die Zeitung', text: 'Stellen, Wohnungen, Partnerbörsen und Nachrichten findest du ab jetzt im World Wide Web.', info: ['Der Informationskanal wechselt von der Zeitung zum Web.', 'Die Inhalte bleiben ähnlich, nur das Medium ändert sich.', 'Nutze den Reiter „Web“.'], tab: 'newspaper' });
   }

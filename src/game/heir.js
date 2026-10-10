@@ -62,6 +62,8 @@ function createHeirState(world, old, childId, bequestIds) {
     fx: { coins: 0, efs: 0, influence: 0 },
   };
   for (const k of c.skills || []) learn(state, k);
+  state.talents = require('./talents').clone(c.tal) || null; // der Erbe behält seine Begabungen (fehlt das Profil, ergänzt upgradeState)
+  if (state.talents) { const T = require('./talents'); const w = c.pkey ? T.fitFor(world, state.talents, c.pkey) : 0; if (c.pkey && w >= 65 && state.skills.learned.includes(c.pkey)) state.skills.days[c.pkey] = 180; } // Begabung für den erlernten Beruf: Vorsprung
   const me = state.tree.persons.find((x) => x.id === c.personId);
   if (me) { me.role = 'player'; me.gen = state.generation; me.status = 'alive'; me.jobs = me.jobs || []; }
   // Wohnsitz: größtes geerbtes Haus in der Heimatstadt, sonst Pension

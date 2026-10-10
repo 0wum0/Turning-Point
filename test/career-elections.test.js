@@ -138,13 +138,13 @@ test('Weiterbildung: Gebühr, Dauer, Jahreslimit; Fortbildung hebt Erfahrung, Um
   act(s, 'course', { pkey: 'baecker', kind: 'skill' });
   assert.ok(s.money < m0, 'Gebühr');
   assert.throws(() => act(s, 'course', { pkey: 'baecker', kind: 'skill' }), /bereits einen Kurs/);
-  pass(s, k.courseDays + 1);
+  pass(s, k.courseDays * 2 + 1); // Bildung verkürzt oder verlängert den Kurs um bis zu 20 %
   assert.ok((s.skills.days.baecker || 0) >= before + k.skillBonusDays);
   const other = w.activeProfessions(1945).find((p) => !p.academic && p.pkey !== 'helfer' && !s.skills.learned.includes(p.pkey));
   assert.ok(other);
   act(s, 'course', { pkey: other.pkey, kind: 'unlock' });
   assert.throws(() => act(s, 'course', { pkey: 'baecker', kind: 'skill' }), /bereits einen Kurs/);
-  pass(s, k.unlockDays + 1);
+  pass(s, k.unlockDays * 2 + 1);
   assert.ok(s.skills.learned.includes(other.pkey));
   // Jahreslimit
   s.career.course = null; s.career.courses[1945] = k.coursesPerYear; s.day = 0;

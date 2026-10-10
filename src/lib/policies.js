@@ -39,6 +39,9 @@ function describe(world, r) {
     case 'landzone': return `Baulandausweisung in ${city ? city.name : 'der Stadt'}: ${r.val} % mehr Wohnungsangebot`;
     case 'housing': return `Wohnungsbauprogramm in ${r.region || 'der Region'}: ${r.val} % mehr Wohnungsangebot`;
     case 'pricebrake': return `${r.val < 0 ? 'Preisbremse' : 'Inflationsziel'}: Preisniveau ${sign(r.val)} Punkte`;
+    case 'edu_city': return `Schulbudget in ${city ? city.name : 'der Stadt'}: ${({ school: 'Schulen', library: 'Bibliothek', sport: 'Sportstätten' })[r.good] || r.good}, Stufe ${r.val}`;
+    case 'edu_region': return `Bildungsprogramm in ${r.region || 'der Region'}: Stufe ${r.val} (Kurse günstiger)`;
+    case 'edu_nation': return `Berufsbildungsgesetz: Stufe ${r.val} (Lehrlingslohn teilweise vom Staat bezahlt)`;
     case 'natsubsidy': return `Branchen-Subvention im Land: ${r.val} % Zuschuss auf ${g ? g.name : r.good}`;
     default: return r.kind;
   }

@@ -28,7 +28,7 @@ function winChance(world, state, userInfluence, idx) {
   const year = yearOf(state.day, state.startYear);
   const rich = state.money > scale(o.campaign, world.idx(year)) * 3 ? 0.06 : 0;
   const base = 0.32 - idx * 0.04;
-  const p = base + userInfluence / 120 + (state.meters.wellbeing - 50) / 400 + rich + Math.min(0.15, completed(state, idx) * 0.05) + (state.partner ? 0.02 : 0);
+  const p = base + userInfluence / 120 + (state.meters.wellbeing - 50) / 400 + rich + Math.min(0.15, completed(state, idx) * 0.05) + (state.partner ? 0.02 : 0) + require('./talents').chanceBonus(state.talents);
   return clamp(p, 0.08, 0.9);
 }
 

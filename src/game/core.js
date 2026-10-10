@@ -117,7 +117,8 @@ function dailyFlows(world, state) {
         inc.wage = scale(occ.wage || 0, idx); // vereinbarter Lohn beim Spielerbetrieb
       } else if (occ.kind === 'work') {
         const lv = LEVELS[levelIndex(state, occ.pkey)].mult;
-        inc.wage = scale(p.base_wage, idx, (occ.factor || 1) * lv * require('./career').payMult(state, occ));
+        const TL = require('./talents');
+        inc.wage = scale(p.base_wage, idx, (occ.factor || 1) * lv * require('./career').payMult(state, occ) * TL.jobWageMult(state.talents, TL.weightsFor(world, occ.pkey))); // Begabung für den Beruf: höchstens ±6 %
       } else if (occ.kind === 'training') {
         inc.wage = scale(p.base_wage, idx, 0.4 * (occ.factor || 1));
       } else if (occ.kind === 'study') {

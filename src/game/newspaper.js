@@ -53,10 +53,11 @@ function jobListings(world, state, city, week) {
     const kind = isLearned(state, p.pkey) ? 'work' : 'training';
     const lodging = !!p.lodging && chance(r, Math.min(0.8, Math.max(0.1, 0.8 - (year - 1945) / 60)));
     const lv = LEVELS[levelIndex(state, p.pkey)].mult;
-    const wage = Math.round((kind === 'work' ? scale(p.base_wage, idx, factor * lv) : scale(p.base_wage, idx, factor * 0.4)) * wm);
+    const TL = require('./talents');
+    const wage = Math.round((kind === 'work' ? scale(p.base_wage, idx, factor * lv * TL.jobWageMult(state.talents, TL.weightsFor(world, p.pkey))) : scale(p.base_wage, idx, factor * 0.4)) * wm);
     return {
       id: `job:${city.id}:${week}:${i}`, type: 'job', kind, pkey: p.pkey, profession: p.name, icon: p.icon, employer: nameJob(r, p, year, txt(world)),
-      factor, lodging, wage, trainingDays: kind === 'training' ? p.training_days : 0, cityId: city.id,
+      factor, lodging, wage, trainingDays: kind === 'training' ? Math.max(30, Math.round(p.training_days * require('./talents').studyMult(state.talents))) : 0, cityId: city.id,
     };
   });
   return ls;

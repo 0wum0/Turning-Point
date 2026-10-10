@@ -229,7 +229,7 @@ function linkPartner(world, state, otherState, otherStat, { userId, coupleId, he
   const ageDays = otherState.day - otherState.person.birthDay; const born = state.day - ageDays;
   const profName = (world.prof(otherStat.pkey) || {}).name || otherStat.occupation || 'ohne Beruf';
   const person = addPerson(state, { name: otherStat.name, gender: otherState.person.gender, born, role: 'partner', jobs: [profName], parents: [] });
-  state.partner = { personId: person.id, name: otherStat.name, gender: otherState.person.gender, born, pkey: otherStat.pkey || null, profession: profName, sat: 70, married: !!married, cohabit: false, giftBoost: 0, unhappyDays: 0, since: state.day, linked: true, userId, coupleId, head };
+  state.partner = { personId: person.id, name: otherStat.name, gender: otherState.person.gender, born, pkey: otherStat.pkey || null, profession: profName, sat: 70, married: !!married, cohabit: false, giftBoost: 0, unhappyDays: 0, since: state.day, linked: true, userId, coupleId, head , tal: require('../game/talents').clone(otherState.talents) || undefined };
   const me = state.tree.persons.find((x) => x.id === state.person.id); if (me) me.partnerId = person.id;
 }
 
