@@ -43,8 +43,8 @@ const EVEN = { handwerk: 1 / 6, handel: 1 / 6, fuehrung: 1 / 6, bildung: 1 / 6, 
 
 const num = (x, d) => (Number.isFinite(Number(x)) ? Number(x) : d);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-const r1 = (x) => Math.round(x * 10) / 10;
-const r2 = (x) => Math.round(x * 100) / 100;
+const r1 = (x) => Math.round(x * 10) / 10 + 0;
+const r2 = (x) => Math.round(x * 100) / 100 + 0;
 const C = () => { const c = settings.get('talente') || {}; return c; };
 const enabled = () => C().enabled !== false;
 const E = () => { const c = C(); const e = c.effects || {}; return { s: enabled() ? clamp(num(e.strength, 1), 0, 2) : 0, e }; };
@@ -168,7 +168,7 @@ function studyMult(p) { return r2(clamp(1 - (eff('studyPct', 20) / 100) * norm(v
 function healthPts(p) { return r1(eff('healthPts', 4) * norm(val(p, 'kondition'))); }
 function restPts(p) { return r1(eff('restPts', 1) * norm(val(p, 'kondition'))); }
 /** Lebenserwartung in Tagen (± wenige Jahre). */
-function lifeDays(p) { return Math.round(eff('lifeDaysPerPt', 11) * (val(p, 'kondition') - 50)); }
+function lifeDays(p) { return Math.round(eff('lifeDaysPerPt', 11) * (val(p, 'kondition') - 50)) + 0; }
 /** Zufriedenheit des Partners: Charme und Bildung der Spielfigur (Punkte im Zielwert). */
 function partnerPts(p) { return r1(eff('partnerPts', 5) * norm((val(p, 'charme') * 0.6 + val(p, 'bildung') * 0.4))); }
 /** Kinderzufriedenheit durch Charme/Bildung der Eltern (Mittel beider Eltern, soweit bekannt). */

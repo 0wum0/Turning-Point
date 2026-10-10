@@ -101,6 +101,27 @@ function invariants(s, prev) {
       need(Array.isArray(r.c) && r.c.length === 5 && r.c.every((x) => Number.isFinite(x) && x >= -40 && x <= 100), 'Ansehen-Bestandteile');
     }
   }
+  { // Talente: Profile endlich, im Bereich, unter der Obergrenze; Team nie größer als die Belegschaft; Wirkungen gedeckelt
+    const TLN = require('../src/game/talents'); const fl = TLN.C().floor;
+    const prof = (p, who) => {
+      if (!p) { bad.push(`Talente fehlen: ${who}`); return; }
+      need(TLN.validProfile(p), `Talentprofil ungültig: ${who}`);
+      if (!TLN.validProfile(p)) return;
+      p.v.forEach((x, i) => { need(Number.isInteger(x) && x >= fl && x <= 100, `Talent ${who}[${i}] = ${x}`); need(x <= TLN.capAt(p, i), `Talent ${who}[${i}] über Obergrenze`); });
+    };
+    prof(s.talents, 'Spielfigur'); if (s.partner) prof(s.partner.tal, 'Partner'); for (const c of s.children) prof(c.tal, `Kind ${c.id}`);
+    for (const c of s.companies) {
+      const team = c.team || []; need(team.length <= c.staff, `Team ${team.length} > staff ${c.staff}`);
+      need(dupIds(team) == null, 'doppelte Mitarbeiter-Id');
+      for (const m of team) { prof(m, `Mitarbeiter ${m.id}`); need(Number.isFinite(m.w) && m.w >= 0.5 && m.w <= 1.5, `Mitarbeiter-Lohnfaktor ${m.w}`); }
+      if (!c.abandoned) { const fx = TLN.firmEffects(world, s, c, TLN.ZERO_EDU); need(fx.rev >= 0.85 && fx.rev <= 1.15 && fx.rel >= 0.9 && fx.rel <= 1.1 && fx.q >= 0 && fx.q <= 100, `Team-Wirkung ${JSON.stringify({ q: fx.q, rev: fx.rev, rel: fx.rel })}`); }
+    }
+    if (s.talents) {
+      const E = [TLN.healthPts(s.talents), TLN.partnerPts(s.talents), TLN.childPts(s.talents), TLN.applyPts(s.talents)];
+      need(E.every(Number.isFinite) && Math.abs(E[0]) <= 8 && Math.abs(E[1]) <= 10 && Math.abs(E[2]) <= 6 && Math.abs(E[3]) <= 10, `Talentwirkung ${E}`);
+      need(TLN.repGain(s.talents) >= 0.85 && TLN.repGain(s.talents) <= 1.15 && TLN.studyMult(s.talents) >= 0.75 && TLN.studyMult(s.talents) <= 1.25 && TLN.voteWeight(s.talents) >= 0.94 && TLN.voteWeight(s.talents) <= 1.06, 'Talentwirkung außerhalb');
+    }
+  }
   const h = s.housing;
   if (h.type === 'own') need(s.properties.some((p) => p.id === h.propertyId), 'Wohnsitz ohne Immobilie');
   if (s.occupation && s.occupation.ownCompanyId) need(s.companies.some((c) => c.id === s.occupation.ownCompanyId), 'Beruf ohne Firma');
@@ -151,6 +172,12 @@ function inputFor0(name, s, r, user) {
     case 'bizWork': case 'bizSell': case 'bizReactivate': case 'bizExpand': case 'bizUpgrade': return { id: maybe(comp()) };
     case 'bizSupply': return { id: maybe(comp()), on: r() < 0.5 };
     case 'bizHire': return { id: maybe(comp()), delta: maybe(r() < 0.5 ? 1 : -1) };
+    case 'bizHireApplicant': case 'bizFire': case 'bizTrain': case 'bizRaise': {
+      const c = s.companies.length ? pickOf(r, s.companies) : null; const T = require('../src/game/talents');
+      const cand = c && !c.abandoned ? (T.applicants(world, s, c).staff.concat(T.applicants(world, s, c).apprentices)) : [];
+      return { id: maybe(c ? c.id : 1), cand: maybe(cand.length ? pickOf(r, cand).id : 'x'), mid: maybe(c && c.team && c.team.length ? pickOf(r, c.team).id : 1), key: maybe(pickOf(r, T.KEYS.concat(['x']))) };
+    }
+    case 'foster': return { childId: maybe(kid()), focus: maybe(pickOf(r, ['nachhilfe', 'sport', 'musik', 'werkstatt', 'kaufmann', 'jugend', 'x'])) };
     case 'bizCollect': return { id: maybe(comp()) };
     case 'runOffice': return { idx: maybe(Math.floor(r() * 4)) };
     case 'lotto': return { tickets: maybe(1 + Math.floor(r() * 25)) };
@@ -186,7 +213,8 @@ function smartMoves(s, r, user) {
   if (s.money > 2e6 && r() < 0.3) { const l = ed.biz[0]; if (l) mv.push(['buyBiz', { listingId: l.id }]); }
   if (s.money > 2e6 && r() < 0.3) mv.push(['foundBiz', inputFor0('foundBiz', s, r, null)]);
   if (s.properties.length) { const p = pickOf(r, s.properties); mv.push(['moveIn', { propertyId: p.id }], ['letOn', { propertyId: p.id, mult: 1 }], ['maintain', { propertyId: p.id }], ['sell', { propertyId: p.id }]); }
-  if (s.companies.length) { const c = pickOf(r, s.companies); mv.push(['bizHire', { id: c.id, delta: 1 }], ['bizManager', { id: c.id, on: true }], ['bizCollect', { id: 'all' }], ['bizWork', { id: c.id }], ['bizSell', { id: c.id }]); }
+  for (const c of s.children) if (c.status === 'home' && !c.foster && r() < 0.3) mv.push(['foster', { childId: c.id, focus: pickOf(r, ['nachhilfe', 'sport', 'musik', 'werkstatt', 'kaufmann', 'jugend']) }]);
+  if (s.companies.length) { const c = pickOf(r, s.companies); mv.push(['bizHireApplicant', inputFor0('bizHireApplicant', s, r, null)], ['bizTrain', inputFor0('bizTrain', s, r, null)], ['bizHire', { id: c.id, delta: 1 }], ['bizManager', { id: c.id, on: true }], ['bizCollect', { id: 'all' }], ['bizWork', { id: c.id }], ['bizSell', { id: c.id }]); }
   if (r() < 0.2) mv.push(['loanTake', { amount: Math.round(s.money * 0.5) + 1e5, years: 10 }]);
   if (s.loans && s.loans.length && r() < 0.3) mv.push(['loanRepay', { id: s.loans[0].id, all: true }]);
   void user;
