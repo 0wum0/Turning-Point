@@ -243,6 +243,8 @@ let POL = emptyPolicy();
 const scarcity = (cityId, key) => SCARCITY.get(`${cityId}|${key}`) || 1;
 function setScarcity(map) { SCARCITY = map instanceof Map ? map : new Map(); }
 function setPolicies(pol) { POL = pol || emptyPolicy(); }
+let EXTRA_LEVY = new Map(); // zusätzliche Umlage je Stadt (z. B. Polizeibudget, src/lib/court-policy.js)
+function setExtraLevy(m) { EXTRA_LEVY = m instanceof Map ? m : new Map(); }
 const currentPolicies = () => POL;
 
 /**
@@ -317,7 +319,7 @@ function effectsFor(world, cityId) {
   const c = POL.city.get(cityId); const r = POL.region.get(region); const n = POL.nation;
   const fr = frame();
   if (c) out.surcharge = Math.max(clampN(P.surchargeMin, -2, -20, 0), Math.min(fr.maxSurcharge, c.surcharge || 0));
-  out.levy = (c ? c.levy : 0) + (r ? r.levy : 0) + n.levy;
+  out.levy = (c ? c.levy : 0) + (r ? r.levy : 0) + n.levy + (EXTRA_LEVY.get(cityId) || 0);
   out.vat = Math.max(clampN(P.vatMin, -3, -20, 0), Math.min(clampN(P.vatMax, 5, 0, 30), n.vat || 0));
   out.tariff = Math.max(clampN(P.tariffMin, -10, -50, 0), Math.min(clampN(P.tariffMax, 20, 0, 100), n.tariff || 0));
   for (const [g, v] of Object.entries(n.subsidy)) out.subsidy[g] = v;
@@ -562,6 +564,6 @@ const CHAINS = [
 
 module.exports = {
   GOODS, KINDS, POWERS, CHAINS, REC, enabled, W, good, inEra, priceReal, importShare, recipeFor, activeRecipe,
-  setScarcity, computeScarcity, scarcity, scarcityLabel, setPolicies, buildPolicies, currentPolicies, frame, effectsFor, price, priceList,
+  setScarcity, computeScarcity, scarcity, scarcityLabel, setPolicies, setExtraLevy, buildPolicies, currentPolicies, frame, effectsFor, price, priceList,
   outputFactor, buyPlan, sellPlan, powersOf, normalizePolicy, previewPolicy, tradable,
 };

@@ -78,6 +78,10 @@ const REASONS = {
   bankrupt: { kind: 'scandal', d: 30, cap: 60, label: 'Pleite gegangen', why: 'Du bist zahlungsunfähig geworden. Das zieht einen langen Schatten.' },
   evict: { kind: 'scandal', d: 3, cap: 9, label: 'Mieter vor die Tür gesetzt', why: 'Du hast einen Mieter vor die Tür gesetzt. Das schadet dem Ruf als Vermieter.' },
   flagged: { kind: 'scandal', d: 4, cap: 20, label: 'Auffälliges Verhalten gemeldet', why: 'Dein Verhalten ist aufgefallen (zum Beispiel verdächtige Geschäfte unter Konten mit gleicher Internetverbindung).' },
+  court_convicted: { kind: 'scandal', d: 8, cap: 40, label: 'Vom Gericht verurteilt', why: 'Du wurdest von einem Gericht schuldig gesprochen. Das spricht sich herum.' },
+  court_false: { kind: 'scandal', d: 5, cap: 10, label: 'Haltlose Anzeige', why: 'Deine Anzeige hat sich als haltlos erwiesen. Wer andere zu Unrecht beschuldigt, verliert an Ansehen.' },
+  court_fair: { kind: 'rel', d: 1.5, cap: 4, label: 'Vor Gericht freigesprochen', why: 'Ein Gericht hat dich freigesprochen. Dein guter Name bleibt erhalten.' },
+  court_amnesty: { kind: 'office', d: -3, cap: 6, label: 'Amnestie erlassen', why: 'Eine Amnestie ist umstritten: Opfer fühlen sich übergangen.' },
   admin: { kind: 'rel', d: 0, cap: 100, label: 'Von der Spielleitung angepasst', why: 'Die Spielleitung hat deinen Ruf angepasst.' },
 };
 
