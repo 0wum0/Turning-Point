@@ -28,6 +28,7 @@ const JSON_OUT = argv.includes('--json');
 const CITY = String(arg('city', 'live'));
 const REP = arg('rep', 'on') !== 'off'; // Ruf und Ansehen (src/game/reputation.js) mitrechnen: --rep off für die Werte ohne Ansehen
 const OTHERS = Number(arg('others', 12)); // andere lebende Charaktere in der Stadt des Spielers
+if (arg('seasons', 'on') === 'off') require('../src/settings').DEFAULTS.jahreszeiten.enabled = false; // --seasons off: ohne Jahreszeiten, Ernte und Seuchen (Vergleichswert)
 const cityecon = require('../src/game/cityecon');
 const CE_STATE = new Map();
 

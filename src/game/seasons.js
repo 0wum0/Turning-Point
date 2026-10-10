@@ -44,10 +44,10 @@ const circ = (a, b) => { const d = Math.abs(a - b) % 365; return Math.min(d, 365
 const gauss = (doy, c, sigma) => Math.exp(-0.5 * (circ(doy, c) / sigma) ** 2);
 
 const SEASONS = [
-  { key: 'winter', idx: 0, icon: 'cloud-hail', tip: 'Heizen kostet mehr, Gastro und Ausflüge sind ruhiger, Erkältungen häufen sich.' },
-  { key: 'fruehling', idx: 1, icon: 'flower-2', tip: 'Es wird wärmer: Bau und Ausflüge ziehen an, die Heizkosten sinken.' },
-  { key: 'sommer', idx: 2, icon: 'sun-medium', tip: 'Gastro, Hotel und Ausflug laufen am besten; Heizen ist kaum nötig, du erholst dich leichter.' },
-  { key: 'herbst', idx: 3, icon: 'wheat', tip: 'Erntezeit: Die Ernte bestimmt die Lebensmittelpreise. Vor dem Winter lohnt sich ein Polster.' },
+  { key: 'winter', idx: 0, icon: 'cloud-hail', tip: 'Heizen kostet mehr, Gastro und Ausflüge sind ruhiger, Erkältungen häufen sich.', notice: 'Heizen kostet mehr, Gastro und Ausflüge sind ruhiger, Erkältungen häufen sich. Lege ein Polster für die Heizkosten zurück.' },
+  { key: 'fruehling', idx: 1, icon: 'flower-2', tip: 'Es wird wärmer: Bau und Ausflüge ziehen an, die Heizkosten sinken.', notice: 'Es wird wärmer: Bau und Ausflüge ziehen an, die Heizkosten sinken.' },
+  { key: 'sommer', idx: 2, icon: 'sun-medium', tip: 'Gastro, Hotel und Ausflug laufen am besten; Heizen ist kaum nötig, du erholst dich leichter.', notice: 'Gastro, Hotel und Ausflug laufen am besten; Heizen ist kaum nötig, du erholst dich leichter.' },
+  { key: 'herbst', idx: 3, icon: 'wheat', tip: 'Erntezeit: Die Ernte bestimmt die Lebensmittelpreise. Vor dem Winter lohnt sich ein Polster.', notice: 'Erntezeit: Die Ernte bestimmt die Lebensmittelpreise. Vor dem Winter lohnt sich ein Polster. Der Erntebericht erscheint in der Zeitung.' },
 ];
 const monthOfDoy = (doy) => dateOf(clamp(Math.floor(doy), 0, 364), 1945).month;
 /** Jahreszeit eines Tages im Jahr (Dezember bis Februar = Winter …). */

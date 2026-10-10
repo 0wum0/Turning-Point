@@ -265,8 +265,7 @@ function seasonNotes(ctx, notes, date, year) {
   const first = { 334: 0, 59: 1, 151: 2, 243: 3 }[date.doy]; // 1. Dezember / 1. März / 1. Juni / 1. September
   if (first !== undefined && SE.C().seasons) {
     const S = SE.SEASONS[first]; const nm = SE.C().labels[S.key] || S.key;
-    const extra = first === 0 ? ' Lege ein Polster für die Heizkosten zurück.' : first === 3 ? ' Der Erntebericht erscheint in der Zeitung.' : '';
-    notes.push({ level: first === 0 ? 'warn' : 'info', title: `Jahreszeit: ${nm} beginnt`, tab: 'overview', text: `${S.tip}${extra}` });
+    notes.push({ level: first === 0 ? 'warn' : 'info', title: `Jahreszeit: ${nm} beginnt`, tab: 'overview', text: S.notice });
   }
   if (date.doy === 262 && HV.C().on) {
     const city = world.city(state.cityId); const hr = HV.report(year, city ? city.state : null);

@@ -19,7 +19,8 @@ function seasonNews(world, state, city) {
   if (HV.C().on && doy >= 262 && doy <= 330) {
     const r = HV.report(year, region);
     const tail = r.yield < 0.9 ? 'Lebensmittel werden teurer, Landwirte verdienen weniger. Die Politik kann mit einer Ernte- und Dürrehilfe gegensteuern.' : r.yield >= 1.07 ? 'Lebensmittel bleiben günstig, Landwirte verdienen mehr.' : 'Die Preise bleiben stabil.';
-    out.push(item(`Erntebericht ${year}: ${r.label}`, `Die Ernte in ${region} fällt ${r.label.replace(/^(\w)/, (m) => m.toLowerCase())} aus (${Math.round(r.yield * 100)} % eines Normaljahres). ${tail}`, 'Wirtschaft', r.yield < 0.8 || r.yield > 1.15));
+    const pct = Math.round(r.yield * 100);
+    out.push(item(`Erntebericht ${year}: ${r.label}`, `Die Ernte in ${region} fällt so aus: ${r.label} (${pct} % eines Normaljahres). ${tail}`, 'Wirtschaft', r.yield < 0.8 || r.yield > 1.15));
     if (r.flood) out.push(item(`Hochwasser in ${region}`, `Die Flut hat in ${region} Felder und Keller überschwemmt. Die Ernte leidet, die Hilfe läuft an.`, 'Lokales', true));
   }
   const w = HV.weatherOf(year);
@@ -31,7 +32,10 @@ function seasonNews(world, state, city) {
   if (wv) {
     const lvl = wv.I >= 0.6 ? 'hoch' : wv.I >= 0.25 ? 'mittel' : wv.I > 0.02 ? 'gering' : null;
     if (!lvl) out.push(item(`${wv.name}: Welle naht`, `${wv.name} breitet sich aus und erreicht ${place} in etwa ${wv.daysToStart} Tagen. Hygienepaket, Impfung und Schutzkonzepte können helfen.`, 'Gesundheit', true));
-    else out.push(item(`${wv.name} in ${place}`, `Die Lage in ${place} ist ${lvl}. ${sit.level > 0 ? `Es gilt: ${EP.MEASURE_NAME[sit.level]}.` : 'Es gelten keine besonderen Maßnahmen.'} Betriebe melden Krankenstand von ${Math.round(sit.sickShare * 1000) / 10} %.`, 'Gesundheit', wv.I >= 0.6));
+    else {
+      const sick = String(Math.round(sit.sickShare * 1000) / 10).replace('.', ','); const measure = EP.MEASURE_NAME[sit.level];
+      out.push(item(`${wv.name} in ${place}`, sit.level > 0 ? `Die Lage in ${place} ist ${lvl}. Es gilt: ${measure}. Betriebe melden Krankenstand von ${sick} %.` : `Die Lage in ${place} ist ${lvl}. Es gelten keine besonderen Maßnahmen. Betriebe melden Krankenstand von ${sick} %.`, 'Gesundheit', wv.I >= 0.6));
+    }
   }
   return out.map((n) => ({ ...n, day: state.day }));
 }
