@@ -82,7 +82,7 @@ async function perform(attackerId, targetId, companyId, action) {
       spyInfo = { name: c.name, value: Math.round(biz.companyValue(world, sB, c, year) / idxB), profit: Math.round(f.profit / idxB), income: Math.round(f.income / idxB), cash: Math.round((c.cash || 0) / idxB), staff: c.staff || 0, security: secure, rooms: c.rooms };
     } else if (success) {
       if (action === 'price') { damageReal = Math.round(A.cost * 0.8); c.hit = { until: sB.day + A.days, factor: 1 - A.hitPct / 100 }; effectTxt = `Umsatz −${A.hitPct} % für ${A.days} Tage`; }
-      else if (action === 'poach') { damageReal = Math.round(A.cost); c.staff = Math.max(0, c.staff - 1); effectTxt = 'ein Mitarbeiter wechselt zu dir'; }
+      else if (action === 'poach') { damageReal = Math.round(A.cost); c.staff = Math.max(0, c.staff - 1); { const TLN = require('../game/talents'); TLN.syncTeam(world, sB, c); const wt = TLN.weightsFor(world, c.pkey); c.team = (c.team || []).slice().sort((a, b) => TLN.fit(a, wt) - TLN.fit(b, wt)); c.team.pop(); /* abgeworben wird die beste Kraft */ } effectTxt = 'ein Mitarbeiter wechselt zu dir'; }
       else if (action === 'sabotage') {
         c.outageUntil = sB.day + A.outageDays; const repair = Math.round(biz.companyValue(world, sB, c, year) * A.repairPct / 100);
         damageReal = Math.round(repair / idxB * (sB.insurance && sB.insurance.gebaeude ? 0.2 : 1));
@@ -91,7 +91,7 @@ async function perform(attackerId, targetId, companyId, action) {
       }
     }
     // Entdeckung
-    const pCaught = Math.min(0.95, Math.max(0.02, (R.caughtBase + (secure ? R.caughtSecurityBonus : 0) + require('./court-policy').effects(c.cityId).detect) * (DETECT[action] || 1))); // Polizeibudget der Stadt wirkt auf die Entdeckung
+    const pCaught = Math.min(0.95, Math.max(0.02, (R.caughtBase + (secure ? R.caughtSecurityBonus : 0) + require('./court-policy').effects(c.cityId).detect) * (DETECT[action] || 1) * require('../game/talents').detectMult(sB.talents))); // Polizeibudget der Stadt wirkt auf die Entdeckung
     const caught = !success ? true : Math.random() < pCaught;
     const fine = caught ? Math.min(Math.max(0, sA.money), Math.round(cost * R.finePct / 100)) : 0;
     sA.money -= fine; sA.stats.spent = (sA.stats.spent || 0) + fine;

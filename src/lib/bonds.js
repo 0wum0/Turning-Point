@@ -331,11 +331,11 @@ async function reconcileCredits(conn, user, state, world) {
 async function reconcileOwner(conn, user, state, world) {
   const comps = state.companies || [];
   for (const c of comps) { c.playerStaff = []; c.playerManager = null; }
-  const emps = await conn.query("SELECT e.*, ps.name ename FROM employments e LEFT JOIN player_stats ps ON ps.user_id = e.employee_id WHERE e.owner_id = ? AND e.status = 'active'", [user.id]);
+  const emps = await conn.query("SELECT e.*, ps.name ename, ps.talents etal FROM employments e LEFT JOIN player_stats ps ON ps.user_id = e.employee_id WHERE e.owner_id = ? AND e.status = 'active'", [user.id]);
   for (const e of emps) {
     const c = comps.find((x) => x.id === e.company_id);
     if (!c || c.abandoned) { await endEmployment(conn, e.id, 'closed', user.id); continue; }
-    const entry = { userId: e.employee_id, wage: e.wage, name: e.ename || 'Mitarbeiter', empId: e.id };
+    const entry = { userId: e.employee_id, wage: e.wage, name: e.ename || 'Mitarbeiter', empId: e.id, tal: require('../game/talents').unpack(e.etal) || undefined };
     if (e.role === 'manager') c.playerManager = entry; else c.playerStaff.push(entry);
   }
   const offers = await conn.query("SELECT id, company_id FROM player_jobs WHERE owner_id = ? AND status = 'open'", [user.id]);

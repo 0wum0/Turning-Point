@@ -120,8 +120,8 @@ function guiltP(inp, C = {}) {
   if (!inp.truth) s *= num(K.innocentFactor, 0.35);
   s *= num(inp.strictness, 1);
   s += inp.lawyerP ? num((K.lawyer || {}).plaintiff, 10) : 0;
-  s += (num(inp.repP, 0.5) - 0.5) * 2 * num(K.plaintiffRepWeight, 5);
-  let d = 26 + (inp.lawyerD ? num((K.lawyer || {}).defendant, 24) : 0) + (num(inp.repD, 0.5) - 0.5) * 2 * num(K.repWeight, 12) + (inp.alibi ? num(K.alibi, 8) : 0) + (inp.bribed ? 20 : 0);
+  s += (num(inp.repP, 0.5) - 0.5) * 2 * num(K.plaintiffRepWeight, 5) + num(inp.talP, 0);
+  let d = 26 + (inp.lawyerD ? num((K.lawyer || {}).defendant, 24) : 0) + (num(inp.repD, 0.5) - 0.5) * 2 * num(K.repWeight, 12) + (inp.alibi ? num(K.alibi, 8) : 0) + (inp.bribed ? 20 : 0) + num(inp.talD, 0);
   d = Math.max(0, d);
   const p = 1 / (1 + Math.exp(-(s - d) / Math.max(1, num(K.slope, 14))));
   return clamp(p, num(K.minP, 0.03), num(K.maxP, 0.97));

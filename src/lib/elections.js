@@ -100,7 +100,7 @@ function voteBlock(ps, accountHours, el, candidateId, c) {
 
 async function candidatesOf(electionId, conn = db) {
   return conn.query(
-    `SELECT ec.user_id, ec.platform, COALESCE(ps.name, u.username) name, u.username, COALESCE(ps.influence, 0) influence, ps.city_id
+    `SELECT ec.user_id, ec.platform, COALESCE(ps.name, u.username) name, u.username, COALESCE(ps.influence, 0) influence, ps.city_id, ps.talents
      FROM election_candidates ec JOIN users u ON u.id = ec.user_id LEFT JOIN player_stats ps ON ps.user_id = ec.user_id WHERE ec.election_id = ? ORDER BY ec.created_at, ec.user_id`, [electionId]);
 }
 
@@ -231,7 +231,8 @@ async function finish(electionId) {
   const incumbent = new Set();
   for (const x of cands) { try { const pk = await service.peek(x.user_id); const tm = pk && pk.state && pk.state.politics && pk.state.politics.term; if (tm && tm.idx === el.office_idx) incumbent.add(x.user_id); } catch (_) { /* ohne Amtsangabe */ } }
   const weightOf = (uid) => { const m = wmap.get(uid) || { s: 0, l: 0, scandal: 0 }; return RP.voteWeight(el.city_id ? m.l : m.s, m.scandal, incumbent.has(uid)); };
-  const t = tally(cands.map((x) => ({ userId: x.user_id, influence: x.influence, weight: weightOf(x.user_id) })), human, bots);
+  const talW = (x) => require('../game/talents').voteWeight(require('../game/talents').unpack(x.talents)); // Charme und Führung: Stimmen-Faktor höchstens ±6 %
+  const t = tally(cands.map((x) => ({ userId: x.user_id, influence: x.influence, weight: weightOf(x.user_id) * talW(x) })), human, bots);
   const nameOf = new Map(cands.map((x) => [x.user_id, x.name]));
   const ranking = t.ranking.map((r) => ({ userId: r.userId, name: nameOf.get(r.userId), votes: r.votes, human: r.human, bots: r.bots }));
   const winner = t.winnerId ? nameOf.get(t.winnerId) : null;

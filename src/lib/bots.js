@@ -150,6 +150,7 @@ function decide(ctx, P) {
     if (!c.manager && s.money > 12000 * idx && chance(0.1)) tryAct(ctx, 'bizManager', { id: c.id, on: true });
     if (!s.occupation || (s.occupation && !s.occupation.ownCompanyId && chance(0.3))) tryAct(ctx, 'bizWork', { id: c.id });
   }
+  talentDecisions(ctx, P, idx);
   // Immobilien: kaufen und vermieten
   if (s.properties.length < P.maxProps) {
     const sale = (E.housing.sale || []).filter((x) => s.money > x.price * 2.2).sort((a, b) => a.price - b.price)[0];
@@ -162,6 +163,48 @@ function decide(ctx, P) {
   // Politik & Glück
   if (ageOfPerson(s) >= 28 && !s.politics.term && P.ambition > 0.55 && chance(0.04)) tryAct(ctx, 'runOffice', { idx: 0 });
   if (s.money > 3000 * idx && chance(0.03)) tryAct(ctx, 'lotto', { tickets: 1 });
+}
+/** Talente: Bots stellen nach Passung ein (selten Lehrlinge), schicken Mitarbeiter auf Kurse, erfüllen Lohnforderungen, fördern Kinder und wählen Schule/Weg nach Begabung. */
+function talentDecisions(ctx, P, idx) {
+  const { world: w, state: s } = ctx; const TLN = require('../game/talents'); if (!TLN.enabled() || !s.talents) return;
+  const biz = require('../game/business'); const sw = w.econ.companies.staffWage;
+  for (const c of s.companies || []) {
+    if (c.abandoned) continue;
+    TLN.syncTeam(w, s, c);
+    const need = biz.staffNeeded(w, c);
+    if ((c.staff || 0) < need && s.money > 40 * need * sw * idx && chance(0.5)) {
+      const pool = TLN.applicants(w, s, c);
+      const open = pool.staff.filter((x) => !x.taken).sort((a, b) => b.fit - a.fit);
+      const lehr = pool.apprentices.find((x) => !x.taken);
+      if (lehr && P.ambition > 0.6 && chance(0.35)) tryAct(ctx, 'bizHireApplicant', { id: c.id, cand: lehr.id });
+      else if (open[0]) tryAct(ctx, 'bizHireApplicant', { id: c.id, cand: open[0].id });
+    }
+    for (const m of c.team || []) {
+      if (m.ask) { tryAct(ctx, 'bizRaise', { id: c.id, mid: m.id }); continue; }
+      if (!m.lehr && !m.course && chance(0.04) && s.money > 30 * sw * idx * 25) {
+        const keys = TLN.topKeys(TLN.weightsFor(w, c.pkey)).filter((k) => m.v[TLN.IDX[k]] < TLN.capAt(m, TLN.IDX[k]));
+        if (keys[0]) tryAct(ctx, 'bizTrain', { id: c.id, mid: m.id, key: keys[0] });
+      }
+    }
+  }
+  for (const k of s.children) {
+    if (k.status !== 'home' || !k.tal) continue;
+    const age = ageOfChild(s, k);
+    if (k.pendingSchool && age >= 10) {
+      const f = TLN.schoolFit(k.tal);
+      tryAct(ctx, 'school', { childId: k.id, type: f.gym >= 58 && s.money > 20000 * idx ? 'gym' : f.real >= 52 ? 'real' : 'haupt' });
+    }
+    if (k.pendingPath) {
+      const acad = k.schoolDone === 'gym' && TLN.val(k.tal, 'bildung') >= 65 && s.money > 60000 * idx;
+      const list = w.activeProfessions(yrOf(s)).filter((p) => (acad ? p.academic : !p.academic && p.pkey !== 'helfer'));
+      const bestP = list.sort((a, b) => TLN.fitFor(w, k.tal, b.pkey) - TLN.fitFor(w, k.tal, a.pkey))[0];
+      if (bestP) tryAct(ctx, 'path', { childId: k.id, kind: acad ? 'study' : 'training', pkey: bestP.pkey });
+    }
+    if (!k.foster && age >= 3 && age <= 17 && chance(0.08) && s.money > 8000 * idx) {
+      const focus = Object.keys(TLN.FOSTER).filter((f) => k.tal.v[TLN.IDX[TLN.FOSTER[f].key]] < TLN.capAt(k.tal, TLN.IDX[TLN.FOSTER[f].key])).sort((a, b) => k.tal.v[TLN.IDX[TLN.FOSTER[b].key]] - k.tal.v[TLN.IDX[TLN.FOSTER[a].key]])[0]; // Stärken ausbauen
+      if (focus) tryAct(ctx, 'foster', { childId: k.id, focus });
+    }
+  }
 }
 const ageOfPerson = (s) => Math.floor((s.day - s.person.birthDay) / 365);
 

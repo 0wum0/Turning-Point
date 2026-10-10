@@ -60,6 +60,7 @@ async function upsertStats(conn, user, charRow, state, world) {
       await conn.query('INSERT INTO player_firms (user_id, company_id, city_id, name, pkey, tier, rooms, value_real, cash_real, profit_real, staff, distress, abandoned, ask_real) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
         [user.id, c.id, c.cityId, c.name, c.pkey, c.tier, c.rooms, Math.round(biz.companyValue(world, state, c, year) / idx), Math.round((c.cash || 0) / idx), Math.round(f.profit / idx), (c.staff || 0) + (c.playerStaff || []).length, distress, c.abandoned ? 1 : 0, askF.get(c.id) || null]);
     }
+    try { await conn.query('UPDATE player_stats SET talents = ? WHERE user_id = ?', [require('../game/talents').pack(state.talents), user.id]); } catch (e) { log.warn(`[social] Talente: ${e.message}`); }
     await conn.query('DELETE FROM player_props WHERE user_id = ?', [user.id]);
     const { propertyValue } = require('../game/core');
     for (const p of (state.properties || [])) {

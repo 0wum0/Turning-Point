@@ -369,7 +369,9 @@ async function computeVerdict(c, round, confessed) {
   const avg = (num((C.detective || {}).boostMin, 14) + num((C.detective || {}).boostMax, 30)) / 2;
   const strength = Math.min(100, num(c.strength, 0) + num(c.det_p, 0) * avg);
   const alibi = !!(M.ACTS[c.act] && M.ACTS[c.act].needsPresence && firm && firm.cityId && firm.cityId !== c.city_id);
-  const inp = { strength, truth, lawyerP: !!c.lawyer_p, lawyerD: !!c.lawyer_d, repD: D.value, repP: P.value, alibi, strictness: E.strictness, bribed: c.bribed === 1, confessed: !!confessed };
+  const TLN = require('../game/talents'); const tl = async (id) => { try { const r = await db.one('SELECT talents FROM player_stats WHERE user_id = ?', [id]); return TLN.unpack(r && r.talents); } catch (_) { return null; } };
+  const talD = TLN.courtPts(await tl(c.defendant_id)); const talP = TLN.courtPts(await tl(c.plaintiff_id)); // Bildung und Charme: wenige Punkte
+  const inp = { strength, truth, lawyerP: !!c.lawyer_p, lawyerD: !!c.lawyer_d, talD, talP, repD: D.value, repP: P.value, alibi, strictness: E.strictness, bribed: c.bribed === 1, confessed: !!confessed };
   const dec = M.decide(c.id, round, inp, C);
   const out = { guilty: dec.guilty, p: dec.p, truth, level: 0, plan: [], inp };
   if (!dec.guilty) return out;

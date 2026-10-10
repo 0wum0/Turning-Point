@@ -880,6 +880,10 @@ const MIGRATIONS = [
       CONSTRAINT fk_cpol_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
   ] },
+  { id: '030_talents', up: [
+    // Talente: verdichtetes Profil der Spielfigur ("52,61,48,70,55,43" = Handwerk, Handel, Führung, Bildung, Charme, Kondition) für Arbeitgeber, Wahlen und Gerichte
+    'ALTER TABLE player_stats ADD COLUMN talents VARCHAR(40) NULL',
+  ] },
 ];
 
 async function ensureTable(db) {
