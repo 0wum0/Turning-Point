@@ -325,7 +325,8 @@ function firmDaily(world, state, c, ctx = {}) {
     if (m.course && state.day >= m.course.end) {
       const cr = m.course; m.course = null;
       const gain = grow(m, cr.key, cr.pts);
-      out.push({ level: 'good', title: `Kurs beendet: ${m.name}`, text: `${m.name} ist besser in ${(C().labels || {})[cr.key] || META[cr.key].label}${gain ? ` (+${gain})` : ' – mehr geht in diesem Bereich nicht'}.` });
+      const lbl = (C().labels || {})[cr.key] || META[cr.key].label;
+      out.push({ level: 'good', title: `Kurs beendet: ${m.name}`, text: gain ? `${m.name} ist besser in ${lbl} (+${gain}).` : `${m.name} ist besser in ${lbl} – mehr geht in diesem Bereich nicht.` });
     }
     if (m.ask && state.day >= m.ask.until) {
       if (ctx.offline) { m.w = m.ask.w; m.ask = null; }
@@ -371,7 +372,7 @@ function yearly(world, state) {
       if (!m.lehr) for (const k of topKeys(w).slice(0, 2)) if (rnd('f', c.id, m.id, k) < num(tr.yearPct, 50) / 100) grow(m, k, num(tr.yearPts, 1));
       if (!m.lehr && !m.ask) {
         const mk = marketWage(world, c, m);
-        if (mk > num(m.w, 1) + num((cf.raise || {}).margin, 0.06)) { m.ask = { w: mk, until: state.day + Math.round(num((cf.raise || {}).askDays, 30)) }; out.push({ level: 'warn', title: `${m.name} verlangt mehr Lohn`, text: `${c.name}: ${m.name} ist besser geworden und fordert ${Math.round((mk / Math.max(0.01, m.w) - 1) * 100)} % mehr. Du hast ${Math.round(num((cf.raise || {}).askDays, 30))} Tage Zeit.`, tab: 'business' }); }
+        if (mk > num(m.w, 1) + num((cf.raise || {}).margin, 0.06)) { m.ask = { w: mk, until: state.day + Math.round(num((cf.raise || {}).askDays, 30)) }; const pct = Math.round((mk / Math.max(0.01, m.w) - 1) * 100); const askDays = Math.round(num((cf.raise || {}).askDays, 30)); out.push({ level: 'warn', title: `${m.name} verlangt mehr Lohn`, text: `${c.name}: ${m.name} ist besser geworden und fordert ${pct} % mehr. Du hast ${askDays} Tage Zeit.`, tab: 'business' }); }
       }
     }
   }
@@ -390,7 +391,8 @@ function fosterStart(world, state, c, focus, idx) {
   if (age > num(f.maxAge, 17)) return { err: 'Das Kind ist dafür zu alt.' };
   if (c.foster) return { err: 'Es läuft schon ein Förderprogramm.' };
   const cap = capAt(c.tal, IDX[F.key]);
-  if (c.tal.v[IDX[F.key]] >= cap) return { err: `${(C().labels || {})[F.key] || META[F.key].label} ist bei diesem Kind schon voll ausgebildet.` };
+  const lbl = (C().labels || {})[F.key] || META[F.key].label;
+  if (c.tal.v[IDX[F.key]] >= cap) return { err: `${lbl} ist bei diesem Kind schon voll ausgebildet.` };
   return { ok: true, key: F.key, cost: fosterCost(world, idx), days: Math.round(num(f.days, 90)), pts: num(f.pts, 4) };
 }
 function fosterDaily(world, state, c) {

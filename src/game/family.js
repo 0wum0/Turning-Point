@@ -150,7 +150,8 @@ function childrenDaily(ctx, env) {
     // Förderprogramm abgeschlossen
     if (c.foster && c.tal) {
       const done = TL.fosterDaily(world, state, c);
-      if (done) notice(state, { level: 'good', title: `${c.name} hat das Förderprogramm beendet`, tab: 'family', text: done.gain ? `${(TL.C().labels || {})[done.key] || done.key} +${done.gain}. ${c.name} ist stolz auf sich.` : `${c.name} hat viel Spaß gehabt – in diesem Bereich ist aber kaum mehr zu holen.` });
+      const lbl = done ? ((TL.C().labels || {})[done.key] || done.key) : '';
+      if (done) notice(state, { level: 'good', title: `${c.name} hat das Förderprogramm beendet`, tab: 'family', text: done.gain ? `${lbl} +${done.gain}. ${c.name} ist stolz auf sich.` : `${c.name} hat viel Spaß gehabt – in diesem Bereich ist aber kaum mehr zu holen.` });
     }
     // Schule
     if (age >= 6 && !c.school && !c.path && !c.pendingSchool && !c.schoolDone) { c.school = 'grund'; }

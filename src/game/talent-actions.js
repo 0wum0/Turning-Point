@@ -32,7 +32,8 @@ function install(A, fail, { yr, pay }) {
     const m = TL.hire(world, state, c, cand);
     const wl = TL.fit(m, TL.weightsFor(world, c.pkey));
     chronicle(state, `${c.name} stellt ${m.name} ein.`, 'business');
-    return { m, fit: wl, msg: cand.lehr ? `${m.name} beginnt eine Lehre in ${c.name} (Lohn ${Math.round(TL.lehrCfg().wagePct * 100)} %, ${TL.lehrCfg().days / 365} Jahre).` : `${m.name} ist eingestellt (Passung ${wl} %).` };
+    const lehrPct = Math.round(TL.lehrCfg().wagePct * 100); const lehrYears = TL.lehrCfg().days / 365; const nm = m.name; const cn = c.name;
+    return { m, fit: wl, msg: cand.lehr ? `${nm} beginnt eine Lehre in ${cn} (Lohn ${lehrPct} %, ${lehrYears} Jahre).` : `${nm} ist eingestellt (Passung ${wl} %).` };
   };
 
   // Alter Knopf „± Mitarbeiter“: + stellt die beste Bewerbung ein, − entlässt den schwächsten Mitarbeiter.
@@ -58,7 +59,8 @@ function install(A, fail, { yr, pay }) {
     if (!cand) fail('Diese Bewerbung ist nicht mehr aktuell.');
     if (cand.taken) fail('Diese Person ist schon vergeben.');
     room(world, c);
-    if (cand.lehr && (c.team || []).filter((m) => m.lehr).length >= TL.lehrCfg().max) fail(`Mehr als ${TL.lehrCfg().max} Lehrlinge gleichzeitig bildet dieser Betrieb nicht aus.`);
+    const lehrMax = TL.lehrCfg().max;
+    if (cand.lehr && (c.team || []).filter((m) => m.lehr).length >= TL.lehrCfg().max) fail(`Mehr als ${lehrMax} Lehrlinge gleichzeitig bildet dieser Betrieb nicht aus.`);
     const r = hire(world, state, c, cand);
     return { msg: r.msg, level: 'good' };
   };
@@ -86,7 +88,8 @@ function install(A, fail, { yr, pay }) {
     if (state.money < o.fee) fail('Für die Kursgebühr reicht dein Geld nicht.');
     pay(state, o.fee);
     m.course = { key, end: state.day + o.days, pts: o.pts };
-    return { msg: `${m.name} besucht einen Kurs in ${lab(key)} (${o.days} Tage, ${formatMoney(o.fee, cur(world, state))}).`, level: 'good' };
+    const lbl = lab(key); const fee = formatMoney(o.fee, cur(world, state));
+    return { msg: `${m.name} besucht einen Kurs in ${lbl} (${o.days} Tage, ${fee}).`, level: 'good' };
   };
 
   A.bizRaise = ({ world, state, input }) => {
@@ -106,7 +109,8 @@ function install(A, fail, { yr, pay }) {
     if (state.money < r.cost) fail('Für das Förderprogramm reicht das Geld nicht.');
     pay(state, r.cost);
     c.foster = { key: r.key, end: state.day + r.days, pts: r.pts, focus: String(input.focus) };
-    return { msg: `${c.name} wird gefördert: ${TL.FOSTER[input.focus].label} (${r.days} Tage, ${formatMoney(r.cost, cur(world, state))}).`, level: 'good' };
+    const prog = TL.FOSTER[input.focus].label; const fee = formatMoney(r.cost, cur(world, state));
+    return { msg: `${c.name} wird gefördert: ${prog} (${r.days} Tage, ${fee}).`, level: 'good' };
   };
 }
 
