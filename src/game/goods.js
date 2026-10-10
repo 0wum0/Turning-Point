@@ -238,7 +238,12 @@ function activeRecipe(world, pkey, year, cityId) {
 /* ------------------------------------------------------------------ Markt: Knappheit und Politik ------------------------------------------------------------------ */
 let SCARCITY = new Map(); // `${cityId}|${ware}` → Faktor
 const EDU = () => { const e = (require('../settings').get('talente') || {}).edu || {}; const a = (x, d) => (Array.isArray(x) && x.length >= 3 && x.every(Number.isFinite) ? x : d); return { levy: a(e.levy, [0.2, 0.4, 0.6]), regionLevy: a(e.regionLevy, [0.2, 0.4, 0.6]), natLevy: a(e.natLevy, [0.3, 0.6, 0.9]), courseDisc: a(e.courseDisc, [10, 20, 30]), lehrSubsidy: a(e.lehrSubsidy, [20, 40, 60]), schoolPct: Number.isFinite(e.schoolPct) ? e.schoolPct : 10 }; };
-const emptyPolicy = () => ({ city: new Map(), region: new Map(), nation: { vat: 0, tariff: 0, subsidy: {}, levy: 0, frame: null, brake: 0, lehr: 0 } });
+/** Beschluss-Stufen für Jahreszeiten, Ernte und Seuchen (Umlagen in Punkten Gewerbesteuer, Hilfen in Anteilen). */
+const SEAS = () => ({
+  levy: { hygiene: [0.2, 0.4, 0.6], winterhilfe: [0.2, 0.35, 0.5], erntefest: [0.1, 0.2, 0.3], hospital: [0.2, 0.4, 0.6], vaccine: [0.2, 0.4, 0.6], kurzarbeit: [0.3, 0.6, 0.9], erntehilfe: [0.1, 0.2, 0.3] },
+  winter: [0.2, 0.35, 0.5], kurz: [0.25, 0.45, 0.65], aid: [0.3, 0.6, 0.9], hyg: [8, 15, 22], fest: [2, 4, 6],
+});
+const emptyPolicy = () => ({ city: new Map(), region: new Map(), nation: { vat: 0, tariff: 0, subsidy: {}, levy: 0, frame: null, brake: 0, lehr: 0, pandemic: null, cap: null, vaccLvl: 0, kurz: 0, aid: 0 } });
 let POL = emptyPolicy();
 
 const scarcity = (cityId, key) => SCARCITY.get(`${cityId}|${key}`) || 1;
@@ -286,8 +291,8 @@ function buildPolicies(rows) {
   const pol = emptyPolicy();
   for (const r of rows || []) {
     const val = Number(r.val); if (!Number.isFinite(val)) continue;
-    const city = () => { if (!pol.city.has(r.scope_city)) pol.city.set(r.scope_city, { surcharge: 0, subsidy: {}, levy: 0, zone: 0, rentCap: null, edu: {} }); return pol.city.get(r.scope_city); };
-    const reg = () => { if (!pol.region.has(r.region)) pol.region.set(r.region, { support: {}, levy: 0, zone: 0, edu: 0 }); return pol.region.get(r.region); };
+    const city = () => { if (!pol.city.has(r.scope_city)) pol.city.set(r.scope_city, { surcharge: 0, subsidy: {}, levy: 0, zone: 0, rentCap: null, edu: {}, hyg: 0, winterhilfe: 0, erntefest: 0 }); return pol.city.get(r.scope_city); };
+    const reg = () => { if (!pol.region.has(r.region)) pol.region.set(r.region, { support: {}, levy: 0, zone: 0, edu: 0, hospital: 0 }); return pol.region.get(r.region); };
     if (r.kind === 'surcharge') city().surcharge = val;
     else if (r.kind === 'subsidy' && GOODS[r.good]) { const c = city(); c.subsidy[r.good] = Math.max(c.subsidy[r.good] || 0, val); c.levy += val * lev; }
     else if (r.kind === 'support' && GOODS[r.good]) { const c = reg(); c.support[r.good] = Math.max(c.support[r.good] || 0, val); c.levy += val * lev * 0.7; }
@@ -298,6 +303,13 @@ function buildPolicies(rows) {
     else if (r.kind === 'edu_city' && ['school', 'library', 'sport'].includes(r.good) && val >= 1 && val <= 3) { const c = city(); c.edu[r.good] = Math.max(c.edu[r.good] || 0, val); c.levy += EDU().levy[val - 1] || 0; }
     else if (r.kind === 'edu_region' && val >= 1 && val <= 3) { const c = reg(); c.edu = Math.max(c.edu, val); c.levy += EDU().regionLevy[val - 1] || 0; }
     else if (r.kind === 'edu_nation' && val >= 1 && val <= 3) { pol.nation.lehr = Math.max(pol.nation.lehr, val); pol.nation.levy += EDU().natLevy[val - 1] || 0; }
+    else if ((r.kind === 'hygiene' || r.kind === 'winterhilfe' || r.kind === 'erntefest') && val >= 1 && val <= 3) { const c = city(); const k = r.kind; c[k] = Math.max(c[k], val); c.levy += SEAS().levy[k][val - 1]; }
+    else if (r.kind === 'hospital' && val >= 1 && val <= 3) { const c = reg(); c.hospital = Math.max(c.hospital, val); c.levy += SEAS().levy.hospital[val - 1]; }
+    else if (r.kind === 'lockframe' && val >= 1 && val <= 3) pol.nation.cap = val;
+    else if (r.kind === 'pandemic' && val >= 0 && val <= 3) pol.nation.pandemic = val;
+    else if (r.kind === 'vaccine' && val >= 1 && val <= 3) { pol.nation.vaccLvl = Math.max(pol.nation.vaccLvl, val); pol.nation.levy += SEAS().levy.vaccine[val - 1]; }
+    else if (r.kind === 'kurzarbeit' && val >= 1 && val <= 3) { pol.nation.kurz = Math.max(pol.nation.kurz, SEAS().kurz[val - 1]); pol.nation.levy += SEAS().levy.kurzarbeit[val - 1]; }
+    else if (r.kind === 'erntehilfe' && val >= 1 && val <= 3) { pol.nation.aid = Math.max(pol.nation.aid, SEAS().aid[val - 1]); pol.nation.levy += SEAS().levy.erntehilfe[val - 1]; }
     else if (r.kind === 'pricebrake') pol.nation.brake = val;
     else if (r.kind === 'vat') pol.nation.vat = val;
     else if (r.kind === 'tariff') pol.nation.tariff = val;
@@ -317,7 +329,7 @@ function frame() {
 function effectsFor(world, cityId) {
   const P = cfg().policy || {};
   const on = P.enabled !== false;
-  const out = { surcharge: 0, levy: 0, vat: 0, tariff: 0, subsidy: {}, support: {}, zone: 0, rentCap: null, brake: 0, edu: { school: 0, library: 0, sport: 0, courseDisc: 0, lehrSubsidy: 0 } };
+  const out = { surcharge: 0, levy: 0, vat: 0, tariff: 0, subsidy: {}, support: {}, zone: 0, rentCap: null, brake: 0, edu: { school: 0, library: 0, sport: 0, courseDisc: 0, lehrSubsidy: 0 }, epi: { hyg: 0, hospital: 0, level: null, cap: 2, vaccLvl: 0, kurz: 0 }, season: { winterhilfe: 0, erntefest: 0 }, harvest: { aid: 0 } };
   if (!on) return out;
   const city = world.city(cityId); const region = city ? city.state : '';
   const c = POL.city.get(cityId); const r = POL.region.get(region); const n = POL.nation;
@@ -338,6 +350,11 @@ function effectsFor(world, cityId) {
   if (c && c.edu) { out.edu.school = c.edu.school || 0; out.edu.library = c.edu.library || 0; out.edu.sport = c.edu.sport || 0; }
   out.edu.courseDisc = r && r.edu ? ed.courseDisc[r.edu - 1] || 0 : 0;
   out.edu.lehrSubsidy = n.lehr ? ed.lehrSubsidy[n.lehr - 1] || 0 : 0;
+  // Jahreszeiten, Ernte und Seuchen: Hygiene/Winterhilfe/Erntefest der Stadt, Krankenhausprogramm des Landes, Maßnahmen/Rahmen/Impfkampagne/Kurzarbeit/Erntehilfe des Bundes
+  const sv = SEAS();
+  out.epi = { hyg: c ? c.hyg || 0 : 0, hospital: r ? r.hospital || 0 : 0, level: n.pandemic, cap: n.cap || 2, vaccLvl: n.vaccLvl || 0, kurz: n.kurz || 0 };
+  out.season = { winterhilfe: c && c.winterhilfe ? sv.winter[c.winterhilfe - 1] : 0, erntefest: c ? c.erntefest || 0 : 0 };
+  out.harvest = { aid: n.aid || 0 };
   return out;
 }
 
@@ -355,12 +372,13 @@ function price(world, cityId, key, year) {
   const scar = g.service ? 1 : scarcity(cityId, key);
   const tariff = 1 + (ef.tariff / 100) * imp;
   const base = priceReal(g, year) * idx;
-  const market = base * cityF * scar * tariff;
+  const hv = g.service ? 1 : require('./harvest').goodMult(key, year, (world.city(cityId) || {}).state, imp); // Erntejahr: schlechte Ernte verteuert Agrarwaren, Verarbeiter geben einen Teil weiter
+  const market = base * cityF * scar * tariff * hv;
   const protect = 1 + 0.5 * (ef.tariff / 100) * imp; // Zoll schützt die heimischen Erzeuger
   const support = 1 + (ef.support[key] || 0) / 100;
   return {
     key, base, market, scar, imp, tariffPct: ef.tariff * imp, subsidy: ef.subsidy[key] || 0, support: ef.support[key] || 0,
-    buy: market * (1 + w.markup), sell: base * cityF * scar * (1 - w.discount) * protect * support,
+    buy: market * (1 + w.markup), sell: base * cityF * scar * (1 - w.discount) * protect * support * hv,
   };
 }
 const scarcityLabel = (f) => (f >= 1.12 ? 'knapp' : f <= 0.9 ? 'reichlich' : 'normal');
@@ -453,11 +471,11 @@ function sellPlan(world, state, c, year, rAct, ar, w, rel = 1) {
 /* ------------------------------------------------------------------ Politik: Befugnisse eines Amtes ------------------------------------------------------------------ */
 // Amt (Index in economy.politics.offices) → mögliche Beschlüsse
 const POWERS = {
-  1: ['surcharge', 'landzone', 'edu_city'],
-  2: ['surcharge', 'subsidy', 'rentcap', 'landzone', 'edu_city'],
-  3: ['support', 'housing', 'edu_region'],
-  4: ['frame', 'edu_nation'],
-  5: ['vat', 'tariff', 'natsubsidy', 'pricebrake', 'edu_nation'],
+  1: ['surcharge', 'landzone', 'edu_city', 'hygiene', 'winterhilfe'],
+  2: ['surcharge', 'subsidy', 'rentcap', 'landzone', 'edu_city', 'hygiene', 'winterhilfe', 'erntefest'],
+  3: ['support', 'housing', 'edu_region', 'hospital'],
+  4: ['frame', 'edu_nation', 'lockframe'],
+  5: ['vat', 'tariff', 'natsubsidy', 'pricebrake', 'edu_nation', 'pandemic', 'vaccine', 'kurzarbeit', 'erntehilfe'],
 };
 const KINDS = {
   surcharge: { name: 'Gewerbesteuer-Zuschlag', scope: 'city', what: 'Punkte auf die Gewerbesteuer aller Betriebe in deiner Stadt' },
@@ -473,11 +491,32 @@ const KINDS = {
   pricebrake: { name: 'Preisbremse / Inflationsziel', scope: 'nation', what: 'Schiebt das Preisniveau aller Städte etwas nach unten oder oben' },
   edu_city: { name: 'Schulbudget', scope: 'city', what: 'Schulen, Bibliothek oder Sportstätten fördern: Kinder entwickeln ihre Talente schneller, Bewohner lernen und trainieren mehr – Betriebe zahlen dafür eine kleine Umlage' },
   edu_region: { name: 'Bildungsprogramm (Land)', scope: 'region', what: 'Kurse für Mitarbeiter werden im ganzen Bundesland günstiger und wirken etwas stärker' },
+  hygiene: { name: 'Gesundheitsamt & Hygiene', scope: 'city', what: 'Bremst die Ausbreitung von Seuchen in deiner Stadt – Betriebe zahlen dafür eine kleine Umlage' },
+  winterhilfe: { name: 'Winterhilfe', scope: 'city', what: 'Ein Teil der zusätzlichen Heizkosten im Winter wird für alle Bewohner deiner Stadt übernommen – Betriebe zahlen eine Umlage' },
+  erntefest: { name: 'Erntefest', scope: 'city', what: 'Ein Fest im Herbst bringt Gastronomie, Ausflug und Einzelhandel in deiner Stadt Kundschaft und gute Laune' },
+  hospital: { name: 'Krankenhausprogramm & Impfzentren (Land)', scope: 'region', what: 'Seuchen verlaufen im ganzen Bundesland milder, Impfungen sind günstiger und werden öfter genutzt' },
+  lockframe: { name: 'Rahmen für Seuchenmaßnahmen (Bund)', scope: 'nation', what: 'Legt fest, wie streng die Maßnahmen gegen Seuchen im Land höchstens sein dürfen' },
+  pandemic: { name: 'Seuchenmaßnahmen (Bund)', scope: 'nation', what: 'Wie streng das Land gegen eine Seuche vorgeht: Ansteckung gegen Wirtschaft und Ansehen' },
+  vaccine: { name: 'Impfkampagne (Bund)', scope: 'nation', what: 'Mehr Menschen lassen sich impfen, sobald ein Impfstoff da ist – Betriebe zahlen eine Umlage' },
+  kurzarbeit: { name: 'Kurzarbeitergeld (Bund)', scope: 'nation', what: 'Der Staat gleicht einen Teil der Umsatzverluste durch Seuchenmaßnahmen aus – Betriebe zahlen eine Umlage' },
+  erntehilfe: { name: 'Ernte- und Dürrehilfe (Bund)', scope: 'nation', what: 'Landwirte bekommen in schlechten Erntejahren einen Teil ihres Verlusts ersetzt – Betriebe zahlen eine Umlage' },
   edu_nation: { name: 'Berufsbildungsgesetz (Bund)', scope: 'nation', what: 'Der Staat bezahlt einen Teil des Lohns von Lehrlingen in allen Betrieben des Landes' },
 };
 const CE = () => require('./cityecon').C();
 const tradable = (year) => Object.values(GOODS).filter((g) => !g.service && inEra(g, year));
 
+const SEAS_LV = {
+  hygiene: ['Aufklärung und Handwaschstationen', 'Hygienekonzept für Schulen und Läden', 'Gesundheitsamt mit Kontaktverfolgung'],
+  winterhilfe: ['Heizkostenzuschuss', 'Wärmestuben und Zuschuss', 'Großer Winterfonds'],
+  erntefest: ['Dorffest', 'Erntemarkt', 'Großes Erntefest'],
+  hospital: ['Mehr Betten und Personal', 'Krankenhausprogramm', 'Krankenhäuser und Impfzentren'],
+  lockframe: ['Eng: höchstens Maskenpflicht', 'Mittel: bis Kontaktbeschränkungen', 'Weit: bis Lockdown'],
+  pandemic: ['Lockern: keine Maßnahmen', 'Maskenpflicht und Hygieneregeln', 'Kontaktbeschränkungen', 'Lockdown'],
+  vaccine: ['Impfaufruf', 'Impfkampagne', 'Impfzentren überall'],
+  kurzarbeit: ['Kurzarbeitergeld klein', 'Kurzarbeitergeld mittel', 'Kurzarbeitergeld groß'],
+  erntehilfe: ['Beratung und Erntehelfer', 'Dürre- und Flutfonds', 'Großes Hilfspaket'],
+};
+const frameCap = () => POL.nation.cap || 2;
 /** Befugnisse eines Amts mit den aktuell geltenden Grenzen (für die Oberfläche). */
 function powersOf(world, officeIdx, year) {
   const P = cfg().policy || {}; const fr = frame();
@@ -496,6 +535,7 @@ function powersOf(world, officeIdx, year) {
     if (k === 'pricebrake') return { ...base, options: CE().policy.brake, unit: 'Punkte' };
     if (k === 'edu_city') return { ...base, focus: [{ key: 'school', name: 'Schulen' }, { key: 'library', name: 'Bibliothek' }, { key: 'sport', name: 'Sportstätten' }], options: [1, 2, 3], unit: 'Stufe' };
     if (k === 'edu_region' || k === 'edu_nation') return { ...base, options: [1, 2, 3], unit: 'Stufe' };
+    if (SEAS_LV[k]) return { ...base, options: k === 'pandemic' ? [0, 1, 2, 3] : [1, 2, 3], levels: SEAS_LV[k].map((t, i) => ({ v: k === 'pandemic' ? i : i + 1, name: t })), unit: 'Stufe', cap: k === 'pandemic' ? frameCap() : undefined };
     if (k === 'frame') return { ...base, frames: Object.entries(P.frames || {}).map(([key, f]) => ({ key, name: f.name || key, maxSurcharge: f.maxSurcharge, maxSubsidy: f.maxSubsidy })) };
     return base;
   });
@@ -533,12 +573,34 @@ function normalizePolicy(world, officeIdx, city, year, input) {
   } else if (kind === 'edu_region' || kind === 'edu_nation') {
     if (!power.options.includes(num)) throw new Error('Diese Stufe ist nicht erlaubt.');
     row.val = num;
+  } else if (SEAS_LV[kind]) {
+    if (!Number.isFinite(num) || Math.round(num) !== num || !power.options.includes(num)) throw new Error('Diese Stufe ist nicht erlaubt.');
+    row.val = num;
   } else if (kind === 'frame') {
     const key = String(input.good || input.value || '');
     if (!power.frames.some((x) => x.key === key)) throw new Error('Unbekannter Rahmen.');
     row.good = key; row.val = 1;
   }
   return row;
+}
+
+/** Vorschau der Beschlüsse zu Jahreszeiten, Ernte und Seuchen (Zahlen, die Oberfläche formuliert Sätze). */
+function previewSeasons(world, row, L, cityId) {
+  const sv = SEAS(); const v = row.val; const k = row.kind; const lv = sv.levy[k];
+  if (k === 'hygiene') { L('hygiene', v, sv.hyg[v - 1]); L('levy', lv[v - 1]); }
+  else if (k === 'winterhilfe') { L('winterhilfe', v, Math.round(sv.winter[v - 1] * 100)); L('levy', lv[v - 1]); }
+  else if (k === 'erntefest') { L('erntefest', v, sv.fest[v - 1]); L('levy', lv[v - 1]); }
+  else if (k === 'hospital') { L('hospital', v, 10 * v, 25 * v); L('levy', lv[v - 1]); }
+  else if (k === 'lockframe') { L('lockframe', v, require('./epidemics').MEASURE_NAME[v]); }
+  else if (k === 'pandemic') {
+    const EPI = require('./epidemics'); const c = EPI.C(); const cap = frameCap(); const eff = Math.min(v, cap);
+    const cut = Math.round(c.measures[eff] * 100);
+    const lockTab = (col) => Math.round((eff ? c.lock[col][eff - 1] : 0) * 100);
+    L('pandemic', v, { name: EPI.MEASURE_NAME[eff], infect: cut, gastro: lockTab('gastro'), tourism: lockTab('tourism'), retail: lockTab('retail'), other: lockTab('other'), cap, capped: eff < v }, v === 3 ? 'unpopular' : v === 0 ? 'risky' : v === 1 ? 'popular' : 'neutral');
+  }
+  else if (k === 'vaccine') { L('vaccine', v, 10 * v); L('levy', lv[v - 1]); }
+  else if (k === 'kurzarbeit') { L('kurzarbeit', v, Math.round(sv.kurz[v - 1] * 100)); L('levy', lv[v - 1]); }
+  else if (k === 'erntehilfe') { L('erntehilfe', v, Math.round(sv.aid[v - 1] * 100)); L('levy', lv[v - 1]); }
 }
 
 /** Kurz erklärte Wirkung eines Beschlusses (Zahlen; die Oberfläche formuliert daraus Sätze). */
@@ -553,6 +615,7 @@ function previewPolicy(world, row, year, cityId) {
   else if (row.kind === 'edu_city') { const ed = EDU(); const lv = row.val; L('edu_city', lv, row.good, ed.schoolPct * lv); L('levy', ed.levy[lv - 1] || 0); }
   else if (row.kind === 'edu_region') { const ed = EDU(); L('edu_region', row.val, ed.courseDisc[row.val - 1] || 0); L('levy', ed.regionLevy[row.val - 1] || 0); }
   else if (row.kind === 'edu_nation') { const ed = EDU(); L('edu_nation', row.val, ed.lehrSubsidy[row.val - 1] || 0); L('levy', ed.natLevy[row.val - 1] || 0); }
+  else if (SEAS_LV[row.kind]) previewSeasons(world, row, L, cityId);
   else if (row.kind === 'vat') L('vat', row.val);
   else if (row.kind === 'tariff') {
     const ex = ['kraftstoff', 'elektronik', 'kleidung', 'fisch'].filter((k) => inEra(GOODS[k], year)).map((k) => ({ name: GOODS[k].name, imp: Math.round(importShare(GOODS[k], year) * 100), up: Math.round(row.val * importShare(GOODS[k], year) * 10) / 10 }));
@@ -590,5 +653,5 @@ const CHAINS = [
 module.exports = {
   GOODS, KINDS, POWERS, CHAINS, REC, enabled, W, good, inEra, priceReal, importShare, recipeFor, activeRecipe,
   setScarcity, computeScarcity, scarcity, scarcityLabel, setPolicies, setExtraLevy, buildPolicies, currentPolicies, frame, effectsFor, price, priceList,
-  outputFactor, buyPlan, sellPlan, powersOf, normalizePolicy, previewPolicy, tradable,
+  outputFactor, buyPlan, sellPlan, powersOf, normalizePolicy, previewPolicy, tradable, SEAS, SEAS_LV,
 };

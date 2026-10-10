@@ -85,6 +85,7 @@ function createCharacter(world, input, user, { cycle = 1 } = {}) {
   for (const d of user.meta.degrees || []) learn(state, d);
   me.jobs.push(world.prof(v.prof).name);
   onboarding.initFresh(state);
+  require('./epidemics').ensure(state);
   chronicle(state, `${v.first} ${v.last} wird mit 20 Jahren auf sich allein gestellt – 40 DM, ein erlernter Beruf (${world.prof(v.prof).name}) und die ganze Zukunft.`, 'birth');
   notice(state, {
     level: 'good', title: 'Willkommen im Jahr 1945',
@@ -110,6 +111,7 @@ function upgradeState(s) {
   if (!s.career) s.career = { applied: {}, hire: null, lastRaise: -9999, courses: {}, course: null, benefit: null };
   if (!s.press) { s.press = []; s.nextPressId = 0; }
   if (!s.flags) s.flags = {};
+  require('./epidemics').ensure(s); // Seuchen: Schutz und Krankheit (leer bei Altständen)
   T.ensureAll(s); // Talente: Altstände bekommen feste, aus dem Spielstand-Samen abgeleitete Profile (idempotent)
   onboarding.ensure(s); // Altstände: Einsteiger-Aufgaben werden beim nächsten Abgleich still nachgeführt (kein Belohnungsregen)
   return s;

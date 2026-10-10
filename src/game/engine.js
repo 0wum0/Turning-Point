@@ -9,12 +9,14 @@ const {
   roomsAvailable, roomsNeeded, kidsAtHome, foodCostPerDay, satiety,
 } = require('./core');
 const { LEVELS, ILLNESSES } = require('./content');
-const { applyTownEvents, rollPrivateEvent } = require('./events');
+const { applyTownEvents, rollPrivateEvent, seasonalFestivals } = require('./events');
 const { familyDaily, endLife, ageOfChild } = require('./family');
 const { businessDaily } = require('./business');
 const society = require('./society');
 const rep = require('./reputation');
 const TL = require('./talents');
+const SFX = require('./seasonfx');
+const EPI = require('./epidemics');
 
 /** Lebenserwartung (Tage). Medizin wird ab ~1955 besser, gesunder Lebensstil gibt Jahre. */
 function lifespanDays(state, year) {
@@ -140,6 +142,8 @@ function dayStep(ctx) {
   { const oe = society.officeEffects(world, state, year); restDelta -= oe.rest; state.mods.officeHealth = oe.health; }
   restDelta -= kidsAtHome(state).filter((c) => ageOfChild(state, c) < 18).length * 1.2;
   restDelta += TL.restPts(state.talents); // Kondition: etwas mehr Erholung
+  const bodyS = SFX.body(state); // Jahreszeit: im Sommer erholt man sich leichter, im Winter schwerer; Stimmung folgt dem Licht
+  restDelta += bodyS.rest;
   m.rest = clamp(m.rest + restDelta, 0, 100);
   if (m.rest === 0) state.restZero++; else state.restZero = 0;
 
@@ -152,7 +156,7 @@ function dayStep(ctx) {
     + (state.partner ? 10 * (state.partner.sat / 100) * (state.partner.cohabit ? 1 : 0.4) : 0)
     + Math.min(6, state.children.filter((c) => c.status === 'home' && c.sat > 50).length * 1.5)
     - state.children.filter((c) => c.status === 'home' && c.sat < 30).length * 2
-    + (state.mods.wellBoost || 0);
+    + (state.mods.wellBoost || 0) + bodyS.mood - (EPI.shieldOn(state) && !(state.companies || []).length ? 3 : 0);
   state.mods.wellBoost = (state.mods.wellBoost || 0) * 0.86;
   m.wellbeing = clamp(m.wellbeing + (clamp(wt, 0, 100) - m.wellbeing) * 0.18, 0, 100);
 
@@ -175,6 +179,23 @@ function dayStep(ctx) {
   if (ctx.offline && m.health < 15) m.health = 15;
   state.life.healthSum += Math.max(0, m.health); state.life.healthDays++;
 
+  // Jahreszeit und Seuchen: Wetterhinweise, Ansteckung, Krankheit, Schulschließungen
+  {
+    const notes = [];
+    const sit = EPI.situation(world, year, date.doy, world.city(state.cityId), SFX.effects(world, state.cityId));
+    const res = EPI.daily(ctx, sit, year, date.doy, notes);
+    seasonNotes(ctx, notes, date, year);
+    for (const n of notes) notice(state, n);
+    if (state.pending.epiDoctor) {
+      state.pending.epiDoctor = false;
+      const cost = Math.min(Math.max(0, state.money), EPI.doctorCost(world, state, year));
+      if (cost > 0) { state.money -= cost; state.stats.spent += cost; }
+    }
+    if (sit.level >= 2 && sit.Iraw > 0.3 && !ctx.offline) {
+      for (const ch of state.children) if (ch.status === 'home' && (state.day - ch.born) / 365 < 18) ch.sat = Math.max(0, ch.sat - 0.15); // Schulen zu: Kinder sind unzufriedener, lernen etwas weniger
+    }
+    if (res && res.die && state.status === 'alive') { endLife(ctx, `an ${res.die} gestorben`, 'health'); return; }
+  }
   if (m.health < 30 && state.day - (state.pending.healthWarn || -99) >= 6 && m.health > 0) {
     state.pending.healthWarn = state.day;
     notice(state, { level: 'bad', title: 'Deine Gesundheit ist kritisch', tab: 'household', interrupt: true, text: 'Du bist stark geschwächt.', info: ['Deine Gesundheit ist sehr niedrig.', 'Fällt sie auf null, stirbst du.', 'Iss gut, schlafe in einer richtigen Unterkunft, nimm bei Bedarf Gesundheitskarten (ab 1960).'] });
@@ -194,6 +215,7 @@ function dayStep(ctx) {
   businessDaily(ctx);
   society.politicsDaily(ctx);
   applyTownEvents(ctx);
+  seasonalFestivals(ctx);
   rollPrivateEvent(ctx, flows);
 
   // Rechnungs-Warnung
@@ -236,11 +258,27 @@ function dayStep(ctx) {
   }
 }
 
+/** Hinweise zum Wechsel der Jahreszeit und zur Ernte (je einmal im Jahr, ohne Unterbrechung). */
+function seasonNotes(ctx, notes, date, year) {
+  const { world, state } = ctx;
+  const SE = require('./seasons'); const HV = require('./harvest');
+  const first = { 334: 0, 59: 1, 151: 2, 243: 3 }[date.doy]; // 1. Dezember / 1. März / 1. Juni / 1. September
+  if (first !== undefined && SE.C().seasons) {
+    const S = SE.SEASONS[first]; const nm = SE.C().labels[S.key] || S.key;
+    const extra = first === 0 ? ' Lege ein Polster für die Heizkosten zurück.' : first === 3 ? ' Der Erntebericht erscheint in der Zeitung.' : '';
+    notes.push({ level: first === 0 ? 'warn' : 'info', title: `Jahreszeit: ${nm} beginnt`, tab: 'overview', text: `${S.tip}${extra}` });
+  }
+  if (date.doy === 262 && HV.C().on) {
+    const city = world.city(state.cityId); const hr = HV.report(year, city ? city.state : null);
+    notes.push({ level: hr.yield < 0.9 ? 'warn' : 'info', title: `Erntebericht ${year}: ${hr.label}`, tab: 'business', text: hr.yield < 0.9 ? 'Lebensmittel werden teurer, Landwirte verdienen weniger. Die Politik kann Hilfe beschließen.' : hr.yield >= 1.07 ? 'Eine gute Ernte: Lebensmittel bleiben günstig, Landwirte verdienen mehr.' : 'Eine durchschnittliche Ernte: Preise bleiben stabil.' });
+  }
+}
+
 function occupationDaily(ctx, flows, year) {
   const { world, state } = ctx;
   const occ = state.occupation;
   const p = world.prof(occ.pkey);
-  const tired = state.meters.rest < 15 ? 0.7 : 1;
+  const tired = (state.meters.rest < 15 ? 0.7 : 1) * (EPI.isSick(state) ? 0.75 : 1); // Krankengeld 75 %
   if (occ.kind === 'work') {
     const wage = Math.round(flows.inc.wage * tired);
     state.money += wage; state.stats.earned += wage;

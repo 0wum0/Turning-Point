@@ -187,10 +187,10 @@ test('Barometer, Vergleich, Hinweise und Zeitung', () => {
 
 test('Politik-Beschlüsse: Befugnisse, Prüfung, Wirkung und Vorschau', () => {
   const c = city(); const reg = c.state;
-  assert.deepStrictEqual(goods.powersOf(w, 2, 1950).map((p) => p.kind), ['surcharge', 'subsidy', 'rentcap', 'landzone', 'edu_city']);
-  assert.deepStrictEqual(goods.powersOf(w, 3, 1950).map((p) => p.kind), ['support', 'housing', 'edu_region']);
+  assert.deepStrictEqual(goods.powersOf(w, 2, 1950).map((p) => p.kind), ['surcharge', 'subsidy', 'rentcap', 'landzone', 'edu_city', 'hygiene', 'winterhilfe', 'erntefest']);
+  assert.deepStrictEqual(goods.powersOf(w, 3, 1950).map((p) => p.kind), ['support', 'housing', 'edu_region', 'hospital']);
   assert.ok(goods.powersOf(w, 5, 1950).some((p) => p.kind === 'pricebrake'));
-  assert.deepStrictEqual(goods.powersOf(w, 4, 1950).map((p) => p.kind), ['frame', 'edu_nation'], 'Bundestag: Rahmen und Berufsbildung');
+  assert.deepStrictEqual(goods.powersOf(w, 4, 1950).map((p) => p.kind), ['frame', 'edu_nation', 'lockframe'], 'Bundestag: Rahmen und Berufsbildung');
   const rc = goods.normalizePolicy(w, 2, c, 1950, { kind: 'rentcap', value: 2 }); assert.deepStrictEqual([rc.kind, rc.val, rc.scope_city], ['rentcap', 2, c.id]);
   assert.strictEqual(goods.normalizePolicy(w, 3, c, 1950, { kind: 'housing', value: 10 }).region, reg);
   assert.strictEqual(goods.normalizePolicy(w, 5, c, 1950, { kind: 'pricebrake', value: -1 }).val, -1);

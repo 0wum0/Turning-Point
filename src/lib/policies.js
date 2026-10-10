@@ -20,6 +20,7 @@ const { notice, chronicle } = require('../game/core');
 const fail = (m) => { throw new ActionError(m); };
 const worldP = () => require('../game/world').get();
 const msPerGameDay = () => 86400000 / Math.max(1, Number(settings.get('game.clock_days_per_day')) || 365);
+const LV = (k, v) => ((goods.SEAS_LV[k] || [])[k === 'pandemic' ? v : v - 1]) || `Stufe ${v}`;
 const sign = (v) => (v > 0 ? `+${v}` : `${v}`);
 
 let ACTIVE = []; // Beschlüsse, die gerade wirken (für die Anzeige)
@@ -43,6 +44,15 @@ function describe(world, r) {
     case 'edu_region': { const rg = r.region || 'der Region'; return `Bildungsprogramm in ${rg}: Stufe ${r.val} (Kurse günstiger)`; }
     case 'edu_nation': return `Berufsbildungsgesetz: Stufe ${r.val} (Lehrlingslohn teilweise vom Staat bezahlt)`;
     case 'natsubsidy': return `Branchen-Subvention im Land: ${r.val} % Zuschuss auf ${g ? g.name : r.good}`;
+    case 'hygiene': return `Gesundheitsamt in ${city ? city.name : 'der Stadt'}: ${LV('hygiene', r.val)} (Seuchen breiten sich langsamer aus)`;
+    case 'winterhilfe': return `Winterhilfe in ${city ? city.name : 'der Stadt'}: ${LV('winterhilfe', r.val)} (Heizkosten im Winter sinken)`;
+    case 'erntefest': return `Erntefest in ${city ? city.name : 'der Stadt'}: ${LV('erntefest', r.val)}`;
+    case 'hospital': return `Krankenhausprogramm in ${r.region || 'der Region'}: ${LV('hospital', r.val)}`;
+    case 'lockframe': return `Rahmen für Seuchenmaßnahmen: ${LV('lockframe', r.val)}`;
+    case 'pandemic': return `Seuchenmaßnahmen im Land: ${LV('pandemic', r.val)}`;
+    case 'vaccine': return `Impfkampagne im Land: ${LV('vaccine', r.val)}`;
+    case 'kurzarbeit': return `Kurzarbeitergeld im Land: ${LV('kurzarbeit', r.val)}`;
+    case 'erntehilfe': return `Ernte- und Dürrehilfe im Land: ${LV('erntehilfe', r.val)}`;
     default: return r.kind;
   }
 }
@@ -74,7 +84,7 @@ async function overview(userId) {
   const out = {
     enabled: (settings.get('goods').policy || {}).enabled !== false && goods.enabled(), year, idx,
     frame: { name: fr.name, maxSurcharge: fr.maxSurcharge, maxSubsidy: fr.maxSubsidy },
-    local: { city: city ? city.name : null, region: city ? city.state : null, surcharge: ef.surcharge, levy: Math.round(ef.levy * 10) / 10, vat: ef.vat, tariff: ef.tariff, subsidy: ef.subsidy, support: ef.support, edu: ef.edu, zone: ef.zone, rentCap: ef.rentCap, brake: ef.brake },
+    local: { epi: ef.epi, season: ef.season, harvest: ef.harvest, city: city ? city.name : null, region: city ? city.state : null, surcharge: ef.surcharge, levy: Math.round(ef.levy * 10) / 10, vat: ef.vat, tariff: ef.tariff, subsidy: ef.subsidy, support: ef.support, edu: ef.edu, zone: ef.zone, rentCap: ef.rentCap, brake: ef.brake },
     active: ACTIVE.filter((a) => (!a.cityId || a.cityId === state.cityId) && (!a.region || (city && a.region === city.state))).map((a) => ({ kind: a.kind, text: a.text, office: a.office, holder: a.holder, hours: Math.max(0, Math.round((a.until - Date.now()) / 3600000)) })),
     office: null,
   };

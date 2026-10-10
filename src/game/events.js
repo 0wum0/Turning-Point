@@ -3,7 +3,8 @@ const { rngFor, int, pick, chance, weighted } = require('./rng');
 const press = require('./press');
 const { notice, chronicle, propertyValue } = require('./core');
 const { scale, formatMoney } = require('./economy');
-const { season, yearOf } = require('./calendar');
+const { season, yearOf, dateOf } = require('./calendar');
+const SEASONS = require('./seasons');
 const EVD = require('./event-defaults');
 const cfgOf = (world) => ({ ...EVD, ...((world && world.econ && world.econ.events) || {}) });
 const townCfg = (c) => ({ ...EVD.town, ...((c && c.town) || {}) });
@@ -117,6 +118,19 @@ function applyTownEvents(ctx) {
   }
 }
 
+/** Jahreszeitliche Feste der Heimatstadt (Weihnachtsmarkt, Karneval, Oktoberfest, Sommerfest, Erntedank): am ersten Tag Stimmung und Hinweis. */
+function seasonalFestivals(ctx) {
+  const { world, state } = ctx;
+  const city = world.city(state.cityId); const F = SEASONS.C().festivals;
+  if (!city || !F.on || ctx.offline) return;
+  const doy = dateOf(state.day, state.startYear).doy;
+  for (const f of SEASONS.festivalsOn(city, doy)) {
+    if (f.day !== 0) continue;
+    state.mods.wellBoost = Math.min(15, (state.mods.wellBoost || 0) + F.well);
+    notice(state, { level: 'good', title: `${f.name} in ${city.name}`, tab: 'overview', text: `${f.text} Das hebt die Stimmung; Gastronomie, Ausflug und Einzelhandel in der Stadt machen etwas mehr Umsatz.`, info: ['Ein Fest in deiner Stadt.', 'Die Stimmung steigt für ein paar Tage, Betriebe der passenden Branche verdienen etwas mehr.', 'Nichts nötig – genieße es oder nutze die Kundschaft.'] });
+  }
+}
+
 /** Persönliche Zufallsereignisse + stilles „adaptives Glück“ für Spieler in Not. */
 function rollPrivateEvent(ctx, flows) {
   const { world, state } = ctx;
@@ -129,7 +143,7 @@ function rollPrivateEvent(ctx, flows) {
   const luck = poor ? P.poorLuck : 1;
   const t = weighted(r, [
     { id: 'gold', w: 2 * luck }, { id: 'gift', w: state.occupation && state.occupation.kind === 'work' ? 2 * luck : 0 },
-    { id: 'heritage', w: 0.35 * luck }, { id: 'bag', w: 0.5 * luck }, { id: 'sick', w: 2.2 },
+    { id: 'heritage', w: 0.35 * luck }, { id: 'bag', w: 0.5 * luck }, { id: 'sick', w: 2.2 * require('./seasonfx').body(state).illness }, // Winter: mehr Erkältungen, Sommer: weniger
   ]);
   if (t.id === 'gold') {
     const v = scale(P.gold, idx);
@@ -157,4 +171,4 @@ function rollPrivateEvent(ctx, flows) {
   }
 }
 
-module.exports = { townEventsForWeek, townEventsOn, describeTownEvent, applyTownEvents, rollPrivateEvent };
+module.exports = { seasonalFestivals, townEventsForWeek, townEventsOn, describeTownEvent, applyTownEvents, rollPrivateEvent };

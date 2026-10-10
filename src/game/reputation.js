@@ -250,6 +250,8 @@ function policyMood(kind, val) {
   switch (kind) {
     case 'surcharge': case 'vat': case 'tariff': case 'pricebrake': return v < 0 ? 1 : v > 0 ? -1 : 0;
     case 'rentcap': case 'landzone': case 'housing': case 'edu_city': case 'edu_region': case 'edu_nation': return 1;
+    case 'hygiene': case 'winterhilfe': case 'erntefest': case 'hospital': case 'vaccine': case 'kurzarbeit': case 'erntehilfe': return 1; // Fürsorge kommt gut an
+    case 'pandemic': return v === 1 ? 1 : v === 3 ? -1 : 0; // Masken beliebt, Lockdown umstritten, Lockern und Kontaktregeln neutral
     default: return 0;
   }
 }

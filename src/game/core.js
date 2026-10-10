@@ -59,7 +59,7 @@ function propertyValue(world, state, p, year) {
 /** Preisfaktor für Lebensmittel am Wohnort: fester Stadtfaktor (abgeschwächt) × Stadtindex Lebensmittel. */
 function foodFactor(world, state, year) {
   const c = world.city(state.cityId);
-  return (0.6 + 0.4 * (c ? c.price_factor : 1)) * require('./cityecon').foodMult(state.cityId, year);
+  return (0.6 + 0.4 * (c ? c.price_factor : 1)) * require('./cityecon').foodMult(state.cityId, year) * require('./harvest').foodMult(year, c ? c.state : null); // Erntejahr: schlechte Ernte verteuert das Essen
 }
 function netWorth(world, state) {
   const year = yearOf(state.day, state.startYear);
@@ -154,12 +154,16 @@ function dailyFlows(world, state) {
     const v = propertyValue(world, state, p, year);
     exp.upkeep += Math.round((v * (econ.upkeepYearPct + (state.flags.autoMaintain ? 1 : 0))) / 100 / 365);
   }
+  // Jahreszeit: Heizen macht einen Teil von Miete/Unterkunft und Unterhalt aus – im Winter teurer, im Sommer günstiger (Jahresmittel unverändert)
+  const heat = require('./seasonfx').heating(world, state, year, require('./seasonfx').effects(world, state.cityId));
+  if (h.type === 'pension' || h.type === 'rent') exp.lodging = Math.round(exp.lodging * heat.mult);
+  else if (h.type === 'own') exp.upkeep = Math.round(exp.upkeep * (1 + heat.pct * 0.5));
   if (state.butler) exp.butler = scale(state.butler.perDay, idx);
   exp.loan = require('./credit').dailyPay(state);
   exp.tax = require('./tax').incomeTaxPerDay(idx, inc.wage + inc.office + inc.rent);
   const income = Object.values(inc).reduce((a, b) => a + b, 0);
   const expense = Object.values(exp).reduce((a, b) => a + b, 0);
-  return { inc, exp, income, expense, net: income - expense };
+  return { inc, exp, income, expense, net: income - expense, heat: { pct: Math.round(heat.pct * 1000) / 10, kind: heat.kind, sub: heat.sub } };
 }
 
 function consumption(state) {

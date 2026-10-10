@@ -166,6 +166,32 @@ const DEFAULTS = {
     newsPct: 4,                   // Zeitungsmeldung ab so vielen Prozent Veränderung gegenüber dem Vorjahr
     policy: { rentCapOptions: [0, 2, 4], zoneOptions: [5, 10, 15], programOptions: [5, 10, 15], brakeOptions: [-2, -1, 1, 2], capSupplyPenaltyPct: 6, zoneBuildPct: 50, brakeWagePct: 70 },
   },
+  // Jahreszeiten, Ernte und Seuchen (src/game/seasons.js, harvest.js, epidemics.js): rein deterministisch aus Spieldatum und Jahr.
+  // Jede Untergruppe hat einen eigenen Schalter; strength 0 = ohne Wirkung, 1 = normal, 2 = doppelt. Alle Wirkungen sind gedeckelt.
+  jahreszeiten: {
+    enabled: true,
+    labels: { winter: 'Winter', fruehling: 'Frühling', sommer: 'Sommer', herbst: 'Herbst' },
+    seasons: {
+      enabled: true, strength: 1, cap: 0.2,                      // cap: größte Abweichung des Umsatzes durch Jahreszeit und Feste (0,2 = ±20 %)
+      amp: { gastro: 0.14, tourism: 0.2, heat: 0.2, bau: 0.16, retail: 0.18, agrar: 0.15 }, // Ausschlag je Branche (mittelwertfrei über das Jahr)
+      heating: { share: 0.12, kohle: 1.2, zentral: 0.9, waerme: 0.6, severity: 0.35 }, // Anteil der Heizung an Miete/Unterhalt, Ausschlag je Heizungsart, Härte des Winters
+      health: { illness: 0.35, rest: 0.4, mood: 1.5 },           // Krankheitschance ±35 %, Erholung ±0,4/Tag, Stimmung ±1,5 Punkte (Sommer +, Winter −)
+    },
+    festivals: { enabled: true, boostPct: 6, well: 6 },          // regionale Feste: Umsatzplus für Gastro/Ausflug/Einzelhandel, Stimmung
+    harvest: {
+      enabled: true, strength: 1, variance: 1, catastropheChance: 0.025, // variance skaliert die Streuung der Ernten, catastropheChance = seltene Katastrophenjahre
+      importCushion: 0.5, farmPass: 0.55, foodPass: 0.18, priceMin: 0.82, priceMax: 1.45, // Importanteil dämpft Preisschocks; Anteil an Erlösen der Bauern; Durchschlag auf die Lebensmittelpreise
+      forced: [],                                                 // Admin: [{ year, yield, region?, name? }] erzwingt eine Ernte (Test)
+    },
+    epidemics: {
+      enabled: true, severity: 1, frequency: 1, speedKm: 9,       // Schwere der Wellen, Häufigkeit erfundener Seuchen, Ausbreitung in km je Spieltag
+      infect: 1, mortality: { enabled: true, max: 0.004 },        // Ansteckung insgesamt; Sterblichkeit je kranker Tag (Obergrenze)
+      measures: { mask: 0.18, contact: 0.38, lockdown: 0.6 },     // Wirkung der Stufen 1–3 auf die Ansteckung
+      lockdown: { gastro: [0, 0.1, 0.3], tourism: [0, 0.15, 0.4], retail: [0, 0.05, 0.15], other: [0.0, 0.01, 0.04] }, // Umsatzverlust je Stufe 1–3 bei voller Welle
+      price: { hygiene: 3, vaccine: 12, shieldDays: 6 },          // Kosten (DM von 1945): Hygienepaket, Impfung; Schutzkonzept = so viele Tagesumsätze der Betriebe
+      forced: [],                                                 // Admin: [{ id, name, startDay, origin, duration, sev, kind, level, until }] (Test)
+    },
+  },
   // Ruf und Ansehen (src/game/reputation.js, src/lib/reputation.js): fünf Bestandteile je Familie, Stufen von „Verrufen“ bis „Ehrenbürger“.
   // Ereignisse (Tabelle REASONS im Code) ändern einen Bestandteil; mult skaliert einzelne Ereignisse, caps begrenzt sie je Tag (Obergrenze der Beträge vor dem Abflauen).
   ruf: {

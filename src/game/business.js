@@ -43,7 +43,7 @@ function companyValue(world, state, c, year) {
 function staffNeeded(world, c) { return Math.ceil(c.rooms / tiersOf(world)[c.tier].roomsPerStaff); }
 
 /** Konjunktur: historische Krisen und Aufschwünge dämpfen/stärken den Umsatz aller Betriebe. */
-const CRISES = [[1973, 1975, 0.8, 'Ölkrise'], [1980, 1982, 0.85, 'Rezession'], [1992, 1994, 0.88, 'Rezession nach der Wiedervereinigung'], [2001, 2003, 0.9, 'Platzen der Dotcom-Blase'], [2008, 2009, 0.78, 'Finanzkrise'], [2020, 2021, 0.75, 'Pandemie-Lockdowns']];
+const CRISES = [[1973, 1975, 0.8, 'Ölkrise'], [1980, 1982, 0.85, 'Rezession'], [1992, 1994, 0.88, 'Rezession nach der Wiedervereinigung'], [2001, 2003, 0.9, 'Platzen der Dotcom-Blase'], [2008, 2009, 0.78, 'Finanzkrise'], [2020, 2021, 0.9, 'Pandemie-Lockdowns']];
 const BOOMS = [[1950, 1957, 1.12, 'Wirtschaftswunder'], [1986, 1990, 1.06, 'Aufschwung'], [2014, 2019, 1.05, 'langer Aufschwung']];
 function marketPhase(year) {
   for (const [a, b, f, name] of CRISES) if (year >= a && year <= b) return { factor: f, name, kind: 'crisis' };
@@ -60,14 +60,15 @@ function companyFlows(world, state, c, year) {
   const needed = staffNeeded(world, c);
   const ownerHere = state.occupation && state.occupation.ownCompanyId === c.id ? 1 : 0;
   const ps = c.playerStaff || [];
-  const eff = Math.max(0.2, Math.min(1, (c.staff + ps.length + ownerHere) / needed)) * (c.manager || c.playerManager || ownerHere ? 1 : 0.6);
+  const goods = require('./goods'); const gw = goods.W(); const ef = goods.effectsFor(world, c.cityId);
+  const sfx = require('./seasonfx').firmFactor(world, state, c, year, ef); // Jahreszeit, Feste, Ernte und Seuchen: Umsatzfaktor (rev) und Leistung durch kranke Mitarbeiter (eff)
+  const eff = Math.max(0.2, Math.min(1, (c.staff + ps.length + ownerHere) / needed)) * (c.manager || c.playerManager || ownerHere ? 1 : 0.6) * sfx.eff;
   const strike = c.strikeUntil && state.day < c.strikeUntil ? 0 : 1;
   const comp = require('./competition').info(world, c.cityId, c.pkey, c.rooms);
   const hit = c.hit && state.day < c.hit.until ? c.hit.factor : 1; const outage = c.outageUntil && state.day < c.outageUntil ? 0 : 1;
   const ce = require('./cityecon'); // Stadtwirtschaft: Sektor-Index (Umsatz, abgeschwächt) und örtliches Lohnniveau; ohne Stadtindizes = 1
-  const goods = require('./goods'); const gw = goods.W(); const ef = goods.effectsFor(world, c.cityId);
   const tfx = TL.firmEffects(world, state, c, ef.edu); // Talente: Teamqualität → Umsatz (±12 %), Lieferverlässlichkeit, Lohnsumme
-  const raw = tfx.rev * c.rooms * t.incomePerRoom * idx * cityMult(world.city(c.cityId)) * eff * marketPhase(year).factor * strike * comp.factor * hit * outage * ce.revenueMult(world, c.cityId, c.pkey, year);
+  const raw = tfx.rev * c.rooms * t.incomePerRoom * idx * cityMult(world.city(c.cityId)) * eff * marketPhase(year).factor * strike * comp.factor * hit * outage * ce.revenueMult(world, c.cityId, c.pkey, year) * sfx.rev;
   // Warenkreislauf: Rezept, Versorgung, Verträge, Politik (siehe goods.js). Ohne Rezeptzutaten/aus: identisch zur früheren Rechnung.
   const ar = goods.activeRecipe(world, c.pkey, year, c.cityId);
   const rPot = Math.round(raw * ar.mult * goods.outputFactor(ar, year, ef));
@@ -84,7 +85,7 @@ function companyFlows(world, state, c, year) {
   const tax = pretax > 0 ? Math.max(0, taxer.corporateTax(pretax) + Math.round((pretax * (ef.surcharge + ef.levy)) / 100)) : 0;
   const profit = pretax - tax;
   return {
-    income, wages, upkeep, tax, pretax, profit, efficiency: eff, needed, comp, inputs, vat, contractIncome: sell.contractIncome, profitAll: profit + sell.contractIncome,
+    income, wages, upkeep, tax, pretax, profit, efficiency: eff, sfx, needed, comp, inputs, vat, contractIncome: sell.contractIncome, profitAll: profit + sell.contractIncome,
     supply: {
       on: gw.on, primary: ar.primary, status: buy.status, ratio: buy.ratio, factor: buy.factor, auto: buy.auto, needs: buy.needs, pays: buy.pays, outputs: sell.outputs, fills: sell.fills,
       costContract: buy.costContract, costWholesale: buy.costWholesale, subsidy: buy.subsidy, cost: buy.cost, contractIncome: sell.contractIncome,
