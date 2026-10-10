@@ -46,6 +46,7 @@ async function perform(attackerId, targetId, companyId, action) {
   if (R.mode === 'off') fail('Der Wettbewerb ist gerade abgeschaltet.');
   if (!A) fail('Unbekannte Aktion.');
   if (attackerId === targetId) fail('Das ist dein eigener Betrieb.');
+  await require('./court').assertFree(attackerId, 'econ'); // Haft sperrt wirtschaftliche Handlungen
   const att = await db.one('SELECT id, rivalry, rivalry_ban, created_at, banned, mute_until FROM users WHERE id = ?', [attackerId]);
   const tgt = await db.one('SELECT id, rivalry, created_at, banned FROM users WHERE id = ?', [targetId]);
   if (!att || !tgt || tgt.banned) fail('Dieser Spieler ist nicht erreichbar.');
@@ -72,7 +73,7 @@ async function perform(attackerId, targetId, companyId, action) {
     const cost = Math.round(A.cost * idxA); if (sA.money < cost) fail('Dafür reicht dein Geld nicht.');
     const year = yearOf(sB.day, sB.startYear);
     const secure = !!c.security; const nameA = `${sA.person.first} ${sA.person.last}`;
-    let success = true; let spyInfo = null; let effectTxt = '';
+    let success = true; let spyInfo = null; let effectTxt = ''; let damageReal = 0;
     if (action === 'poach' && (c.staff || 0) <= 0) fail('In diesem Betrieb gibt es keine Mitarbeiter zum Abwerben.');
     if (action !== 'spy' && secure && Math.random() < R.successSecurity) success = false;
     sA.money -= cost; sA.stats.spent = (sA.stats.spent || 0) + cost;
@@ -80,16 +81,17 @@ async function perform(attackerId, targetId, companyId, action) {
       const f = biz.companyFlows(world, sB, c, year);
       spyInfo = { name: c.name, value: Math.round(biz.companyValue(world, sB, c, year) / idxB), profit: Math.round(f.profit / idxB), income: Math.round(f.income / idxB), cash: Math.round((c.cash || 0) / idxB), staff: c.staff || 0, security: secure, rooms: c.rooms };
     } else if (success) {
-      if (action === 'price') { c.hit = { until: sB.day + A.days, factor: 1 - A.hitPct / 100 }; effectTxt = `Umsatz −${A.hitPct} % für ${A.days} Tage`; }
-      else if (action === 'poach') { c.staff = Math.max(0, c.staff - 1); effectTxt = 'ein Mitarbeiter wechselt zu dir'; }
+      if (action === 'price') { damageReal = Math.round(A.cost * 0.8); c.hit = { until: sB.day + A.days, factor: 1 - A.hitPct / 100 }; effectTxt = `Umsatz −${A.hitPct} % für ${A.days} Tage`; }
+      else if (action === 'poach') { damageReal = Math.round(A.cost); c.staff = Math.max(0, c.staff - 1); effectTxt = 'ein Mitarbeiter wechselt zu dir'; }
       else if (action === 'sabotage') {
         c.outageUntil = sB.day + A.outageDays; const repair = Math.round(biz.companyValue(world, sB, c, year) * A.repairPct / 100);
+        damageReal = Math.round(repair / idxB * (sB.insurance && sB.insurance.gebaeude ? 0.2 : 1));
         if (!sB.insurance || !sB.insurance.gebaeude) { const fromCash = Math.min(c.cash || 0, repair); c.cash = (c.cash || 0) - fromCash; sB.money -= Math.min(Math.max(0, sB.money), repair - fromCash); } // nie unter null: ein Anschlag soll kosten, aber nicht die Insolvenz des Opfers auslösen
         effectTxt = `Produktionsausfall ${A.outageDays} Tage`;
       }
     }
     // Entdeckung
-    const pCaught = Math.min(0.95, (R.caughtBase + (secure ? R.caughtSecurityBonus : 0)) * (DETECT[action] || 1));
+    const pCaught = Math.min(0.95, Math.max(0.02, (R.caughtBase + (secure ? R.caughtSecurityBonus : 0) + require('./court-policy').effects(c.cityId).detect) * (DETECT[action] || 1))); // Polizeibudget der Stadt wirkt auf die Entdeckung
     const caught = !success ? true : Math.random() < pCaught;
     const fine = caught ? Math.min(Math.max(0, sA.money), Math.round(cost * R.finePct / 100)) : 0;
     sA.money -= fine; sA.stats.spent = (sA.stats.spent || 0) + fine;
@@ -112,6 +114,8 @@ async function perform(attackerId, targetId, companyId, action) {
     const uA = await service.loadUser(conn, attackerId); const uB = await service.loadUser(conn, targetId);
     await social.upsertStats(conn, uA, rowA, sA, world); await social.upsertStats(conn, uB, rowB, sB, world);
     await conn.query('INSERT INTO rivalry_log (attacker, target, company_id, company, action, caught, cost_real) VALUES (?,?,?,?,?,?,?)', [attackerId, targetId, companyId, c.name, action, caught ? 1 : 0, Math.round(A.cost)]);
+    // Gericht: Jede Handlung hinterlässt Spuren (vor dem Täter verborgen); wer erwischt wurde, ist dem Opfer bekannt
+    await require('./court').trace(conn, { act: action, offenderId: attackerId, victimId: targetId, victimCompany: companyId, subject: c.name, cityId: c.cityId, damageReal, security: secure, failed: !success, caught });
     if (caught && action !== 'spy') {
       await conn.query("INSERT INTO messages (from_user, to_user, kind, subject, body) VALUES (?,?, 'system', 'Wettbewerb: Täter überführt', ?)", [attackerId, targetId, `${nameA} wurde bei „${label}“ gegen ${c.name} überführt.`]);
       if (action === 'sabotage') { try { await conn.query('INSERT INTO public_news (city_id, user_id, section, title, text) VALUES (?,?,?,?,?)', [c.cityId, attackerId, 'Wirtschaft', `Anschlag auf ${c.name}`, `${nameA} wurde nach einem Anschlag auf ${c.name} überführt und muss Strafe zahlen.`]); } catch (_) { /* nur Zugabe */ } }

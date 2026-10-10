@@ -17,6 +17,13 @@ const cityecon = require('./cityecon');
 
 const round = (n) => Math.round(n);
 
+/** Gericht: Einschränkungen und Zähler aus dem Spielstand (state.court, gefüllt von src/lib/court.js beim Laden). */
+function courtBrief(state, now = Date.now()) {
+  const c = state.court; if (!c) return null;
+  const { SANCTIONS } = require('./court');
+  return { r: (c.r || []).filter((x) => x.until > now).map((x) => ({ k: x.k, label: SANCTIONS[x.k], until: x.until })), debt: c.debt || 0, ev: c.ev || 0, p: c.p || 0, d: c.d || 0, act: c.act || 0 };
+}
+
 function eraName(year) {
   if (year < 1950) return 'Nachkriegszeit';
   if (year < 1965) return 'Wirtschaftswunder';
@@ -157,6 +164,7 @@ function present(world, state, user, now) {
     learned,
     credit: require('./credit').view(world, state),
     rep: require('./reputation').brief(state),
+    court: courtBrief(state),
     properties: state.properties.map((p) => ({
       id: p.id, name: p.name, kind: p.kind, cityId: p.cityId, city: (world.city(p.cityId) || {}).name, rooms: p.rooms, condition: round(p.condition),
       value: propertyValue(world, state, p, year), closed: p.closedUntil > state.day ? p.closedUntil - state.day : 0,

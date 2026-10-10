@@ -53,9 +53,10 @@ function syncEfs(user, state, now, w) {
     const n = Math.min(whole, 3650);
     const before = { day: state.day, money: state.money, year: yearOf(state.day, state.startYear) };
     const away = awayMin >= settings.get('game.offline_after_minutes');
+    const jailed = require('../lib/court').jailed(state); // Haft: die Uhr läuft weiter, aber geschützt (kein Verhungern, keine Insolvenz)
     // Anfänger-Schutz: In den ersten Spieltagen (≈ einige Stunden echte Zeit) läuft die Uhr im Schutzmodus – wer noch liest und lernt, verhungert nicht
     const newbie = state.day < settings.get('game.newbie_protect_days');
-    if (away || newbie) {
+    if (away || newbie || jailed) {
       const res = advance(w, state, n, { mode: 'offline' });
       flush(user, state);
       if (!away) clock = { days: res.advanced, fromYear: before.year, toYear: yearOf(state.day, state.startYear), moneyDelta: state.money - before.money, status: state.status };

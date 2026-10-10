@@ -21,6 +21,7 @@ const name = (s) => `${s.person.first} ${s.person.last}`;
 
 async function take(tenantId, ownerId, propId) {
   const M = settings.get('market'); if (!M.enabled) fail('Der Spielermarkt ist gerade geschlossen.');
+  await require('./court').assertFree(tenantId, 'econ');
   if (tenantId === ownerId) fail('Du kannst nicht bei dir selbst mieten.');
   const world = await worldP();
   const rel = await social.relation(tenantId, ownerId); if (rel === 'blocked' || rel === 'blocked_by') fail('Dieser Spieler ist nicht erreichbar.');
@@ -69,6 +70,7 @@ async function evict(ownerId, propId) {
     if (!p || !p.lease || !p.lease.tenant || !p.lease.tenant.userId) fail('Hier wohnt kein Spieler zur Miete.');
     await conn.query("UPDATE player_leases SET status = 'ended', ended_by = 'owner' WHERE owner_id = ? AND prop_id = ? AND status = 'active'", [ownerId, propId]);
     const tenantId = p.lease.tenant.userId;
+    if (!(p.lease.tenant.arrears > 0)) await require('./court').trace(conn, { act: 'evict', offenderId: ownerId, victimId: tenantId, subject: p.name, cityId: p.cityId, damageReal: Math.round((p.lease.tenant.contractReal || 0) * 30), known: true }); // Räumung ohne Mietrückstand und ohne Frist
     p.lease.tenant = null; p.lease.vacantSince = s.day;
     require('../game/reputation').queue(s, 'scandal', null, 'evict', `u${tenantId}`); // Rauswurf eines Mieters schadet dem Ruf
     return {};

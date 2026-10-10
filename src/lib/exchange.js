@@ -97,6 +97,7 @@ async function makerCapLeft(conn, st) {
 /** Gebot/Verkauf einstellen und sofort abgleichen (in der Transaktion des Spielers). */
 async function place(userId, stockId, side, shares, limitReal) {
   const X = cfg(); if (!X.enabled) fail('Die Börse ist geschlossen.');
+  await require('./court').assertFree(userId, 'econ');
   shares = int(shares); limitReal = int(limitReal);
   if (!['buy', 'sell'].includes(side)) fail('Unbekannte Order.');
   if (shares < 1 || shares > X.maxOrderShares) fail(`Eine Order umfasst 1 bis ${X.maxOrderShares} Anteile.`);
@@ -185,6 +186,7 @@ async function syncOutside(conn, st, ctx) {
 /** Börsengang: Eigentümer legt Streubesitz-Anteil zum fairen Kurs ins Orderbuch. */
 async function ipo(userId, companyId, floatPct, divPct) {
   const X = cfg(); if (!X.enabled) fail('Die Börse ist geschlossen.');
+  await require('./court').assertFree(userId, 'trade');
   floatPct = int(floatPct); divPct = int(divPct, 30);
   if (floatPct < X.minFloatPct || floatPct > X.maxFloatPct) fail(`Der Streubesitz muss zwischen ${X.minFloatPct} und ${X.maxFloatPct} Prozent liegen.`);
   if (divPct < 0 || divPct > 80) fail('Die Ausschüttung liegt zwischen 0 und 80 Prozent.');

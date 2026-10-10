@@ -641,6 +641,7 @@ A.readNotices = ({ state, input }) => {
 function run(name, ctx) {
   const fn = A[name];
   if (!fn) fail('Unbekannte Aktion.');
+  { const b = require('./court').gate(name, ctx.state, ctx.input); if (b) fail(b); } // Gericht: Haft, Gewerbe- und Berufsverbot
   return fn(ctx) || {};
 }
 

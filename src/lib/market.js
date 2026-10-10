@@ -143,6 +143,7 @@ async function repTrade(buyerId, sellerId, ref) {
 
 async function guards(userId, otherId) {
   const C = cfg(); if (!C.enabled) fail('Der Spielermarkt ist gerade geschlossen.');
+  await require('./court').assertFree(userId, 'econ'); // Haft
   if (userId === otherId) fail('Mit dir selbst kannst du nicht handeln.');
   const o = await db.one('SELECT id, banned, is_bot FROM users WHERE id = ?', [otherId]); if (!o || o.banned) fail('Dieser Spieler ist nicht erreichbar.');
   const rel = await social.relation(userId, otherId); if (rel === 'blocked' || rel === 'blocked_by') fail('Dieser Spieler ist nicht erreichbar.');
@@ -228,6 +229,7 @@ async function buyNow(buyerId, sellerId, kind, itemId) {
 /* ---------------------------- Versteigerungen ---------------------------- */
 async function startAuction(userId, kind, itemId, minReal, hours) {
   const C = cfg(); if (!C.enabled) fail('Der Spielermarkt ist gerade geschlossen.');
+  await require('./court').assertFree(userId, 'econ');
   const world = await worldP(); const min = int(minReal); if (min < 100) fail('Das Mindestgebot ist zu klein.');
   const h = Math.max(1, Math.min(72, int(hours, C.auctionHours)));
   return service.withCharacter(userId, async (ctx) => {
@@ -244,6 +246,7 @@ async function startAuction(userId, kind, itemId, minReal, hours) {
 
 async function bid(userId, auctionId, priceReal) {
   const C = cfg(); if (!C.enabled) fail('Der Spielermarkt ist gerade geschlossen.');
+  await require('./court').assertFree(userId, 'econ');
   const a = await db.one("SELECT * FROM market_auctions WHERE id = ? AND status = 'open'", [auctionId]);
   if (!a || new Date(a.ends_at).getTime() < Date.now()) fail('Diese Versteigerung ist beendet.');
   if (a.seller_id === userId) fail('Auf die eigene Versteigerung kannst du nicht bieten.');
@@ -281,7 +284,7 @@ async function settleAuctions() {
           sold = true; break;
         } catch (e) {
           await db.query("UPDATE market_auctions SET status = 'open' WHERE id = ? AND status = 'sold'", [a.id]);
-          if (e instanceof ActionError) { await social.sendSystemLetter(b.user_id, 'Zuschlag verfallen', `Den Zuschlag für „${a.name}“ konntest du nicht annehmen: ${e.message}`); await require('./reputation').add(b.user_id, 'rel', null, 'auction_default', `a${a.id}`); } else throw e;
+          if (e instanceof ActionError) { await social.sendSystemLetter(b.user_id, 'Zuschlag verfallen', `Den Zuschlag für „${a.name}“ konntest du nicht annehmen: ${e.message}`); await require('./reputation').add(b.user_id, 'rel', null, 'auction_default', `a${a.id}`); if (a.seller_id) await require('./court').trace(null, { act: 'fraud', offenderId: b.user_id, victimId: a.seller_id, subject: a.name, cityId: a.city_id, damageReal: Math.round(Number(b.price_real) * 0.03), known: true }); } else throw e;
         }
       }
       if (sold) continue;

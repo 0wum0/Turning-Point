@@ -55,6 +55,7 @@ async function refresh() {
   const offices = world.econ.politics.offices;
   const valid = rows.filter((r) => r.status === 'alive' && r.office === (offices[r.office_idx] || {}).name);
   goods.setPolicies(goods.buildPolicies(valid));
+  require('./court-policy').refresh().catch((e) => log.warn(`[gericht] ${e.message}`));
   ACTIVE = valid.map((r) => ({ id: r.id, kind: r.kind, good: r.good, val: r.val, cityId: r.scope_city, region: r.region, office: r.office, holder: r.social_public ? r.holder : null, until: Number(r.expires_at), text: describe(world, r) }));
 }
 

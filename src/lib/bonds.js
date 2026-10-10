@@ -301,6 +301,7 @@ async function reconcile(conn, user, row, state, world) {
   if (!state) return;
   try {
     await reconcileCredits(conn, user, state, world);
+    await require('./court').reconcile(conn, user, state, world); // Gericht: Zahlungsaufträge genau einmal, Einschränkungen, Meldungen
     await require('./leases').reconcile(conn, user, state, world);
     await require('./exchange').reconcile(conn, user, state);
     await require('./supply').reconcile(conn, user, state, world);

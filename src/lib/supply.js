@@ -121,6 +121,10 @@ async function flush(conn, user, state) {
   }
   K.buys = (K.buys || []).filter((b) => !b.ended);
   for (const s of K.sells || []) {
+    if (s.fill < 0.6 && !(s._fill < 0.6) && s.buyerId) { // Lieferausfall gegenüber dem Abnehmer: Spuren (höchstens eine Meldung je 3 Tage und Abnehmer)
+      const seen = await conn.one("SELECT 1 x FROM court_evidence WHERE offender_id = ? AND victim_id = ? AND act = 'default' AND created_ms > ? LIMIT 1", [user.id, s.buyerId, Date.now() - 72 * 3600000]);
+      if (!seen) await require('./court').trace(conn, { act: 'default', offenderId: user.id, victimId: s.buyerId, victimCompany: s.buyerFirm, subject: s.buyerFirmName, cityId: state.cityId, damageReal: Math.round(Number(s.qty || 0) * Number(s.price || 0) * 3 * 0.1), known: true });
+    }
     if (s.fill !== s._fill) { await conn.query("UPDATE supply_contracts SET fill = ? WHERE id = ? AND seller_id = ? AND status = 'active'", [round3(s.fill == null ? 1 : s.fill), s.id, user.id]); s._fill = s.fill; }
   }
 }
@@ -250,6 +254,7 @@ async function guard(userId, otherId) {
  */
 async function offer(userId, input) {
   if (!on()) fail('Lieferverträge sind gerade nicht möglich.');
+  await require('./court').assertFree(userId, 'trade'); // Haft und Gewerbeverbot
   const world = await worldP();
   const c = ccfg();
   const ps = await self(userId);
@@ -299,7 +304,7 @@ async function respond(userId, id, accept) {
     live.publish('business', {}, proposer);
     return { accepted: false };
   }
-  await self(userId); await guard(userId, proposer);
+  await self(userId); await guard(userId, proposer); await require('./court').assertFree(userId, 'trade');
   const sellerFirm = await loadFirm(row.seller_id, row.seller_company); const buyerFirm = await loadFirm(row.buyer_id, row.buyer_company);
   await checkDeal(world, sellerFirm, buyerFirm, row.good, row.id);
   const ok = await db.query("UPDATE supply_contracts SET status = 'active', days_left = term_days, accepted_at = NOW(), fill = 1, take = 1 WHERE id = ? AND status = 'offer'", [row.id]);
@@ -319,7 +324,13 @@ async function cancel(userId, id) {
   } else {
     await db.query("UPDATE supply_contracts SET status = 'cancelled', end_reason = 'cancel', ended_at = NOW() WHERE id = ? AND status = 'active'", [row.id]);
     // Wer einen laufenden Vertrag vorzeitig kündigt (mehr als 10 Tage Restlaufzeit), schadet seiner Zuverlässigkeit
-    if (Number(row.days_left) > 10) await require('./reputation').add(userId, 'rel', null, 'contract_cancel', `c${row.id}`, { other });
+    if (Number(row.days_left) > 10) {
+      await require('./reputation').add(userId, 'rel', null, 'contract_cancel', `c${row.id}`, { other });
+      // Gericht: Vertragsbruch hinterlässt Spuren; der Partner kennt den Täter
+      const pf = await db.one('SELECT city_id, name FROM player_firms WHERE user_id = ? AND company_id = ?', [other, row.buyer_id === userId ? row.seller_company : row.buyer_company]);
+      const g0 = goods.good(row.good);
+      await require('./court').trace(null, { act: 'breach', offenderId: userId, victimId: other, victimCompany: row.buyer_id === userId ? row.seller_company : row.buyer_company, subject: pf ? pf.name : (g0 ? g0.name : null), cityId: pf ? pf.city_id : 0, damageReal: Math.round(Number(row.qty) * Number(row.price_real) * Math.min(30, Number(row.days_left)) * 0.1), known: true });
+    }
     await social.sendSystemLetter(other, 'Liefervertrag gekündigt', `Der Liefervertrag über ${g ? g.name : row.good} wurde vom Vertragspartner gekündigt. Ab sofort kaufst du im Großhandel (wenn „Automatisch einkaufen“ an ist).`, userId);
   }
   live.publish('business', {}, other);
