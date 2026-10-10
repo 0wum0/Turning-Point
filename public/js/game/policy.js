@@ -5,11 +5,11 @@ import { dec } from './supply.js';
 
 const ROLES = [
   ['Ortsbeirat', 'Berät die Stadt – noch keine Macht über die Wirtschaft.'],
-  ['Stadtrat', 'Gewerbesteuer-Zuschlag, Baulandausweisung und Schulbudget in der Stadt.'],
-  ['Bürgermeister', 'Gewerbesteuer-Zuschlag, Subvention, Mietpreisbremse, Baulandausweisung und Schulbudget in der Stadt.'],
-  ['Landtagsabgeordneter', 'Preisstützung für eine Ware, Wohnungsbauprogramm und Bildungsprogramm im Bundesland.'],
-  ['Bundestagsabgeordneter', 'Rahmen für Zuschläge und Subventionen im ganzen Land; Berufsbildungsgesetz.'],
-  ['Bundeskanzler', 'Mehrwertsteuer auf Waren, Einfuhrzoll, Branchen-Subvention, Preisbremse und Berufsbildungsgesetz.'],
+  ['Stadtrat', 'Gewerbesteuer-Zuschlag, Baulandausweisung, Schulbudget, Gesundheitsamt und Winterhilfe in der Stadt.'],
+  ['Bürgermeister', 'Gewerbesteuer-Zuschlag, Subvention, Mietpreisbremse, Baulandausweisung, Schulbudget, Gesundheitsamt, Winterhilfe und Erntefest in der Stadt.'],
+  ['Landtagsabgeordneter', 'Preisstützung für eine Ware, Wohnungsbauprogramm, Bildungsprogramm und Krankenhausprogramm im Bundesland.'],
+  ['Bundestagsabgeordneter', 'Rahmen für Zuschläge und Subventionen im ganzen Land; Berufsbildungsgesetz; Rahmen für Seuchenmaßnahmen.'],
+  ['Bundeskanzler', 'Mehrwertsteuer auf Waren, Einfuhrzoll, Branchen-Subvention, Preisbremse, Berufsbildungsgesetz, Seuchenmaßnahmen, Impfkampagne, Kurzarbeitergeld und Ernte- und Dürrehilfe.'],
 ];
 
 const hasEdu = (e) => !!e && (e.school || e.library || e.sport || e.courseDisc || e.lehrSubsidy);
@@ -55,11 +55,31 @@ function effectLine(l, pv) {
     case 'edu_region': return html`<li><span>Bildungsprogramm Stufe</span> ${num(l.a)}<span>: Kurse für Mitarbeiter kosten im ganzen Bundesland</span> <b>${dec(l.b)} %</b> <span>weniger und bringen ab Stufe 2 einen Punkt mehr.</span></li>`;
     case 'edu_nation': return html`<li><span>Berufsbildungsgesetz Stufe</span> ${num(l.a)}<span>: Der Staat übernimmt</span> <b>${dec(l.b)} %</b> <span>des Lohns von Lehrlingen in allen Betrieben des Landes.</span></li>`;
     case 'frame': return html`<li><span>Obergrenzen im ganzen Land: Gewerbesteuer-Zuschlag höchstens</span> ${num(l.a)} <span>Punkte, Subventionen höchstens</span> ${num(l.b)} <span>%.</span></li>`;
+    case 'hygiene': return html`<li><span>Gesundheitsamt Stufe</span> ${num(l.a)}<span>: Seuchen breiten sich in deiner Stadt um</span> <b>${dec(l.b)} %</b> <span>langsamer aus – weniger Kranke, weniger Krankenstand in den Betrieben.</span></li>
+      <li class="dim"><span>Wirkt nur, solange eine Seuche läuft.</span></li>`;
+    case 'winterhilfe': return html`<li><span>Winterhilfe Stufe</span> ${num(l.a)}<span>: Die Stadt übernimmt</span> <b>${dec(l.b)} %</b> <span>des zusätzlichen Heizbedarfs im Winter für alle Bewohner – auch für dich.</span></li>`;
+    case 'erntefest': return html`<li><span>Erntefest Stufe</span> ${num(l.a)}<span>: Zwischen Mitte September und Mitte Oktober machen Gastronomie, Ausflug und Einzelhandel in deiner Stadt</span> <b>+${dec(l.b)} %</b> <span>Umsatz und die Stimmung steigt.</span></li>`;
+    case 'hospital': return html`<li><span>Krankenhausprogramm Stufe</span> ${num(l.a)}<span>: Seuchen verlaufen im ganzen Bundesland um</span> <b>${dec(l.b)} %</b> <span>milder, Impfungen werden um</span> <b>${dec(l.c)} %</b> <span>günstiger und öfter genutzt.</span></li>`;
+    case 'lockframe': return html`<li><span>Rahmen für Seuchenmaßnahmen: Der Kanzler darf höchstens</span> <b>${l.b}</b> <span>anordnen.</span></li><li class="dim"><span>Ohne Beschluss gilt: höchstens Kontaktbeschränkungen.</span></li>`;
+    case 'pandemic': {
+      const b = l.b || {};
+      return html`<li><span>Maßnahme:</span> <b>${b.name}</b>${b.capped ? html` <span class="dim">(durch den Rahmen des Bundestags begrenzt, höchstens Stufe</span> <b>${b.cap}</b><span class="dim">)</span>` : ''}</li>
+        <li><span>Ansteckung:</span> <b>−${dec(b.infect)} %</b> <span>gegenüber keinen Maßnahmen – weniger Kranke und Krankenstand.</span></li>
+        <li><span>Wirtschaft bei voller Welle: Gastronomie</span> <b>−${dec(b.gastro)} %</b><span>, Ausflug und Reisen</span> <b>−${dec(b.tourism)} %</b><span>, Einzelhandel</span> <b>−${dec(b.retail)} %</b><span>, übrige Branchen</span> <b>−${dec(b.other)} %</b><span>.</span></li>
+        <li class="${l.c === 'unpopular' ? 'neg' : 'dim'}"><span>Ansehen:</span> <b>${l.c === 'popular' ? 'kommt gut an' : l.c === 'unpopular' ? 'umstritten' : l.c === 'risky' ? 'riskant, aber nicht umstritten' : 'neutral'}</b></li>
+        <li class="dim"><span>Gilt nur, solange eine Seuche läuft. Ohne Beschluss gelten Standardmaßnahmen je nach Schwere der Seuche.</span></li>`;
+    }
+    case 'vaccine': return html`<li><span>Impfkampagne Stufe</span> ${num(l.a)}<span>: Die Impfquote der Bevölkerung steigt um bis zu</span> <b>${dec(l.b)} %</b> <span>Punkte – das bremst jede Welle spürbar.</span></li>`;
+    case 'kurzarbeit': return html`<li><span>Kurzarbeitergeld:</span> <b>${dec(l.b)} %</b> <span>der Umsatzverluste durch Seuchenmaßnahmen werden ausgeglichen.</span></li>`;
+    case 'erntehilfe': return html`<li><span>Ernte- und Dürrehilfe:</span> <b>${dec(l.b)} %</b> <span>des Verlusts von Bauernhöfen in schlechten Erntejahren werden ersetzt.</span></li>`;
     default: return '';
   }
 }
 
 function control(p) {
+  if (p.levels) {
+    return html`<div class="field"><label for="pl-${p.kind}">Stufe</label><select id="pl-${p.kind}">${p.levels.map((l, i) => html`<option value="${l.v}" ${i === (p.kind === 'pandemic' ? 1 : 0) ? 'selected' : ''}>${l.name}</option>`)}</select></div>${p.kind === 'pandemic' ? html`<div class="small dim"><span>Der Rahmen des Bundestags erlaubt gerade höchstens Stufe</span> <b>${p.cap}</b><span>.</span></div>` : ''}`;
+  }
   if (p.kind === 'edu_city') {
     return html`<div class="grid c2" style="--gap:.6rem"><div class="field"><label for="pe-focus">Schwerpunkt</label><select id="pe-focus">${p.focus.map((f) => html`<option value="${f.key}">${f.name}</option>`)}</select></div>
       <div class="field"><label for="pe-lv">Stufe</label><select id="pe-lv">${p.options.map((o) => html`<option value="${o}">Stufe ${o}</option>`)}</select></div></div>`;
@@ -87,6 +107,7 @@ function control(p) {
   return '';
 }
 function valueOf(root, p) {
+  if (p.levels) return { kind: p.kind, value: Number(root.querySelector(`#pl-${p.kind}`).value) };
   if (p.kind === 'edu_city') return { kind: p.kind, good: root.querySelector('#pe-focus').value, value: Number(root.querySelector('#pe-lv').value) };
   if (p.kind === 'edu_region' || p.kind === 'edu_nation') return { kind: p.kind, value: Number(root.querySelector(`#pe-lv-${p.kind}`).value) };
   if (p.kind === 'surcharge' || p.kind === 'vat' || p.kind === 'tariff') return { kind: p.kind, value: Number(root.querySelector(`#pv-${p.kind}`).value) };
@@ -103,7 +124,8 @@ export async function bindPolicy(root, ctx) {
   const o = d.office;
   const loc = d.local;
   const active = d.active.length ? html`<div class="card-title mt" style="margin-bottom:.3rem">Aktuelle Beschlüsse bei dir</div><div class="stack" style="--gap:.4rem">${d.active.map((a) => html`<div class="firm"><div class="grow small"><b>${a.text}</b><div class="dim"><span data-i18n-skip>${a.office}${a.holder ? ` · ${a.holder}` : ''}</span> · <span>gilt noch</span> ${a.hours} <span>Std.</span></div></div></div>`)}</div>` : html`<div class="dim small mt">Zurzeit hat kein Amtsinhaber einen Beschluss gefasst, der bei dir gilt.</div>`;
-  const effects = (loc.surcharge || loc.levy || loc.vat || loc.tariff || loc.zone || loc.rentCap != null || loc.brake || hasEdu(loc.edu)) ? html`<div class="small mt dim"><span>Bei dir gilt gerade:</span> ${loc.surcharge ? html`<span class="chip ${loc.surcharge > 0 ? 'warn' : 'good'}">Gewerbesteuer ${loc.surcharge > 0 ? '+' : ''}${loc.surcharge}</span> ` : ''}${loc.levy ? html`<span class="chip warn">Umlage +${dec(loc.levy, 1)}</span> ` : ''}${loc.vat ? html`<span class="chip ${loc.vat > 0 ? 'warn' : 'good'}">Mehrwertsteuer ${loc.vat > 0 ? '+' : ''}${loc.vat}</span> ` : ''}${loc.tariff ? html`<span class="chip ${loc.tariff > 0 ? 'warn' : 'good'}">Zoll ${loc.tariff > 0 ? '+' : ''}${loc.tariff} %</span> ` : ''}${loc.rentCap != null ? html`<span class="chip good">Mietpreisbremse ${loc.rentCap} % pro Jahr</span> ` : ''}${loc.zone ? html`<span class="chip good">Wohnungsangebot +${loc.zone} %</span> ` : ''}${loc.brake ? html`<span class="chip ${loc.brake < 0 ? 'good' : 'warn'}">Preisniveau ${loc.brake > 0 ? '+' : '−'}${Math.abs(loc.brake)} Punkte</span> ` : ''}${eduChips(loc.edu)}</div>` : '';
+  const seaFx = (loc.epi && (loc.epi.hyg || loc.epi.hospital || loc.epi.level != null || loc.epi.vaccLvl || loc.epi.kurz)) || (loc.season && (loc.season.winterhilfe || loc.season.erntefest)) || (loc.harvest && loc.harvest.aid);
+  const effects = (loc.surcharge || loc.levy || loc.vat || loc.tariff || loc.zone || loc.rentCap != null || loc.brake || hasEdu(loc.edu) || seaFx) ? html`<div class="small mt dim"><span>Bei dir gilt gerade:</span> ${loc.surcharge ? html`<span class="chip ${loc.surcharge > 0 ? 'warn' : 'good'}">Gewerbesteuer ${loc.surcharge > 0 ? '+' : ''}${loc.surcharge}</span> ` : ''}${loc.levy ? html`<span class="chip warn">Umlage +${dec(loc.levy, 1)}</span> ` : ''}${loc.vat ? html`<span class="chip ${loc.vat > 0 ? 'warn' : 'good'}">Mehrwertsteuer ${loc.vat > 0 ? '+' : ''}${loc.vat}</span> ` : ''}${loc.tariff ? html`<span class="chip ${loc.tariff > 0 ? 'warn' : 'good'}">Zoll ${loc.tariff > 0 ? '+' : ''}${loc.tariff} %</span> ` : ''}${loc.rentCap != null ? html`<span class="chip good">Mietpreisbremse ${loc.rentCap} % pro Jahr</span> ` : ''}${loc.zone ? html`<span class="chip good">Wohnungsangebot +${loc.zone} %</span> ` : ''}${loc.brake ? html`<span class="chip ${loc.brake < 0 ? 'good' : 'warn'}">Preisniveau ${loc.brake > 0 ? '+' : '−'}${Math.abs(loc.brake)} Punkte</span> ` : ''}${eduChips(loc.edu)}${loc.epi && loc.epi.hyg ? html`<span class="chip good">Gesundheitsamt Stufe ${loc.epi.hyg}</span> ` : ''}${loc.epi && loc.epi.hospital ? html`<span class="chip good">Krankenhausprogramm Stufe ${loc.epi.hospital}</span> ` : ''}${loc.epi && loc.epi.level != null ? html`<span class="chip">Seuchenmaßnahme Stufe ${loc.epi.level}</span> ` : ''}${loc.epi && loc.epi.vaccLvl ? html`<span class="chip good">Impfkampagne Stufe ${loc.epi.vaccLvl}</span> ` : ''}${loc.epi && loc.epi.kurz ? html`<span class="chip good">Kurzarbeitergeld ${Math.round(loc.epi.kurz * 100)} %</span> ` : ''}${loc.season && loc.season.winterhilfe ? html`<span class="chip good">Winterhilfe ${Math.round(loc.season.winterhilfe * 100)} %</span> ` : ''}${loc.season && loc.season.erntefest ? html`<span class="chip good">Erntefest Stufe ${loc.season.erntefest}</span> ` : ''}${loc.harvest && loc.harvest.aid ? html`<span class="chip good">Ernte- und Dürrehilfe ${Math.round(loc.harvest.aid * 100)} %</span> ` : ''}</div>` : '';
   const help = infoBtn(['Gewählte Amtsinhaber bestimmen die Wirtschaftspolitik: Steuern, Zölle, Zuschüsse für eine Ware.', 'Pro Amtszeit darf jeder Amtsinhaber einen Beschluss fassen. Er gilt, solange er im Amt ist, und wirkt auf alle Betriebe im Gebiet – auch auf deine eigenen. Die Spieler wählen mit.', 'Prüfe die Wirkung vor dem Beschluss: Du siehst genau, was sich ändert.'], 'Wirtschaftspolitik');
   if (!o) {
     box.innerHTML = html`<div class="card-title">${icon('scale')} Was Ämter in der Wirtschaft bestimmen ${help}</div>

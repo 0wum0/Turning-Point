@@ -192,7 +192,7 @@ function firmEffects(world, pkey, sit, { shield = false, kurz = 0 } = {}) {
   const sec = sectorOf(world, pkey);
   const col = sec === 'gastro' ? 'gastro' : sec === 'tourism' ? 'tourism' : sec === 'retail' ? 'retail' : 'other';
   let lock = 0;
-  if (sit.level > 0) lock = c.lock[col][sit.level - 1] * clamp(sit.Iraw * 1.6, 0, 1) * (shield ? 0.6 : 1) * (1 - clamp(kurz, 0, 0.7));
+  if (sit.level > 0 && !HEALTH_JOBS.has(pkey)) lock = c.lock[col][sit.level - 1] * clamp(sit.Iraw * 1.6, 0, 1) * (shield ? 0.6 : 1) * (1 - clamp(kurz, 0, 0.7));
   let boost = 0;
   if (HEALTH_JOBS.has(pkey)) boost = clamp(sit.I * 0.1, 0, 0.1);
   return { eff: r3(1 - sick), rev: r3(clamp(1 - lock + boost, 0.5, 1.15)), sick: r3(sick), lock: r3(lock) };

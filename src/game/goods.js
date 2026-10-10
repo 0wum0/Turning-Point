@@ -303,7 +303,7 @@ function buildPolicies(rows) {
     else if (r.kind === 'edu_city' && ['school', 'library', 'sport'].includes(r.good) && val >= 1 && val <= 3) { const c = city(); c.edu[r.good] = Math.max(c.edu[r.good] || 0, val); c.levy += EDU().levy[val - 1] || 0; }
     else if (r.kind === 'edu_region' && val >= 1 && val <= 3) { const c = reg(); c.edu = Math.max(c.edu, val); c.levy += EDU().regionLevy[val - 1] || 0; }
     else if (r.kind === 'edu_nation' && val >= 1 && val <= 3) { pol.nation.lehr = Math.max(pol.nation.lehr, val); pol.nation.levy += EDU().natLevy[val - 1] || 0; }
-    else if ((r.kind === 'hygiene' || r.kind === 'winterhilfe' || r.kind === 'erntefest') && val >= 1 && val <= 3) { const c = city(); const k = r.kind; c[k] = Math.max(c[k], val); c.levy += SEAS().levy[k][val - 1]; }
+    else if ((r.kind === 'hygiene' || r.kind === 'winterhilfe' || r.kind === 'erntefest') && val >= 1 && val <= 3) { const c = city(); const k = r.kind; const f = k === 'hygiene' ? 'hyg' : k; c[f] = Math.max(c[f], val); c.levy += SEAS().levy[k][val - 1]; }
     else if (r.kind === 'hospital' && val >= 1 && val <= 3) { const c = reg(); c.hospital = Math.max(c.hospital, val); c.levy += SEAS().levy.hospital[val - 1]; }
     else if (r.kind === 'lockframe' && val >= 1 && val <= 3) pol.nation.cap = val;
     else if (r.kind === 'pandemic' && val >= 0 && val <= 3) pol.nation.pandemic = val;

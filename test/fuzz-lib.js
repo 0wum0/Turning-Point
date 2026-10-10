@@ -122,6 +122,27 @@ function invariants(s, prev) {
       need(TLN.repGain(s.talents) >= 0.85 && TLN.repGain(s.talents) <= 1.15 && TLN.studyMult(s.talents) >= 0.75 && TLN.studyMult(s.talents) <= 1.25 && TLN.voteWeight(s.talents) >= 0.94 && TLN.voteWeight(s.talents) <= 1.06, 'Talentwirkung außerhalb');
     }
   }
+  { // Jahreszeiten, Ernte, Seuchen: Zustand sauber, alle Faktoren endlich und begrenzt
+    const e = s.epi;
+    need(e && typeof e === 'object', 'epi fehlt');
+    if (e && typeof e === 'object') {
+      need(Number.isInteger(e.hygUntil) && Number.isInteger(e.shieldUntil), `epi Schutz ${e.hygUntil}/${e.shieldUntil}`);
+      need(e.sick === null || (e.sick && Number.isFinite(e.sick.from) && Number.isFinite(e.sick.until) && e.sick.until >= e.sick.from && e.sick.sev >= 0 && e.sick.sev <= 1), `epi krank ${JSON.stringify(e.sick)}`);
+      need(Number.isInteger(e.cases) && e.cases >= 0 && e.immune && typeof e.immune === 'object', 'epi Zähler');
+    }
+    if (s.status === 'alive') {
+      const SFX = require('../src/game/seasonfx'); const yr = yearOf(s.day, s.startYear);
+      const fl = require('../src/game/core').dailyFlows(world, s);
+      need(fl.heat && fl.heat.pct >= -30 && fl.heat.pct <= 40, `Heizung ${JSON.stringify(fl.heat)}`);
+      const b = SFX.body(s); need(Number.isFinite(b.mood) && Math.abs(b.mood) <= 6 && Math.abs(b.rest) <= 2 && b.illness >= 0.2 && b.illness <= 1.8, `Körper ${JSON.stringify(b)}`);
+      for (const c of s.companies) {
+        if (c.abandoned) continue;
+        const f = require('../src/game/business').companyFlows(world, s, c, yr);
+        need(f.sfx && f.sfx.rev >= 0.5 && f.sfx.rev <= 1.5 && f.sfx.eff >= 0.65 && f.sfx.eff <= 1 && f.sfx.season >= 0.8 && f.sfx.season <= 1.2 + 1e-9, `Betrieb Saison/Seuche ${JSON.stringify(f.sfx)}`);
+        need(Number.isFinite(f.income) && Number.isFinite(f.profit), 'Betrieb Zahlen');
+      }
+    }
+  }
   const h = s.housing;
   if (h.type === 'own') need(s.properties.some((p) => p.id === h.propertyId), 'Wohnsitz ohne Immobilie');
   if (s.occupation && s.occupation.ownCompanyId) need(s.companies.some((c) => c.id === s.occupation.ownCompanyId), 'Beruf ohne Firma');
@@ -179,6 +200,7 @@ function inputFor0(name, s, r, user) {
     }
     case 'foster': return { childId: maybe(kid()), focus: maybe(pickOf(r, ['nachhilfe', 'sport', 'musik', 'werkstatt', 'kaufmann', 'jugend', 'x'])) };
     case 'bizCollect': return { id: maybe(comp()) };
+    case 'epiProtect': return { what: maybe(pickOf(r, ['hygiene', 'vaccine', 'shield', 'x'])) };
     case 'runOffice': return { idx: maybe(Math.floor(r() * 4)) };
     case 'lotto': return { tickets: maybe(1 + Math.floor(r() * 25)) };
     case 'casino': return { bet: maybe(Math.floor(r() * 1e5)) };
