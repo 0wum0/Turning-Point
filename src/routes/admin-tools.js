@@ -65,7 +65,7 @@ module.exports = function mount(router, H) {
     const [au] = await db.query('SELECT COUNT(*) n FROM audit_log');
     const [ad] = await db.query('SELECT COUNT(*) n FROM ad_claims');
     const [ec] = await db.query('SELECT COUNT(DISTINCT city_id) cities, COUNT(*) n FROM city_economy');
-    res.render('admin/tools', { title: 'Werkzeuge', active: 'tools', counts: { alive: a.alive, users: u.n, active: u.active || 0, audit: au.n, ads: ad.n }, cityecon: { cities: ec.cities, rows: ec.n, last: require('../lib/cityecon').last(), on: require('../game/cityecon').active() } });
+    res.render('admin/tools', { title: 'Werkzeuge', active: 'tools', counts: { alive: a.alive, users: u.n, active: u.active || 0, audit: au.n, ads: ad.n }, seasonForced: { epi: (settings.get('jahreszeiten').epidemics.forced || []), harvest: (settings.get('jahreszeiten').harvest.forced || []) }, cityecon: { cities: ec.cities, rows: ec.n, last: require('../lib/cityecon').last(), on: require('../game/cityecon').active() } });
   }));
   /* Stadtwirtschaft: Indizes sofort neu berechnen oder alle auf 1 zurücksetzen */
   router.post('/tools/cityecon', wrap(async (req, res) => {
@@ -74,6 +74,34 @@ module.exports = function mount(router, H) {
     else if (what === 'reset') { await db.query('DELETE FROM city_economy'); ce.setState(new Map(), new Map()); flash(req, 'good', 'Alle Stadtindizes stehen wieder auf 1 und entwickeln sich neu.'); }
     else { flash(req, 'bad', 'Unbekannte Aktion.'); return res.redirect('/admin/tools'); }
     await audit(req, `admin_cityecon_${what}`, {});
+    res.redirect('/admin/tools');
+  }));
+  /* Jahreszeiten, Ernte, Seuchen: Seuche zum Spieldatum starten/beenden, Ernte eines Jahres festlegen (Tests; alles wird protokolliert) */
+  router.post('/tools/seasons', wrap(async (req, res) => {
+    const what = clean(req.body.what, 20);
+    const cur = JSON.parse(JSON.stringify(settings.get('jahreszeiten')));
+    const num = (v, d, lo, hi) => { const n = parseFloat(String(v == null ? '' : v).replace(',', '.')); return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : d; };
+    let msg = ''; let post = null;
+    if (what === 'epi_start') {
+      const year = Math.round(num(req.body.year, 1950, 1945, 2200)); const doy = Math.round(num(req.body.doy, 0, 0, 364));
+      const e = { id: `admin${year}_${doy}_${Date.now() % 100000}`, name: clean(req.body.name, 60) || 'Seuche (Test)', year, doy, origin: clean(req.body.origin, 80), kind: req.body.kind === 'flu' ? 'flu' : 'pandemic', sev: num(req.body.sev, 0.6, 0.05, 1), duration: Math.round(num(req.body.duration, 120, 20, 400)), level: Math.round(num(req.body.level, 1, 0, 3)), vacc: req.body.vacc === '' || req.body.vacc == null ? 90 : Math.round(num(req.body.vacc, 90, 0, 400)) };
+      cur.epidemics.forced = (cur.epidemics.forced || []).concat([e]).slice(-12);
+      msg = `Seuche „${e.name}“ beginnt im Spieljahr ${year} (Tag ${doy}).`; post = [`Seuche: ${e.name}`, `Gesundheitsbehörden melden den Ausbruch „${e.name}“${e.origin ? ` in ${e.origin}` : ''}. Hygienemaßnahmen und Impfungen sind wichtig.`];
+    } else if (what === 'epi_end') {
+      const id = clean(req.body.id, 60);
+      cur.epidemics.forced = (cur.epidemics.forced || []).filter((x) => x && x.id !== id); msg = 'Die Seuche wurde beendet.';
+    } else if (what === 'harvest_set') {
+      const year = Math.round(num(req.body.year, 1950, 1945, 2200)); const region = clean(req.body.region, 60) || null; const y = num(req.body.yield, 0.7, 0.4, 1.4);
+      cur.harvest.forced = (cur.harvest.forced || []).filter((x) => !(x && Number(x.year) === year && (x.region || null) === region)).concat([{ year, yield: y, region, name: clean(req.body.name, 60) || null }]).slice(-12);
+      msg = `Ernte ${year}${region ? ` in ${region}` : ''}: Ertrag ${Math.round(y * 100)} %.`; post = [`Erntebericht ${year}`, `Die Ernte fällt ${y < 0.9 ? 'schlecht' : y > 1.07 ? 'gut' : 'durchschnittlich'} aus (${Math.round(y * 100)} % eines Normaljahres)${region ? ` in ${region}` : ''}.`];
+    } else if (what === 'harvest_clear') {
+      cur.harvest.forced = []; msg = 'Alle erzwungenen Ernten gelöscht.';
+    } else { flash(req, 'bad', 'Unbekannte Aktion.'); return res.redirect('/admin/tools'); }
+    await settings.set('jahreszeiten', cur);
+    await audit(req, `admin_seasons_${what}`, { msg });
+    if (post) await require('../lib/tagesblatt').post('health', post[0], post[1]);
+    require('../lib/live').publish('economy', {});
+    flash(req, 'good', msg);
     res.redirect('/admin/tools');
   }));
   const target = (t) => {

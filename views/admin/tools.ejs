@@ -20,6 +20,25 @@
     <form method="post" action="/admin/tools/cityecon"><%- csrf %><input type="hidden" name="what" value="refresh"><button class="btn sm">Jetzt neu berechnen</button></form>
     <form method="post" action="/admin/tools/cityecon"><%- csrf %><input type="hidden" name="what" value="reset"><button class="btn sm danger" data-confirm="Alle Stadtindizes auf 1 zurücksetzen? Sie entwickeln sich danach aus Angebot und Nachfrage neu.">Alle zurücksetzen</button></form>
   </div></section>
+<section class="card mt"><div class="card-title">Jahreszeiten, Ernte &amp; Seuchen (Test)</div>
+  <p class="small dim mb0">Erzwingt ein Ereignis zu einem bestimmten <b>Spieldatum</b> (Jahr und Tag im Jahr, 0 = 1. Januar). Es gilt für alle Spieler, die dieses Datum erreichen. Jede Änderung wird im Protokoll vermerkt.</p>
+  <div class="grid c2 mt" style="--gap:1rem">
+    <form class="stack" style="--gap:.5rem" method="post" action="/admin/tools/seasons"><%- csrf %><input type="hidden" name="what" value="epi_start"><b>Seuche starten</b>
+      <div class="row"><div class="field"><label>Name</label><input type="text" name="name" value="Testfieber" maxlength="60"></div><div class="field"><label>Ursprungsstadt</label><input type="text" name="origin" placeholder="z. B. Hamburg" maxlength="80"></div></div>
+      <div class="row"><div class="field"><label>Spieljahr</label><input type="number" name="year" value="1950" min="1945" max="2200"></div><div class="field"><label>Tag im Jahr</label><input type="number" name="doy" value="0" min="0" max="364"></div><div class="field"><label>Dauer (Tage)</label><input type="number" name="duration" value="120" min="20" max="400"></div></div>
+      <div class="row"><div class="field"><label>Schwere (0,05–1)</label><input type="text" name="sev" value="0.6"></div><div class="field"><label>Art</label><select name="kind"><option value="pandemic">Pandemie</option><option value="flu">Grippewelle</option></select></div><div class="field"><label>Standardmaßnahme (0–3)</label><input type="number" name="level" value="1" min="0" max="3"></div><div class="field"><label>Impfstoff nach (Tage)</label><input type="number" name="vacc" value="90" min="0" max="400"></div></div>
+      <button class="btn primary">Seuche starten</button></form>
+    <form class="stack" style="--gap:.5rem" method="post" action="/admin/tools/seasons"><%- csrf %><input type="hidden" name="what" value="harvest_set"><b>Ernte festlegen</b>
+      <div class="row"><div class="field"><label>Spieljahr</label><input type="number" name="year" value="1950" min="1945" max="2200"></div><div class="field"><label>Ertrag (0,4–1,4; 1 = normal)</label><input type="text" name="yield" value="0.7"></div></div>
+      <div class="row"><div class="field"><label>Bundesland (leer = ganzes Land)</label><input type="text" name="region" maxlength="60"></div><div class="field"><label>Bezeichnung</label><input type="text" name="name" maxlength="60" placeholder="z. B. Dürrejahr"></div></div>
+      <button class="btn primary">Ernte festlegen</button></form>
+  </div>
+  <div class="mt small"><b>Aktive Testereignisse:</b>
+    <% if (!seasonForced.epi.length && !seasonForced.harvest.length) { %> <span class="dim">keine</span><% } %>
+    <% seasonForced.epi.forEach(function (e) { %><form class="row nowrap mt" method="post" action="/admin/tools/seasons"><%- csrf %><input type="hidden" name="what" value="epi_end"><input type="hidden" name="id" value="<%= e.id %>"><span class="grow">Seuche „<%= e.name %>“ ab Spieljahr <%= e.year %>, Tag <%= e.doy %><%= e.origin ? ' (' + e.origin + ')' : '' %></span><button class="btn sm danger">Beenden</button></form><% }) %>
+    <% seasonForced.harvest.forEach(function (h) { %><div class="mt">Ernte <%= h.year %><%= h.region ? ' · ' + h.region : '' %>: Ertrag <%= Math.round(h.yield * 100) %> %</div><% }) %>
+    <% if (seasonForced.harvest.length) { %><form class="mt" method="post" action="/admin/tools/seasons"><%- csrf %><input type="hidden" name="what" value="harvest_clear"><button class="btn sm danger">Erzwungene Ernten löschen</button></form><% } %>
+  </div></section>
 <section class="card mt"><div class="card-title">Aufräumen</div>
   <div class="grid c3" style="--gap:.8rem">
     <% [['sessions', 'Abgelaufene Sitzungen löschen', false, 0], ['audit', 'Protokoll älter als … Tage löschen', true, counts.audit], ['ads', 'Werbe-Einträge älter als … Tage löschen', true, counts.ads], ['unverified', 'Unbestätigte Konten ohne Charakter älter als … Tage löschen', true, 0], ['inactive', 'Inaktive Konten (0 Coins, keine Dauerkarte) seit … Tagen löschen', true, 0]].forEach(function(c){ %>
