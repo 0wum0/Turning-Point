@@ -171,8 +171,20 @@ export async function bindCourt(root, ctx) {
     dlg.el.querySelector('#polgo').onclick = async () => { try { const r = await api('POST', '/api/court/policy/set', { kind, value }); await refreshView(r); toast(r.message || 'Beschluss gefasst.'); dlg.close(); await load(); draw(); } catch (er) { toast(er.message, 'bad'); } };
   });
   if (await load()) draw();
-  box.__reload = async () => { if (await load()) draw(); };
-  window.addEventListener('tp-live-court', () => { if (box.isConnected) box.__reload(); });
+  let sig = JSON.stringify([d.cases, d.evidence, d.restrictions, d.debts, pol]);
+  let timer = 0;
+  // Live: nur neu zeichnen, wenn sich Daten geändert haben und gerade nichts bedient wird (kein Dialog, keine Eingabe)
+  const onLive = () => {
+    if (!box.isConnected) { window.removeEventListener('tp-live-court', onLive); return; }
+    clearTimeout(timer);
+    timer = setTimeout(async () => {
+      if (document.hidden || document.querySelector('.modal-backdrop') || /^(INPUT|TEXTAREA|SELECT)$/.test((document.activeElement || {}).tagName || '')) { timer = setTimeout(onLive, 2000); return; }
+      if (!(await load())) return;
+      const n = JSON.stringify([d.cases, d.evidence, d.restrictions, d.debts, pol]);
+      if (n !== sig) { sig = n; draw(); }
+    }, 900);
+  };
+  window.addEventListener('tp-live-court', onLive);
 }
 
 function askAmount(ctx, c, cur) {

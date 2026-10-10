@@ -581,22 +581,17 @@ describe('E2E Turning Point', { concurrency: false }, () => {
   });
 
   describe('Recht & Gericht', () => {
+    // Anna (Alice) erleidet einen Anschlag und zeigt Bernd (Bob) an; es werden keine weiteren Konten registriert (Registrierungs-Bremse je IP)
     let v; let w;
     before(async () => {
-      v = await L.newPlayer(browser, app, 'vera'); w = await L.newPlayer(browser, app, 'viktor');
-      await L.register(v, { username: 'vera_e2e', email: 'vera@e2e.test', password: 'vera-pass-123456' });
-      await L.createCharacter(v, { first: 'Vera', last: 'Voss', city: 'Berlin', gender: 'f' });
-      await L.register(w, { username: 'viktor_e2e', email: 'viktor@e2e.test', password: 'viktor-pass-12345' });
-      await L.createCharacter(w, { first: 'Viktor', last: 'Vogel', city: 'Berlin' });
-      await L.showAll(v); await L.showAll(w);
-      await L.setMoney(app, 'vera_e2e', 5000000); await L.setMoney(app, 'viktor_e2e', 5000000);
+      v = a; w = b; await L.showAll(v); await L.showAll(w);
+      await L.setMoney(app, 'alice_e2e', 5000000); await L.setMoney(app, 'bob_e2e', 5000000);
     });
-    after(async () => { if (v) await v.ctx.close(); if (w) await w.ctx.close(); });
 
     it('Spuren erscheinen als Meldung; Anzeige gegen einen Spieler per Namenssuche; der Beklagte sieht das Verfahren', async () => {
-      const vid = await L.userId(app, 'vera_e2e'); const wid = await L.userId(app, 'viktor_e2e');
+      const vid = await L.userId(app, 'alice_e2e'); const wid = await L.userId(app, 'bob_e2e');
       const now = Date.now();
-      await app.sql("INSERT INTO court_evidence (act, offender_id, victim_id, subject, city_id, strength, known, damage_real, created_ms, expires_ms) VALUES ('sabotage', ?, ?, 'Bäckerei Voss', 1, 85, 0, 2000, ?, ?)", [wid, vid, now, now + 1e9]);
+      await app.sql("INSERT INTO court_evidence (act, offender_id, victim_id, subject, city_id, strength, known, damage_real, created_ms, expires_ms) VALUES ('sabotage', ?, ?, 'Bäckerei Alpha', 1, 85, 0, 2000, ?, ?)", [wid, vid, now, now + 1e9]);
       await L.reloadGame(v);
       await L.nav(v, 'overview');
       assert.match(await text(v), /Spuren am Tatort|Spuren gesichert/);
@@ -604,7 +599,7 @@ describe('E2E Turning Point', { concurrency: false }, () => {
       await v.page.waitForSelector('#courtBox [data-file]');
       assert.match(await text(v, '#courtBox'), /Beweislage: stark/);
       await v.page.click('#courtBox [data-file]');
-      await v.page.fill('#cqs', 'Viktor');
+      await v.page.fill('#cqs', 'Bernd');
       await v.page.waitForSelector('#cres [data-pick]');
       await v.page.click('#cres [data-pick]');
       await confirmYes(v);
@@ -636,7 +631,7 @@ describe('E2E Turning Point', { concurrency: false }, () => {
     });
 
     it('Haft: Banner in der Übersicht, wirtschaftliche Aktion mit Begründung abgelehnt, Essen bleibt möglich', async () => {
-      const wid = await L.userId(app, 'viktor_e2e');
+      const wid = await L.userId(app, 'bob_e2e');
       const [c] = await app.sql('SELECT id FROM court_cases ORDER BY id DESC LIMIT 1');
       await app.sql("INSERT INTO court_sanctions (case_id, user_id, kind, level, until_ms, params, status, created_ms) VALUES (?,?,'haft',5,?,'{}','active',?)", [c.id, wid, Date.now() + 7200000, Date.now()]);
       await L.reloadGame(w); await L.nav(w, 'overview');

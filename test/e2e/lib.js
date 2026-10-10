@@ -118,11 +118,11 @@ async function createCharacter(pl, { first, last, city = 'Berlin', prof = 'baeck
   const { page } = pl;
   await page.waitForSelector('#fn');
   await page.check(`input[name=gender][value=${gender}]`, { force: true });
-  await page.fill('#fn', first); await page.fill('#ln', last); await page.click('#next');
-  await page.click(`#cityList label:has-text("${city}") >> nth=0`); await page.click('#next');
-  await page.click(`.prof-choice label:has(input[value="${prof}"])`); await page.click('#next');
-  await page.click('#next');
-  await page.click('#next');
+  await page.fill('#fn', first); await page.fill('#ln', last); await page.locator('#next').click({ timeout: 30000 });
+  await page.click(`#cityList label:has-text("${city}") >> nth=0`); await page.locator('#next').click({ timeout: 30000 });
+  await page.click(`.prof-choice label:has(input[value="${prof}"])`); await page.locator('#next').click({ timeout: 30000 });
+  await page.locator('#next').click({ timeout: 30000 });
+  await page.locator('#next').click({ timeout: 30000 });
   await page.waitForSelector('#page');
   await page.waitForSelector('#hud .hud-id');
   await dismissWelcome(pl);
