@@ -79,22 +79,24 @@ function describe(world, r) {
   const city = r.scope_city ? world.city(r.scope_city) : null;
   const C = cfg();
   switch (r.kind) {
-    case 'police': return `Polizeibudget in ${city ? city.name : 'der Stadt'}: ${POLICE_NAMES[r.val] || r.val}`;
-    case 'range': return `Strafrahmen in ${r.region || 'der Region'}: Geldstrafen ${r.val > 0 ? '+' : r.val < 0 ? '−' : '±'}${Math.abs(r.val)} %`;
+    case 'police': { const place = city ? city.name : 'der Stadt'; const level = POLICE_NAMES[r.val] || r.val; return `Polizeibudget in ${place}: ${level}`; }
+    case 'range': { const region = r.region || 'der Region'; const pct = Math.abs(r.val); return r.val > 0 ? `Strafrahmen in ${region}: Geldstrafen +${pct} %` : r.val < 0 ? `Strafrahmen in ${region}: Geldstrafen −${pct} %` : `Strafrahmen in ${region}: unverändert`; }
     case 'strict': return `Strafgesetz: ${STRICT_NAMES[arrIdx(C.strictness, r.val)] || 'Regelrecht'}`;
-    case 'limit': return `Verjährung der Spuren: ${LIMIT_NAMES[arrIdx(C.limitation, r.val)] || 'üblich'}`;
+    case 'limit': { const level = LIMIT_NAMES[arrIdx(C.limitation, r.val)] || 'Übliche Verjährung'; return `Verjährung der Spuren: ${level}`; }
     case 'amnesty': return 'Amnestie: leichte Strafen im Land werden erlassen';
     default: return r.kind;
   }
 }
 
 /** Befugnisse eines Amts mit den aktuellen Grenzen (für die Oberfläche). */
+const rangeLabel = (v) => { const pct = Math.abs(v); return v === 0 ? 'Unverändert' : v > 0 ? `+${pct} % auf Geldstrafen` : `−${pct} % auf Geldstrafen`; };
+
 function powersOf(officeIdx) {
   const C = cfg();
   return (POWERS[officeIdx] || []).map((k) => {
     const base = { kind: k, ...KINDS[k] };
     if (k === 'police') return { ...base, options: (C.policeLevels || []).map((v, i) => ({ value: v, label: POLICE_NAMES[v] || String(v), levy: (C.policeLevy || [])[i] || 0, detect: Math.round(((C.policeDetect || [])[i] || 0) * 100) })) };
-    if (k === 'range') return { ...base, options: (C.rangePct || []).map((v) => ({ value: v, label: v === 0 ? 'Unverändert' : `${v > 0 ? '+' : '−'}${Math.abs(v)} % auf Geldstrafen` })) };
+    if (k === 'range') return { ...base, options: (C.rangePct || []).map((v) => ({ value: v, label: rangeLabel(v) })) };
     if (k === 'strict') return { ...base, options: (C.strictness || []).map((v, i) => ({ value: v, label: STRICT_NAMES[i] || String(v) })) };
     if (k === 'limit') return { ...base, options: (C.limitation || []).map((v, i) => ({ value: v, label: LIMIT_NAMES[i] || String(v) })) };
     return { ...base, options: [{ value: 1, label: 'Amnestie erlassen' }] };
@@ -116,20 +118,22 @@ function normalize(world, officeIdx, city, input) {
 
 function previewLines(world, row) {
   const C = cfg();
+  const pt = (x) => String(x).replace('.', ',');
   switch (row.kind) {
     case 'police': {
       const i = arrIdx(C.policeLevels, row.val);
       const levy = (C.policeLevy || [])[i] || 0; const det = Math.round(((C.policeDetect || [])[i] || 0) * 100); const step = Number((settings.get('gericht').evidence || {}).policeStep) || 8;
+      const pts = Math.abs(row.val * step); const dets = Math.abs(det); const levys = pt(levy);
       return [
-        `Spuren nach Straftaten in der Stadt werden um ${Math.abs(row.val * step)} Punkte ${row.val > 0 ? 'stärker' : 'schwächer'}; ${row.val > 0 ? 'Opfer haben es leichter, Anzeige zu erstatten.' : 'Anzeigen werden schwerer.'}`,
-        `Die Entdeckungschance bei Wettbewerbsaktionen ${det >= 0 ? 'steigt um' : 'sinkt um'} ${Math.abs(det)} Prozentpunkte.`,
-        levy > 0 ? `Gegenfinanzierung: Alle Betriebe der Stadt zahlen dafür ${String(levy).replace('.', ',')} Punkte Gewerbesteuer-Umlage.` : 'Sparkurs: keine Umlage, aber schwächere Spuren.',
+        row.val > 0 ? `Spuren nach Straftaten in der Stadt werden um ${pts} Punkte stärker; Opfer haben es leichter, Anzeige zu erstatten.` : `Spuren nach Straftaten in der Stadt werden um ${pts} Punkte schwächer; Anzeigen werden schwerer.`,
+        det >= 0 ? `Die Entdeckungschance bei Wettbewerbsaktionen steigt um ${dets} Prozentpunkte.` : `Die Entdeckungschance bei Wettbewerbsaktionen sinkt um ${dets} Prozentpunkte.`,
+        levy > 0 ? `Gegenfinanzierung: Alle Betriebe der Stadt zahlen dafür ${levys} Punkte Gewerbesteuer-Umlage.` : 'Sparkurs: keine Umlage, aber schwächere Spuren.',
       ];
     }
-    case 'range': return [row.val === 0 ? 'Der Strafrahmen bleibt unverändert.' : `Geldstrafen im Bundesland ${row.region} ${row.val > 0 ? 'steigen' : 'sinken'} um ${Math.abs(row.val)} %. Schadenersatz bleibt unberührt.`];
-    case 'strict': return [`Die Gerichte im ganzen Land werten Beweise ${row.val > 1 ? 'strenger' : row.val < 1 ? 'milder' : 'wie bisher'} (Faktor ${String(row.val).replace('.', ',')}).`, 'Das wirkt auf Anklage wie Verteidigung gleichermaßen.'];
-    case 'limit': return [`Spuren bleiben ${row.val > 1 ? 'länger' : row.val < 1 ? 'kürzer' : 'wie bisher'} verwertbar (Faktor ${String(row.val).replace('.', ',')}).`, 'Opfer müssen entsprechend früher oder dürfen länger Anzeige erstatten.'];
-    case 'amnesty': return [`Verwarnungen, Geldstrafen, Betriebsschließungen, Verbote und Haft aus Verfahren bis Stufe ${C.amnestyMaxLevel || 2} werden im ganzen Land erlassen.`, 'Schadenersatz an Opfer bleibt bestehen.', 'Das ist umstritten: Du verlierst etwas Ansehen im Amt.'];
+    case 'range': { const region = row.region; const pct = Math.abs(row.val); return [row.val === 0 ? 'Der Strafrahmen bleibt unverändert.' : row.val > 0 ? `Geldstrafen im Bundesland ${region} steigen um ${pct} %. Schadenersatz bleibt unberührt.` : `Geldstrafen im Bundesland ${region} sinken um ${pct} %. Schadenersatz bleibt unberührt.`]; }
+    case 'strict': { const f = pt(row.val); return [row.val > 1 ? `Die Gerichte im ganzen Land werten Beweise strenger (Faktor ${f}).` : row.val < 1 ? `Die Gerichte im ganzen Land werten Beweise milder (Faktor ${f}).` : `Die Gerichte im ganzen Land werten Beweise wie bisher (Faktor ${f}).`, 'Das wirkt auf Anklage wie Verteidigung gleichermaßen.']; }
+    case 'limit': { const f = pt(row.val); return [row.val > 1 ? `Spuren bleiben länger verwertbar (Faktor ${f}).` : row.val < 1 ? `Spuren bleiben kürzer verwertbar (Faktor ${f}).` : `Spuren bleiben wie bisher verwertbar (Faktor ${f}).`, 'Opfer müssen entsprechend früher oder dürfen länger Anzeige erstatten.']; }
+    case 'amnesty': { const level = C.amnestyMaxLevel || 2; return [`Verwarnungen, Geldstrafen, Betriebsschließungen, Verbote und Haft aus Verfahren bis Stufe ${level} werden im ganzen Land erlassen.`, 'Schadenersatz an Opfer bleibt bestehen.', 'Das ist umstritten: Du verlierst etwas Ansehen im Amt.']; }
     default: return [];
   }
 }
@@ -191,7 +195,7 @@ async function set(userId, input) {
     chronicle(state, `${state.person.first} beschließt als ${office}: ${text}.`, 'politics');
     notice(state, { level: 'good', title: 'Beschluss gefasst', tab: 'society', text: `${text}. Er gilt bis zum Ende deiner Amtszeit.`, info: ['Als Amtsinhaber darfst du pro Amtszeit einen Beschluss zu Recht und Ordnung fassen.', 'Er verändert, wie Gerichte und Polizei arbeiten – für alle im Geltungsbereich.', 'Mit der nächsten Amtszeit darfst du neu entscheiden.'] });
     const nm = ctx.user.social_public ? `${state.person.first} ${state.person.last}` : 'Ein Amtsinhaber';
-    await tagesblatt.post('election', `Beschluss: ${office}`, `Beschluss von ${nm} (${office}): ${text}.${row.kind === 'amnesty' ? ` ${amnestied} Sanktionen wurden erlassen.` : ''}`, row.scope_city || 0, conn);
+    await tagesblatt.post('election', `Beschluss: ${office}`, (row.kind === 'amnesty' ? `Beschluss von ${nm} (${office}): ${text}. ${amnestied} Sanktionen wurden erlassen.` : `Beschluss von ${nm} (${office}): ${text}.`), row.scope_city || 0, conn);
     return { msg: `Beschluss gefasst: ${text}.`, level: 'good' };
   }, { needAlive: true });
   await refresh().catch((e) => log.warn(`[gericht] ${e.message}`));

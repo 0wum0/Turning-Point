@@ -76,7 +76,8 @@ async function trace(conn, o) {
     const id = r.insertId;
     // Je Opfer höchstens 40 offene Spuren: die ältesten verfallen
     await c.query("UPDATE court_evidence SET status = 'expired' WHERE victim_id = ? AND status = 'open' AND id NOT IN (SELECT id FROM (SELECT id FROM court_evidence WHERE victim_id = ? AND status = 'open' ORDER BY id DESC LIMIT 40) x)", [o.victimId, o.victimId]);
-    await event(c, o.victimId, null, 'evidence', 'warn', 'Spuren gesichert', `Nach dem Vorfall${subject ? ` bei „${subject}“` : ''} (${M.ACTS[o.act].text}) wurden Spuren gesichert. Unter „Gesellschaft → Recht & Gericht“ kannst du die Beweislage stärken und Anzeige erstatten. Spuren verblassen mit der Zeit.`, id);
+    const what = M.ACTS[o.act].text;
+    await event(c, o.victimId, null, 'evidence', 'warn', 'Spuren gesichert', subject ? `Nach dem Vorfall bei „${subject}“ (${what}) wurden Spuren gesichert. Unter „Gesellschaft → Recht & Gericht“ kannst du die Beweislage stärken und Anzeige erstatten. Spuren verblassen mit der Zeit.` : `Nach dem Vorfall (${what}) wurden Spuren gesichert. Unter „Gesellschaft → Recht & Gericht“ kannst du die Beweislage stärken und Anzeige erstatten. Spuren verblassen mit der Zeit.`, id);
     return id;
   } catch (e) { log.warn(`[gericht] Spuren: ${e.message}`); return 0; }
 }
@@ -412,8 +413,8 @@ async function announceVerdict(conn, c, v) {
   const label = M.ACTS[c.act].label;
   if (v.guilty) {
     const list = planText(v.plan) || 'Verwarnung';
-    await event(conn, c.defendant_id, c.id, 'verdict', 'bad', 'Urteil: schuldig', `Das Gericht hat dich im Fall „${label}“ schuldig gesprochen: Verwarnung${list ? `, ${list}` : ''}. Du kannst innerhalb der Frist Berufung einlegen (einmal); sonst wird das Urteil rechtskräftig.`);
-    await event(conn, c.plaintiff_id, c.id, 'verdict', 'good', 'Urteil: schuldig', `Das Gericht hat den Angeklagten im Fall „${label}“ schuldig gesprochen: ${list || 'Verwarnung'}. Das Urteil wird rechtskräftig, wenn keine Berufung eingelegt wird.`);
+    await event(conn, c.defendant_id, c.id, 'verdict', 'bad', 'Urteil: schuldig', `Das Gericht hat dich im Fall „${label}“ schuldig gesprochen: ${list}. Du kannst innerhalb der Frist Berufung einlegen (einmal); sonst wird das Urteil rechtskräftig.`);
+    await event(conn, c.plaintiff_id, c.id, 'verdict', 'good', 'Urteil: schuldig', `Das Gericht hat den Angeklagten im Fall „${label}“ schuldig gesprochen: ${list}. Das Urteil wird rechtskräftig, wenn keine Berufung eingelegt wird.`);
   } else {
     await event(conn, c.defendant_id, c.id, 'verdict', 'good', 'Urteil: Freispruch', `Das Gericht hat dich im Fall „${label}“ freigesprochen.`);
     await event(conn, c.plaintiff_id, c.id, 'verdict', 'warn', 'Urteil: Freispruch', `Das Gericht hat den Angeklagten im Fall „${label}“ freigesprochen: Die Beweise reichten nicht. Du kannst einmal Berufung einlegen.`);
@@ -456,7 +457,8 @@ async function finalize(c, now, fromState) {
     if (punish) await rep().punish(c.defendant_id, 'court_convicted', punish, `k${c.id}`, { cityId: c.city_id });
     if (c.level >= num(S.publicFromLevel, 3)) {
       const nm = dfn && dfn.social_public && dfn.name ? dfn.name : 'Ein Bürger';
-      await require('./tagesblatt').post('life', 'Gericht', `${nm} wurde im Fall „${M.ACTS[c.act].label}“ verurteilt${planText(plan) ? `: ${planText(plan)}` : ''}.`, c.city_id);
+      const lbl = M.ACTS[c.act].label; const pl = planText(plan);
+      await require('./tagesblatt').post('life', 'Gericht', pl ? `${nm} wurde im Fall „${lbl}“ verurteilt: ${pl}.` : `${nm} wurde im Fall „${lbl}“ verurteilt.`, c.city_id);
     }
   } else {
     if (falseAcc) { await rep().punish(c.plaintiff_id, 'court_false', num((C.complaint || {}).falseScandal, 5), `k${c.id}`, { cityId: c.city_id }); await rep().add(c.defendant_id, 'rel', null, 'court_fair', `k${c.id}`, { cityId: c.city_id }); }
@@ -578,7 +580,7 @@ async function reconcile(conn, user, state, world) {
             if (share > 0) await conn.query("INSERT INTO pending_credits (user_id, real_amount, reason, text) VALUES (?,?,'court',?)", [s.to_user, share, 'Schadenersatz aus einem Gerichtsverfahren.']);
             live.publish('court', {}, s.to_user); live.publish('business', {}, s.to_user);
           }
-          notice(state, { level: 'warn', title: s.kind === 'damages' ? 'Schadenersatz gezahlt' : 'Geldstrafe gezahlt', tab: 'society', text: `Aus einem Gerichtsverfahren wurden ${formatMoney(cents, cur)} abgebucht${full ? '' : ' (Ratenzahlung: Der Rest folgt, sobald wieder Geld da ist)'}.` });
+          notice(state, { level: 'warn', title: s.kind === 'damages' ? 'Schadenersatz gezahlt' : 'Geldstrafe gezahlt', tab: 'society', text: full ? `Aus einem Gerichtsverfahren wurden ${formatMoney(cents, cur)} abgebucht.` : `Aus einem Gerichtsverfahren wurden ${formatMoney(cents, cur)} abgebucht (Ratenzahlung: Der Rest folgt, sobald wieder Geld da ist).` });
         }
       }
       court.debt += Math.max(0, Math.round((left - (cents / idx)) * idx));
