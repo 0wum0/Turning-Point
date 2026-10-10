@@ -27,6 +27,18 @@
     <b class="small">Meldung an den Spieler:</b><select name="level" style="width:110px"><option>info</option><option>good</option><option>warn</option><option>bad</option></select><input type="text" name="title" placeholder="Titel" style="max-width:200px"><input type="text" name="text" placeholder="Text" style="max-width:340px"><label class="check"><input type="checkbox" name="interrupt" value="1"> als Pop-up</label><button class="btn sm">Senden</button></form>
 </section>
 
+<% if (typeof talents !== 'undefined' && talents) { %>
+<section class="card mt"><div class="card-title">Talente</div>
+  <div class="table-wrap"><table class="table small"><thead><tr><th>Person</th><% talents.keys.forEach(function(k){ %><th class="num"><%= k.label %></th><% }) %></tr></thead><tbody>
+    <tr><td><b><%= rawState.person.first %> (Spielfigur)</b></td><% talents.me.v.forEach(function(x, i){ %><td class="num"><%= x %> <span class="dim">/ <%= Math.min(100, talents.me.b[i] + 25) %></span></td><% }) %></tr>
+    <% if (talents.partner && talents.partner.p) { %><tr><td>Partner: <%= talents.partner.name %></td><% talents.partner.p.v.forEach(function(x){ %><td class="num"><%= x %></td><% }) %></tr><% } %>
+    <% talents.children.forEach(function(c){ if (c.p) { %><tr><td>Kind: <%= c.name %></td><% c.p.v.forEach(function(x){ %><td class="num"><%= x %></td><% }) %></tr><% } }) %>
+  </tbody></table></div>
+  <form class="row nowrap mt" method="post" action="/admin/characters/<%= row.id %>/quick"><%- csrf %><input type="hidden" name="do" value="talent">
+    <select name="key"><% talents.keys.forEach(function(k){ %><option value="<%= k.key %>"><%= k.label %></option><% }) %></select><input type="number" name="value" min="1" max="100" value="50" style="width:90px"><button class="btn sm" data-confirm="Talent der Spielfigur setzen? Die Änderung wird im Protokoll festgehalten.">Talent der Spielfigur setzen</button></form>
+</section>
+<% } %>
+
 <form method="post" action="/admin/characters/<%= row.id %>/save" class="mt">
   <%- csrf %>
   <div class="grid c2" style="--gap:1rem">

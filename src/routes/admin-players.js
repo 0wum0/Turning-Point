@@ -234,6 +234,7 @@ module.exports = function mount(router, H) {
     render(res, 'admin/character', {
       title: `${row.name || 'Charakter'} (#${row.id})`, active: 'characters', row, broken: null, groups: FIELD_GROUPS, sections: secs.concat(extra), values,
       cities: cityRows, profs: profRows.map((p) => ({ key: p.pkey, name: p.name })),
+      talents: (() => { const TLN = require('../game/talents'); TLN.ensureAll(state); return { keys: TLN.KEYS.map((k) => ({ key: k, label: TLN.META[k].label })), me: state.talents, partner: state.partner ? { name: state.partner.name, p: state.partner.tal } : null, children: (state.children || []).map((c) => ({ name: c.name, p: c.tal })) }; })(),
       rawState: state, year: yearOf(state.day, state.startYear), counters: ['nextPropId', 'nextCompanyId', 'nextChildId', 'nextNoticeId'].map((k) => [k, state[k]]),
     });
   }));
@@ -315,6 +316,11 @@ module.exports = function mount(router, H) {
       else if (doit === 'cards') { state.cards.health = Math.max(0, state.cards.health + int(b.amount)); msg = 'Gesundheitskarten angepasst.'; }
       else if (doit === 'learn') { if (!w.prof(b.pkey)) throw new Error('Beruf unbekannt.'); learn(state, b.pkey); msg = `Beruf „${w.prof(b.pkey).name}“ als erlernt eingetragen.`; }
       else if (doit === 'unlearn') { state.skills.learned = state.skills.learned.filter((k) => k !== b.pkey); msg = 'Qualifikation entfernt.'; }
+      else if (doit === 'talent') {
+        const TLN = require('../game/talents'); const i = TLN.IDX[String(b.key)]; const val = int(b.value, NaN);
+        if (i == null || !Number.isFinite(val) || val < 1 || val > 100) throw new Error('Talent und Wert (1–100) angeben.');
+        TLN.ensureAll(state); const before = state.talents.v[i]; state.talents.v[i] = val; state.talents.b[i] = Math.max(state.talents.b[i], val - 0); msg = `${TLN.META[b.key].label}: ${before} → ${val}.`;
+      }
       else if (doit === 'unemploy') { state.occupation = null; msg = 'Beruf/Ausbildung beendet.'; }
       else if (doit === 'clear') { state.notices = []; state.interrupts = []; state.pending = {}; msg = 'Meldungen und Merker gelöscht.'; }
       else if (doit === 'cooldowns') { state.taskCd = {}; state.pending.taskStart = {}; msg = 'Aufgaben-Abkühlzeiten zurückgesetzt.'; }
@@ -323,7 +329,7 @@ module.exports = function mount(router, H) {
       else throw new Error('Unbekannte Aktion.');
       upgradeState(state);
       await writeState(row, state);
-      await audit(req, `admin_char_${doit}`, `#${row.id} (${row.username})`);
+      await audit(req, `admin_char_${doit}`, `#${row.id} (${row.username})${doit === 'talent' ? ` ${clean(b.key, 12)}=${clean(b.value, 4)}` : ''}`);
       flash(req, 'good', msg);
     } catch (e) { flash(req, 'bad', e.message); }
     res.redirect(`/admin/characters/${req.params.id}`);
