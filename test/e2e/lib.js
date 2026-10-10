@@ -82,6 +82,8 @@ async function startApp() {
 /** Browser-Kontext mit Fehlersammlung (Seitenfehler, Konsolenfehler, fehlgeschlagene Antworten >= 500). */
 async function newPlayer(browser, app, label, lang) {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: lang === 'en' ? 'en-US' : 'de-DE' });
+  // Sanftes Scrollen (CSS) macht Klicks auf weit unten liegende Schaltflächen unter Last unzuverlässig: im Test sofort springen
+  await ctx.addInitScript(() => { document.addEventListener('DOMContentLoaded', () => { const st = document.createElement('style'); st.textContent = 'html{scroll-behavior:auto!important}'; document.head.appendChild(st); }); });
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(`[${label}] pageerror: ${e.message}`));
