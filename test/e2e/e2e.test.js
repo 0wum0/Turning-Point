@@ -470,6 +470,56 @@ describe('E2E Turning Point', { concurrency: false }, () => {
       noErrors(f);
     });
 
+    it('Jahreszeiten & Seuchen: Jahreszeit-Karte und Check, Seuchenhinweis, Schutz mit einem Klick, Beschluss des Kanzlers mit Vorschau', async () => {
+      // Spieldatum: 11. Dezember 1957 – Winter, die Asiatische Grippe zieht gerade durch Berlin
+      const day = (1957 - 1945) * 365 + 345;
+      await app.sql("UPDATE characters SET state = JSON_SET(state, '$.day', ?, '$.money', ?), game_day = ?, money = ? WHERE user_id = ? AND status = 'alive'", [day, 30000000, day, 30000000, fId]);
+      await app.sql('UPDATE users SET efs_accrued_at = ?, efs_carry = 0 WHERE id = ?', [Date.now(), fId]);
+      await L.reloadGame(f); await L.nav(f, 'overview');
+      await f.page.waitForSelector('#seasonCard');
+      assert.match(await text(f, '#seasonCard'), /Winter/);
+      assert.match(await text(f, '#seasonCard'), /Heizung/);
+      assert.ok(await f.page.locator('#hud .hud-season').count(), 'Jahreszeit im Kopfbereich');
+      // Jahreszeiten-Check erklärt Heizung, Ernte und Vorsorge – und erfüllt die Aufgabe „Bereite dich auf den Winter vor“
+      await f.page.click('[data-season-guide]');
+      await f.page.waitForSelector('.modal');
+      assert.match(await text(f, '.modal'), /Winter-Check/);
+      assert.match(await text(f, '.modal'), /Ernte 1957/);
+      await L.closeModals(f);
+      await L.until(async () => (await app.sql("SELECT JSON_EXTRACT(state, '$.flags.quests.seen.season') s FROM characters WHERE user_id = ? AND status = 'alive'", [fId]))[0].s, { what: 'Aufgabe „Winter“ gesehen' });
+      // Seuchenhinweis mit drei Schutzknöpfen; Hygienepaket kostet Geld und wirkt
+      await f.page.waitForSelector('#epiBanner');
+      assert.match(await text(f, '#epiBanner'), /Asiatische Grippe/);
+      assert.equal(await f.page.locator('#epiBanner [data-epi]').count(), 3);
+      assert.ok(await f.page.locator('#epiBanner [data-epi="vaccine"]').isDisabled(), '1957 gibt es noch keinen Impfstoff');
+      const m0 = Number((await app.sql("SELECT money FROM characters WHERE user_id = ? AND status = 'alive'", [fId]))[0].money);
+      const pr = f.page.waitForResponse((r) => /\/api\/action\/epiProtect$/.test(r.url()));
+      await f.page.click('#epiBanner [data-epi="hygiene"]');
+      assert.equal((await pr).status(), 200);
+      const st = L.json((await app.sql("SELECT state FROM characters WHERE user_id = ? AND status = 'alive'", [fId]))[0].state);
+      assert.ok(st.epi.hygUntil > st.day, 'Hygienepaket läuft');
+      assert.ok(Number((await app.sql("SELECT money FROM characters WHERE user_id = ? AND status = 'alive'", [fId]))[0].money) < m0, 'Schutz kostet Geld');
+      await f.page.waitForFunction(() => /aktiv/.test(document.querySelector('#epiBanner [data-epi="hygiene"]').innerText));
+      // Betriebe und Haushalt zeigen Jahreszeit und Seuche
+      await L.nav(f, 'business'); assert.match(await text(f), /Seuche/);
+      await L.nav(f, 'household'); assert.match(await text(f, '#seasonCard'), /Winter/);
+      // Kanzler: Seuchenmaßnahmen mit Vorschau (Ansteckung gegen Wirtschaft gegen Ansehen), Beschluss, Tagesblatt
+      await app.sql("UPDATE characters SET state = JSON_SET(state, '$.politics.term', JSON_OBJECT('idx', 5, 'startDay', ?, 'endDay', ?, 'cityId', 0)) WHERE user_id = ? AND status = 'alive'", [st.day, st.day + 1460, fId]);
+      await L.showAll(f); await L.reloadGame(f); await L.nav(f, 'society');
+      await f.page.waitForSelector('#polBox [data-pol="pandemic"]');
+      assert.ok(await f.page.locator('#polBox [data-pol="hygiene"]').count() === 0, 'Gesundheitsamt ist Sache der Stadt');
+      await f.page.selectOption('#pl-pandemic', '1');
+      await f.page.click('[data-pol-preview="pandemic"]');
+      await f.page.waitForSelector('.modal #pol-go');
+      assert.match(await text(f, '.modal'), /Ansteckung/);
+      assert.match(await text(f, '.modal'), /Gastronomie/);
+      assert.match(await text(f, '.modal'), /Ansehen/);
+      await f.page.click('.modal #pol-go');
+      await L.until(async () => (await app.sql("SELECT id FROM goods_policies WHERE user_id = ? AND kind = 'pandemic'", [fId])).length, { what: 'Beschluss gespeichert' });
+      await L.until(async () => (await app.sql("SELECT id FROM world_events WHERE title LIKE 'Beschluss:%' ORDER BY id DESC LIMIT 1")).length, { what: 'Tagesblatt' });
+      noErrors(f);
+    });
+
     it('Liefervertrag: Frieda (Bäckerei) bietet Cora (Mühle) an, Cora nimmt an, der Vertrag läuft', async () => {
       await L.nav(f, 'business');
       await f.page.click('[data-contract-propose]');
