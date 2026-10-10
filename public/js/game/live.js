@@ -4,7 +4,7 @@ export function startLive(ctx, hooks) {
   let es = null; let timer = 0; let fails = 0;
   const idle = () => document.hidden || document.querySelector('.modal-backdrop') || /^(INPUT|TEXTAREA|SELECT)$/.test((document.activeElement || {}).tagName || '');
   const soft = () => { clearTimeout(timer); timer = setTimeout(async () => { if (idle()) { timer = setTimeout(soft, 1500); return; } await hooks.softRefresh(); }, 700); };
-  const SOFT_ROUTES = { market: ['social', 'city', 'housing', 'business', 'overview'], exchange: ['social', 'business'], directory: ['social', 'city', 'housing'], news: ['overview', 'newspaper'], chat: ['social'], social: ['social', 'overview'], business: ['business', 'overview'], economy: ['business', 'society', 'overview'], rep: ['overview', 'society'] };
+  const SOFT_ROUTES = { market: ['social', 'city', 'housing', 'business', 'overview'], exchange: ['social', 'business'], directory: ['social', 'city', 'housing'], news: ['overview', 'newspaper'], chat: ['social'], social: ['social', 'overview'], business: ['business', 'overview'], economy: ['business', 'society', 'overview'], rep: ['overview', 'society'], court: ['overview', 'society'] };
   function open() {
     es = new EventSource('/api/live');
     es.addEventListener('hello', () => { fails = 0; });
@@ -12,6 +12,7 @@ export function startLive(ctx, hooks) {
       es.addEventListener(type, () => {
         if (type === 'social' || type === 'chat') hooks.pollSocial();
         if (type === 'chat') window.dispatchEvent(new CustomEvent('tp-live-chat'));
+        if (type === 'court') window.dispatchEvent(new CustomEvent('tp-live-court'));
         if (type === 'economy') window.dispatchEvent(new CustomEvent('tp-live-economy'));
         if (SOFT_ROUTES[type].includes(ctx.route)) soft();
         else if (type === 'market' || type === 'exchange') hooks.refreshHud();

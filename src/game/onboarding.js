@@ -7,7 +7,7 @@
  */
 
 /** Marken, die die Oberfläche melden darf (Seitenbesuche und Aktionen, die der Spielstand nicht selbst festhält). */
-const SEEN_KEYS = ['newspaper', 'map', 'friend', 'marketOffer', 'vote', 'glossary', 'prices'];
+const SEEN_KEYS = ['newspaper', 'map', 'friend', 'marketOffer', 'vote', 'glossary', 'prices', 'court'];
 /** Nach so vielen Spieljahren öffnet sich alles von selbst (wer so lange spielt, kennt das Spiel). */
 const OPEN_AFTER_YEARS = 6;
 
@@ -51,6 +51,7 @@ const QUESTS = [
   { id: 'let', title: 'Eine Immobilie vermieten', why: 'Mieter zahlen dir jeden Tag Miete – ein ruhiges Einkommen ohne Arbeit.', tab: 'housing', spot: 'lease', reward: { efs: 6 }, done: (s, q) => (s.properties || []).some((p) => p.lease && p.lease.on) || !!q.acts.letOn },
   { id: 'market', title: 'Ein erstes Angebot auf dem Markt einstellen', why: 'Auf dem Markt handelst du mit anderen echten Spielern – Häuser, Firmen, Gelegenheiten.', tab: 'social', spot: 'market', reward: { efs: 6 }, done: (s, q) => !!q.seen.marketOffer },
   { id: 'vote', title: 'Bei einer Wahl abstimmen oder kandidieren', why: 'Bürgermeister, Landrat, Kanzler: Ämter werden von den Spielern gewählt. Du kannst mitentscheiden.', tab: 'social', spot: 'elections', reward: { coins: 1 }, done: (s, q) => !!q.seen.vote || !!(s.politics && (s.politics.term || Object.values(s.politics.completed || {}).some((n) => n > 0))) },
+  { id: 'court', title: 'Lerne das Gericht kennen', why: 'Wer dir schadet, hinterlässt Spuren. Im Bereich „Recht & Gericht“ siehst du, wie Beweise, Anzeige, Vergleich und Strafen funktionieren – bevor du sie brauchst.', tab: 'society', spot: 'court', reward: { efs: 6 }, done: (s, q) => !!q.seen.court },
 ];
 const QUEST_IDS = QUESTS.map((x) => x.id);
 
@@ -121,7 +122,7 @@ const UNLOCKS = [
   { key: 'bank', label: 'Bank & Kredite', cond: 'du deinen ersten Lohn bekommen hast', ok: (d) => d.wage },
   { key: 'market', label: 'Markt', cond: 'du eine Wohnung gemietet oder gekauft hast', ok: (d, s) => d.home || (s.properties || []).length > 0 },
   { key: 'business', label: 'Unternehmen', cond: 'du das Zehnfache deines Startgelds gespart hast', ok: (d, s, x) => d.save || d.skill2 || (s.companies || []).length > 0 || !!(x && x.canFound) },
-  { key: 'society', label: 'Gesellschaft', cond: 'du das Zehnfache deines Startgelds gespart hast', ok: (d, s) => d.save || d.skill2 || d.business || !!(s.politics && s.politics.term) },
+  { key: 'society', label: 'Gesellschaft', cond: 'du das Zehnfache deines Startgelds gespart hast', ok: (d, s) => d.save || d.skill2 || d.business || !!(s.politics && s.politics.term) || !!(s.court && (s.court.ev || s.court.p || s.court.d)) },
   { key: 'elections', label: 'Wahlen', cond: 'du das Zehnfache deines Startgelds gespart hast', ok: (d, s) => d.save || d.skill2 || d.business || !!(s.politics && s.politics.term) },
   { key: 'exchange', label: 'Börse', cond: 'du deinen ersten Betrieb führst', ok: (d, s) => d.business || (s.companies || []).length > 0 },
   { key: 'rivalry', label: 'Wettbewerb', cond: 'du einen Betrieb führst und Mitarbeiter eingestellt hast', ok: (d, s) => (d.business || (s.companies || []).length > 0) && d.hire },
@@ -192,6 +193,11 @@ function advise(v, nextQuest, opts) {
     const small = cr.loans.slice().sort((a, b) => a.left - b.left)[0];
     if (v.flows && v.flows.net > 0 && v.money > small.left * 2) add(45, { id: 'loan', level: 'info', icon: 'landmark', title: 'Du kannst einen Kredit zurückzahlen', why: `Du hast ${dm(v.money, cur)} und schuldest nur noch ${dm(small.left, cur)}. Das spart Zinsen.`, cta: { kind: 'bank', label: 'Zur Bank' } });
   }
+  // Gericht: Spuren sichern, angezeigt werden, Haft
+  const cj = v.court;
+  if (cj && cj.act > 0) add(87, { id: 'court-sued', level: 'bad', icon: 'gavel', title: 'Du wurdest verklagt – Anwalt oder Vergleich?', why: 'Gegen dich läuft ein Verfahren. Mit einem Rechtsanwalt, einem Vergleich oder einem Geständnis bestimmst du selbst, wie es ausgeht.', cta: { kind: 'go', label: 'Zum Gericht', tab: 'society', spot: 'court' } });
+  if (cj && cj.ev > 0 && !cj.p) add(58, { id: 'court-evidence', level: 'warn', icon: 'search', title: 'Spuren am Tatort – Anzeige erstatten?', why: 'Jemand hat dir geschadet und Spuren hinterlassen. Sie verblassen: Stärke sie mit einem Detektiv oder erstatte Anzeige.', cta: { kind: 'go', label: 'Spuren ansehen', tab: 'society', spot: 'court' } });
+  if (cj && (cj.r || []).some((x) => x.k === 'haft')) add(72, { id: 'court-haft', level: 'warn', icon: 'lock', title: 'Du bist in Haft', why: 'Wirtschaftliche Handlungen sind gesperrt, bis die Haft endet. Essen, Schlafen, Briefe und Chat gehen weiter; deine Spielzeit läuft geschützt.', cta: { kind: 'go', label: 'Details', tab: 'society', spot: 'court' } });
   // Ansehen: pünktlich zahlen schützt den Ruf; ein angeschlagener Ruf ist ein eigener Hinweis
   if (v.housing && v.housing.type === 'rent' && v.flows && v.flows.exp && v.flows.exp.lodging > 0 && v.money < v.flows.exp.lodging * 6) {
     add(83, { id: 'rentrisk', level: 'warn', icon: 'clock', title: 'Deine Miete ist in Gefahr', why: 'Reicht das Geld nicht für die Miete, verlierst du die Wohnung – und dein Ansehen leidet. Pünktlich zahlen dagegen stärkt es.', cta: { kind: 'go', label: 'Einnahmen verbessern', tab: 'work' } });

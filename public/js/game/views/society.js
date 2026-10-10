@@ -1,6 +1,7 @@
 import { html, icon, money, infoBtn, bar, on, yearsText, signed } from '../ui.js';
 import { policyBox, bindPolicy } from '../policy.js';
 import { honorSkeleton, bindHonor } from '../reputation.js';
+import { courtSkeleton, bindCourt } from '../court.js';
 
 export default {
   id: 'society', label: 'Gesellschaft', icon: 'landmark',
@@ -23,6 +24,7 @@ export default {
 
     ${policyBox()}
     ${honorSkeleton()}
+    ${courtSkeleton()}
 
     <div class="grid c2 mt" style="--gap:1rem">
       <section class="card"><div class="card-title">${icon('ticket')} Lotto ${infoBtn(['Lotto ist freiwillig – und statistisch ein Verlustgeschäft.', 'Es gibt kleine Gewinne, selten große. Sehr selten winkt ein Vermögen.', 'Setze nur, was du verschmerzen kannst.'], 'Lotto')}</div>
@@ -34,7 +36,7 @@ export default {
     </div>`;
   },
   bind(root, ctx) {
-    bindPolicy(root, ctx); bindHonor(root, ctx);
+    bindPolicy(root, ctx); bindHonor(root, ctx); bindCourt(root, ctx);
     on(root, 'click', '[data-repopen]', (e) => { e.preventDefault(); import('../reputation.js').then((m) => m.openStanding(ctx)); });
     on(root, 'click', '[data-elections]', (e) => { e.preventDefault(); ctx.ui.soc = Object.assign(ctx.ui.soc || { cat: 'wealth', scope: 'all', box: 'in', page: 1 }, { tab: 'elections' }); ctx.go('social'); });
     on(root, 'click', '[data-run]', (e, t) => ctx.act('runOffice', { idx: Number(t.dataset.run) }));

@@ -500,3 +500,10 @@ html { scroll-padding-top: calc(var(--hud-h, 62px) + 10px); }
 .rep-two { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; }
 .rep-modal .kv dd { text-align: right; }
 @media (max-width: 480px) { .rep-chg .btn { padding: .25rem .5rem; } .rep-two { gap: .5rem; } }
+
+/* Recht & Gericht */
+.court-banner.bad { border-color: var(--bad, #c0504d); }
+.court-case .court-tl { margin: .4rem 0 0; padding-left: 1.1rem; display: grid; gap: .3rem; }
+.court-ev .chip, .court-case .chip { margin-right: .25rem; }
+#courtBox .btn { white-space: normal; }
+@media (max-width: 520px) { #courtBox .firm { flex-direction: column; align-items: stretch; } #courtBox .dir-ic { display: none; } }

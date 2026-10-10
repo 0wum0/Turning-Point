@@ -3,6 +3,7 @@ import { html, icon, modal, on } from './ui.js';
 import { GLOSSARY_GOODS } from './glossary-goods.js';
 import { GLOSSARY_CITY } from './glossary-city.js';
 import { GLOSSARY_REP } from './glossary-rep.js';
+import { GLOSSARY_COURT } from './glossary-court.js';
 
 /* key = Anzeigewort; text = ein bis zwei Sätze in einfacher Sprache */
 export const GLOSSARY = [
@@ -35,7 +36,7 @@ export const GLOSSARY = [
   ['Streubesitz', 'Streubesitz', 'Der Teil der Anteile, der an andere Spieler verkauft wird.'],
   ['Treuhand', 'Treuhand (Escrow)', 'Das Geld wird sicher verwahrt, bis ein Handel abgeschlossen ist. So kann niemand betrügen.'],
   ['Vermächtnis', 'Vermächtnis', 'Das, was deine Familie über viele Generationen aufbaut. Ziel des Spiels ist ein starkes Vermächtnis bis zum Jahr 2100.'],
-].concat(GLOSSARY_GOODS, GLOSSARY_CITY, GLOSSARY_REP);
+].concat(GLOSSARY_GOODS, GLOSSARY_CITY, GLOSSARY_REP, GLOSSARY_COURT);
 const byKey = new Map(GLOSSARY.map((g) => [g[0], g]));
 
 const entry = (g) => html`<div class="gl-entry" id="gl-${encodeURIComponent(g[0])}"><b>${g[1]}</b><div class="dim">${g[2]}</div></div>`;

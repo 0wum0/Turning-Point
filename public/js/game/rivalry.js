@@ -16,6 +16,7 @@ export async function openRival(ctx, targetId, companyId, name, onDone) {
   const dlg = modal(html`<h3>${icon('swords')} Wettbewerb: ${name}</h3>
     <p class="dim small">Du musst in der Stadt des Betriebs wohnen. Jede Aktion kostet Geld; mit Risiko von ca. ${Math.round(st.caughtBase * 100)} % (je nach Aktion) wirst du erwischt – dann zahlst du das ${Math.round(st.finePct / 100)}-Fache der Kosten als Strafe und der Gegner erfährt deinen Namen. ${st.strikes}/${st.strikeLimit} Verstößen im Fenster; bei ${st.strikeLimit} wirst du gesperrt.</p>
     <div class="stack" style="--gap:.5rem">${st.actions.map((a) => { const i = INFO[a.key] || [a.label, 'swords', '']; return html`<div class="firm"><span class="dir-ic">${icon(i[1])}</span><div class="grow"><b>${i[0]}</b><div class="dim small">${i[2]}${a.hitPct ? ` (−${a.hitPct} % Umsatz, ${a.days} Tage)` : a.days ? ` (${a.days} Tage Ausfall)` : ''}</div></div><button class="btn sm ${a.key === 'sabotage' ? 'danger' : ''}" data-act="${a.key}">${money(Math.round(a.cost * k), cur)}</button></div>`; })}</div>
+    <p class="dim small mt">Jede Tat hinterlässt Spuren: Das Opfer kann beim Gericht Anzeige erstatten (Gesellschaft → Recht & Gericht). Strafen reichen von der Verwarnung bis zur Haft.</p>
     <p class="dim small mt">Schutz für Betriebe: Sicherheitsdienst (wehrt Angriffe oft ab, erhöht die Entdeckungschance) und Gebäudeversicherung (zahlt Reparaturen).</p>
     <div class="row end"><button class="btn ghost" data-close="x">Schließen</button></div>`);
   on(dlg.el, 'click', '[data-act]', async (e, t) => {
