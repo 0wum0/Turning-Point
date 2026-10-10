@@ -46,6 +46,21 @@ const DEFAULTS = {
     courseDays: 60, unlockDays: 120, courseFeeDays: 40, unlockFeeDays: 120, coursesPerYear: 2, skillBonusDays: 365,
     benefit: { enabled: true, pct: 60, days: 180, minWorkDays: 90 },
   },
+  // Talente (src/game/talents.js): sechs Begabungen (1–100) für Spielfigur, Partner, Kinder und Mitarbeiter. Alle Wirkungen sind gedeckelt;
+  // effects.strength skaliert sie gemeinsam (0 = ohne Wirkung, 1 = normal, 2 = doppelt). Beträge in Tagen des Mitarbeiterlohns.
+  talente: {
+    enabled: true,
+    labels: { handwerk: 'Handwerk', handel: 'Handel', fuehrung: 'Führung', bildung: 'Bildung', charme: 'Charme', kondition: 'Kondition' },
+    floor: 5, birthMax: 95, cap: 100, growRoom: 25, revealAge: 6,
+    inherit: { regress: 15, mutation: 12, spread: 14 },        // Kinder: Mittel der Eltern, davon x % zur Mitte 50, dazu ± mutation Punkte; spread = Streuung zufälliger Personen
+    effects: { strength: 1, revenuePct: 12, reliabilityPct: 6, wagePct: 20, jobWagePct: 6, raisePct: 6, applyPts: 5, studyPct: 20, healthPts: 4, lifeDaysPerPt: 11, restPts: 1, partnerPts: 5, childPts: 3, repGainPct: 15, votePct: 6, chancePct: 5, courtPts: 3, detectPct: 5 },
+    pool: { size: 4, apprentices: 2, tierBonus: 2, eraBonus: 4, mean: 46 },     // Bewerber je Betrieb und Woche; Mittelwert steigt mit Stadtgröße und Epoche
+    train: { courseDays: 45, courseFeeDays: 25, coursePts: 4, yearPts: 1, yearPct: 50 },
+    apprentice: { max: 2, years: 3, wagePct: 45, everyDays: 90, meisterMult: 1.5 },
+    foster: { days: 90, feeDays: 15, pts: 4, minAge: 3, maxAge: 17, sat: 6 },
+    raise: { askDays: 30, margin: 0.06 },
+    edu: { schoolPct: 10, levelPts: 0.34, levy: [0.2, 0.4, 0.6], courseDisc: [10, 20, 30], lehrSubsidy: [20, 40, 60], regionLevy: [0.2, 0.4, 0.6], natLevy: [0.3, 0.6, 0.9] },
+  },
   social: {
     enabled: true,
     leaderboardSize: 50,
