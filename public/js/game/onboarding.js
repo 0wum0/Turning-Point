@@ -118,6 +118,8 @@ export const SPOTS = {
   course: { sel: '[data-course]:not([disabled])', text: 'Hier kannst du einen weiteren Beruf lernen.' },
   found: { sel: '[data-found]', text: 'Tippe auf „Unternehmen gründen“ und wähle deine Betriebsart.' },
   hire: { sel: '[data-b="bizHire"]', text: 'Tippe auf „+“, um jemanden einzustellen.' },
+  talent: { sel: '[data-applicants]:not([disabled])', text: 'Tippe auf „Bewerber ansehen“ und wähle jemanden mit hoher Passung.' },
+  talents: { sel: '#talCard', text: 'Hier siehst du deine Talente – und was sie bewirken.' },
   supply: { sel: '[data-supply-find], [data-contract-find]', text: 'Tippe bei einer Zutat auf „Lieferant suchen“.' },
   lease: { sel: '[data-lease="on"]', text: 'Tippe auf „Vermieten“.' },
   market: { pre: (ctx) => soc(ctx, 'market'), sel: '.soc-tabs [data-tab="market"]', text: 'Im Stadtverzeichnis kannst du Eigentümern ein Angebot machen.' },

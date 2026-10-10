@@ -507,3 +507,25 @@ html { scroll-padding-top: calc(var(--hud-h, 62px) + 10px); }
 .court-ev .chip, .court-case .chip { margin-right: .25rem; }
 #courtBox .btn { white-space: normal; }
 @media (max-width: 520px) { #courtBox .firm { flex-direction: column; align-items: stretch; } #courtBox .dir-ic { display: none; } }
+
+/* ---- Talente ---- */
+.tal-bars { display: grid; grid-template-columns: 1fr 1fr; gap: .35rem 1rem; }
+.tal-bars.compact { gap: .25rem .7rem; font-size: .85rem; }
+.tal-row { display: grid; grid-template-columns: 1.3rem minmax(4.2rem, 5.6rem) 1fr 2.2rem; align-items: center; gap: .35rem; min-width: 0; }
+.tal-row .tal-ic { color: var(--accent-2); display: inline-flex; } .tal-row .tal-ic .i { width: 1.05rem; height: 1.05rem; }
+.tal-lb { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: .85rem; }
+.tal-v { text-align: right; font-variant-numeric: tabular-nums; font-size: .85rem; }
+.tal-row.hid { grid-template-columns: 1.3rem minmax(4.2rem, 5.6rem) 1fr auto; } .tal-row.hid .tal-v { text-align: left; min-width: 4.5rem; }
+.tal-bar { position: relative; height: 8px; background: var(--surface-2); border-radius: 99px; border: 1px solid var(--border); overflow: visible; }
+.tal-bar > i { display: block; height: 100%; border-radius: inherit; background: var(--accent); transition: width .6s var(--ease); }
+.tal-bar.b0 > i { background: color-mix(in srgb, var(--warn, #d9a21b) 85%, transparent); } .tal-bar.b2 > i { background: var(--good); } .tal-bar.b3 > i { background: linear-gradient(90deg, var(--good), #e3b341); }
+.tal-row.hid .tal-bar > i { background: repeating-linear-gradient(90deg, var(--accent) 0 6px, transparent 6px 9px); }
+.tal-bar > u { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--text-dim); opacity: .55; text-decoration: none; }
+.tal-box { border-top: 1px dashed var(--border); padding-top: .6rem; }
+.tal-pass { display: block; color: var(--good); font-weight: 650; }
+.tal-firm { border-top: 1px dashed var(--border); padding-top: .6rem; }
+.tal-person.best { border-color: var(--good); box-shadow: 0 0 0 2px color-mix(in srgb, var(--good) 25%, transparent); }
+.tal-opt { display: flex; align-items: center; gap: .6rem; text-align: left; justify-content: flex-start; } .tal-opt small { display: block; }
+.tal-guide { padding: .4rem .6rem; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.tal-fx li { margin: .2rem 0; }
+@media (max-width: 560px) { .tal-bars { grid-template-columns: 1fr; } }

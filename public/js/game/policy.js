@@ -5,13 +5,15 @@ import { dec } from './supply.js';
 
 const ROLES = [
   ['Ortsbeirat', 'Berät die Stadt – noch keine Macht über die Wirtschaft.'],
-  ['Stadtrat', 'Gewerbesteuer-Zuschlag und Baulandausweisung in der Stadt.'],
-  ['Bürgermeister', 'Gewerbesteuer-Zuschlag, Subvention, Mietpreisbremse und Baulandausweisung in der Stadt.'],
-  ['Landtagsabgeordneter', 'Preisstützung für eine Ware und Wohnungsbauprogramm im Bundesland.'],
-  ['Bundestagsabgeordneter', 'Rahmen: Obergrenzen für Zuschläge und Subventionen im ganzen Land.'],
-  ['Bundeskanzler', 'Mehrwertsteuer auf Waren, Einfuhrzoll, Branchen-Subvention und Preisbremse.'],
+  ['Stadtrat', 'Gewerbesteuer-Zuschlag, Baulandausweisung und Schulbudget in der Stadt.'],
+  ['Bürgermeister', 'Gewerbesteuer-Zuschlag, Subvention, Mietpreisbremse, Baulandausweisung und Schulbudget in der Stadt.'],
+  ['Landtagsabgeordneter', 'Preisstützung für eine Ware, Wohnungsbauprogramm und Bildungsprogramm im Bundesland.'],
+  ['Bundestagsabgeordneter', 'Rahmen für Zuschläge und Subventionen im ganzen Land; Berufsbildungsgesetz.'],
+  ['Bundeskanzler', 'Mehrwertsteuer auf Waren, Einfuhrzoll, Branchen-Subvention, Preisbremse und Berufsbildungsgesetz.'],
 ];
 
+const hasEdu = (e) => !!e && (e.school || e.library || e.sport || e.courseDisc || e.lehrSubsidy);
+const eduChips = (e) => (hasEdu(e) ? html`${e.school ? html`<span class="chip good">Schulen Stufe ${e.school}</span> ` : ''}${e.library ? html`<span class="chip good">Bibliothek Stufe ${e.library}</span> ` : ''}${e.sport ? html`<span class="chip good">Sportstätten Stufe ${e.sport}</span> ` : ''}${e.courseDisc ? html`<span class="chip good">Kurse −${e.courseDisc} %</span> ` : ''}${e.lehrSubsidy ? html`<span class="chip good">Lehrlingslohn −${e.lehrSubsidy} %</span>` : ''}` : '');
 export const policyBox = () => html`<section class="card mt" id="polBox"><div class="dim small">Lade …</div></section>`;
 
 const num = (n, d) => html`<b>${dec(n, d)}</b>`;
@@ -44,12 +46,27 @@ function effectLine(l, pv) {
     case 'housing': return html`<li><span>Wohnungsbauprogramm: Das Wohnungsangebot in allen Städten deines Bundeslandes wächst um</span> <b>${dec(l.a)}</b> <span>%. Wirkung zeigt sich zuerst in Städten mit vielen Einwohnern.</span>${fxList(l.b)}</li>`;
     case 'pricebrake': return html`<li>${l.a < 0 ? html`<span>Preisbremse: Das Preisniveau aller Städte wird nach unten geschoben – Wohnen, Essen, Dienste und Bauen.</span>` : html`<span>Höheres Inflationsziel: Das Preisniveau aller Städte wird nach oben geschoben.</span>`}${fxList(l.b)}</li>
       <li class="dim"><span>Nebenwirkung: Die Preise der Betriebe folgen – bei einer Bremse verdienen sie etwas weniger, die Löhne folgen abgeschwächt.</span></li>`;
+    case 'edu_city': {
+      const what = l.b === 'library' ? html`<span>Die Bibliothek hilft allen Bewohnern: Mit etwas Glück wächst ihre Bildung jedes Jahr um einen Punkt.</span>`
+        : l.b === 'sport' ? html`<span>Die Sportstätten helfen allen Bewohnern: Mit etwas Glück wächst ihre Kondition jedes Jahr um einen Punkt.</span>`
+          : html`<span>Gute Schulen: Kinder lernen mehr (Bildung wächst mit etwas Glück jedes Jahr) und Förderprogramme wirken stärker.</span>`;
+      return html`<li><span>Schulbudget Stufe</span> ${num(l.a)}<span>:</span> ${what} <span>Förderprogramme der Kinder in deiner Stadt wirken um</span> <b>+${dec(l.c)} %</b> <span>stärker.</span></li>`;
+    }
+    case 'edu_region': return html`<li><span>Bildungsprogramm Stufe</span> ${num(l.a)}<span>: Kurse für Mitarbeiter kosten im ganzen Bundesland</span> <b>${dec(l.b)} %</b> <span>weniger und bringen ab Stufe 2 einen Punkt mehr.</span></li>`;
+    case 'edu_nation': return html`<li><span>Berufsbildungsgesetz Stufe</span> ${num(l.a)}<span>: Der Staat übernimmt</span> <b>${dec(l.b)} %</b> <span>des Lohns von Lehrlingen in allen Betrieben des Landes.</span></li>`;
     case 'frame': return html`<li><span>Obergrenzen im ganzen Land: Gewerbesteuer-Zuschlag höchstens</span> ${num(l.a)} <span>Punkte, Subventionen höchstens</span> ${num(l.b)} <span>%.</span></li>`;
     default: return '';
   }
 }
 
 function control(p) {
+  if (p.kind === 'edu_city') {
+    return html`<div class="grid c2" style="--gap:.6rem"><div class="field"><label for="pe-focus">Schwerpunkt</label><select id="pe-focus">${p.focus.map((f) => html`<option value="${f.key}">${f.name}</option>`)}</select></div>
+      <div class="field"><label for="pe-lv">Stufe</label><select id="pe-lv">${p.options.map((o) => html`<option value="${o}">Stufe ${o}</option>`)}</select></div></div>`;
+  }
+  if (p.kind === 'edu_region' || p.kind === 'edu_nation') {
+    return html`<div class="field"><label for="pe-lv-${p.kind}">Stufe</label><select id="pe-lv-${p.kind}">${p.options.map((o) => html`<option value="${o}">Stufe ${o}</option>`)}</select></div>`;
+  }
   if (p.kind === 'surcharge' || p.kind === 'vat' || p.kind === 'tariff') {
     const lbl = p.kind === 'tariff' ? 'Zoll' : 'Änderung';
     return html`<div class="field"><label for="pv-${p.kind}"><span>${lbl}:</span> <b data-pv="${p.kind}">0</b> <span>${p.unit}</span></label><input id="pv-${p.kind}" type="range" min="${p.min}" max="${p.max}" step="${p.step || 1}" value="0" data-prange="${p.kind}"></div>
@@ -70,6 +87,8 @@ function control(p) {
   return '';
 }
 function valueOf(root, p) {
+  if (p.kind === 'edu_city') return { kind: p.kind, good: root.querySelector('#pe-focus').value, value: Number(root.querySelector('#pe-lv').value) };
+  if (p.kind === 'edu_region' || p.kind === 'edu_nation') return { kind: p.kind, value: Number(root.querySelector(`#pe-lv-${p.kind}`).value) };
   if (p.kind === 'surcharge' || p.kind === 'vat' || p.kind === 'tariff') return { kind: p.kind, value: Number(root.querySelector(`#pv-${p.kind}`).value) };
   if (p.kind === 'frame') return { kind: p.kind, good: root.querySelector('#pf-frame').value, value: 1 };
   if (p.kind === 'rentcap' || p.kind === 'landzone' || p.kind === 'housing' || p.kind === 'pricebrake') return { kind: p.kind, value: Number(root.querySelector(`#pq-${p.kind}`).value) };
@@ -84,7 +103,7 @@ export async function bindPolicy(root, ctx) {
   const o = d.office;
   const loc = d.local;
   const active = d.active.length ? html`<div class="card-title mt" style="margin-bottom:.3rem">Aktuelle Beschlüsse bei dir</div><div class="stack" style="--gap:.4rem">${d.active.map((a) => html`<div class="firm"><div class="grow small"><b>${a.text}</b><div class="dim"><span data-i18n-skip>${a.office}${a.holder ? ` · ${a.holder}` : ''}</span> · <span>gilt noch</span> ${a.hours} <span>Std.</span></div></div></div>`)}</div>` : html`<div class="dim small mt">Zurzeit hat kein Amtsinhaber einen Beschluss gefasst, der bei dir gilt.</div>`;
-  const effects = (loc.surcharge || loc.levy || loc.vat || loc.tariff || loc.zone || loc.rentCap != null || loc.brake) ? html`<div class="small mt dim"><span>Bei dir gilt gerade:</span> ${loc.surcharge ? html`<span class="chip ${loc.surcharge > 0 ? 'warn' : 'good'}">Gewerbesteuer ${loc.surcharge > 0 ? '+' : ''}${loc.surcharge}</span> ` : ''}${loc.levy ? html`<span class="chip warn">Umlage +${dec(loc.levy, 1)}</span> ` : ''}${loc.vat ? html`<span class="chip ${loc.vat > 0 ? 'warn' : 'good'}">Mehrwertsteuer ${loc.vat > 0 ? '+' : ''}${loc.vat}</span> ` : ''}${loc.tariff ? html`<span class="chip ${loc.tariff > 0 ? 'warn' : 'good'}">Zoll ${loc.tariff > 0 ? '+' : ''}${loc.tariff} %</span> ` : ''}${loc.rentCap != null ? html`<span class="chip good">Mietpreisbremse ${loc.rentCap} % pro Jahr</span> ` : ''}${loc.zone ? html`<span class="chip good">Wohnungsangebot +${loc.zone} %</span> ` : ''}${loc.brake ? html`<span class="chip ${loc.brake < 0 ? 'good' : 'warn'}">Preisniveau ${loc.brake > 0 ? '+' : '−'}${Math.abs(loc.brake)} Punkte</span>` : ''}</div>` : '';
+  const effects = (loc.surcharge || loc.levy || loc.vat || loc.tariff || loc.zone || loc.rentCap != null || loc.brake || hasEdu(loc.edu)) ? html`<div class="small mt dim"><span>Bei dir gilt gerade:</span> ${loc.surcharge ? html`<span class="chip ${loc.surcharge > 0 ? 'warn' : 'good'}">Gewerbesteuer ${loc.surcharge > 0 ? '+' : ''}${loc.surcharge}</span> ` : ''}${loc.levy ? html`<span class="chip warn">Umlage +${dec(loc.levy, 1)}</span> ` : ''}${loc.vat ? html`<span class="chip ${loc.vat > 0 ? 'warn' : 'good'}">Mehrwertsteuer ${loc.vat > 0 ? '+' : ''}${loc.vat}</span> ` : ''}${loc.tariff ? html`<span class="chip ${loc.tariff > 0 ? 'warn' : 'good'}">Zoll ${loc.tariff > 0 ? '+' : ''}${loc.tariff} %</span> ` : ''}${loc.rentCap != null ? html`<span class="chip good">Mietpreisbremse ${loc.rentCap} % pro Jahr</span> ` : ''}${loc.zone ? html`<span class="chip good">Wohnungsangebot +${loc.zone} %</span> ` : ''}${loc.brake ? html`<span class="chip ${loc.brake < 0 ? 'good' : 'warn'}">Preisniveau ${loc.brake > 0 ? '+' : '−'}${Math.abs(loc.brake)} Punkte</span> ` : ''}${eduChips(loc.edu)}</div>` : '';
   const help = infoBtn(['Gewählte Amtsinhaber bestimmen die Wirtschaftspolitik: Steuern, Zölle, Zuschüsse für eine Ware.', 'Pro Amtszeit darf jeder Amtsinhaber einen Beschluss fassen. Er gilt, solange er im Amt ist, und wirkt auf alle Betriebe im Gebiet – auch auf deine eigenen. Die Spieler wählen mit.', 'Prüfe die Wirkung vor dem Beschluss: Du siehst genau, was sich ändert.'], 'Wirtschaftspolitik');
   if (!o) {
     box.innerHTML = html`<div class="card-title">${icon('scale')} Was Ämter in der Wirtschaft bestimmen ${help}</div>

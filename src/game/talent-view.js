@@ -43,6 +43,7 @@ function childView(world, state, c, idx, age) {
     foster: c.foster ? { focus: c.foster.focus, key: c.foster.key, label: (TL.FOSTER[c.foster.focus] || {}).label || '', daysLeft: Math.max(0, c.foster.end - state.day), total: Number(f.days || 90) } : null,
     options, cost: TL.fosterCost(world, idx), days: Number(f.days || 90),
     path: c.pkey ? { fit: TL.fitFor(world, c.tal, c.pkey) } : null,
+    fits: c.pendingPath && !hidden ? Object.fromEntries(world.activeProfessions(require('./calendar').yearOf(state.day, state.startYear)).map((p) => [p.pkey, TL.fitFor(world, c.tal, p.pkey)])) : null,
   };
 }
 

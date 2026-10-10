@@ -1,6 +1,7 @@
 import { html, icon, money, infoBtn, bar, on, signed } from '../ui.js';
 import { supplyBox, cyclePanel, bindSupply, contractsSection, contractsPanel } from '../supply.js';
 import { foundBar, bindFound } from '../found.js';
+import { firmTeam, bindFirmTalents } from '../talents.js';
 
 function card(c, v, ctx) {
   const cur = v.currency; const f = c.flows;
@@ -17,6 +18,7 @@ function card(c, v, ctx) {
     <div class="row nowrap spread"><h3>${c.name}</h3><span class="chip accent">${c.tierName}</span></div>
     <div class="dim small">${c.city} · ${c.profession}${c.owner ? ' · du arbeitest hier' : ''}${c.manager ? ' · Manager' : ''}</div>
     <div class="grid c2 mt small" style="--gap:.6rem"><div><div class="dim">Räume</div><b>${c.rooms} / ${c.maxRooms}</b></div><div><div class="dim">Mitarbeiter</div><b>${c.staff} / ${c.needed}</b></div></div>
+    ${firmTeam(c, v)}
     ${c.hit ? html`<div class="alert warn small mt">${icon('trending-down')}<div>Ein Konkurrent unterbietet deine Preise: Umsatz −${c.hit.pct} % (noch ${c.hit.days} Tage).</div></div>` : ''}${c.outage ? html`<div class="alert bad small mt">${icon('flame')}<div>Produktionsausfall nach einem Anschlag: noch ${c.outage} Tage kein Umsatz.</div></div>` : ''}
     ${c.comp ? html`<div class="small mt ${c.comp.factor < 0.9 ? 'neg' : 'dim'}">${icon('users')} Konkurrenz: ${c.comp.firms} Betriebe dieser Art in ${c.city}, ${c.comp.total} von ${c.comp.cap} Räumen Nachfrage${c.comp.factor < 1 ? html` – Umsatz ×${String(Math.round(c.comp.factor * 100) / 100).replace('.', ',')}` : ''}</div>` : ''}
     <div class="mt small">Auslastung ${Math.round(f.efficiency * 100)} %</div>${bar(f.efficiency * 100, f.efficiency < 0.5 ? 'bad' : 'good')}
@@ -30,7 +32,7 @@ function card(c, v, ctx) {
       <button class="btn sm" data-b="bizManager" data-id="${c.id}" data-on="${c.manager ? 0 : 1}">${icon('crown')} ${c.manager ? 'Manager entlassen' : 'Manager einstellen'}</button>
     </div>
     <div class="row mt">
-      <button class="btn sm" data-b="bizHire" data-id="${c.id}" data-delta="1">+ Mitarbeiter</button><button class="btn sm" data-b="bizHire" data-id="${c.id}" data-delta="-1" ${c.staff ? '' : 'disabled'}>− Mitarbeiter</button>
+      <button class="btn sm" data-b="bizHire" data-id="${c.id}" data-delta="1" title="Stellt die Bewerbung mit der besten Passung ein">+ Mitarbeiter (beste Wahl)</button><button class="btn sm" data-b="bizHire" data-id="${c.id}" data-delta="-1" ${c.staff ? '' : 'disabled'}>− Mitarbeiter</button>
       <button class="btn sm" data-b="bizExpand" data-id="${c.id}" ${c.rooms >= c.maxRooms ? 'disabled' : ''}>${icon('plus')} Raum · ${money(c.roomCost, cur)} + ${Math.max(1, Math.ceil(c.roomCoins / 2 ** c.roomStep))} ${icon('coins')}</button>
       ${c.roomCoins > 1 ? html`<button class="btn sm ghost" data-ad="${c.id}" title="Werbung ansehen, Coin-Preis senken">${icon('circle-play')}</button>` : ''}
     </div>
@@ -58,6 +60,7 @@ export default {
   bind(root, ctx) {
     bindSupply(root, ctx);
     bindFound(root, ctx);
+    bindFirmTalents(root, ctx);
     on(root, 'click', '[data-go]', (e, t) => { ctx.ui.newsTab = 'biz'; ctx.go(t.dataset.go); });
     on(root, 'click', '[data-b]', (e, t) => {
       const input = { id: t.dataset.id === 'all' ? 'all' : Number(t.dataset.id) };
