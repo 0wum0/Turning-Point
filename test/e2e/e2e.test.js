@@ -434,6 +434,42 @@ describe('E2E Turning Point', { concurrency: false }, () => {
       noErrors(f, c);
     });
 
+    it('Talente: Bewerber aus dem Pool einstellen (Dialog), Teamqualität sichtbar; Kind mit Begabung fördern', async () => {
+      await L.nav(f, 'business');
+      assert.match(await text(f, '.card.biz'), /Team-Qualität/);
+      await f.page.click('[data-applicants]');
+      await f.page.waitForSelector('#talApp .tal-person');
+      const n = await f.page.locator('#talApp [data-hire]').count();
+      assert.ok(n >= 3, 'mindestens drei Bewerber');
+      assert.match(await text(f, '#talApp'), /Passung/);
+      const name = (await f.page.locator('#talApp .tal-person b[data-i18n-skip]').first().innerText()).trim();
+      const done = f.page.waitForResponse((r) => /\/api\/action\/bizHireApplicant$/.test(r.url()));
+      await f.page.click('#talApp [data-hire]:not([disabled]) >> nth=0');
+      assert.equal((await done).status(), 200);
+      await L.closeModals(f);
+      const comp = L.json((await app.sql("SELECT JSON_EXTRACT(state, '$.companies[0]') s FROM characters WHERE user_id = ?", [fId]))[0].s);
+      assert.equal(comp.staff, 1); assert.equal(comp.team.length, 1); assert.equal(comp.team[0].name, name);
+      assert.ok(comp.team[0].v.length === 6 && comp.team[0].v.every((x) => x >= 1 && x <= 100));
+      // Kind: Anlagen sichtbar ab 6 Jahren; Fördern kostet Geld und läuft als Programm
+      const { testWorld } = require('../helpers'); const fam = require('../../src/game/family'); const { rngFor } = require('../../src/game/rng');
+      const [row] = await app.sql("SELECT id, state FROM characters WHERE user_id = ? AND status = 'alive'", [fId]);
+      const st = L.json(row.state); st.partner = st.partner || { personId: 'p77', name: 'Paul Fink', gender: 'm', born: st.day - 9000, sat: 70, married: true, cohabit: true, giftBoost: 0, unhappyDays: 0, pkey: 'tischler', profession: 'Tischler', since: 0 };
+      fam.bornChild({ world: testWorld(), state: st, idx: 1 }, rngFor('e2e', 1)); st.children[0].born = st.day - 8 * 365;
+      await app.sql('UPDATE characters SET state = ? WHERE id = ?', [JSON.stringify(st), row.id]);
+      await L.reloadGame(f); await L.nav(f, 'family');
+      assert.match(await text(f, '.card.child'), /Begabung/);
+      assert.match(await text(f, '.card.child'), /Empfehlung/);
+      await f.page.click('[data-foster]'); await f.page.waitForSelector('.modal .tal-opt');
+      const m0 = Number((await app.sql('SELECT money FROM characters WHERE id = ?', [row.id]))[0].money);
+      const fd = f.page.waitForResponse((r) => /\/api\/action\/foster$/.test(r.url()));
+      await f.page.click('.modal .tal-opt:not([disabled]) >> nth=0');
+      assert.equal((await fd).status(), 200);
+      const after = L.json((await app.sql("SELECT JSON_EXTRACT(state, '$.children[0].foster') s, money FROM characters WHERE id = ?", [row.id]))[0].s);
+      assert.ok(after && after.end > st.day);
+      assert.ok(Number((await app.sql('SELECT money FROM characters WHERE id = ?', [row.id]))[0].money) < m0, 'Förderung kostet Geld');
+      noErrors(f);
+    });
+
     it('Liefervertrag: Frieda (Bäckerei) bietet Cora (Mühle) an, Cora nimmt an, der Vertrag läuft', async () => {
       await L.nav(f, 'business');
       await f.page.click('[data-contract-propose]');

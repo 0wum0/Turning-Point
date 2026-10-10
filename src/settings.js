@@ -53,7 +53,7 @@ const DEFAULTS = {
     labels: { handwerk: 'Handwerk', handel: 'Handel', fuehrung: 'Führung', bildung: 'Bildung', charme: 'Charme', kondition: 'Kondition' },
     floor: 5, birthMax: 95, cap: 100, growRoom: 25, revealAge: 6,
     inherit: { regress: 15, mutation: 12, spread: 14 },        // Kinder: Mittel der Eltern, davon x % zur Mitte 50, dazu ± mutation Punkte; spread = Streuung zufälliger Personen
-    effects: { strength: 1, revenuePct: 12, reliabilityPct: 6, wagePct: 20, jobWagePct: 6, raisePct: 6, applyPts: 5, studyPct: 20, healthPts: 4, lifeDaysPerPt: 11, restPts: 1, partnerPts: 5, childPts: 3, repGainPct: 15, votePct: 6, chancePct: 5, courtPts: 3, detectPct: 5 },
+    effects: { strength: 1, revenuePct: 10, reliabilityPct: 6, wagePct: 20, jobWagePct: 6, raisePct: 6, applyPts: 5, studyPct: 20, healthPts: 4, lifeDaysPerPt: 11, restPts: 1, partnerPts: 5, childPts: 3, repGainPct: 15, votePct: 6, chancePct: 5, courtPts: 3, detectPct: 5 },
     pool: { size: 4, apprentices: 2, tierBonus: 2, eraBonus: 4, mean: 46 },     // Bewerber je Betrieb und Woche; Mittelwert steigt mit Stadtgröße und Epoche
     train: { courseDays: 45, courseFeeDays: 25, coursePts: 4, yearPts: 1, yearPct: 50 },
     apprentice: { max: 2, years: 3, wagePct: 45, everyDays: 90, meisterMult: 1.5 },

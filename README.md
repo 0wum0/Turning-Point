@@ -412,6 +412,40 @@ Schritt 4 der Entwicklung nach „Die Gilde“: Feindliche oder unerlaubte Handl
 
 **Qualität.** `test/court.test.js` (Spuren, Verblassen, Detektiv/Zeugen, Urteil: Determinismus, Grenzen, Wirkung der Faktoren, Sanktionen und Obergrenzen, Sperren, Zeitplan), `test/court-db.test.js` (opt-in `TP_TEST_DB_PORT`: Spuren verborgen, Gebühren, Missbrauchsgrenzen, Verfahren bis zur Rechtskraft, Zahlungen und Gutschrift genau einmal, Haft/Gewerbeverbot/Ablauf/Uhrschutz, Freispruch und Berufung, Vergleich, Geständnis, Bestechung, Rivalitäts-Hook, Politik inkl. Amnestie, Bots), Fuzz `runCourtScenario` (Stärke 5–100, Verblassen monoton, Urteil deterministisch, Beträge und Haft unter den Obergrenzen, Geld erhalten, Sperren laufen ab, Alltag/Politik nie gesperrt; `tools/fuzz-long.js` führt es mit), E2E-Szenario *Recht & Gericht* (Spuren → Anzeige per Namenssuche → Vergleich → Haft-Banner → Admin-Ansicht). Offen: Nebenwirkungen auf Bankkredite (Haft-Dauer wirkt nicht auf Kreditraten), Bestechung nur durch den Angeklagten, kein Berufungsgericht für Admin-Aufhebungen.
 
+## Talente
+
+Sechs Begabungen von 1 bis 100 (50 = durchschnittlich) für Spielfigur, Partner, Kinder und die Mitarbeiter der Betriebe: **Handwerk · Handel · Führung · Bildung · Charme · Kondition** (Namen im Admin änderbar). Das Modell ist rein und deterministisch (`src/game/talents.js`, Anzeige in `talent-view.js`, Aktionen in `talent-actions.js`); die Wirkungen sind klein, gedeckelt und über `effects.strength` (0–2) gemeinsam skalierbar.
+
+**Profil.** Jede Person hat `{ v: aktuelle Werte, b: Anlagen }`. Ein Wert wächst nur bis `min(100, b + growRoom)` (Standard +25) und fällt nie unter den Boden (5). Spielfigur: Mittel der (nur im Hintergrund vorhandenen) Eltern; Partner: zufällig, vom Beruf gefärbt; Kinder: Mittel der Eltern, 15 % zur Mitte gezogen, ± 12 Punkte Mutation; Adoptivkinder zufällig; der **Erbe behält** sein Profil (bei passender Ausbildung ein kleiner Erfahrungsvorsprung). Altspielstände: `upgradeState` leitet fehlende Profile aus dem gespeicherten Samen ab (gleiche Werte wie bei einer Neuanlage, idempotent); Mitarbeiter alter Betriebe werden beim ersten Zugriff deterministisch erzeugt. Kinder zeigen bis 6 Jahre nur grobe Stufen („Anlagen“), danach Balken.
+
+**Wirkungen (Höchstwerte bei Standardeinstellung).**
+
+| Wo | Talent | Wirkung |
+|---|---|---|
+| Betrieb | Talente der Mitarbeiter passend zur Betriebsart (Berufsfeld → gefragte Talente), Führung/Handel von Chef oder Manager (20 %) | Umsatz ±10 % (hart ±15 %); Lieferverlässlichkeit ±6 %; Lohn je Mitarbeiter 0,8–1,2× (Talent kostet) |
+| Karriere | Charme, Führung | Gehaltsgespräch ±6 %-Punkte, Bewerbung ±5, Lohn als Angestellter (Passung zum Beruf) ±6 % |
+| Karriere/Lehre | Bildung | Kurse, Lehre, Studium ±20 % Dauer |
+| Familie | Kondition | Gesundheit ±4 Punkte (Zielwert), Erholung ±1, Lebenserwartung ±1,5 Jahre |
+| Familie | Charme, Bildung | Partner ±5, Kinder ±3 Punkte Zufriedenheit; Schule und Ausbildung zeigen „passt zu Begabung“ |
+| Ansehen | Charme | positive Zuwächse ×0,85–1,15 |
+| Wahlen | Charme, Führung | Stimmengewicht ±6 %, schnelle Kandidatur ±5 %-Punkte – keine Sperre, Bundeskanzler bleibt für alle erreichbar |
+| Gericht | Bildung, Charme | ±3 Punkte in der Verteidigung/Anklage |
+| Wettbewerb | Handel, Führung | Entdeckung von Sabotage/Spionage ±5 % |
+
+**Bewerber und Team.** Jeder Betrieb hat pro Woche 3–5 Bewerber (+1 in großen, −1 in kleinen Städten; Mittelwert steigt mit Stadtgröße und Epoche) und 2 Lehrstellen – deterministisch je Spielstand, Betrieb und Woche (`applicants`). Der Dialog zeigt Balken, **Passung zum Betrieb**, Lohn und „Beste Wahl“; der alte „+ Mitarbeiter“-Knopf stellt die beste Wahl ein. **Lehrlinge** kosten 45 % Lohn, wachsen drei Jahre lang (Meister: schneller) und werden dann Fachkräfte. **Kurse** (Gebühr in Lohntagen, Dauer, +4 Punkte) heben ein Talent bis zur Grenze. Wächst ein Mitarbeiter, fordert er jährlich mehr Lohn (30 Tage Frist; sonst kündigt er, offline wird automatisch erhöht). Abwerben nimmt die beste Kraft. Spieler als Angestellte bringen ihr eigenes Profil mit (`player_stats.talents`, Migration `030_talents`).
+
+**Kinder.** Karte mit Begabung, einem Empfehlungssatz („Talent für Handel – Kaufmannslehre?“) und **Fördern** (sechs Programme, Gebühr 15 Kindertage, 90 Tage, +4 Punkte bis zur Grenze, Kind +6 Zufriedenheit). Bei Schulwahl und Berufsweg zeigt ein Hinweis, was zur Begabung passt.
+
+**Politik** (ein Beschluss je Amtszeit, Vorschau, läuft mit der Amtszeit ab, Tagesblatt): Stadtrat/Bürgermeister *Schulbudget* (Schulen: Förderung +10/20/30 % und jährlich Bildung mit etwas Glück; Bibliothek: Bildung; Sportstätten: Kondition; Umlage 0,2–0,6 Punkte Gewerbesteuer), Landtag *Bildungsprogramm* (Kurse −10/20/30 %), Bundestag/Kanzler *Berufsbildungsgesetz* (Staat zahlt 20/40/60 % des Lehrlingslohns, Umlage 0,3–0,9).
+
+**Oberfläche.** Talent-Balken als wiederverwendbares Element; Karte *Deine Talente* mit „So entwickelst du dich“ in der Übersicht, Begabung auf der Kinderkarte, *Team-Qualität*, Bewerber- und Teamdialog am Betrieb, Glossar (Talent, Begabung, Lehrling, Fördern, Team-Qualität), Einsteiger-Aufgabe „Stelle jemanden mit passendem Talent ein“ und „Was jetzt?“-Hinweise (Kind fördern, Personal einstellen). **Bots** stellen nach Passung ein, bilden gelegentlich aus, schicken Leute auf Kurse, fördern Kinder und wählen Schule und Weg nach Begabung.
+
+**Admin.** Einstellungen → *Talente* (`talente`: Ein/Aus, Namen, Grenzen, Vererbung, Stärke jeder Wirkung, Pool, Kurse, Lehrlinge, Fördern, Bildungsstufen); Admin → Charaktere zeigt die Talente von Spielfigur, Partner und Kindern und erlaubt das Ändern eines Werts (im Protokoll vermerkt).
+
+**Balance.** Der Durchschnitt aller Bewerber und Mitarbeiter liegt bei 50 und wirkt neutral; gute Leute bringen bis zu +10 % Umsatz, kosten aber bis zu +20 % Lohn. `tools/econ-sim.js` (vier Samen, Mittel der letzten vier Jahrzehnte-Werte, vor/nach den Talenten): Angestellter +3 %, Vermieter ohne Kredit −1 %, Vermieter +3 %, Betriebsinhaber +4 % (einzelne Samen höchstens +5 %), Mischtyp +2 % (einzelne Läufe schwanken ±22 % wie schon vor den Talenten, weil Zufallsfolgen auseinanderlaufen) – alle Archetypen bleiben im Mittel innerhalb ±10 %. Exakte Geldtests schalten die Wirkung ab (`settings.DEFAULTS.talente.effects.strength = 0`, siehe `test/goods.test.js`).
+
+**Qualität.** `test/talents.test.js` (Vererbungsgrenzen, Wachstum und Obergrenze, Wirkungsgrenzen, Pool-Determinismus, Einstellen, Lehre, Lohnforderung, Kurs, Kinder, Erbe, Altspielstand, Bildungspolitik, Abschalten), Fuzz-Invarianten (Profile endlich, 1–100, unter der Obergrenze, Team ≤ Belegschaft, Wirkungen gedeckelt), E2E-Szenario (Bewerber einstellen, Kind fördern).
+
 ### Spieltempo und Live-Aktualisierung
 - **Tempo:** `efs.daily_auto` = 365 → ein realer Tag entspricht einem Spieljahr (1 EFS = 1 Spieltag). Änderbar im Admin unter Einstellungen → Spielwelt/EFS.
 - **Live:** `GET /api/live` (Server-Sent Events, `src/lib/live.js`) meldet Änderungen (Briefe, Chat, Markt, Börse, Verzeichnis, Tagesblatt). Der Browser (`public/js/game/live.js`) lädt dann nur die betroffene Ansicht still nach – ohne Neuladen, ohne Flackern, ohne laufende Eingaben zu stören. Zusätzlich HUD-Abgleich alle 60 Sekunden.
