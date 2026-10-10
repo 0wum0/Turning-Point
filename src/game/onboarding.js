@@ -7,7 +7,7 @@
  */
 
 /** Marken, die die Oberfläche melden darf (Seitenbesuche und Aktionen, die der Spielstand nicht selbst festhält). */
-const SEEN_KEYS = ['newspaper', 'map', 'friend', 'marketOffer', 'vote', 'glossary', 'prices', 'court'];
+const SEEN_KEYS = ['newspaper', 'map', 'friend', 'marketOffer', 'vote', 'glossary', 'prices', 'court', 'season'];
 /** Nach so vielen Spieljahren öffnet sich alles von selbst (wer so lange spielt, kennt das Spiel). */
 const OPEN_AFTER_YEARS = 6;
 
@@ -52,6 +52,7 @@ const QUESTS = [
   { id: 'let', title: 'Eine Immobilie vermieten', why: 'Mieter zahlen dir jeden Tag Miete – ein ruhiges Einkommen ohne Arbeit.', tab: 'housing', spot: 'lease', reward: { efs: 6 }, done: (s, q) => (s.properties || []).some((p) => p.lease && p.lease.on) || !!q.acts.letOn },
   { id: 'market', title: 'Ein erstes Angebot auf dem Markt einstellen', why: 'Auf dem Markt handelst du mit anderen echten Spielern – Häuser, Firmen, Gelegenheiten.', tab: 'social', spot: 'market', reward: { efs: 6 }, done: (s, q) => !!q.seen.marketOffer },
   { id: 'vote', title: 'Bei einer Wahl abstimmen oder kandidieren', why: 'Bürgermeister, Landrat, Kanzler: Ämter werden von den Spielern gewählt. Du kannst mitentscheiden.', tab: 'social', spot: 'elections', reward: { coins: 1 }, done: (s, q) => !!q.seen.vote || !!(s.politics && (s.politics.term || Object.values(s.politics.completed || {}).some((n) => n > 0))) },
+  { id: 'winter', title: 'Bereite dich auf den Winter vor', why: 'Die Jahreszeiten bestimmen Heizkosten, Krankheiten und Geschäfte. Wirf einen Blick auf den Jahreszeiten-Check und halte ein Polster in Höhe deines Startgelds bereit – so überstehst du auch einen harten Winter oder eine Seuche.', tab: 'overview', spot: 'season', reward: { efs: 5 }, done: (s, q, k) => !!q.seen.season && s.money >= (k.startMoney || 4000) },
   { id: 'court', title: 'Lerne das Gericht kennen', why: 'Wer dir schadet, hinterlässt Spuren. Im Bereich „Recht & Gericht“ siehst du, wie Beweise, Anzeige, Vergleich und Strafen funktionieren – bevor du sie brauchst.', tab: 'society', spot: 'court', reward: { efs: 6 }, done: (s, q) => !!q.seen.court },
 ];
 const QUEST_IDS = QUESTS.map((x) => x.id);
@@ -179,6 +180,16 @@ function advise(v, nextQuest, opts) {
     const worn = (v.properties || []).filter((p) => p.condition < 50 && p.maintainCost > 0 && !p.closed).sort((a, b) => a.condition - b.condition)[0];
     if (worn && v.money > worn.maintainCost * 3) add(40, { id: 'maintain', level: 'info', icon: 'wrench', title: `${worn.name} braucht Pflege`, why: `Der Zustand liegt bei ${worn.condition} %. Je schlechter, desto weniger Miete und Wert.`, cta: { kind: 'act', label: `Instand setzen (${dm(worn.maintainCost, cur)})`, name: 'maintain', input: { propertyId: worn.id } } });
   }
+  // Jahreszeiten und Seuchen
+  const se = v.season;
+  if (se && se.epi && se.epi.me && se.epi.me.sick && v.status === 'alive') add(74, { id: 'epi-sick', level: 'warn', icon: 'stethoscope', title: `Du bist krank: ${se.epi.me.sick.name}`, why: `Noch ${se.epi.me.sick.daysLeft} Tage. Iss gut und ruh dich aus – das Krankengeld deckt 75 % des Lohns.`, cta: { kind: 'go', label: 'Zum Haushalt', tab: 'household' } });
+  else if (se && se.epi && se.epi.active && se.epi.wave && !se.epi.me.protected && v.status === 'alive') {
+    const pr = se.epi.protect || {}; const hyg = pr.hygiene && !pr.hygiene.on && v.money >= pr.hygiene.cost * 3;
+    const vac = pr.vaccine && pr.vaccine.available && !pr.vaccine.done && v.money >= pr.vaccine.cost * 2;
+    if (hyg || vac) add(se.epi.wave.level === 'hoch' ? 77 : 66, { id: 'epi-alert', level: 'warn', icon: 'shield', title: `${se.epi.wave.name}: Schütze dich`, why: 'Die Seuche ist in deiner Region. Schutz kostet wenig und hält 45 Tage; Impfen ist noch besser, sobald es einen Impfstoff gibt.',
+      cta: vac ? { kind: 'act', label: `Impfen (${dm(pr.vaccine.cost, cur)})`, name: 'epiProtect', input: { what: 'vaccine' } } : { kind: 'act', label: `Hygienepaket (${dm(pr.hygiene.cost, cur)})`, name: 'epiProtect', input: { what: 'hygiene' } } });
+  }
+  if (se && se.on && se.key === 'herbst' && v.status === 'alive' && v.housing && v.housing.type !== 'street' && v.flows && v.money < v.flows.expense * 30 && v.flows.expense > 0) add(48, { id: 'winter-prep', level: 'info', icon: 'cloud-hail', title: 'Der Winter naht – leg ein Polster an', why: 'Im Winter kostet Heizen mehr und Erkältungen häufen sich. Rücklagen für etwa 30 Tage Fixkosten machen dich sicher.', cta: { kind: 'go', label: 'Jahreszeiten-Check', tab: 'overview', spot: 'season' } });
   const kids = (v.children || []).filter((k) => k.pendingSchool || k.pendingPath || k.status === 'runaway');
   if (kids.length) add(75, { id: 'kids', level: 'warn', icon: 'baby', title: kids.length === 1 ? `Bei ${kids[0].name} steht eine Entscheidung an` : 'Bei deinen Kindern stehen Entscheidungen an', why: 'Schule und Ausbildung deiner Kinder entscheiden, was später aus ihnen wird.', cta: { kind: 'go', label: 'Zur Familie', tab: 'family' } });
   const short = (v.companies || []).filter((c) => !c.abandoned && c.supply && c.supply.status && c.supply.status !== 'ok' && c.supply.status !== 'none').sort((a, b) => a.supply.ratio - b.supply.ratio)[0];

@@ -72,7 +72,7 @@ function brief(world, state) {
   const harvest = HV.report(year, region);
   const epi = EP.view(world, state, year, doy, city, ef);
   const weather = HV.weatherOf(year);
-  return { season: s, harvest, epi, weather: { winter: weather.winter, heat: weather.heat, name: weather.name, winterNow: Math.round(w * 10) / 10 }, year, doy, policies: { ef: { epi: ef.epi, season: ef.season, harvest: ef.harvest } } };
+  return { season: s, harvest, epi, weather: { winter: weather.winter, heat: weather.heat, name: weather.name, winterNow: Math.round(w * 10) / 10 }, year, doy };
 }
 
 module.exports = { when, effects, firmFactor, heating, body, brief, fest, yearOf };

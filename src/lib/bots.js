@@ -151,6 +151,7 @@ function decide(ctx, P) {
     if (!s.occupation || (s.occupation && !s.occupation.ownCompanyId && chance(0.3))) tryAct(ctx, 'bizWork', { id: c.id });
   }
   talentDecisions(ctx, P, idx);
+  seasonDecisions(ctx, P, idx);
   // Immobilien: kaufen und vermieten
   if (s.properties.length < P.maxProps) {
     const sale = (E.housing.sale || []).filter((x) => s.money > x.price * 2.2).sort((a, b) => a.price - b.price)[0];
@@ -163,6 +164,20 @@ function decide(ctx, P) {
   // Politik & Glück
   if (ageOfPerson(s) >= 28 && !s.politics.term && P.ambition > 0.55 && chance(0.04)) tryAct(ctx, 'runOffice', { idx: 0 });
   if (s.money > 3000 * idx && chance(0.03)) tryAct(ctx, 'lotto', { tickets: 1 });
+}
+/** Jahreszeiten und Seuchen: Bots schützen sich wie Spieler (Hygienepaket, Impfung, Schutzkonzept), sparen vor dem Winter und versichern sich. */
+function seasonDecisions(ctx, P, idx) {
+  const { world: w, state: s } = ctx; const SFX = require('../game/seasonfx'); const EP = require('../game/epidemics');
+  const y = yrOf(s); const doy = require('../game/calendar').dateOf(s.day, s.startYear).doy;
+  const city = w.city(s.cityId);
+  const sit = EP.situation(w, y, doy, city, SFX.effects(w, s.cityId));
+  const pr = EP.protections(w, s, y, sit);
+  if (sit.waves.length) {
+    if (pr.vaccine.available && !pr.vaccine.done && s.money > pr.vaccine.cost * 3 && chance(0.55 + 0.3 * P.ambition)) tryAct(ctx, 'epiProtect', { what: 'vaccine' });
+    if (sit.I > 0.05 && !pr.hygiene.on && s.money > pr.hygiene.cost * 8 && chance(0.4)) tryAct(ctx, 'epiProtect', { what: 'hygiene' });
+    if (sit.I > 0.2 && pr.shield.firms && !pr.shield.on && s.money > pr.shield.cost * 2 && chance(0.2)) tryAct(ctx, 'epiProtect', { what: 'shield' });
+    if (!s.insurance.gesundheit && s.money > 600 * 30 * idx && chance(0.3)) tryAct(ctx, 'insurance', { key: 'gesundheit', on: true });
+  }
 }
 /** Talente: Bots stellen nach Passung ein (selten Lehrlinge), schicken Mitarbeiter auf Kurse, erfüllen Lohnforderungen, fördern Kinder und wählen Schule/Weg nach Begabung. */
 function talentDecisions(ctx, P, idx) {

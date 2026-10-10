@@ -623,6 +623,7 @@ A.bizReactivate = ({ world, state, input }) => {
 require('./society').install(A, fail, { yr, pay });
 require('./career').install(A, fail, { yr, pay });
 require('./talent-actions').install(A, fail, { yr, pay }); // Talente: Bewerberpool, Kurse, Lohnforderungen, Kinder fördern (ersetzt das einfache „+/− Mitarbeiter“)
+require('./season-actions').install(A, fail, { yr, pay }); // Seuchen: Schutz mit einem Klick
 require('./places').install(A, fail, { yr, pay, settings });
 
 /* ---------------- Meldungen ---------------- */

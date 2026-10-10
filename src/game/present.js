@@ -237,6 +237,10 @@ function present(world, state, user, now) {
     death: state.death,
   };
 
+  { // Jahreszeit, Ernte und Seuchenlage (Oberfläche: Jahreszeiten-Chip, Erntebericht, Seuchenhinweis)
+    const sb = require('./seasonfx').brief(world, state);
+    view.season = { ...sb.season, year: sb.year, doy: sb.doy, epi: sb.epi, harvest: sb.harvest, weather: sb.weather, heat: flows.heat };
+  }
   view.onboarding = onboarding.view(world, state, user, view);
 
   if (state.status === 'dead') {
