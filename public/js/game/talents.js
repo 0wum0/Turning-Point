@@ -115,7 +115,7 @@ export function firmTeam(c, v) {
 
 const memberCard = (m, extra) => html`<article class="card flat tal-person ${m.best ? 'best' : ''}">
   <div class="row nowrap spread"><div class="row nowrap"><div class="avatar ${m.g}">${m.name.slice(0, 1)}</div><div><b data-i18n-skip>${m.name}</b><div class="dim small">${m.age} <span>Jahre</span></div></div></div>
-    <div class="col end">${fitChip(m.fit, 'passt zu deinem Betrieb')}</div></div>
+    <div class="col end">${fitChip(m.fit, 'Passung')}</div></div>
   ${talentBars(m.bars, { compact: true })}
   ${extra}
 </article>`;

@@ -529,3 +529,4 @@ html { scroll-padding-top: calc(var(--hud-h, 62px) + 10px); }
 .tal-guide { padding: .4rem .6rem; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
 .tal-fx li { margin: .2rem 0; }
 @media (max-width: 560px) { .tal-bars { grid-template-columns: 1fr; } }
+.tal-person .chip { white-space: nowrap; }
