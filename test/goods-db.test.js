@@ -116,7 +116,8 @@ test('Warenkreislauf gegen echte Datenbank', { skip }, async (t) => {
 
   await t.test('Vertrag endet, wenn der Betrieb des Partners nicht mehr existiert; Bot nimmt Angebote an', async () => {
     const id = await supply.offer(B, { role: 'buy', myCompany: fB, otherUser: A, otherCompany: fA, good: 'mehl', qty: 4, pricePct: 100, termDays: 30 });
-    await supply.botRound(A, () => 0); // stellvertretend für einen Bot: antwortet auf das Angebot
+    // stellvertretend für einen Bot: antwortet auf das Angebot (erste Würfe 0 = annehmen; danach 0,5: weder vorzeitige Kündigung (<1,2 %) noch eigenes Angebot (<=20 %))
+    const rolls = [0, 0]; await supply.botRound(A, () => (rolls.length ? rolls.shift() : 0.5));
     assert.strictEqual((await db.one('SELECT status FROM supply_contracts WHERE id = ?', [id])).status, 'active');
     await service.withCharacter(A, async (ctx) => { ctx.state.companies = ctx.state.companies.filter((c) => c.id !== fA); });
     await service.getView(A);
