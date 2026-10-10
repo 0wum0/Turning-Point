@@ -540,14 +540,6 @@ A.bizWork = ({ world, state, input }) => {
   if (state.housing.type === 'workplace') state.housing = { type: 'street', cityId: state.cityId };
   return { msg: `Du arbeitest jetzt selbst in ${c.name}.` };
 };
-A.bizHire = ({ world, state, input }) => {
-  const c = company(state, input.id); needActive(c);
-  const need = biz.staffNeeded(world, c);
-  const n = Math.floor(Number(input.delta)) || 0;
-  if (n > 0 && c.staff >= need + 2) fail('Mehr Mitarbeiter braucht der Betrieb nicht.');
-  c.staff = Math.max(0, c.staff + Math.sign(n));
-  return { msg: n > 0 ? 'Mitarbeiter eingestellt.' : 'Mitarbeiter entlassen.' };
-};
 A.bizSecurity = ({ state, input }) => {
   const c = company(state, input.id); needActive(c);
   c.security = !!input.on;
@@ -630,6 +622,7 @@ A.bizReactivate = ({ world, state, input }) => {
 
 require('./society').install(A, fail, { yr, pay });
 require('./career').install(A, fail, { yr, pay });
+require('./talent-actions').install(A, fail, { yr, pay }); // Talente: Bewerberpool, Kurse, Lohnforderungen, Kinder fördern (ersetzt das einfache „+/− Mitarbeiter“)
 require('./places').install(A, fail, { yr, pay, settings });
 
 /* ---------------- Meldungen ---------------- */

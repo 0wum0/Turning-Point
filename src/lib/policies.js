@@ -74,7 +74,7 @@ async function overview(userId) {
   const out = {
     enabled: (settings.get('goods').policy || {}).enabled !== false && goods.enabled(), year, idx,
     frame: { name: fr.name, maxSurcharge: fr.maxSurcharge, maxSubsidy: fr.maxSubsidy },
-    local: { city: city ? city.name : null, region: city ? city.state : null, surcharge: ef.surcharge, levy: Math.round(ef.levy * 10) / 10, vat: ef.vat, tariff: ef.tariff, subsidy: ef.subsidy, support: ef.support, zone: ef.zone, rentCap: ef.rentCap, brake: ef.brake },
+    local: { city: city ? city.name : null, region: city ? city.state : null, surcharge: ef.surcharge, levy: Math.round(ef.levy * 10) / 10, vat: ef.vat, tariff: ef.tariff, subsidy: ef.subsidy, support: ef.support, edu: ef.edu, zone: ef.zone, rentCap: ef.rentCap, brake: ef.brake },
     active: ACTIVE.filter((a) => (!a.cityId || a.cityId === state.cityId) && (!a.region || (city && a.region === city.state))).map((a) => ({ kind: a.kind, text: a.text, office: a.office, holder: a.holder, hours: Math.max(0, Math.round((a.until - Date.now()) / 3600000)) })),
     office: null,
   };

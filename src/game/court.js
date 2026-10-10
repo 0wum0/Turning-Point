@@ -179,9 +179,9 @@ function sanctionsFor(act, level, ctx = {}, C = {}) {
 /* ------------------------------------------------------------------ Einschränkungen ------------------------------------------------------------------ */
 
 /** Handlungen (Spielaktionen), die Haft sperrt: alles Wirtschaftliche. Politik, Alltag, Briefe, Chat bleiben frei. */
-const ECON_ACTIONS = ['buy', 'sell', 'letOn', 'letPlayers', 'letPrice', 'loanTake', 'buyBiz', 'foundBiz', 'bizHire', 'bizSecurity', 'bizManager', 'bizSupply', 'bizExpand', 'bizUpgrade', 'bizCollect', 'bizSell', 'bizReactivate', 'gift', 'casino', 'lotto'];
+const ECON_ACTIONS = ['buy', 'sell', 'letOn', 'letPlayers', 'letPrice', 'loanTake', 'buyBiz', 'foundBiz', 'bizHire', 'bizHireApplicant', 'bizFire', 'bizTrain', 'bizRaise', 'foster', 'bizSecurity', 'bizManager', 'bizSupply', 'bizExpand', 'bizUpgrade', 'bizCollect', 'bizSell', 'bizReactivate', 'gift', 'casino', 'lotto'];
 /** Handlungen, die ein Gewerbeverbot sperrt: Betriebe gründen, kaufen, ausbauen, Personal und Verträge. */
-const TRADE_ACTIONS = ['buyBiz', 'foundBiz', 'bizHire', 'bizManager', 'bizExpand', 'bizUpgrade', 'bizReactivate'];
+const TRADE_ACTIONS = ['buyBiz', 'foundBiz', 'bizHire', 'bizHireApplicant', 'bizManager', 'bizExpand', 'bizUpgrade', 'bizReactivate'];
 /** Handlungen mit Berufsschlüssel in der Eingabe (Gründen/Kaufen): Berufsverbot. */
 const PKEY_ACTIONS = ['foundBiz', 'buyBiz'];
 

@@ -14,6 +14,8 @@ const biz = require('./business');
 const society = require('./society');
 const onboarding = require('./onboarding');
 const cityecon = require('./cityecon');
+const TV = require('./talent-view');
+const TLN = require('./talents');
 
 const round = (n) => Math.round(n);
 
@@ -152,7 +154,7 @@ function present(world, state, user, now) {
         steps: st ? { tenure: st.tenure, perf: st.perf, maxTenure: k.tenureMaxSteps, maxPerf: k.raiseMaxSteps, pct: k.stepPct, mult: Math.round(career.payMult(state, wo) * 100) } : null,
         raise: wo ? { can: st.perf < k.raiseMaxSteps && wait === 0, wait, chance: Math.round(career.raiseChance(state, wo) * 100) } : null,
         course: cd.course ? { name: cp ? cp.name : cd.course.pkey, kind: cd.course.kind, daysLeft: Math.max(0, cd.course.endDay - state.day) } : null,
-        courses: { used, cap: k.coursesPerYear, days: k.courseDays, unlockDays: k.unlockDays, options: pk.map((p) => ({ key: p.pkey, name: p.name, icon: p.icon, learned: isLearned(state, p.pkey), fee: fee(p, state.skills.learned.includes(p.pkey) ? k.courseFeeDays : k.unlockFeeDays) })) },
+        courses: { used, cap: k.coursesPerYear, days: Math.max(14, Math.round(k.courseDays * TLN.studyMult(state.talents))), unlockDays: Math.max(14, Math.round(k.unlockDays * TLN.studyMult(state.talents))), options: pk.map((p) => ({ key: p.pkey, name: p.name, icon: p.icon, learned: isLearned(state, p.pkey), fee: fee(p, state.skills.learned.includes(p.pkey) ? k.courseFeeDays : k.unlockFeeDays) })) },
         benefit: career.benefitView(world, state),
       };
     })(),
@@ -184,6 +186,7 @@ function present(world, state, user, now) {
         reactivateCost: Math.round(c.base * idx * (econ.companies.reactivatePct / 100)),
         autoBuy: c.autoBuy !== false, supply: supplyView(f.supply), inputs: f.inputs || 0, vat: f.vat || 0, contractIncome: f.contractIncome || 0, profitAll: f.profitAll == null ? f.profit : f.profitAll,
         deals: dealsView(state, c.id),
+        talent: TV.firmView(world, state, c, idx, year, f.needed || biz.staffNeeded(world, c)),
       };
     }),
     goods: goodsView(world, state, year),
@@ -207,7 +210,7 @@ function present(world, state, user, now) {
     autoMaintain: !!state.flags.autoMaintain,
     partner: state.partner ? {
       name: state.partner.name, gender: state.partner.gender, age: ageYears(state.partner.born, state.day), profession: state.partner.profession,
-      sat: round(state.partner.sat), linked: !!state.partner.linked, userId: state.partner.userId || null, married: state.partner.married, cohabit: state.partner.cohabit, canTogether: state.day - (state.partner.lastTogether || -99) >= 5,
+      tal: state.partner.tal ? TV.barsOf(state.partner.tal, false) : null, sat: round(state.partner.sat), linked: !!state.partner.linked, userId: state.partner.userId || null, married: state.partner.married, cohabit: state.partner.cohabit, canTogether: state.day - (state.partner.lastTogether || -99) >= 5,
     } : null,
     plan: state.plan,
     adoption: (() => { const fam = require('./family'); const block = fam.adoptionBlock(state, settings.get('game.max_children')); return { block, pending: state.pending.adopt ? Math.max(0, state.pending.adopt.day - state.day) : null, cost: Math.round(world.econ.marriageCost * 2 * world.idx(yearOf(state.day, state.startYear))) }; })(),
@@ -215,7 +218,9 @@ function present(world, state, user, now) {
       id: c.id, name: c.name, gender: c.gender, age: ageOfChild(state, c), status: c.status, sat: round(c.sat), school: c.school, schoolName: c.school ? SCHOOLS[c.school].name : null,
       schoolDone: c.schoolDone || null, pendingSchool: !!c.pendingSchool, pendingPath: !!c.pendingPath, path: c.path, pkey: c.pkey, profession: c.pkey ? (world.prof(c.pkey) || {}).name : null,
       daysLeft: c.daysLeft || 0, city: (world.city(c.cityId) || {}).name, searchLeft: c.status === 'runaway' ? Math.max(0, c.searchDeadline - state.day) : 0,
+      tal: TV.childView(world, state, c, idx, ageOfChild(state, c)),
     })),
+    talents: TLN.enabled() ? { me: TV.meView(world, state), labels: TLN.C().labels || {}, revealAge: Number(TLN.C().revealAge || 6), edu: TLN.eduOf(world, state.cityId) } : null,
     maxChildren: settings.get('game.max_children'),
     rooms: { have: roomsAvailable(state), need: roomsNeeded(state) },
     clock: { perMs: settings.get('game.clock_days_per_day') / 86400000, carry: user.efs_carry || 0, at: now },
