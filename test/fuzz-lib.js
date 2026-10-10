@@ -506,4 +506,46 @@ function runRepScenario(seed, days = 400) {
   return failures;
 }
 
-module.exports = { runRepScenario, world, runScenario, runTradeScenario, runSupplyScenario, runCityEconScenario, invariants, inputFor, JUNK, clone };
+
+/** Gerichte: Spuren, Urteile, Sanktionen und Sperren bleiben endlich, in den Grenzen, deterministisch; Sperren laufen ab; Geld bleibt erhalten (Zahlungsplan). */
+function runCourtScenario(seed, rounds = 300) {
+  const failures = []; const r = mulberry32(seed ^ 0x6f1d2c3b); const M = require('../src/game/court'); const C = settings.get('gericht');
+  const bad = (m) => failures.push({ seed, msg: m });
+  const acts = M.ACT_KEYS; let now = 1e12;
+  for (let i = 0; i < rounds; i++) {
+    now += Math.floor(r() * 20) * M.HOUR;
+    const act = acts[Math.floor(r() * acts.length)];
+    const s0 = M.traceStrength(act, { security: r() < 0.5, failed: r() < 0.3, police: Math.floor(r() * 4) - 1, caught: r() < 0.2, seed: i }, C);
+    if (!(s0 >= 5 && s0 <= 100)) bad(`Spurenstärke außerhalb: ${s0}`);
+    const ev = { id: i + 1, strength: s0, boost: Math.floor(r() * 40), created_ms: now - Math.floor(r() * 500) * M.HOUR };
+    const c1 = M.currentStrength(ev, now, C, 1); const c2 = M.currentStrength(ev, now + 10 * M.HOUR, C, 1);
+    if (!(c1 >= 0 && c1 <= 100) || c2 > c1 + 1e-9) bad(`Verblassen nicht monoton: ${c1} -> ${c2}`);
+    const inp = { strength: r() * 140 - 10, truth: r() < 0.6, lawyerP: r() < 0.4, lawyerD: r() < 0.4, repD: r(), repP: r(), alibi: r() < 0.2, strictness: 0.9 + r() * 0.25, bribed: r() < 0.1, confessed: r() < 0.1 };
+    const p = M.guiltP(inp, C);
+    if (!(p >= 0 && p <= 1) || !Number.isFinite(p)) bad(`Schuldwahrscheinlichkeit ${p}`);
+    const d1 = M.decide(i, 1, inp, C); const d2 = M.decide(i, 1, inp, C);
+    if (d1.guilty !== d2.guilty) bad('Urteil nicht deterministisch');
+    const lv = M.levelFor(act, Math.floor(r() * 6), inp.confessed, C);
+    if (!(lv >= 1 && lv <= 6)) bad(`Stufe ${lv}`);
+    const plan = M.sanctionsFor(act, lv, { claim: r() * 1e6, rangePct: [-25, 0, 25, 50][Math.floor(r() * 4)], confessed: inp.confessed, hasFirm: r() < 0.5, pkey: r() < 0.5 ? 'x' : null }, C);
+    let money = 0;
+    for (const sn of plan) {
+      if (sn.real != null && !(sn.real >= 0 && Number.isFinite(sn.real))) bad(`Betrag ${sn.real}`);
+      if (sn.kind === 'damages' && sn.real > C.evidence.maxDamageReal) bad('Schadenersatz über der Obergrenze');
+      if (sn.kind === 'fine' && sn.real > C.sanctions.maxFineReal * 1.5 + C.court.costsReal) bad(`Geldstrafe über der Obergrenze ${sn.real}`);
+      if (sn.kind === 'haft' && sn.hours > C.sanctions.haftMaxHours) bad('Haft über der Obergrenze');
+      if (sn.kind === 'damages') money += sn.real;
+    }
+    // Zahlungsplan: Der Verurteilte zahlt höchstens maxPayPct seines Geldes je Abgleich; das Opfer erhält genau das Gezahlte (abzüglich Staatsanteil)
+    let payer = Math.floor(r() * 1e5); let victim = 0; let state = 0; let left = money; const before = payer + victim + state;
+    for (let k = 0; k < 6 && left > 0; k++) { const pay = Math.min(left, Math.floor(payer * C.sanctions.maxPayPct / 100)); payer -= pay; left -= pay; const share = Math.floor(pay * (1 - C.sanctions.damagesStatePct / 100)); victim += share; state += pay - share; }
+    if (payer + victim + state !== before || payer < 0) bad('Geld nicht erhalten');
+    // Sperren laufen ab
+    const until = now + Math.floor(r() * 30) * M.HOUR; const st = { court: { r: [{ k: ['haft', 'gewerbe', 'beruf'][Math.floor(r() * 3)], until }] } };
+    for (const name of ['buy', 'foundBiz', 'buyFood', 'runOffice']) { const g1 = M.gate(name, st, { pkey: 'x' }, until + 1); if (g1 != null) bad(`Sperre nach Ablauf aktiv (${name})`); }
+    if (M.gate('buyFood', st, {}, until - 1) != null || M.gate('runOffice', st, {}, until - 1) != null) bad('Alltag/Politik gesperrt');
+  }
+  return failures;
+}
+
+module.exports = { runCourtScenario, runRepScenario, world, runScenario, runTradeScenario, runSupplyScenario, runCityEconScenario, invariants, inputFor, JUNK, clone };
