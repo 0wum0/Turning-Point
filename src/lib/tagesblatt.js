@@ -30,12 +30,36 @@ async function stats() {
   const debt = await one("SELECT COUNT(*) n FROM player_stats WHERE status = 'alive' AND wealth < 0");
   let prices = [];
   try { prices = require('./cityecon').summary(world); } catch (_) { /* Stadtwirtschaft ist optional */ }
+  let season = [];
+  try { season = await seasonDigest(world); } catch (_) { /* Jahreszeiten sind optional */ }
   return {
+    season,
     online: Number(online.n), activeDay: Number(day.n), players: Number(total.n), alive: Number(alive.n),
     money: Math.round(money / 100), wealth: Math.round(Number(wealth.n) / 100), firms: Number(firms.n), firmValue: Math.round(Number(firms.v) / 100), props: Number(props.n),
     trades: Number(trades.n), listed: Number(listed.n), stockVolume: Math.round(Number(vol.n) / 100), auctions: Number(auctions.n), indebted: Number(debt.n),
     prices, // Stadtwirtschaft: Preisniveau der aktiven Städte je Sektor (Prozent gegenüber dem Normalniveau)
   };
+}
+
+/** Jahreszeit, Ernte und Seuchenlage der Spieljahre, in denen gerade Spieler leben (höchstens vier, nach Spielerzahl). */
+async function seasonDigest(world) {
+  const SE = require('../game/seasons'); const HV = require('../game/harvest'); const EP = require('../game/epidemics');
+  const rows = await db.query("SELECT ps.year y, ps.days d, ps.city_id c FROM player_stats ps JOIN users u ON u.id = ps.user_id WHERE ps.status = 'alive' AND u.banned = 0 AND u.last_seen_at > NOW() - INTERVAL 1 DAY LIMIT 400");
+  const groups = new Map();
+  for (const r of rows) { const g = groups.get(r.y) || { year: r.y, n: 0, doy: Number(r.d) % 365, city: r.c }; g.n++; groups.set(r.y, g); }
+  const out = [];
+  for (const g of [...groups.values()].sort((a, b) => b.n - a.n).slice(0, 4)) {
+    const city = world.city(g.city) || world.cityList[0];
+    const s = SE.seasonOf(g.doy);
+    const sit = EP.situation(world, g.year, g.doy, city, null);
+    const wv = sit.waves.filter((x) => x.I > 0.02).sort((a, b) => b.I - a.I)[0] || null;
+    out.push({
+      year: g.year, season: s.name, icon: s.icon, players: g.n,
+      harvest: g.doy >= 262 && g.doy <= 330 ? HV.report(g.year, null).label : null,
+      epidemic: wv ? { name: wv.name, level: wv.I >= 0.6 ? 'hoch' : wv.I >= 0.25 ? 'mittel' : 'gering' } : null,
+    });
+  }
+  return out.sort((a, b) => a.year - b.year);
 }
 
 async function feed(limit = 40, cityId = 0) {
@@ -69,4 +93,4 @@ function start() {
   setInterval(() => { db.query("DELETE FROM world_events WHERE created_at < NOW() - INTERVAL 60 DAY").catch(() => {}); }, 86400000).unref();
 }
 
-module.exports = { post, stats, feed, stockReport, start };
+module.exports = { post, stats, feed, stockReport, start, seasonDigest };

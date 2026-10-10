@@ -185,6 +185,7 @@ function edition(world, state, cityId) {
     news.push({ title: pr.title, text: pr.text, day: pr.day, ago: state.day - pr.day, type: 'press', section: pr.section, big: !!pr.big });
   }
   for (const n of cityecon.news(world, cityId, year)) news.push({ title: n.title, text: n.text, day: state.day, ago: 0, type: 'press', section: 'Wirtschaft', big: Math.abs(n.pct) >= 8 });
+  for (const n of require('./season-news').seasonNews(world, state, city)) news.push(n); // Jahreszeit, Ernte, Feste, Seuchen
   news.sort((a, b) => b.day - a.day || (b.big ? 1 : 0) - (a.big ? 1 : 0));
   for (const c of customNews(world, state, cityId).reverse()) news.unshift(c);
   const d = dateOf(state.day, state.startYear);

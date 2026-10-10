@@ -7,6 +7,9 @@
   <% if (stats.prices && stats.prices.length) { var rent = stats.prices.filter(function (p) { return p.sector === 'rent'; })[0]; var sg = function (n) { return (n > 0 ? '+' : n < 0 ? '−' : '') + String(Math.abs(n)).replace('.', ','); }; %>
   <div class="tb-extra small dim" id="tb-prices"><span>Preise in den Städten mit Betrieben und Einwohnern (gegenüber dem Normalniveau):</span> <% stats.prices.forEach(function (p, i) { %><%= i ? ' · ' : '' %><span><%= p.name %></span> <b data-pk="<%= p.sector %>"><%= sg(p.avgPct) %> %</b><% }); %><% if (rent && rent.high.city) { %> · <span>Höchste Mieten:</span> <b><%= rent.high.city %></b> <b data-pk-hi="rent"><%= sg(rent.high.pct) %> %</b><% } %></div>
   <% } %>
+  <% if (stats.season && stats.season.length) { %>
+  <div class="tb-extra small dim" id="tb-season"><span>Jahreszeit und Lage in den Spieljahren, in denen gerade gespielt wird:</span> <% stats.season.forEach(function (s, i) { %><%= i ? ' · ' : '' %><b><%= s.year %></b> <span><%= s.season %></span><% if (s.harvest) { %> <span>– Ernte:</span> <span><%= s.harvest %></span><% } %><% if (s.epidemic) { %> <span>– Seuche:</span> <span><%= s.epidemic.name %></span> <span>(Lage</span> <span><%= s.epidemic.level %></span><span>)</span><% } %><% }); %></div>
+  <% } %>
   <section class="tb-feed" id="tb-feed"><%- include('partials/tb-feed', { news }) %></section>
 </main>
 <script src="/js/tagesblatt.js?v=<%= assetV %>" defer></script>
