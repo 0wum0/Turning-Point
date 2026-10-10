@@ -3,6 +3,7 @@
  * damit die englische Oberfläche jeden Textknoten einzeln übersetzen kann. */
 import { html, raw, icon, api, on, money, infoBtn, term } from './ui.js';
 import { bindPlaceSearch } from './places.js';
+import { harvestStrip } from './seasons.js';
 
 const SECTORS = ['food', 'rent', 'services', 'build', 'wage'];
 const NAME = { food: 'Lebensmittel', rent: 'Wohnen & Miete', services: 'Dienstleistungen & Gastro', build: 'Baukosten', wage: 'Löhne' };
@@ -91,6 +92,7 @@ function render(d, ctx) {
   return html`<div class="row spread nowrap"><div class="card-title" style="margin:0">${icon('trending-up')} <span>Preisbarometer</span> ${help}</div><span class="chip">${term('Preisindex', 'Preisindex')}</span></div>
     <h3 class="econ-city" data-i18n-skip>${d.city.name}</h3>
     <p class="small dim mt0"><span>So teuer ist das Leben hier im Vergleich zum Durchschnitt aller Orte im Jahr</span> <b>${d.year}</b><span>. Pfeile zeigen die Veränderung seit letztem Jahr.</span></p>
+    ${harvestStrip(v)}
     ${d.enabled ? '' : html`<div class="alert info small">${icon('info')}<div>Die Stadtwirtschaft ist gerade abgeschaltet. Es gelten feste Stadtpreise.</div></div>`}
     <ul class="econ-rows">${b.rows.map((r) => row(r, d.market))}</ul>
     ${(d.tips || []).length ? html`<div class="stack mt" style="--gap:.5rem">${d.tips.map((t) => tipCard(t, cur))}</div>` : ''}

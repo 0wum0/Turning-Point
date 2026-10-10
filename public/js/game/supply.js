@@ -3,7 +3,7 @@
  * Für die englische Oberfläche stehen Zahlen, Einheiten und Namen in eigenen Elementen, damit jeder Textknoten einzeln übersetzbar ist. */
 import { html, icon, api, on, modal, toast, money, infoBtn, term } from './ui.js';
 import { repBadge } from './reputation.js';
-
+import { harvestStrip } from './seasons.js';
 const EN = () => document.documentElement.lang === 'en';
 /** Zahl mit passendem Dezimalzeichen; kleine Mengen mit zwei, große ohne Nachkommastellen. */
 export const dec = (n, digits) => {
@@ -137,6 +137,7 @@ export function cyclePanel(v, ctx) {
   const chains = g.chains.map((ch) => html`<div class="chain"><div class="chain-name small dim">${ch.name}</div><div class="chain-steps">${ch.steps.map((s, i) => html`${i ? html`<span class="arr">${icon('arrow-right')}</span>` : ''}<span class="step ${s.mine ? 'mine' : ''}" title="${s.good}">${icon(s.icon)}<span>${s.label}</span>${s.mine ? html`<small>dein Betrieb</small>` : ''}</span>`)}</div></div>`);
   return html`<details class="card sup-panel" id="cyclePanel" data-spot-supply ${open ? 'open' : ''}>
     <summary><span class="row nowrap spread"><span class="card-title" style="margin:0">${icon('layers')} Warenkreislauf – so hängt alles zusammen</span>${icon('chevron-down', 'sup-caret')}</span></summary>
+    <div class="mt">${harvestStrip(v)}</div>
     <p class="small mt">Jeder Betrieb stellt Waren her und braucht dafür Zutaten: Die Bäckerei braucht Mehl, die Mühle braucht Getreide, der Bauernhof liefert es. Fehlen Zutaten, arbeitet der Betrieb schlechter.</p>
     <ol class="small sup-steps"><li><b>Einfach:</b> Fehlende Zutaten kauft der Betrieb automatisch im ${term('Großhandel')} – immer lieferbar, aber rund ${g.markupPct} % teurer.</li><li><b>Besser:</b> Schließe einen ${term('Liefervertrag')} mit einem anderen Betrieb. Das ist günstiger, und der Lieferant verdient mehr als im Großhandel.</li><li><b>Preise</b> hängen von Angebot und Nachfrage ab – und von den Beschlüssen der Ämter (Steuern, Zoll, Zuschüsse).</li></ol>
     <div class="stack mt" style="--gap:.5rem">${chains}</div>

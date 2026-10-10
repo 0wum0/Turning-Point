@@ -2,6 +2,7 @@ import { html, icon, money, infoBtn, bar, on, signed } from '../ui.js';
 import { supplyBox, cyclePanel, bindSupply, contractsSection, contractsPanel } from '../supply.js';
 import { foundBar, bindFound } from '../found.js';
 import { firmTeam, bindFirmTalents } from '../talents.js';
+import { firmSeasonChips, epiBanner, bindSeasons, harvestStrip } from '../seasons.js';
 
 function card(c, v, ctx) {
   const cur = v.currency; const f = c.flows;
@@ -22,6 +23,7 @@ function card(c, v, ctx) {
     ${c.hit ? html`<div class="alert warn small mt">${icon('trending-down')}<div>Ein Konkurrent unterbietet deine Preise: Umsatz −${c.hit.pct} % (noch ${c.hit.days} Tage).</div></div>` : ''}${c.outage ? html`<div class="alert bad small mt">${icon('flame')}<div>Produktionsausfall nach einem Anschlag: noch ${c.outage} Tage kein Umsatz.</div></div>` : ''}
     ${c.comp ? html`<div class="small mt ${c.comp.factor < 0.9 ? 'neg' : 'dim'}">${icon('users')} Konkurrenz: ${c.comp.firms} Betriebe dieser Art in ${c.city}, ${c.comp.total} von ${c.comp.cap} Räumen Nachfrage${c.comp.factor < 1 ? html` – Umsatz ×${String(Math.round(c.comp.factor * 100) / 100).replace('.', ',')}` : ''}</div>` : ''}
     <div class="mt small">Auslastung ${Math.round(f.efficiency * 100)} %</div>${bar(f.efficiency * 100, f.efficiency < 0.5 ? 'bad' : 'good')}
+    ${firmSeasonChips(c)}
     ${supplyBox(c, v, ctx)}
     ${contractsSection(c, v, ctx)}
     <dl class="kv small mt"><dt>Umsatz / Tag</dt><dd>${money(f.income, cur)}</dd>${c.inputs > 0 ? html`<dt>Wareneinkauf</dt><dd class="neg">${money(c.inputs, cur)}</dd>` : ''}<dt>Löhne + Unterhalt</dt><dd class="neg">${money(f.wages + f.upkeep, cur)}</dd>${c.vat ? html`<dt>Mehrwertsteuer</dt><dd class="${c.vat > 0 ? 'neg' : 'pos'}">${c.vat > 0 ? '' : '+'}${money(Math.abs(c.vat), cur)}</dd>` : ''}${f.tax > 0 ? html`<dt>Steuern</dt><dd class="neg">${money(f.tax, cur)}</dd>` : ''}${c.contractIncome > 0 ? html`<dt>Einnahmen aus Lieferverträgen</dt><dd class="pos">${money(c.contractIncome, cur)}</dd>` : ''}<dt><b>Gewinn / Tag</b></dt><dd class="${c.profitAll >= 0 ? 'pos' : 'neg'}">${signed(c.profitAll, cur)}</dd><dt>Firmenkasse</dt><dd>${money(c.cash, cur)}</dd><dt>Wert</dt><dd>${money(c.value, cur)}</dd></dl>
@@ -51,6 +53,7 @@ export default {
     <div class="panel-head"><div><h2>Unternehmen</h2><p>Vom Wirtshaus zum Hotel: Qualifikation, Räume, Mitarbeiter, Manager.</p></div>
       ${infoBtn(['Betriebe darfst du nur mit passender Qualifikation führen – etwa Wirt → Wirtshaus → Restaurant → Hotel. Der Beruf des Partners kann Betriebe der Einstiegsstufe eröffnen.', 'Du kannst zuerst selbst arbeiten und später Mitarbeiter und Manager einsetzen. Verlierst du die Qualifikation (z. B. durch Trennung oder beim Erben), wird der Betrieb zum Lost Place und verfällt über etwa zehn Jahre.', 'Du gründest selbst mit „Unternehmen gründen“ (Betriebsart und Name frei wählbar) oder kaufst einen bestehenden Betrieb aus der Zeitung unter „Gewerbe“. Räume schaltest du mit Geld und Coins frei.'], 'Unternehmen')}</div>
     ${foundBar(v)}
+    ${epiBanner(ctx)}
     <div class="mt">${contractsPanel(v)}</div>
     ${cs.length ? html`<div class="grid c3 mt" style="--gap:1rem"><div class="card flat"><div class="card-title">Betriebe</div><div class="big-money">${cs.length}</div></div><div class="card flat"><div class="card-title">Gewinn / Tag</div><div class="big-money ${profit >= 0 ? 'pos' : 'neg'}">${signed(profit, cur)}</div></div><div class="card flat"><div class="card-title">Firmenkassen</div><div class="big-money">${money(cash, cur)}</div>${cash > 0 ? html`<button class="btn sm primary mt" data-b="bizCollect" data-id="all">Alles abholen</button>` : ''}</div></div>
       <div class="mt">${cyclePanel(v, ctx)}</div>
@@ -59,6 +62,7 @@ export default {
   },
   bind(root, ctx) {
     bindSupply(root, ctx);
+    bindSeasons(root, ctx);
     bindFound(root, ctx);
     bindFirmTalents(root, ctx);
     on(root, 'click', '[data-go]', (e, t) => { ctx.ui.newsTab = 'biz'; ctx.go(t.dataset.go); });

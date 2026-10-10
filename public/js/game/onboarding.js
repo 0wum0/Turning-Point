@@ -124,6 +124,7 @@ export const SPOTS = {
   lease: { sel: '[data-lease="on"]', text: 'Tippe auf „Vermieten“.' },
   market: { pre: (ctx) => soc(ctx, 'market'), sel: '.soc-tabs [data-tab="market"]', text: 'Im Stadtverzeichnis kannst du Eigentümern ein Angebot machen.' },
   court: { sel: '#courtBox', text: 'Hier siehst du Spuren, Verfahren und Sperren. Lies dir die Erklärungen durch – dann bist du vorbereitet.' },
+  season: { sel: '[data-season-guide]', text: 'Tippe auf „Jahreszeiten-Check“ und lies, wie du dich vorbereitest.' },
   standing: { sel: '#repCard', text: 'Hier siehst du dein Ansehen – und warum es sich verändert.' },
   elections: { pre: (ctx) => soc(ctx, 'elections'), sel: '[data-evote], [data-erun]', text: 'Wähle jemanden oder kandidiere selbst.' },
 };

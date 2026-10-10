@@ -4,6 +4,7 @@ import { advisorCard, questCard, bindGuide, isOpen, lockHint } from '../onboardi
 import { standingCard, bindStanding } from '../reputation.js';
 import { courtBanner } from '../court.js';
 import { talentCard, bindTalents } from '../talents.js';
+import { seasonCard, epiBanner, bindSeasons, heatChip } from '../seasons.js';
 
 const LEVEL_ICON = { good: 'circle-check', warn: 'triangle-alert', bad: 'circle-alert', info: 'info' };
 
@@ -31,7 +32,7 @@ export default {
     const pool = v.efs.pool;
     const unseen = v.notices.filter((n) => !n.seen).length;
     return html`
-    ${advisorCard(ctx)}${questCard(ctx)}
+    ${advisorCard(ctx)}${questCard(ctx)}${epiBanner(ctx)}
     <section class="card scene-card mt">
       ${sceneFor(ctx, v.city.id, here)}
       <div class="scene-overlay">
@@ -44,6 +45,7 @@ export default {
       </div>
       ${v.hints.length ? html`<div class="hint-row">${v.hints.map((h) => html`<button class="chip ${h.level}" data-go="${h.target}">${icon(h.level === 'bad' ? 'circle-alert' : 'lightbulb')} ${h.text}</button>`)}</div>` : ''}
     </section>
+    ${seasonCard(ctx)}
     ${standingCard(ctx)}
     ${talentCard(ctx)}
     ${courtBanner(ctx)}
@@ -63,6 +65,7 @@ export default {
           <dt>Essen / Tag (~)</dt><dd class="neg">${money(v.food.tiers[1].perDay, cur)}</dd>
           <dt><b>Bilanz / Tag</b></dt><dd class="${f.net - v.food.tiers[1].perDay >= 0 ? 'pos' : 'neg'}">${signed(f.net - v.food.tiers[1].perDay, cur)}</dd>
         </dl>
+        ${heatChip(v) ? html`<div class="row wrap mt small">${heatChip(v)}<span class="dim">in Miete bzw. Unterhalt enthalten</span></div>` : ''}
         <div class="row mt"><button class="btn sm ${isOpen(ctx, 'bank') ? '' : 'locked'}" data-bank="1" ${isOpen(ctx, 'bank') ? '' : html`title="${lockHint(ctx, 'bank')}"`}>${icon(isOpen(ctx, 'bank') ? 'landmark' : 'lock')} Bank &amp; Kredite</button>${isOpen(ctx, 'bank') ? '' : html`<div class="dim small mt">${lockHint(ctx, 'bank')}</div>`}</div>
         ${runway !== null && runway < 40 ? html`<div class="alert warn mt small">${icon('triangle-alert')}<div>Bei diesem Tempo reicht dein Geld nur noch ca. ${runway} Tage.</div></div>` : ''}
       </section>
@@ -107,7 +110,7 @@ export default {
     </section>`;
   },
   bind(root, ctx) {
-    bindGuide(root, ctx); bindStanding(root, ctx); bindTalents(root, ctx);
+    bindGuide(root, ctx); bindStanding(root, ctx); bindTalents(root, ctx); bindSeasons(root, ctx);
     root.querySelectorAll('[data-social]').forEach((a) => a.addEventListener('click', () => { const so = ctx.ui.soc = ctx.ui.soc || { cat: 'wealth', scope: 'all', box: 'in', page: 1 }; so.tab = a.dataset.social; }));
     on(root, 'click', '[data-bank]', () => { if (!isOpen(ctx, 'bank')) return; import('../bank.js').then((m) => m.openBank(ctx)); });
     on(root, 'click', '[data-go]', (e, t) => { e.preventDefault(); ctx.go(t.dataset.go); });

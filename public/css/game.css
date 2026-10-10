@@ -530,3 +530,21 @@ html { scroll-padding-top: calc(var(--hud-h, 62px) + 10px); }
 .tal-fx li { margin: .2rem 0; }
 @media (max-width: 560px) { .tal-bars { grid-template-columns: 1fr; } }
 .tal-person .chip { white-space: nowrap; }
+
+/* ---- Jahreszeiten, Ernte und Seuchen ---- */
+.season-card { border-left: 4px solid var(--accent); }
+.season-card.s0 { border-left-color: #6aa8e8; } .season-card.s1 { border-left-color: #7ccf8a; } .season-card.s2 { border-left-color: #f2b84b; } .season-card.s3 { border-left-color: #e08a3c; }
+.season-ic { display: inline-flex; align-items: center; justify-content: center; width: 2.4rem; height: 2.4rem; border-radius: 12px; background: var(--surface-2); color: var(--accent-2); flex: none; }
+.season-tip { max-width: 46ch; }
+.season-chips .chip, .harvest-strip .chip { white-space: nowrap; }
+.harvest-strip { display: flex; flex-wrap: wrap; gap: .4rem .6rem; align-items: center; }
+.hud-season { position: relative; display: inline-flex; vertical-align: -0.2em; margin-right: .35rem; padding: 0; border: 0; background: none; color: var(--accent-2); cursor: pointer; }
+.hud-season .i { width: 1.05rem; height: 1.05rem; }
+.hud-season .bdot { position: absolute; top: -2px; right: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--bad); }
+.epi-banner { border-left: 4px solid var(--info, #5b9bff); }
+.epi-banner.warn { border-left-color: var(--warn); } .epi-banner.bad { border-left-color: var(--bad); } .epi-banner.good { border-left-color: var(--good); }
+.epi-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; }
+.epi-actions .btn { display: flex; align-items: center; justify-content: flex-start; gap: .5rem; white-space: normal; text-align: left; height: auto; padding: .55rem .7rem; }
+.epi-actions .btn small { display: block; }
+.epi-actions .btn .mono { margin-left: auto; }
+@media (max-width: 700px) { .epi-actions { grid-template-columns: 1fr; } }

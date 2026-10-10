@@ -129,7 +129,7 @@ function renderHud() {
   const v = ctx.view; const m = v.meters;
   mount(hud, html`
     <a class="brand" href="/" title="Zur Startseite"><span class="mark">${icon('hourglass')}</span></a>
-    <div class="hud-id"><b class="serif">${v.person.name}</b><small>${v.date.label} · ${v.person.age} Jahre · ${v.date.era}</small></div>
+    <div class="hud-id"><b class="serif">${v.person.name}</b><small>${v.season && v.season.on ? html`<button class="hud-season s${v.season.idx}" data-go="overview" title="${v.season.name}: ${v.season.tip}" aria-label="${v.season.name}">${icon(v.season.icon)}${v.season.epi && v.season.epi.active ? html`<i class="bdot"></i>` : ''}</button>` : ''}${v.date.label} · ${v.person.age} Jahre · ${v.date.era}</small></div>
     <span class="grow"></span>
     <div class="hud-res">
       <button class="res" data-go="overview" title="Geld"><span>${icon('wallet')}</span><b class="mono ${v.money < 0 ? 'neg' : ''}">${money(v.money, v.currency)}</b></button>
