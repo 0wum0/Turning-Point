@@ -548,3 +548,5 @@ html { scroll-padding-top: calc(var(--hud-h, 62px) + 10px); }
 .epi-actions .btn small { display: block; }
 .epi-actions .btn .mono { margin-left: auto; }
 @media (max-width: 700px) { .epi-actions { grid-template-columns: 1fr; } }
+.season-card .btn[data-season-guide] { white-space: nowrap; flex: none; }
+[data-harvest-chip] { white-space: normal !important; display: inline-block; line-height: 1.5; }

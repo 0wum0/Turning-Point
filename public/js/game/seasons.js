@@ -79,7 +79,7 @@ export function seasonCard(ctx) {
   const v = ctx.view; const s = v.season; if (!s || !s.on) return '';
   const sec = (s.sectors || []).filter((x) => Math.abs(x.pct) >= 3).slice(0, 3);
   return html`<section class="card mt season-card s${s.idx}" id="seasonCard" data-spot="season">
-    <div class="row spread nowrap"><div class="row nowrap"><span class="season-ic">${icon(s.icon, 'lg')}</span><div><div class="card-title" style="margin:0">${term('Jahreszeit', s.name)}</div><div class="small dim season-tip">${s.tip}</div></div></div>
+    <div class="row spread wrap"><div class="row nowrap"><span class="season-ic">${icon(s.icon, 'lg')}</span><div><div class="card-title" style="margin:0">${term('Jahreszeit', s.name)}</div><div class="small dim season-tip">${s.tip}</div></div></div>
       <button class="btn sm" data-season-guide="1">Jahreszeiten-Check</button></div>
     <div class="row wrap mt small">${heatChip(v)}${sec.map((x) => html`<span class="chip ${tone(x.pct)}">${x.name} <b>${sg(x.pct)} %</b></span>`)}${(s.festivals || []).map((f) => html`<span class="chip accent">${icon(f.icon)} ${f.name}</span>`)}${harvestLine(v)}</div>
   </section>`;
