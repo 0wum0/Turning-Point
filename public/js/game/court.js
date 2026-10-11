@@ -1,7 +1,7 @@
 /* Recht & Gericht (Oberfläche): Spuren, Anzeige, Verfahren als Zeitleisten-Karten, Sperren-Banner, Dein Amt. Daten: /api/court */
 import { html, icon, api, on, modal, toast, money, term, infoBtn, mount } from './ui.js';
 
-const ACT_IC = { sabotage: 'flame', spy: 'search', poach: 'users', price: 'trending-down', breach: 'scroll', default: 'package', evict: 'house', fraud: 'receipt-text', bribe: 'banknote' };
+const ACT_IC = { sabotage: 'flame', spy: 'search', poach: 'users', price: 'trending-down', breach: 'scroll', default: 'package', evict: 'house', fraud: 'receipt-text', embezzle: 'coins', theft: 'package', smuggle: 'skull', bribe: 'banknote' };
 const STATE_TONE = { filed: 'info', investigation: 'info', hearing: 'warn', verdict: 'warn', appeal: 'warn', final: 'good', settled: 'good', dismissed: 'dim', withdrawn: 'dim' };
 const BAND_TONE = { stark: 'good', mittel: 'warn', schwach: 'bad' };
 const fmt = (ms) => new Date(ms).toLocaleString(document.documentElement.lang === 'en' ? 'en-GB' : 'de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });

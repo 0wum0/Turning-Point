@@ -300,6 +300,7 @@ async function clubDetail(userId, clubId) {
     ok: true, id: c.id, name: c.name, kind: c.kind, kindName: (M.kindOf(c.kind) || {}).name, icon: (M.kindOf(c.kind) || {}).icon, city: (world.city(c.city_id) || {}).name || '', descr: c.descr || '', members, count: members.length, fee: Math.round(Number(c.fee_real) * idx),
     president: c.ppub ? c.pname : null, since: new Date(c.created_at).getTime(), events: c.events_n, me: me ? { role: me.role, roleName: M.ROLE_NAME[me.role], mistrust: !!me.mistrust, paidUntil: Number(me.paid_until) } : null,
     active: members.length >= num((M.C().clubs || {}).minActive, 3), fx: M.clubFx(c.kind, members.length),
+    limits: { eventCost: Math.round(num(((M.C().clubs || {}).event || {}).costReal, 1500) * idx), endorseCost: Math.round(num(((M.C().clubs || {}).endorse || {}).costReal, 2000) * idx), donateMin: Math.ceil(num(((M.C().clubs || {}).donate || {}).minReal, 100) * idx) },
   };
   if (me) {
     out.treasury = Math.round(Number(c.treasury_real) * idx);

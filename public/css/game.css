@@ -569,3 +569,13 @@ html { scroll-padding-top: calc(var(--hud-h, 62px) + 10px); }
 #trPol .pol { border: 1px solid var(--border); border-radius: 14px; padding: .65rem .8rem; background: color-mix(in srgb, var(--surface-2) 70%, transparent); }
 @media (max-width: 520px) { .route .tl-step span { display: none; } .route .tl-step { min-width: 1.6rem; } }
 .sup-auto[hidden], .field[hidden] { display: none !important; }
+/* Gesellschaft: Vereine, Gemeinde, Stiftung, Titel */
+#civicBox .tabs { margin-bottom: .6rem; }
+#civicBox .tabs a { cursor: pointer; }
+#civicBox .firm.small { align-items: center; }
+#civicBox label.firm input[type=radio] { flex: 0 0 auto; margin: 0 .35rem 0 0; }
+.civic-modal .firm { gap: .5rem; }
+.civic-modal details > summary { cursor: pointer; list-style: none; }
+.civic-modal details[open] > summary { margin-bottom: .4rem; }
+#civicMini .chips { display: flex; flex-wrap: wrap; gap: .35rem; }
+@media (max-width: 560px) { #civicBox .row.nowrap { flex-wrap: wrap; } #civicBox .firm.small { flex-wrap: wrap; } }

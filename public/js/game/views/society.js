@@ -2,13 +2,14 @@ import { html, icon, money, infoBtn, bar, on, yearsText, signed } from '../ui.js
 import { policyBox, bindPolicy } from '../policy.js';
 import { honorSkeleton, bindHonor } from '../reputation.js';
 import { courtSkeleton, bindCourt } from '../court.js';
+import { civicSkeleton, bindCivic } from '../civic.js';
 
 export default {
   id: 'society', label: 'Gesellschaft', icon: 'landmark',
   render(ctx) {
     const v = ctx.view; const p = v.politics; const g = v.gambling; const cur = v.currency;
     return html`
-    <div class="panel-head"><div><h2>Gesellschaft</h2><p>Ämter, Einfluss – und ein bisschen Glück.</p></div>
+    <div class="panel-head"><div><h2>Gesellschaft</h2><p>Ämter, Einfluss, Vereine, Gemeinde – und ein bisschen Glück.</p></div>
       ${infoBtn(['Öffentliche Ämter müssen Stufe für Stufe durchlaufen werden. Anfangs kosten sie Geld, Kraft und Gesundheit und bringen wenig ein.', 'Mit Erfahrung und Einfluss steigen Wahlchancen und Einkommen. Einfluss bleibt dir über alle Leben erhalten. Im Amt arbeitest du nur noch in Teilzeit (60 % Lohn).', 'Kandidiere für das erste Amt, sobald du etwas Erspartes und gute Stimmung hast.'], 'Ämter')}</div>
 
     <section class="card ${p.term ? 'glow' : ''}">
@@ -24,6 +25,7 @@ export default {
 
     ${policyBox()}
     ${honorSkeleton()}
+    ${civicSkeleton()}
     ${courtSkeleton()}
 
     <div class="grid c2 mt" style="--gap:1rem">
@@ -36,7 +38,7 @@ export default {
     </div>`;
   },
   bind(root, ctx) {
-    bindPolicy(root, ctx); bindHonor(root, ctx); bindCourt(root, ctx);
+    bindPolicy(root, ctx); bindHonor(root, ctx); bindCivic(root, ctx); bindCourt(root, ctx);
     on(root, 'click', '[data-repopen]', (e) => { e.preventDefault(); import('../reputation.js').then((m) => m.openStanding(ctx)); });
     on(root, 'click', '[data-elections]', (e) => { e.preventDefault(); ctx.ui.soc = Object.assign(ctx.ui.soc || { cat: 'wealth', scope: 'all', box: 'in', page: 1 }, { tab: 'elections' }); ctx.go('social'); });
     on(root, 'click', '[data-run]', (e, t) => ctx.act('runOffice', { idx: Number(t.dataset.run) }));

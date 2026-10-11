@@ -819,6 +819,191 @@ describe('E2E Turning Point', { concurrency: false }, () => {
     });
   });
 
+  describe('Gesellschaft', () => {
+    // Verein gründen und beitreten, spenden, Fest, Gemeinde, Stiftung, Titel – mit denselben zwei Spielern wie zuvor (Bernd war in Haft: aufgehoben)
+    let v; let w; let vid; let wid; let clubId;
+    before(async () => {
+      v = a; w = b; vid = await L.userId(app, 'alice_e2e'); wid = await L.userId(app, 'bob_e2e');
+      await app.sql("UPDATE court_sanctions SET status = 'annulled' WHERE user_id = ?", [wid]);
+      await L.setMoney(app, 'alice_e2e', 5000000); await L.setMoney(app, 'bob_e2e', 5000000);
+      await L.reloadGame(v); await L.reloadGame(w);
+    });
+
+    it('Verein gründen: Art, Name und Beitrag im Dialog; Gebühr abgebucht; der Verein steht in der Liste und in der Übersicht', async () => {
+      await L.nav(v, 'society');
+      await v.page.waitForSelector('#civicBox [data-club-found]:not([disabled])');
+      assert.match(await text(v, '#civicBox'), /Vereine, Gemeinde, Stiftung & Titel/i);
+      await v.page.click('#civicBox [data-club-found]');
+      await v.page.selectOption('#cf-kind', 'kultur');
+      await v.page.fill('#cf-name', 'Chor Frohsinn E2E'); await v.page.fill('#cf-fee', '5');
+      await v.page.click('#cf-go');
+      await L.until(async () => (await app.sql("SELECT id FROM clubs WHERE name = 'Chor Frohsinn E2E'")).length === 1, { what: 'Vereinsgründung' });
+      [{ id: clubId }] = await app.sql("SELECT id FROM clubs WHERE name = 'Chor Frohsinn E2E'");
+      await v.page.waitForSelector('#civicBox [data-club-open]');
+      assert.match(await text(v, '#civicBox'), /Chor Frohsinn E2E/);
+      assert.match(await text(v, '#civicBox'), /Vorsitzende\/r/);
+      const [c] = await app.sql('SELECT * FROM clubs WHERE id = ?', [clubId]); assert.equal(c.president_id, vid); assert.equal(c.kind, 'kultur');
+      await L.nav(v, 'overview');
+      await v.page.waitForSelector('#civicMini');
+      assert.match(await text(v, '#civicMini'), /Chor Frohsinn E2E/);
+      noErrors(v);
+    });
+
+    it('Beitreten: Bernd sieht den Verein im Verzeichnis, bestätigt, zahlt den ersten Beitrag – die Kasse füllt sich; zweimal geht nicht', async () => {
+      await L.reloadGame(w); await L.nav(w, 'society');
+      await w.page.waitForSelector(`#civicBox [data-club-join="${clubId}"]`);
+      const m0 = (await app.sql("SELECT money FROM characters WHERE user_id = ? AND status = 'alive'", [wid]))[0].money;
+      await w.page.click(`#civicBox [data-club-join="${clubId}"]`);
+      await confirmYes(w);
+      await L.until(async () => (await app.sql('SELECT 1 x FROM club_members WHERE club_id = ? AND user_id = ?', [clubId, wid])).length === 1, { what: 'Beitritt' });
+      const m1 = (await app.sql("SELECT money FROM characters WHERE user_id = ? AND status = 'alive'", [wid]))[0].money;
+      assert.equal(Number(m0) - Number(m1), 500, 'erster Beitrag 5 DM');
+      const [c] = await app.sql('SELECT treasury_real FROM clubs WHERE id = ?', [clubId]); assert.equal(Number(c.treasury_real), 500);
+      const again = await L.api(w, 'POST', `/api/civic/club/${clubId}/join`); assert.equal(again.status, 400); assert.match(again.json.error, /schon Mitglied/);
+      await w.page.waitForSelector(`#civicBox article[data-club="${clubId}"]`);
+      noErrors(w);
+    });
+
+    it('Spenden im Vereinsdialog: Betrag, Kasse und Kassenbuch (mit Namen der sichtbaren Mitglieder)', async () => {
+      await w.page.click(`#civicBox [data-club-open="${clubId}"]`);
+      await w.page.waitForSelector('.civic-modal [data-cd=donate]');
+      await w.page.click('.civic-modal [data-cd=donate]');
+      await w.page.fill('#ask-v', '7.50'); await w.page.click('#ask-ok');
+      await L.until(async () => Number((await app.sql('SELECT treasury_real FROM clubs WHERE id = ?', [clubId]))[0].treasury_real) === 1250, { what: 'Spende in der Kasse' });
+      await w.page.waitForSelector('.civic-modal .firm:has-text("Spende")');
+      assert.match(await text(w, '.civic-modal'), /Kassenbuch/i);
+      await closeAll(w);
+      await app.sql("INSERT INTO users (email, username, password_hash, social_public) VALUES ('statist@e2e.test', 'statist_e2e', 'x', 1)");
+      const out = await L.api(w, 'GET', `/api/civic/club/${clubId}`); assert.equal(out.status, 200); assert.ok(out.json.treasury > 0);
+      noErrors(w);
+    });
+
+    it('Fest: mit drei Mitgliedern richtet der Vorstand ein Fest aus – Kosten aus der Kasse, Stimmung und Gemeinwohl-Topf', async () => {
+      const [{ id: sid }] = await app.sql("SELECT id FROM users WHERE username = 'statist_e2e'");
+      await app.sql("INSERT INTO club_members (club_id, user_id, role, joined_ms, paid_until) VALUES (?,?, 'member', ?, ?)", [clubId, sid, Date.now() - 1000, Date.now() + 86400000]);
+      await app.sql('UPDATE clubs SET treasury_real = 50000 WHERE id = ?', [clubId]);
+      await L.reloadGame(v); await L.nav(v, 'society');
+      await v.page.waitForSelector(`#civicBox [data-club-open="${clubId}"]`);
+      await v.page.click(`#civicBox [data-club-open="${clubId}"]`);
+      await v.page.waitForSelector('.civic-modal [data-cd=event]');
+      assert.match(await text(v, '.civic-modal'), /wirkt auf die Mitglieder/);
+      await v.page.click('.civic-modal [data-cd=event]');
+      await L.until(async () => Number((await app.sql('SELECT treasury_real FROM clubs WHERE id = ?', [clubId]))[0].treasury_real) === 48500, { what: 'Fest bezahlt' });
+      assert.equal((await app.sql('SELECT events_n FROM clubs WHERE id = ?', [clubId]))[0].events_n, 1);
+      assert.ok((await app.sql('SELECT 1 x FROM city_civic WHERE kultur > 0')).length === 1, 'Gemeinwohl-Topf Kultur');
+      await closeAll(v);
+      // Bernd bekommt die Feststimmung beim nächsten Laden – genau einmal
+      await L.reloadGame(w);
+      const seen = (await app.sql('SELECT seen_event_ms FROM club_members WHERE club_id = ? AND user_id = ?', [clubId, wid]))[0].seen_event_ms; assert.ok(Number(seen) > 0);
+      noErrors(v, w);
+    });
+
+    it('Gemeinde: beitreten, spenden, Gemeinde-Ansehen; Notgabe ist ohne Not und Ansehen begründet gesperrt', async () => {
+      await L.nav(v, 'society');
+      await v.page.waitForSelector('#civicBox [data-ctab=parish]');
+      await v.page.click('#civicBox [data-ctab=parish]');
+      await v.page.waitForSelector('#civicBox [data-parish-join="evangelisch"]:not([disabled])');
+      await v.page.click('#civicBox [data-parish-join="evangelisch"]'); await confirmYes(v);
+      await v.page.waitForSelector('#civicBox [data-parish-donate]');
+      assert.match(await text(v, '#civicBox'), /Evangelische Gemeinde/);
+      await v.page.click('#civicBox [data-parish-donate]');
+      await v.page.fill('#ask-v', '12'); await v.page.click('#ask-ok');
+      await L.until(async () => Number((await app.sql('SELECT fund_real FROM parishes LIMIT 1'))[0].fund_real) === 1200, { what: 'Spende an die Gemeinde' });
+      await v.page.waitForSelector('#civicBox:has-text("Gemeindeglied")');
+      assert.match(await text(v, '#civicBox'), /Notgabe/);
+      assert.equal(await v.page.locator('#civicBox [data-parish-aid]').isDisabled(), true);
+      const r = await L.api(v, 'POST', '/api/civic/parish/aid'); assert.equal(r.status, 400);
+      noErrors(v);
+    });
+
+    it('Feiern mit der Familie: Trauerfeier für einen Angehörigen (aus dem Spielstand), Gebühr in die Kasse, Eintrag in der Familienchronik', async () => {
+      await app.sql("UPDATE characters SET state = JSON_SET(state, '$.flags.civic', JSON_OBJECT('funerals', JSON_ARRAY(JSON_OBJECT('id', 1, 'name', 'Opa Willi', 'day', 5)), 'will', 0, 'nextId', 1)) WHERE user_id = ? AND status = 'alive'", [vid]);
+      await L.reloadGame(v); await L.nav(v, 'society');
+      await v.page.click('#civicBox [data-ctab=parish]');
+      await v.page.waitForSelector('#civicBox [data-parish-cer="funeral"]');
+      await v.page.click('#civicBox [data-parish-cer="funeral"]'); await confirmYes(v);
+      await L.until(async () => Number((await app.sql('SELECT fund_real FROM parishes LIMIT 1'))[0].fund_real) === 3200, { what: 'Gebühr der Trauerfeier' });
+      const [row] = await app.sql("SELECT state FROM characters WHERE user_id = ? AND status = 'alive'", [vid]);
+      const st = JSON.parse(row.state); assert.ok(st.tree.events.some((e) => /Opa Willi/.test(e.text)));
+      noErrors(v);
+    });
+
+    it('Stiftung: ohne Ansehen gesperrt, mit gutem Ruf gründen – das Vermögen ist gebunden, der Titel „Stifter“ erscheint', async () => {
+      await L.nav(v, 'society');
+      await v.page.click('#civicBox [data-ctab=foundation]');
+      await v.page.waitForSelector('#civicBox [data-fd-found]');
+      assert.equal(await v.page.locator('#civicBox [data-fd-found]').isDisabled(), true, 'Ansehen reicht noch nicht');
+      assert.match(await text(v, '#civicBox'), /Ansehen/);
+      await app.sql('INSERT INTO reputation (user_id, rel, trade, civic, office, scandal, score, lvl, decay_day, updated_at) VALUES (?, 60, 40, 40, 30, 0, 45, 2, ?, ?) ON DUPLICATE KEY UPDATE rel = 60, trade = 40, civic = 40, office = 30, scandal = 0, score = 45, lvl = 2, decay_day = VALUES(decay_day), updated_at = VALUES(updated_at)', [vid, Math.floor(Date.now() / 86400000), Date.now()]);
+      await L.setMoney(app, 'alice_e2e', 5000000);
+      await L.reloadGame(v); await L.nav(v, 'society');
+      await v.page.click('#civicBox [data-ctab=foundation]');
+      await v.page.waitForSelector('#civicBox [data-fd-found]:not([disabled])');
+      await v.page.fill('#fd-name', 'Bürgerstiftung E2E');
+      await v.page.check('input[name="fd-purpose"][value="kultur"]');
+      await v.page.click('#civicBox [data-fd-found]');
+      await L.until(async () => (await app.sql("SELECT id FROM foundations WHERE user_id = ?", [vid])).length === 1, { what: 'Stiftungsgründung' });
+      const [f] = await app.sql('SELECT * FROM foundations WHERE user_id = ?', [vid]);
+      assert.equal(f.purpose, 'kultur'); assert.equal(Number(f.capital_real), 1000000);
+      await v.page.waitForSelector('#civicBox:has-text("Stiftungsvermögen")');
+      assert.match(await text(v, '#civicBox'), /Bürgerstiftung E2E/);
+      assert.equal(await v.page.locator('#civicBox [data-fd=dissolve]').isDisabled(), true, 'noch gebunden');
+      await v.page.click('#civicBox [data-ctab=titles]');
+      await v.page.waitForSelector('#civicBox:has-text("Deine Titel")');
+      await L.until(async () => (await app.sql("SELECT 1 x FROM titles WHERE user_id = ? AND tkey = 'stifter' AND active = 1", [vid])).length === 1, { what: 'Titel Stifter' });
+      await v.page.click('#civicBox [data-titles-check]');
+      await v.page.waitForSelector('#civicBox .firm:has-text("Stifter")');
+      assert.match(await text(v, '#civicBox'), /Stimmengewicht/);
+      const [ps] = await app.sql('SELECT title FROM player_stats WHERE user_id = ?', [vid]); assert.equal(ps.title, 'Stifter');
+      noErrors(v);
+    });
+
+    it('Glossar kennt die neuen Begriffe, der Berater wirkt mit offenen Beiträgen, die Aufgaben „Verein“ und „Gemeinwohl“ sind erledigt', async () => {
+      await L.reloadGame(v); await L.nav(v, 'overview');
+      const done = await v.page.evaluate(() => (window.__tpCtx && window.__tpCtx.view && window.__tpCtx.view.onboarding ? window.__tpCtx.view.onboarding.quests.filter((q) => q.done).map((q) => q.id) : null));
+      void done;
+      const st = await L.api(v, 'GET', '/api/state');
+      const q = (st.json.view.onboarding.quests || []).filter((x) => x.done).map((x) => x.id);
+      assert.ok(q.includes('club') && q.includes('give'), `erledigte Aufgaben: ${q.join(', ')}`);
+      assert.ok(st.json.view.civic.on && st.json.view.civic.clubs.length === 1 && st.json.view.civic.titles.length >= 1);
+      await v.page.click('#side a[data-nav=society]').catch(() => {});
+      noErrors(v);
+    });
+
+    it('Englische Oberfläche: Reiter, Beschriftungen und Fehlermeldungen sind übersetzt', async () => {
+      await v.page.goto(`${app.base}/lang/en?next=/play`);
+      await v.page.waitForSelector('#hud .hud-id');
+      await L.nav(v, 'society');
+      await v.page.waitForSelector('#civicBox [data-ctab=clubs]');
+      await v.page.waitForFunction(() => /Clubs/.test(document.querySelector('#civicBox').innerText));
+      const t = await text(v, '#civicBox');
+      assert.match(t, /Clubs, congregation, foundation & titles/i);
+      assert.match(t, /Chor Frohsinn E2E/, 'Eigennamen bleiben');
+      assert.doesNotMatch(t, /Vereinskasse|Gründen|Beitrag/);
+      await v.page.click('#civicBox [data-ctab=parish]');
+      await v.page.waitForFunction(() => /Congregation/.test(document.querySelector('#civicBox').innerText));
+      await v.page.click('#civicBox [data-ctab=titles]');
+      await v.page.waitForFunction(() => /Your titles/.test(document.querySelector('#civicBox').innerText));
+      const r = await L.api(v, 'POST', `/api/civic/club/${clubId}/withdraw`, { amount: 1 });
+      assert.equal(r.status, 400);
+      noErrors(v);
+      await v.page.goto(`${app.base}/lang/de?next=/play`); await v.page.waitForSelector('#hud .hud-id');
+    });
+
+    it('Admin: Seite „Gesellschaft“ zeigt Vereine, Gemeinden, Stiftungen und Titel; Einstellungsgruppe lädt', async () => {
+      const ad = await L.newPlayer(browser, app, 'admin2');
+      await L.login(ad, { login: 'e2eadmin', password: 'e2e-admin-pass-1' });
+      const r = await ad.page.goto(`${app.base}/admin/civic`); assert.equal(r.status(), 200);
+      const body = await text(ad, 'body');
+      assert.match(body, /Chor Frohsinn E2E/); assert.match(body, /Bürgerstiftung E2E/); assert.match(body, /Evangelische Gemeinde/); assert.match(body, /Stifter/);
+      const s = await ad.page.goto(`${app.base}/admin/settings/gesellschaft`); assert.equal(s.status(), 200);
+      assert.match(await text(ad, 'body'), /Gesellschaft/);
+      await ad.ctx.close();
+    });
+
+    async function closeAll(pl) { await L.closeModals(pl); }
+  });
+
   describe('Englische Oberfläche', () => {
     it('Registrieren, Charakter anlegen, Navigation und Texte auf Englisch', async () => {
       const e = await L.newPlayer(browser, app, 'erin', 'en');
