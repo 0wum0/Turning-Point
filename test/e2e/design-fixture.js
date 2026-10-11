@@ -1,0 +1,26 @@
+// Local UI fixture only: real presenter/seed data; no database or live accounts.
+const R=require('node:path').resolve(__dirname, '../..');
+const {testWorld,input}=require(R+'/test/helpers');
+const {createCharacter}=require(R+'/src/game/state');
+const {present}=require(R+'/src/game/present');
+const w=testWorld(),user={coins:25,efs_pool:30,meta:{}};
+const state=createCharacter(w,input(w),user);
+const view=present(w,state,user,Date.now());
+view.onboarding.welcome=false;
+const states=[...new Set(w.cityList.map(c=>c.state))];
+const world={ok:true,states,cityRows:w.cityList.map(c=>[c.id,c.name,states.indexOf(c.state),c.lat,c.lon,c.size_tier,c.price_factor,c.pop||100000,1945]),cityExtra:{},professions:[],academic:[],startProfessions:[],schools:{},adsEnabled:false};
+const express=require(R+'/node_modules/express'),app=express();
+app.use(express.static(R+'/public'));
+app.get('/play',(_,res)=>res.send(`<!doctype html><html lang="de" data-era="1"><head><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="csrf-token" content="fixture"><script src="/js/theme.js"></script><link rel="stylesheet" href="/css/app.css"><link rel="stylesheet" href="/css/game.css"><link rel="stylesheet" href="/css/design-v2.css"><link rel="stylesheet" href="/css/motion.css"></head><body class="game"><div id="app"></div><script type="module" src="/js/game/main.js"></script></body></html>`));
+app.get('/api/world',(_,res)=>res.json(world));
+app.get('/api/state',(_,res)=>res.json({ok:true,view,coins:25,efsPool:30}));
+app.get('/api/map',(_,res)=>res.json({ok:true,properties:[],pickups:[],here:view.city.id,birthCityId:view.city.id,activeEfs:{today:0,cap:30}}));
+app.get('/api/move-quote',(_,res)=>res.json({ok:true,quote:{km:200,money:10000,coins:5,baseCoins:5}}));
+app.get('/api/social/summary',(_,res)=>res.json({ok:true,total:0}));
+app.get('/api/live',(_,res)=>{res.set('Content-Type','text/event-stream');res.write('event: hello\ndata: {}\n\n');});
+app.post('/api/action/seen',(_,res)=>res.json({ok:true,view}));
+app.get('/api/shop',(_,res)=>res.json({ok:true,mode:'off',packages:[],subscription:{enabled:false}}));
+app.get('/api/archive',(_,res)=>res.json({ok:true,characters:[]}));
+app.get('/api/reputation',(_,res)=>res.json({ok:true,level:0,localLevel:0,score:0,top:[],ledger:[],progress:{next:10,pct:0}}));
+app.use('/api',(_,res)=>res.json({ok:true,enabled:false,rows:[],items:[]}));
+module.exports = { app, view };

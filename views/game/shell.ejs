@@ -1,4 +1,4 @@
-<%- include('../partials/head', { title: 'Spiel', era: 1, css: ['game'], noindex: true, bodyClass: 'game' }) %>
+<%- include('../partials/head', { title: 'Spiel', era: 1, css: ['game', 'design-v2'], noindex: true, bodyClass: 'game' }) %>
 <% if (typeof impersonating !== 'undefined' && impersonating) { %><form class="imp-bar" method="post" action="/stop-impersonation"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><span>Admin-Ansicht: du spielst als <b><%= impersonating %></b></span><button class="btn sm">Zurück zum Admin</button></form><% } %>
 <div id="app"><div class="boot"><div class="boot-mark"><%- icon('hourglass', 'xl') %></div><div class="dim">Turning Point lädt …</div></div></div>
 <noscript><div class="card" style="margin:2rem auto;max-width:480px">Turning Point benötigt JavaScript.</div></noscript>

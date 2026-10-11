@@ -1,3 +1,4 @@
+import { isV2, openDesignSettings, decorateDesign, decoratePageDesign } from './design.js';
 import { decodeWorld } from './places.js';
 import { openChatModal, openBell, chatUnread } from './chatmodal.js';
 import { html, icon, mount, api, toast, modal, confirmBox, ring, money, num, infoBtn, on, sleep, esc, yearsText } from './ui.js';
@@ -147,6 +148,7 @@ function renderHud() {
     <button class="btn ghost sm" data-motion-toggle aria-label="Animationen an/aus" title="Animationen an/aus">${icon('sparkles')}</button>
     <button class="btn ghost sm" data-sound aria-label="Ton an/aus" title="Musik & Töne">${icon(audio.isOn() ? 'volume-2' : 'volume-x')}</button>
     <a class="btn ghost sm" data-i18n-skip href="/lang/${document.documentElement.lang === 'en' ? 'de' : 'en'}?next=/play" title="Deutsch / English" aria-label="Language">${document.documentElement.lang === 'en' ? 'DE' : 'EN'}</a>
+    <button class="btn ghost sm" data-design-settings aria-label="Einstellungen" title="Einstellungen">${icon('settings')}</button>
     <button class="btn ghost sm" data-theme-toggle aria-label="Farbschema wechseln">${icon('sun-medium')}</button>
     <form method="post" action="/logout" class="logout"><input type="hidden" name="_csrf" value="${document.querySelector('meta[name=csrf-token]').content}"><button class="btn ghost sm" aria-label="Abmelden" title="Abmelden">${icon('log-out')}</button></form>`);
   const hintLevel = {};
@@ -154,7 +156,8 @@ function renderHud() {
   const unseen = v.notices.filter((n) => !n.seen).length;
   const label = (p) => (p.id === 'newspaper' && v.date.medium === 'web' ? 'Web' : p.label);
   mount(side, html`${PAGES.map((p) => html`<a href="#/${p.id}" class="nav ${ctx.route === p.id ? 'on' : ''} ${hintLevel[p.id] ? 'hint-' + hintLevel[p.id] : ''} ${gated(p.id) ? 'locked' : ''}" data-nav="${p.id}" ${gated(p.id) ? html`title="${lockHint(ctx, GATES[p.id])}"` : ''}>${icon(gated(p.id) ? 'lock' : p.icon)}<span>${label(p)}</span>${p.id === 'overview' && unseen ? html`<i class="dot">${unseen}</i>` : p.id === 'social' && ctx.social && ctx.social.total ? html`<i class="dot">${ctx.social.total}</i>` : hintLevel[p.id] ? html`<i class="dot soft"></i>` : ''}</a>`)}`);
-  const on = side.querySelector('.nav.on'); if (on && on.scrollIntoView) { try { on.scrollIntoView({ inline: 'center', block: 'nearest' }); } catch (_) { /* ältere Browser */ } }
+  decorateDesign(hud, side, ctx.route);
+  const on = !isV2() && side.querySelector('.nav.on'); if (on && on.scrollIntoView) { try { on.scrollIntoView({ inline: 'center', block: 'nearest' }); } catch (_) { /* ältere Browser */ } }
 }
 
 function showAnnouncement(root) {
@@ -190,6 +193,7 @@ async function renderPage(animate) {
   root.classList.remove('enter'); void root.offsetWidth; if (animate) root.classList.add('enter');
   page.bind(root, ctx, data);
   mountIntro(root, ctx);
+  decoratePageDesign(root);
   showAnnouncement(root);
   window.scrollTo(0, scroll);
   if (ctx.route === 'legacy' && ctx.view.status === 'gameover') {
@@ -280,6 +284,7 @@ document.addEventListener('click', (e) => {
   if (mt) { const k = mt.dataset.meter; const lab = { fridge: 'Kühlschrank', wellbeing: 'Wohlbefinden', rest: 'Erholung', health: 'Gesundheit' }[k]; modal(html`<h3>${icon('info')} ${lab}: ${ctx.view.meters[k]} %</h3><ol class="info-steps">${['Was ist das?', 'Warum ist das wichtig?', 'Was kann ich tun?'].map((t, i) => html`<li><div><b>${t}</b>${METER_INFO[k][i]}</div></li>`)}</ol><div class="row end mt"><button class="btn primary" data-close="1">Verstanden</button></div>`); }
   if (e.target.closest('#hud [data-chat]')) openChatModal(ctx);
   if (e.target.closest('#hud [data-bell]')) openBell(ctx);
+  if (e.target.closest('#hud [data-design-settings]')) openDesignSettings(() => { renderHud(); trackHud(); decoratePageDesign(document.getElementById('page')); });
   if (e.target.closest('#hud [data-help]')) openHelp(ctx);
   if (e.target.closest('[data-showall]')) setShowAll(ctx, true);
   if (e.target.closest('#hud [data-sound]')) { audio.toggle(); renderHud(); }

@@ -25,7 +25,7 @@ export default {
     return html`
     <div class="panel-head"><div><h2>Deutschland</h2><p>Wähle eine Stadt. Goldene Funken sind EFS zum Einsammeln.</p></div>
       <div class="row"><span class="chip accent" id="efsToday">${icon('zap')} Heute gesammelt: ${data.activeEfs.today} / ${data.activeEfs.cap} EFS</span>${infoBtn(['Auf der Karte tauchen stündlich neue EFS-Funde auf.', 'Aktive EFS beschleunigen dein Leben – 1 EFS ist 1 Spieltag. Pro Tag gibt es ein Sammel-Limit.', 'Klicke auf die goldenen Funken. Komm später wieder, neue erscheinen jede Stunde.'], 'Karte & EFS')}</div></div>
-    <div class="map-layout">
+    <div class="map-layout"><button type="button" class="btn sm sim-map-toggle" aria-controls="mapPanel" aria-expanded="true" title="Stadtinformationen ein-/ausblenden">${icon('map-pin')}<span>Stadt</span></button>
       <section class="card map-card">
         <div class="map-search pl-wrap"><input id="mapq" type="search" placeholder="Ort suchen …" autocomplete="off" aria-label="Ort suchen"><div class="pl-res" id="mapres"></div></div>
         <div class="map-tools"><button class="btn sm" id="zin" aria-label="Vergrößern">${icon('plus')}</button><button class="btn sm" id="zout" aria-label="Verkleinern">${icon('minus')}</button><button class="btn sm" id="zreset" aria-label="Zurücksetzen">${icon('refresh-cw')}</button></div>
@@ -42,6 +42,12 @@ export default {
     </div>`;
   },
   bind(root, ctx, data) {
+    const panelToggle = root.querySelector('.sim-map-toggle');
+    panelToggle.onclick = () => {
+      const collapsed = panelToggle.getAttribute('aria-expanded') === 'true';
+      panelToggle.setAttribute('aria-expanded', String(!collapsed));
+      panelToggle.closest('.map-layout').dataset.panelCollapsed = String(collapsed);
+    };
     const svg = root.querySelector('#germany'); const vp = svg.querySelector('#vp');
     /* nur sichtbare Orte zeichnen (rund 9.000 Orte): Zoom-Stufe bestimmt, ab welcher Ortsgröße */
     const own = new Set(data.properties.map((p) => p.cityId)); const year = ctx.view.date.year;
@@ -94,6 +100,8 @@ export default {
 
     const panel = root.querySelector('#mapPanel');
     async function showCity(id) {
+      panelToggle.setAttribute('aria-expanded', 'true');
+      panelToggle.closest('.map-layout').dataset.panelCollapsed = 'false';
       ctx.ui.mapCity = id;
       const c = ctx.world.cityById.get(id); if (!c) return;
       const v = ctx.view; const here = id === v.city.id;
