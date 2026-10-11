@@ -446,6 +446,28 @@ Sechs Begabungen von 1 bis 100 (50 = durchschnittlich) für Spielfigur, Partner,
 
 **Qualität.** `test/talents.test.js` (Vererbungsgrenzen, Wachstum und Obergrenze, Wirkungsgrenzen, Pool-Determinismus, Einstellen, Lehre, Lohnforderung, Kurs, Kinder, Erbe, Altspielstand, Bildungspolitik, Abschalten), Fuzz-Invarianten (Profile endlich, 1–100, unter der Obergrenze, Team ≤ Belegschaft, Wirkungen gedeckelt), E2E-Szenario (Bewerber einstellen, Kind fördern).
 
+## Handelsrouten & Transport
+
+Städte sind jetzt durch Verkehr verbunden (Code: `src/game/transport.js`, `trade.js`, `src/lib/transport*.js`, Oberfläche „Handel & Transport“).
+
+**Modell.** Entfernung aus Breiten- und Längengrad. Verkehrsträger nach Epoche: Pferdefuhrwerk (bis 1964), Lastwagen (ab 1950), Bahnfracht, Containerschiff (ab 1970, nur Küstenstädte/Häfen), Luftfracht (ab 1980, Flughäfen), später fiktiv Frachtdrohne (ab 2035) und Röhrenfracht (ab 2060). Kosten und Tempo kommen aus Zeitreihen je Verkehrsträger und hängen an Kraftstoff-/Strompreis, Jahreszeit (Winter), Hochwasser, Seuchen und Politik (Ausbaustufen, Maut). Alle Zahlen: Admin → Einstellungen → `transport`.
+
+**Fracht bei Lieferverträgen.** Käufer zahlt ab Werk oder Verkäufer liefert frei Haus; die Lieferzeit (Tage) verzögert die erste Lieferung, Fracht und Entfernung stehen im Vertrag und in der Partnersuche. Ein Frachtvertrag mit einer Spedition (Betriebsart „Spedition/Logistik“, Angebot `freight_offers`) übernimmt den Transport gegen einen Anteil. Das Geld läuft wie bei Lieferverträgen genau einmal über `pending_credits` (Gründe `supply`, `freight`).
+
+**Händlerrouten.** Betriebe der Art Spedition, Laden oder Handel fahren Routen von Stadt A nach B (Vorschau vor dem Bestätigen, Laderaum nach Betriebsgröße, Routen je Betrieb und gesamt begrenzt). „Beste Route finden“ schlägt rentable Routen vor. Die Fahrt verändert den Preis an beiden Enden (Marktwirkung), deshalb schrumpft der Gewinn mit mehr Spielern auf demselben Paar.
+
+**Risiken.** Unfall, Panne, Plünderung (Nachkriegszeit), Zoll, Streik, Wetter, Quarantäne, Hochwassersperre. Versicherung deckt einen Teil; Diebstahl und Schmuggel hinterlassen Spuren für das Gericht (Taten `theft`, `smuggle`) und wirken auf das Ansehen. Im Neulingsschutz und offline gibt es keine Verluste.
+
+**Politik.** Pro Amtszeit ein Beschluss mit Vorschau: Stadt Bahnhofs-/Hafen-/Flughafenausbau oder Maut, Landtag Straßenbau, Bundestag Mautrahmen, Kanzler Autobahn-/Bahnnetz (zusätzlich zum bestehenden Zoll).
+
+**Admin.** Einstellungsgruppe `transport`, Seite „Transport“ (Routen ansehen und anhalten, Frachtangebote schließen, protokolliert, rollenabhängig). Bots fahren Routen und nutzen Fracht.
+
+**Balance** (`tools/econ-sim.js`, Seed 7, 85 Jahre): Händler-Archetyp Netto 1,72 Mio. gegenüber 1,71 Mio. ohne Routen (etwa +1 %); die übrigen Archetypen bleiben innerhalb ±10 %. Die Rendite einer Route ist auf etwa 24 % im Jahr gedeckelt (inklusive Risikoaufschlag), Arbitrage rechnet sich nur bei positivem Erwartungswert nach Bürokosten. Beispiel: 9.922 Fahrten, davon 249 mit Verlust.
+
+**Tests.** `test/transport.test.js`, `transport-i18n.test.js`, Fuzz-Szenario in `test/fuzz.test.js`, DB-Tests `test/transport-db.test.js` (mit `TP_TEST_DB_PORT`), E2E-Szenario „Handel & Transport“.
+
+**Offen.** Karte zeigt nur Luftlinie (keine Straßenführung); Seeverbindungen nur zwischen Küstenstädten; keine eigenen Tagesblatt-Meldungen für einzelne Fahrten.
+
 ## Jahreszeiten, Ernte & Seuchen
 
 Das Spiel hat jetzt Wetter im Kreislauf des Jahres, eine Ernte pro Spieljahr und Seuchenwellen. Alles ist eine **reine Funktion von Spieldatum, Jahr und Stadt** (kein Zufall zur Laufzeit): Online- und Offline-Simulation stimmen überein, und alle Spieler im selben Spieljahr erleben dasselbe. Die Spielfigur-Daten brauchen keine Migration (`state.epi`, Altstände bekommen leere Werte). Code: `src/game/seasons.js` (Jahreszeit, Branchenkurven, Feste, Heizung), `harvest.js` (Wetter, Ernte, Preise), `epidemics.js` (Wellen, Ausbreitung, Gesundheit, Schutz), `seasonfx.js` (Anbindung an Betriebe, Haushalt, Engine), `season-actions.js`, `season-news.js`.

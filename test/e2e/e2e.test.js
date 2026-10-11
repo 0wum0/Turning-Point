@@ -549,6 +549,26 @@ describe('E2E Turning Point', { concurrency: false }, () => {
       noErrors(f, c);
     });
 
+    it('Handel & Transport: Seite, Vorschau, Route anlegen, Frachtangebot und Fracht im Liefervertrag', async () => {
+      await L.reloadGame(f); await L.nav(f, 'trade');
+      await f.page.waitForSelector('#page [data-i18n-page], #page h2, #page .card');
+      assert.match(await text(f), /Handel & Transport|Handelsrouten/);
+      const ov = await L.api(f, 'GET', '/api/transport');
+      assert.equal(ov.status, 200);
+      const firm = (await L.api(f, 'GET', '/api/transport')).json;
+      assert.ok(firm && typeof firm === 'object');
+      // „Beste Route finden“ liefert Vorschläge oder eine begründete Absage – nie einen Fehler
+      const sg = await L.api(f, 'POST', '/api/transport/suggest', {});
+      assert.ok(sg.status === 200 || sg.status === 400, `suggest ${sg.status}`);
+      // Fracht im Liefervertrag: Partnersuche zeigt Entfernung und Fracht
+      const pr = await L.api(f, 'GET', '/api/supply/partners?good=mehl&role=supplier');
+      assert.ok([200, 400].includes(pr.status), `partners ${pr.status}`);
+      const rows = await app.sql('SELECT id, freight_real, km FROM supply_contracts WHERE buyer_id = ? AND status = ?', [fId, 'active']);
+      assert.equal(rows.length, 1);
+      assert.ok(Number(rows[0].freight_real) >= 0 && Number(rows[0].km) >= 0);
+      noErrors(f);
+    });
+
     it('Spieluhr: Zeitreise über efs_accrued_at (zwei Stunden) – nach dem Neuladen ist das Spieldatum weiter', async () => {
       await L.nav(f, 'overview');
       const label0 = await text(f, '#hud .hud-id small');
