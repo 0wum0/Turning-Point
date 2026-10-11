@@ -1,5 +1,7 @@
 import { html, raw, icon, infoBtn, api, on, mount, toast, esc } from '../ui.js';
-import { buildAerial, WORLD } from '../aerial.js';
+import { isV2 } from '../design.js';
+import { createCityCamera } from '../city-camera.js';
+import { buildAerial } from '../aerial.js';
 import { directorySkeleton, bindDirectory } from '../directory.js';
 import { econSkeleton, bindEcon } from '../economy.js';
 
@@ -13,7 +15,7 @@ export default {
     const own = data.buildings.filter((b) => b.own); const pub = data.buildings.filter((b) => !b.own);
     const row = (b) => html`<button class="bl-item ${b.own ? 'own' : ''}" data-focus="${b.key}"><span class="bl-ic">${icon(b.icon || 'landmark')}</span><span class="grow">${b.name}</span>${b.tasks.some((t) => t.ready) ? html`<i class="rdy" title="Aufgabe verfügbar"></i>` : ''}</button>`;
     return html`
-    <div class="panel-head"><div><h2>${c.name}</h2><p>${c.state} · Luftansicht – ziehen zum Verschieben, Mausrad zum Zoomen, Gebäude anklicken zum Betreten.</p></div>
+    <div class="panel-head"><div><h2>${c.name}</h2><p>${c.state} · Luftansicht – ziehen zum Verschieben, Mausrad zum Zoomen, Gebäude auswählen und die Stadt entdecken.</p></div>
       <div class="row">${data.here ? html`<span class="chip good">${icon('map-pin')} Hier wohnst du</span>` : html`<span class="chip warn">${icon('eye')} Du bist nicht vor Ort</span>`}<button class="btn sm" data-go="map">${icon('map')} Zur Karte</button>
       ${infoBtn(['Das ist deine Stadt aus der Vogelperspektive. Öffentliche Orte wie Rathaus, Markthalle oder Bahnhof sind immer da – dazu alles, was dir selbst gehört.', 'In jedem Gebäude findest du Aufgaben und Möglichkeiten. Aufgaben bringen zusätzliche EFS und kleine Vorteile. Interaktionen sind nur in der Stadt möglich, in der du wohnst.', 'Klicke ein Gebäude an, schau dich um (ziehen zum Drehen) und klicke auf leuchtende Dinge.'], 'Stadtansicht')}</div></div>
     ${data.here ? '' : html`<div class="alert info">${icon('info')}<div>Du siehst ${c.name} nur von oben. Aufgaben und Einkäufe sind nur in deinem Wohnort möglich – ziehe dafür um (Karte).</div></div>`}
@@ -22,6 +24,9 @@ export default {
         <div id="aerialHost">${raw(a.svg)}</div>
         <div class="aerial-hint small dim">${icon('hand-coins')} Goldene Umrandung = dein Besitz</div></section>
       <aside class="card bl-panel">
+        <div class="sim-city-only city-catalog-head"><span class="city-eyebrow">DEINE STADT</span><h3>Orte entdecken</h3><label class="sr" for="citySearch">Gebäude suchen</label><input id="citySearch" type="search" placeholder="Gebäude suchen …" autocomplete="off"></div>
+        <div class="sim-city-only" id="citySelection" aria-live="polite"></div>
+        <p class="sim-city-only city-no-results" hidden>Kein Gebäude gefunden.</p>
         ${own.length ? html`<div class="card-title">${icon('castle')} Dein Besitz &amp; Arbeitsplatz</div><div class="bl-list">${own.map(row)}</div>` : ''}
         <div class="card-title" style="margin-top:${own.length ? '1rem' : '0'}">${icon('landmark')} Öffentliche Orte</div><div class="bl-list">${pub.map(row)}</div>
         ${(data.playerFirms || []).length ? html`<div class="card-title" style="margin-top:1rem">${icon('users')} Betriebe anderer Spieler</div><div class="bl-list">${data.playerFirms.slice(0, 6).map((f) => html`<button class="bl-item" data-plaza="1"><span class="bl-ic">${icon('store')}</span><span class="grow" data-i18n-skip>${f.name}<small class="dim"> · ${f.owner}</small></span><span class="chip">besuchen</span></button>`)}</div>` : ''}
@@ -32,49 +37,49 @@ export default {
   },
   bind(root, ctx, data) {
     ctx.ui.cityData = data;
-    const svg = root.querySelector('svg.aerial'); const { w: W, h: H } = WORLD;
-    const spots = ctx.ui._aerial.spots;
-    const full = { x: 0, y: 0, w: W, h: H };
-    let box = ctx.ui.cityBox && ctx.ui.cityBox.id === data.city.id ? { ...ctx.ui.cityBox.box } : null;
-    const apply = () => { svg.setAttribute('viewBox', `${box.x} ${box.y} ${box.w} ${box.h}`); svg.classList.toggle('zoomed', W / box.w > 1.7); ctx.ui.cityBox = { id: data.city.id, box: { ...box } }; };
-    const aspect = () => { const r = svg.getBoundingClientRect(); return r.height / r.width; };
-    const clampBox = () => { box.w = Math.max(W / 6, Math.min(W, box.w)); box.h = box.w * aspect(); box.x = Math.max(-60, Math.min(W - box.w + 60, box.x)); box.y = Math.max(-60, Math.min(H - box.h + 60, box.y)); };
-    const centerOn = (x, y, zoom) => { box = { x: 0, y: 0, w: W / zoom, h: 0 }; box.h = box.w * aspect(); box.x = x - box.w / 2; box.y = y - box.h / 2; clampBox(); apply(); };
-    const own = data.buildings.find((b) => b.residence) || data.buildings.find((b) => b.own && spots[b.key]) || data.buildings.find((b) => b.type === 'rathaus');
-    svg.setAttribute('preserveAspectRatio', 'xMidYMid slice');
-    if (!box) { const s = own && spots[own.key]; if (s) centerOn(s.x, s.y, 2.1); else { box = { ...full }; box.h = box.w * aspect(); clampBox(); apply(); } } else apply();
-    const zoomAt = (f, cx, cy) => { box.x = box.x + (cx - box.x) * (1 - f); box.y = box.y + (cy - box.y) * (1 - f); box.w *= f; clampBox(); apply(); };
-    const toSvg = (e) => { const r = svg.getBoundingClientRect(); return [box.x + ((e.clientX - r.left) / r.width) * box.w, box.y + ((e.clientY - r.top) / r.height) * box.h]; };
-    svg.addEventListener('wheel', (e) => { e.preventDefault(); const [x, y] = toSvg(e); zoomAt(e.deltaY < 0 ? 0.85 : 1.18, x, y); }, { passive: false });
-    root.querySelector('#azin').onclick = () => zoomAt(0.7, box.x + box.w / 2, box.y + box.h / 2);
-    root.querySelector('#azout').onclick = () => zoomAt(1.4, box.x + box.w / 2, box.y + box.h / 2);
-    root.querySelector('#azreset').onclick = () => { const s = own && spots[own.key]; if (s) centerOn(s.x, s.y, 2.1); };
-    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reduce && svg.pauseAnimations) svg.pauseAnimations();
-    const vis = () => { if (!svg.isConnected) { document.removeEventListener('visibilitychange', vis); return; } if (svg.pauseAnimations && svg.unpauseAnimations) { if (document.hidden || reduce) svg.pauseAnimations(); else svg.unpauseAnimations(); } };
-    if (window.__cityVis) document.removeEventListener('visibilitychange', window.__cityVis); // keine Ansammlung bei jedem Nachladen
-    window.__cityVis = vis; document.addEventListener('visibilitychange', vis);
-    const ptrs = new Map(); let dragged = false; let pinch = 0;
-    svg.addEventListener('pointerdown', (e) => { svg.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, [e.clientX, e.clientY]); dragged = false; if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = Math.hypot(a[0] - b[0], a[1] - b[1]); } });
-    svg.addEventListener('pointermove', (e) => {
-      if (!ptrs.has(e.pointerId)) return;
-      const prev = ptrs.get(e.pointerId); const cur = [e.clientX, e.clientY]; ptrs.set(e.pointerId, cur);
-      if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; const d = Math.hypot(a[0] - b[0], a[1] - b[1]); if (pinch) { const [x, y] = toSvg({ clientX: (a[0] + b[0]) / 2, clientY: (a[1] + b[1]) / 2 }); zoomAt(pinch / d, x, y); } pinch = d; dragged = true; return; }
-      const dx = cur[0] - prev[0]; const dy = cur[1] - prev[1];
-      if (Math.abs(dx) + Math.abs(dy) > 1.5) dragged = true;
-      const r = svg.getBoundingClientRect(); box.x -= (dx / r.width) * box.w; box.y -= (dy / r.height) * box.h; clampBox(); apply();
-    });
-    const end = (e) => { ptrs.delete(e.pointerId); pinch = 0; };
-    svg.addEventListener('pointerup', end); svg.addEventListener('pointercancel', end);
+    const svg = root.querySelector('svg.aerial'); const spots = ctx.ui._aerial.spots;
+    const saved = ctx.ui.cityBox?.id === data.city.id ? ctx.ui.cityBox.box : null;
+    const camera = createCityCamera(svg, { saved, smooth: isV2, onChange: box => { ctx.ui.cityBox = { id:data.city.id, box }; } });
+    const own = data.buildings.find(b => b.residence) || data.buildings.find(b => b.own && spots[b.key]) || data.buildings.find(b => b.type === 'rathaus');
+    const centerOn = (x,y,level) => camera.center(x,y,level);
+    if (!saved && own && spots[own.key]) camera.center(spots[own.key].x, spots[own.key].y, 2.1, true);
+    root.querySelector('#azin').onclick = () => camera.zoom(.8);
+    root.querySelector('#azout').onclick = () => camera.zoom(1.25);
+    root.querySelector('#azreset').onclick = () => { if (own && spots[own.key]) centerOn(spots[own.key].x,spots[own.key].y,2.1); };
+    const media = matchMedia('(prefers-reduced-motion: reduce)');
+    const vis = () => { if (document.hidden || media.matches || document.documentElement.dataset.motion === 'off') svg.pauseAnimations?.(); else svg.unpauseAnimations?.(); };
+    document.addEventListener('visibilitychange', vis); media.addEventListener('change',vis);
+    const motion = new MutationObserver(vis); motion.observe(document.documentElement,{attributes:true,attributeFilter:['data-motion']}); vis();
+    root.__dispose = () => { camera.dispose(); motion.disconnect(); media.removeEventListener('change',vis); document.removeEventListener('visibilitychange',vis); };
+    let entering = false;
     const enter = async (key) => {
       const b = data.buildings.find((x) => x.key === key); if (!b) return;
       ctx.ui.cityBuilding = key;
-      const { openInterior } = await import('../interior.js');
-      openInterior(ctx, b, data);
+      if (entering || document.querySelector('.interior')) return;
+      entering = true;
+      try { const { openInterior } = await import('../interior.js'); if (root.isConnected) await openInterior(ctx, b, data); }
+      catch (e) { toast(e.message, 'bad'); } finally { entering = false; }
     };
-    on(svg, 'click', '.bld', (e, t) => { if (!dragged) enter(t.dataset.key); });
-    on(svg, 'keydown', '.bld', (e, t) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); enter(t.dataset.key); } });
-    on(root, 'click', '[data-focus]', (e, t) => { const s = spots[t.dataset.focus]; if (s) centerOn(s.x, s.y, 2.4); enter(t.dataset.focus); });
+    const select = (key) => {
+      if (!isV2()) return enter(key);
+      const b = data.buildings.find(x => x.key === key); if (!b) return;
+      ctx.ui.cityBuilding = key;
+      svg.querySelectorAll('.bld').forEach(el => el.classList.toggle('sel', el.dataset.key === key));
+      root.querySelectorAll('[data-focus]').forEach(el => el.setAttribute('aria-pressed', String(el.dataset.focus === key)));
+      const ready = b.tasks.filter(t => t.ready && !t.blocked).length;
+      mount(root.querySelector('#citySelection'), html`<div class="city-selection-icon">${icon(b.icon || 'landmark')}</div><span class="city-eyebrow">${b.own ? 'DEIN BESITZ' : 'ÖFFENTLICHER ORT'}</span><h3>${b.name}</h3><p>${!data.here ? 'Du besuchst diese Stadt. Aktionen sind an deinem Wohnort verfügbar.' : ready ? `${ready} Aufgaben für dich bereit` : 'Entdecke die Möglichkeiten in diesem Gebäude.'}</p><button class="btn primary" id="cityEnter">${icon('arrow-right')} Gebäude betreten</button>`);
+      root.querySelector('#cityEnter').onclick = () => enter(key);
+      root.querySelector('.bl-panel').scrollTop = 0;
+      if (matchMedia('(max-width:650px) and (orientation:portrait)').matches) root.querySelector('#citySelection').scrollIntoView({ block:'nearest', behavior:media.matches || document.documentElement.dataset.motion === 'off' ? 'instant' : 'smooth' });
+    };
+    root.querySelector('#citySearch').oninput = e => {
+      const q = e.target.value.trim().toLocaleLowerCase('de'); let count = 0;
+      root.querySelectorAll('.bl-item').forEach(el => { el.hidden = !el.textContent.toLocaleLowerCase('de').includes(q); if (!el.hidden) count++; });
+      root.querySelector('.city-no-results').hidden = count > 0;
+    };
+    on(svg, 'click', '.bld', (e, t) => { if (!camera.dragged) select(t.dataset.key); });
+    on(svg, 'keydown', '.bld', (e, t) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(t.dataset.key); } });
+    on(root, 'click', '[data-focus]', (e, t) => { const s = spots[t.dataset.focus]; if (s) centerOn(s.x, s.y, 2.4); select(t.dataset.focus); });
     bindEcon(root, ctx, data.city.id);
     bindDirectory(root, ctx, data.city.id);
     on(root, 'click', '[data-go]', (e, t) => ctx.go(t.dataset.go));

@@ -69,7 +69,7 @@ export async function ensureWorld(ctx, force = false) {
 
 // Escape closes the management frame only when no other dialog/menu consumes it.
 document.addEventListener('keydown', (e) => {
-  if (e.key !== 'Escape' || e.defaultPrevented || !isV2() || document.querySelector('.modal-backdrop, .sim-utility[open]')) return;
+  if (e.key !== 'Escape' || e.defaultPrevented || !isV2() || document.querySelector('.modal-backdrop, .sim-utility[open], .interior')) return;
   const close = document.querySelector('#sim-window:not([hidden]) [data-sim-close]');
   if (close) { e.preventDefault(); close.click(); }
 });

@@ -53,6 +53,8 @@ app.get('/api/city',(req,res)=>{
 });
 app.get('/api/social/leaderboard',(_,res)=>res.json({ok:true,cats:[{key:'wealth',label:'Vermögen'}],cat:'wealth',scope:'all',rows:[],total:0,hint:'Testwelt',unit:'money'}));
 app.post('/api/action/buyFood',(req,res)=>{view.meters.fridge=100;res.json({ok:true,view,coins:25,efsPool:30,message:'Einkauf abgeschlossen.'});});
+app.post('/api/action/taskStart',(_,res)=>res.json({ok:true,view}));
+app.post('/api/action/taskFinish',(_,res)=>res.json({ok:true,view,message:'Aufgabe abgeschlossen.',level:'good'}));
 app.post('/api/action/collect',(_,res)=>res.json({ok:true,view,coins:25,efsPool:40,message:'+10 EFS'}));
 app.get('/api/reputation',(_,res)=>res.json({ok:true,level:0,localLevel:0,score:0,top:[],ledger:[],progress:{next:10,pct:0}}));
 app.use('/api',(_,res)=>res.json({ok:true,enabled:false,rows:[],items:[]}));

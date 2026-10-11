@@ -36,6 +36,9 @@ export function buildAerial({ cityId, name, tier, era, buildings, aerial, select
   let out = '';
   const defs = `<defs><filter id="grain"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="${cityId}"/><feColorMatrix values="0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 .22 0"/></filter>
   <filter id="soft"><feGaussianBlur stdDeviation="3"/></filter>
+  <linearGradient id="city-wall" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#ddd1af"/><stop offset="1" stop-color="#8d8871"/></linearGradient>
+  <radialGradient id="city-tree" cx=".3" cy=".25" r=".8"><stop stop-color="#92a76b"/><stop offset=".45" stop-color="#567b44"/><stop offset="1" stop-color="#29462c"/></radialGradient>
+  <pattern id="city-paving" width="12" height="8" patternUnits="userSpaceOnUse"><rect width="12" height="8" fill="#aaab94"/><path d="M0 0h12M0 4h12M6 0v4M0 4v4" stroke="#737d69" stroke-width=".6" opacity=".5"/></pattern>
   <pattern id="rt" width="7" height="7" patternUnits="userSpaceOnUse"><path d="M0 3.5h7M3.5 0v3.5" stroke="#000" stroke-opacity=".2" stroke-width=".9"/></pattern>
   <pattern id="grassP" width="23" height="23" patternUnits="userSpaceOnUse"><circle cx="4" cy="6" r="1.1" fill="#fff" fill-opacity=".1"/><circle cx="15" cy="12" r="1.3" fill="#000" fill-opacity=".1"/><circle cx="9" cy="19" r="1" fill="#fff" fill-opacity=".08"/><circle cx="20" cy="3" r="1.2" fill="#000" fill-opacity=".08"/></pattern>
   <radialGradient id="lamp"><stop offset="0" stop-color="#ffd58a" stop-opacity=".85"/><stop offset="1" stop-color="#ffd58a" stop-opacity="0"/></radialGradient>
@@ -97,6 +100,7 @@ export function buildAerial({ cityId, name, tier, era, buildings, aerial, select
     let roads = '';
     for (const x of xs) { const wd = mainX.has(x) ? 26 : 14; roads += `<rect x="${x - wd / 2}" y="0" width="${wd}" height="${H}" fill="${p.road}"/>`; if (mainX.has(x)) roads += `<line x1="${x}" y1="0" x2="${x}" y2="${H}" stroke="${p.roadEdge}" stroke-width="1.5" stroke-dasharray="14 12" opacity=".7"/>`; }
     for (const y of ys) { const wd = mainY.has(y) ? 26 : 14; roads += `<rect x="0" y="${y - wd / 2}" width="${W}" height="${wd}" fill="${p.road}"/>`; if (mainY.has(y)) roads += `<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="${p.roadEdge}" stroke-width="1.5" stroke-dasharray="14 12" opacity=".7"/>`; }
+    out += '<g class="city-depth" opacity=".65">' + xs.map(x => `<path d="M${x} 0V${H}" stroke="#b9b9a0" stroke-width="${mainX.has(x) ? 34 : 21}"/>`).join('') + ys.map(y => `<path d="M0 ${y}H${W}" stroke="#b9b9a0" stroke-width="${mainY.has(y) ? 34 : 21}"/>`).join('') + '</g>';
     out += roads;
     // Brücken-Geländer dort, wo Straßen den Fluss kreuzen
     if (hasRiver) for (const x of xs) { const q = river.reduce((m, pt) => (Math.abs(pt[0] - x) < Math.abs(m[0] - x) ? pt : m), river[0]); const wd = mainX.has(x) ? 26 : 14; out += `<rect x="${x - wd / 2 - 2}" y="${q[1] - 46}" width="${wd + 4}" height="92" fill="none" stroke="#d9d4c7" stroke-width="2" opacity=".8"/>`; }
@@ -126,6 +130,9 @@ export function buildAerial({ cityId, name, tier, era, buildings, aerial, select
         if (ww < 8 || hh < 8) continue;
         const roof = industrial ? p.industrial : p.roofs[Math.floor(r() * p.roofs.length)];
         out += shadow(x, y, ww, hh) + `<rect x="${x}" y="${y}" width="${ww}" height="${hh}" fill="${roof}"/>`;
+        out += `<g class="city-depth"><path d="M${x} ${y+hh}h${ww}v7h${-ww}z" fill="url(#city-wall)"/><path d="M${x+ww} ${y}l5 7v${hh}l-5 -7z" fill="#6f7668"/>`;
+        for (let k=4; k<ww-3; k+=10) out += `<rect x="${x+k}" y="${y+hh+2}" width="3" height="3.5" fill="#344444"/>`;
+        out += '</g>';
         if (gabled && !industrial) out += `<rect x="${x}" y="${y}" width="${ww}" height="${hh}" fill="url(#rt)"/><rect x="${x}" y="${y}" width="${ww}" height="${hh / 2}" fill="#fff" opacity=".13"/><line x1="${x}" y1="${y + hh / 2}" x2="${x + ww}" y2="${y + hh / 2}" stroke="#000" stroke-opacity=".3" stroke-width="1.4"/>`;
         else if (era >= 4 && r() < 0.3) out += `<rect x="${x + ww * 0.12}" y="${y + hh * 0.15}" width="${ww * 0.76}" height="${hh * 0.7}" fill="${era === 5 ? '#183c55' : '#2d4a63'}" opacity=".55"/>`;
         else out += `<rect x="${x + 2}" y="${y + 2}" width="${ww - 4}" height="${hh - 4}" fill="none" stroke="#000" stroke-opacity=".18"/>`;
@@ -133,7 +140,14 @@ export function buildAerial({ cityId, name, tier, era, buildings, aerial, select
     }
     // Bäume entlang der Straßen
     for (let i = 0; i < 220; i++) { const onX = r() < 0.5; const px = onX ? xs[Math.floor(r() * xs.length)] + (r() < 0.5 ? -12 : 12) : r() * W; const py = onX ? r() * H : ys[Math.floor(r() * ys.length)] + (r() < 0.5 ? -12 : 12); if (hasRiver && nearRiver(river, px, py, 44)) continue; out += `<circle cx="${px}" cy="${py}" r="${3 + r() * 4}" fill="#2c5624" opacity=".75"/>`; }
-    out += `<rect width="${W}" height="${H}" filter="url(#grain)" opacity=".7"/><rect width="${W}" height="${H}" fill="url(#vig)"/>`;
+    const trees = rng(`canopy:${cityId}`);
+    out += '<g class="city-depth" pointer-events="none">';
+    for (const block of blocks.filter(b => b.park)) {
+      out += `<path d="M${block.x0} ${block.my}Q${block.mx} ${block.y0} ${block.x1} ${block.my}M${block.mx} ${block.y0}Q${block.x1} ${block.my} ${block.mx} ${block.y1}" fill="none" stroke="#b3b191" stroke-width="5"/>`;
+      for (let n=0;n<12;n++) { const tx=block.x0+14+trees()*(block.x1-block.x0-28),ty=block.y0+14+trees()*(block.y1-block.y0-28),tr=6+trees()*7; out += `<ellipse cx="${tx+6}" cy="${ty+8}" rx="${tr+2}" ry="${tr*.7}" fill="#142a1c" opacity=".3"/><circle cx="${tx}" cy="${ty}" r="${tr}" fill="url(#city-tree)"/>`; }
+    }
+    out += '</g>';
+    out += `<rect class="city-grain" width="${W}" height="${H}" filter="url(#grain)" opacity=".7"/><rect width="${W}" height="${H}" fill="url(#vig)"/>`;
   }
 
   // ---- Landmarken (anklickbar)
@@ -146,6 +160,7 @@ export function buildAerial({ cityId, name, tier, era, buildings, aerial, select
     const own = b.own; const sel = selected === b.key;
     let g = `<g class="bld ${own ? 'own' : ''} ${sel ? 'sel' : ''}" data-key="${esc(b.key)}" tabindex="0" role="button" aria-label="${esc(b.name)}">`;
     g += `<rect class="hit" x="${s.blk.x0}" y="${s.blk.y0}" width="${s.blk.x1 - s.blk.x0}" height="${s.blk.y1 - s.blk.y0}" fill="transparent"/>`;
+    g += `<g class="city-depth"><rect x="${x-9}" y="${y-7}" width="${ww+20}" height="${hh+33}" rx="3" fill="url(#city-paving)"/><path d="M${s.x} ${y+hh+24}V${s.blk.y1}" stroke="#b6b49b" stroke-width="12"/><path d="M${x+4} ${y+hh+18}h${ww+14}l13 -8v${-hh}" fill="none" stroke="#132b22" stroke-width="14" opacity=".2"/></g>`;
     g += `<rect x="${x + 9}" y="${y + 11}" width="${ww}" height="${hh}" fill="#000" opacity=".35" filter="url(#soft)"/>`;
     const roofCol = b.abandoned ? '#5b5348' : st.roof;
     if (st.ell) g += `<path d="M${x} ${y}h${ww}v${hh * 0.45}h${-ww * 0.4}v${hh * 0.55}h${-ww * 0.6}z" fill="${roofCol}"/>`;
@@ -159,9 +174,13 @@ export function buildAerial({ cityId, name, tier, era, buildings, aerial, select
     if (b.type === 'biz' && !b.abandoned) g += `<rect x="${x + ww * 0.2}" y="${y + hh * 0.2}" width="${ww * 0.6}" height="${hh * 0.6}" fill="#fff" opacity=".18"/>`;
     if (b.abandoned) for (let k = 0; k < 6; k++) g += `<line x1="${x + k * ww / 5}" y1="${y}" x2="${x + k * ww / 5 - 20}" y2="${y + hh}" stroke="#8a6a3a" stroke-width="5" opacity=".6"/>`;
     if (own) g += `<rect class="ownring" x="${x - 8}" y="${y - 8}" width="${ww + 16}" height="${hh + 16}" rx="6" fill="none" stroke="#f3cd7f" stroke-width="4" stroke-dasharray="12 8"/>`;
+    // Sunlit façades, individual windows and roof detail add height without moving the map anchor.
+    g += `<g class="city-depth" pointer-events="none"><path d="M${x} ${y+hh}h${ww}v14h${-ww}z" fill="url(#city-wall)"/><path d="M${x+ww} ${y}l8 14v${hh}l-8 -14z" fill="#727963"/><rect x="${x}" y="${y}" width="${ww}" height="${hh}" fill="url(#rt)" opacity=".45"/><path d="M${x} ${y+hh/2}H${x+ww}" stroke="#f4d8b3" stroke-width="2" opacity=".5"/>`;
+    for (let k=8;k<ww-8;k+=15) g += `<rect x="${x+k}" y="${y+hh+3}" width="6" height="7" fill="${hour<7 || hour>=19 ? '#f6cd82' : '#3a5659'}" stroke="#d3c9ac" stroke-width="1"/>`;
+    g += `<rect x="${s.x-5}" y="${y+hh+3}" width="10" height="11" fill="#49564b"/><path d="M${s.x-9} ${y+hh+15}h18m-21 3h24" stroke="#d8d4b9" stroke-width="2"/></g>`;
     // Pin + Label
     const py = y - 30;
-    g += `<g class="pin" transform="translate(${s.x} ${py})"><circle r="22" class="pinbg"/><svg x="-12" y="-12" width="24" height="24" class="pinic"><use href="/img/icons.svg#i-${esc(b.icon || 'landmark')}"/></svg><path d="M-7 18 0 29 7 18z" class="pintail"/></g>`;
+    g += `<g class="pin" style="--px:${s.x}px;--py:${py}px" transform="translate(${s.x} ${py})"><circle r="22" class="pinbg"/><svg x="-12" y="-12" width="24" height="24" class="pinic"><use href="/img/icons.svg#i-${esc(b.icon || 'landmark')}"/></svg><path d="M-7 18 0 29 7 18z" class="pintail"/></g>`;
     g += `<text class="blabel" x="${s.x}" y="${py - 32}" text-anchor="middle">${esc(b.name)}</text>`;
     g += '</g>';
     marks += g;

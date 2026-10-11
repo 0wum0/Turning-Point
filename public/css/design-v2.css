@@ -401,3 +401,149 @@
 @media(max-width:650px) {
   :root[data-game-design="v2"] body.game .sim-world .sim-map-toolbar { padding:0;width:165px; }
 }
+
+/* City workspace: one clear navigation level, generous scene and readable inspector. */
+.sim-city-only, .city-depth { display:none; }
+:root[data-game-design="v2"] body.game .sim-city-only { display:block; }
+:root[data-game-design="v2"] body.game .city-depth { display:initial; }
+:root[data-game-design="v2"] body.game .sim-city-hidden { display:none !important; }
+:root[data-game-design="v2"] body.game .sim-window:has(.page[data-route="city"]) { background:#202d2e; }
+:root[data-game-design="v2"] body.game .sim-window:has(.page[data-route="city"]) :is(.sim-window-bar,.sim-window-footer,#sim-profile) { display:none; }
+:root[data-game-design="v2"] body.game .sim-window:has(.page[data-route="city"]) .sim-window-body { display:block; min-height:0; flex:1; overflow:hidden; }
+:root[data-game-design="v2"] body.game .sim-window:has(.page[data-route="city"]) #sim-tabs { padding-left:12px; }
+:root[data-game-design="v2"] body.game .sim-window .page[data-route="city"] { display:flex; flex-direction:column; height:100%; padding:20px; gap:14px; overflow:auto; }
+:root[data-game-design="v2"] body.game .page[data-route="city"] > .panel-head { margin:0; padding:0; flex:none; gap:12px; }
+:root[data-game-design="v2"] body.game .page[data-route="city"] > .panel-head h2 { font-size:clamp(22px,2.4vw,32px); letter-spacing:-.025em; }
+:root[data-game-design="v2"] body.game .page[data-route="city"] > .panel-head p { font-size:14px; line-height:1.5; margin-top:5px; }
+:root[data-game-design="v2"] body.game .page[data-route="city"] :is(.btn,.chip,.small) { font-size:14px; }
+:root[data-game-design="v2"] body.game .page[data-route="city"] .btn { min-height:44px; white-space:normal; }
+:root[data-game-design="v2"] body.game .page[data-route="city"] > .sim-guide { order:5; flex:none; }
+:root[data-game-design="v2"] body.game .sim-city-nav { display:flex; flex:none; gap:8px; border-bottom:1px solid #ffffff18; padding-bottom:12px; overflow:auto; }
+:root[data-game-design="v2"] body.game .sim-city-nav button { font:600 14px var(--font-ui); color:#c2d0cb; background:#ffffff07; border:1px solid transparent; padding:12px 18px; border-radius:10px; min-height:44px; white-space:nowrap; cursor:pointer; }
+:root[data-game-design="v2"] body.game .sim-city-nav button[aria-pressed="true"] { background:#77e9b51a; border-color:#77e9b55c; color:#a4f4cf; }
+:root[data-game-design="v2"] body.game .sim-window .city-layout { display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:18px; flex:1 1 420px; min-height:360px; grid-template-rows:minmax(0,1fr); align-items:stretch; margin:0; }
+:root[data-game-design="v2"] body.game .sim-window .aerial-card { position:relative; padding:0; border-radius:16px; border:1px solid #aec8aa55; overflow:hidden; min-width:0; background:#41543b; box-shadow:inset 0 0 90px #162b2933,0 12px 36px #0003; }
+:root[data-game-design="v2"] body.game .sim-window #aerialHost { height:100%; }
+:root[data-game-design="v2"] body.game .sim-window #aerialHost svg.aerial { display:block; height:100%; min-height:420px; width:100%; cursor:grab; touch-action:none; }
+:root[data-game-design="v2"] body.game .sim-window #aerialHost svg.aerial:active { cursor:grabbing; }
+:root[data-game-design="v2"] body.game .sim-window .aerial-card .map-tools { top:16px; right:16px; left:auto; gap:6px; }
+:root[data-game-design="v2"] body.game .sim-window .aerial-card .map-tools .btn { width:44px; height:44px; border-radius:10px; background:#203333ed; backdrop-filter:blur(12px); }
+:root[data-game-design="v2"] body.game .aerial-hint { position:absolute; bottom:14px; left:14px; border:1px solid #ffffff26; border-radius:8px; padding:8px 12px; background:#1e302ded; color:#e1e8da; pointer-events:none; }
+:root[data-game-design="v2"] body.game .aerial .blabel { font-size:15px; stroke-width:4px; }
+:root[data-game-design="v2"] body.game .aerial.zoomed .bld:not(.sel):not(:hover):not(:focus) .blabel { opacity:0; }
+:root[data-game-design="v2"] body.game .aerial .bld.sel .pinbg { fill:#b7f5cf; stroke:#f5fff3; }
+:root[data-game-design="v2"] body.game .aerial .bld.sel .pinic { color:#143d2c; }
+:root[data-game-design="v2"] body.game .sim-window .bl-panel { position:static; margin:0; min-height:0; max-height:none; overflow:auto; padding:18px; font-size:15px; border-radius:16px; background:linear-gradient(145deg,#334440,#263432); border:1px solid #acc8b82d; scrollbar-width:thin; }
+:root[data-game-design="v2"] body.game .city-catalog-head h3 { font-size:22px; margin:5px 0 16px; }
+.city-eyebrow { font-size:11px; letter-spacing:.13em; font-weight:700; color:#a5c9b6; }
+:root[data-game-design="v2"] body.game #citySearch { width:100%; min-height:46px; font-size:16px; padding:12px; border-radius:9px; background:#152925; border:1px solid #829a8c66; }
+:root[data-game-design="v2"] body.game .bl-panel .card-title { font-size:13px; color:#b5c8bf; margin:22px 0 10px; line-height:1.5; }
+:root[data-game-design="v2"] body.game .bl-list { display:grid; gap:6px; }
+:root[data-game-design="v2"] body.game .bl-item { min-height:54px; padding:12px; border:1px solid #ffffff10; border-radius:9px; gap:12px; font-size:15px; line-height:1.4; background:#ffffff05; text-align:left; }
+:root[data-game-design="v2"] body.game .bl-item[aria-pressed="true"] { background:#6eddaa18; border-color:#81e3b18c; color:#bdffdc; }
+:root[data-game-design="v2"] body.game .bl-item[hidden], :root[data-game-design="v2"] body.game .city-no-results[hidden] { display:none; }
+:root[data-game-design="v2"] body.game #citySelection:not(:empty) { margin-top:16px; padding:18px; border-radius:12px; background:linear-gradient(140deg,#41614d,#243b31); border:1px solid #a2d8af66; animation:city-reveal .22s ease-out; }
+:root[data-game-design="v2"] body.game #citySelection h3 { font-size:22px; margin:8px 0; overflow-wrap:anywhere; }
+:root[data-game-design="v2"] body.game #citySelection p { font-size:14px; line-height:1.6; margin:8px 0 16px; color:#d6e5db; }
+:root[data-game-design="v2"] body.game #citySelection .btn { width:100%; min-height:48px; }
+.city-selection-icon { float:right; color:#eddaa0; }
+.city-selection-icon svg { width:28px; height:28px; }
+:root[data-game-design="v2"] body.game .page[data-route="city"] :is(#dir,#econBox) { padding:24px; border-radius:14px; font-size:15px; }
+
+/* Interior: dedicated scene viewport and action console; no panels across the room. */
+.sim-interior { display:grid; grid-template-columns:minmax(0,1fr) 380px; grid-template-rows:auto minmax(0,1fr); background:#192a2a; color:#ecf4ee; padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+.sim-interior .int-top { position:static; grid-column:1/-1; padding:16px 24px; background:linear-gradient(#354744,#233431); border-bottom:1px solid #a4c2af33; min-width:0; }
+.sim-interior .int-title { gap:6px; min-width:0; line-height:1.35; }
+.sim-interior .int-title b { font-size:24px; }
+.sim-interior .int-title .small { font-size:13px; color:#c1d3c8; }
+.sim-interior .btn, .sim-interior .btn.sm { font-size:14px; min-height:44px; border-radius:9px; line-height:1.5; }
+.sim-interior .int-stage { position:relative; min-width:0; min-height:0; overflow:hidden; background:radial-gradient(ellipse at 45% 40%,#69705b,#222f2e 75%); }
+.sim-interior canvas { position:absolute; width:100%; height:100%; inset:0; }
+.sim-interior .int-sidebar { min-width:0; min-height:0; background:linear-gradient(145deg,#30423d,#22312d); border-left:1px solid #a8c8b733; padding:20px; overflow:auto; scrollbar-width:thin; }
+.sim-interior .int-navigation { display:flex; gap:6px; padding:5px; border-radius:12px; background:#132520; margin-bottom:24px; }
+.sim-interior .int-navigation button { flex:1; font:600 15px var(--font-ui); min-height:44px; padding:10px; border:1px solid transparent; border-radius:8px; color:#b9cec1; background:transparent; cursor:pointer; }
+.sim-interior .int-navigation button[aria-pressed="true"] { color:#d4ffe5; border-color:#81cfa755; background:#6ccb9622; }
+.sim-interior .int-object-intro h2 { font-size:25px; line-height:1.2; margin:8px 0 12px; }
+.sim-interior .int-object-intro p { font-size:15px; line-height:1.6; color:#bcd0c4; margin:0 0 22px; }
+.sim-interior .int-object-list { display:grid; gap:10px; }
+.sim-interior .int-object { width:100%; display:flex; align-items:center; gap:12px; text-align:left; min-height:70px; padding:14px; border:1px solid #b6d0c02b; border-radius:12px; background:linear-gradient(120deg,#ffffff09,#ffffff03); color:#f2f7ef; font:600 15px/1.5 var(--font-ui); cursor:pointer; transition:background .18s,border-color .18s; }
+.sim-interior .int-object:hover { border-color:#98e9bc; background:#8fe7af17; }
+.sim-interior .int-object > span:nth-child(2) { flex:1; }
+.sim-interior .int-object small { display:block; font-size:13px; font-weight:400; color:#b5c9bd; }
+.sim-interior .int-object-symbol { display:grid; place-items:center; width:36px; height:36px; border-radius:10px; background:#dbc68c17; color:#e0d09c; }
+.sim-interior .int-object-symbol svg { width:22px; height:22px; }
+.sim-interior :is(.int-panel,.int-tasks) { position:static; width:auto; max-height:none; margin:0; padding:0; transform:none; box-shadow:none; border:0; border-radius:0; background:none; overflow:visible; }
+.sim-interior .int-tasks { display:none; }
+.sim-interior[data-room-tab="tasks"] .int-tasks { display:block; }
+.sim-interior[data-room-tab="tasks"] .int-objects, .sim-interior.has-selection .int-objects { display:none; }
+.sim-interior .int-task { display:grid; grid-template-columns:1fr auto; gap:12px; padding:18px 0; font-size:16px; align-items:start; }
+.sim-interior .int-task .grow { grid-column:1/-1; }
+.sim-interior .int-task .small { margin-top:8px; font-size:14px; line-height:1.6; }
+.sim-interior .int-task .chip { font-size:12px; align-self:center; white-space:normal; }
+.sim-interior .int-task .btn { font-size:13px; }
+.sim-interior .int-panel .serif { font-size:24px !important; }
+.sim-interior .int-panel .act { padding:18px; font-size:16px; border-radius:12px; min-height:72px; background:#ffffff08; }
+.sim-interior .int-panel .act .small { font-size:14px; line-height:1.6; margin-top:7px; color:#bfd2c5; }
+.sim-interior .int-panel .act:disabled { opacity:.62; }
+.sim-interior .int-camera { position:absolute; bottom:44px; left:20px; display:flex; gap:8px; }
+.sim-interior .int-camera .btn { background:#20332deb; backdrop-filter:blur(12px); min-width:44px; }
+.sim-interior .int-stage-caption { position:absolute; bottom:16px; left:20px; color:#d2e2d8; font-size:12px; text-shadow:0 1px 4px #000; pointer-events:none; }
+.sim-interior .int-mini { top:96px; left:20px; right:400px; transform:none; flex-wrap:wrap; font-size:15px; border-radius:12px; z-index:2; line-height:1.5; }
+.sim-interior.int-no-3d .int-camera, .sim-interior.int-no-3d .int-stage-caption { display:none; }
+.int-fallback-message { padding:36px; max-width:620px; margin:auto; align-self:center; line-height:1.65; }
+.int-fallback-message h2 { font-size:clamp(24px,4vw,42px); margin:12px 0; }
+.int-fallback-objects { position:absolute; top:80px; right:20px; max-height:65%; width:300px; overflow:auto; display:grid; gap:8px; }
+.int-fallback-objects button { padding:14px; text-align:left; }
+@keyframes city-reveal { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+@media (max-width:1050px) {
+ :root[data-game-design="v2"] body.game .sim-window .page[data-route="city"] { padding:12px; gap:10px; }
+ :root[data-game-design="v2"] body.game .sim-window .city-layout { grid-template-columns:minmax(0,1fr) 270px; gap:12px; }
+ :root[data-game-design="v2"] body.game .sim-window .bl-panel { padding:14px; }
+ .sim-interior { grid-template-columns:minmax(0,1fr) 320px; }
+ .sim-interior .int-sidebar { padding:16px; }
+ .sim-interior .int-mini { right:340px; }
+}
+@media (max-width:650px) and (orientation:portrait) {
+ :root[data-game-design="v2"] body.game .sim-window .city-layout { display:flex; flex-direction:column; flex:none; min-height:0; }
+ :root[data-game-design="v2"] body.game .sim-window .aerial-card { flex:none; height:40svh; min-height:280px; }
+ :root[data-game-design="v2"] body.game .sim-window #aerialHost svg.aerial { min-height:0; }
+ :root[data-game-design="v2"] body.game .sim-window .bl-panel { overflow:visible; padding:18px; }
+ :root[data-game-design="v2"] body.game .page[data-route="city"] > .panel-head p { display:none; }
+ :root[data-game-design="v2"] body.game .page[data-route="city"] > .panel-head { align-items:center; flex-wrap:wrap; }
+ :root[data-game-design="v2"] body.game .page[data-route="city"] .sim-city-nav button { padding:10px 12px; }
+ :root[data-game-design="v2"] body.game .page[data-route="city"] :is(#dir,#econBox) { padding:16px; }
+ .sim-interior { grid-template-columns:1fr; grid-template-rows:auto minmax(190px,38svh) minmax(0,1fr); }
+ .sim-interior .int-top { padding:12px; gap:10px; }
+ .sim-interior .int-title b { font-size:18px; }
+ .sim-interior .int-title .small { display:none; }
+ .sim-interior #intTasksBtn { display:none; }
+ .sim-interior .int-sidebar { border-left:0; border-top:1px solid #a8c8b755; padding:16px 18px; }
+ .sim-interior .int-navigation { margin-bottom:18px; }
+ .sim-interior .int-object-intro h2 { font-size:22px; }
+ .sim-interior .int-object-intro p { margin-bottom:16px; }
+ .sim-interior .int-mini { top:80px; left:12px; right:12px; padding:12px; }
+ .sim-interior .int-camera { left:12px; bottom:34px; }
+ .sim-interior .int-stage-caption { left:12px; bottom:10px; font-size:11px; }
+}
+@media (max-height:550px) and (orientation:landscape) {
+ :root[data-game-design="v2"] body.game .page[data-route="city"] > .panel-head p { display:none; }
+ :root[data-game-design="v2"] body.game .sim-window .city-layout { min-height:240px; }
+ :root[data-game-design="v2"] body.game .sim-window #aerialHost svg.aerial { min-height:240px; }
+ :root[data-game-design="v2"] body.game .sim-window .page[data-route="city"] { padding:10px; }
+ .sim-interior { grid-template-columns:minmax(0,1fr) 300px; }
+ .sim-interior .int-top { padding:8px 14px; }
+ .sim-interior .int-title b { font-size:18px; }
+ .sim-interior .int-title .small { display:none; }
+ .sim-interior .int-mini { top:70px; right:314px; left:14px; font-size:13px; }
+ .sim-interior .int-sidebar { padding:12px 16px; }
+}
+@media (prefers-reduced-motion:reduce) { .sim-interior, :root[data-game-design="v2"] body.game #citySelection { animation:none !important; } }
+:root[data-motion="off"] .sim-interior, :root[data-motion="off"] #citySelection { animation:none !important; }
+:root[data-game-design="v2"] body.game .sim-interior .btn { min-height:44px; border-radius:9px; padding:10px 14px; font-size:14px; line-height:1.5; }
+:root[data-game-design="v2"] body.game .sim-interior .int-panel .act { padding:18px; font-size:16px; min-height:72px; border-radius:12px; }
+:root[data-game-design="v2"] body.game .sim-interior .int-camera .btn { background:#20332ded; }
+@media (max-width:650px) and (orientation:portrait) {
+ :root[data-game-design="v2"] body.game .sim-window .bl-panel { width:100%; }
+}
+/* Fine roof and ground patterns carry texture without a viewport-sized animated noise filter. */
+:root[data-game-design="v2"] body.game .aerial .city-grain { display:none; }

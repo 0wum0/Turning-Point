@@ -118,6 +118,7 @@ export function decoratePageDesign(root, ctx) {
     const summary = document.createElement('summary'); summary.innerHTML = `${icon('lightbulb').__raw} ${text('Spielhilfe', 'Game help')} <span>⌄</span>`;
     intro.before(details); details.append(summary, intro);
   }
+  if (root.dataset.route === 'city') { decorateCity(root, ctx); return; }
   if (workspace || ['map', 'newspaper', 'social'].includes(root.dataset.route)) return;
   // Flatten only top-level multi-section grids; never split a form or a card.
   const grids = [];
@@ -186,4 +187,20 @@ export function decoratePageDesign(root, ctx) {
       requestAnimationFrame(() => { if (target.isConnected) { target.scrollIntoView({ block: 'nearest' }); target.focus({ preventScroll: true }); } });
     }
   }
+}
+
+// City has its own spacious workspace; retain the original live nodes for Classic.
+function decorateCity(root, ctx) {
+  if (root.querySelector('.sim-city-nav')) return;
+  const sections = [['city', '.city-layout', 'Stadt erkunden'], ['directory', '#dir', 'Stadtverzeichnis'], ['economy', '#econBox', 'Preisbarometer']].map(([id, selector, label]) => ({ id, el: root.querySelector(selector), label })).filter(x => x.el);
+  const nav = document.createElement('nav'); nav.className = 'sim-city-nav'; nav.setAttribute('aria-label', 'Stadtbereiche');
+  root.querySelector('.city-layout').before(nav);
+  const choose = id => {
+    ctx.ui.cityTab = id;
+    sections.forEach(x => x.el.classList.toggle('sim-city-hidden', x.id !== id));
+    nav.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.cityTab === id)));
+  };
+  sections.forEach(x => { const b = document.createElement('button'); b.type = 'button'; b.dataset.cityTab = x.id; b.textContent = x.label; b.onclick = () => choose(x.id); nav.append(b); });
+  root.__restoreSimulator = () => { sections.forEach(x => x.el.classList.remove('sim-city-hidden')); nav.remove(); root.querySelectorAll('.bl-item').forEach(x => { x.hidden = false; }); };
+  choose(sections.some(x => x.id === ctx.ui.cityTab) ? ctx.ui.cityTab : 'city');
 }

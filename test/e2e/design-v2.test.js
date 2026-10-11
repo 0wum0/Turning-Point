@@ -67,6 +67,7 @@ test('Simulator: production place density, every module, interactions and revers
     // Typed input and the actual original element survive both layout changes.
     await page.locator('[data-sim-group="map"]').click();
     await page.locator('[data-nav="city"]').click();
+    await page.locator('[data-city-tab="directory"]').click();
     await page.locator('#dirq').fill('Becker');
     await page.evaluate(() => { window.keptInput = document.getElementById('dirq'); });
     await change('classic');
