@@ -61,6 +61,7 @@ function absorb(world, cityId) {
 }
 
 /* ------------------------------------------------------------------ Risiken ------------------------------------------------------------------ */
+const EV_NAME = { accident: 'Unfall', robbery: 'Plünderung', pothole: 'Panne auf schlechter Straße', weather: 'Schnee und Unwetter', customs: 'Zollkontrolle', strike: 'Streik', quarantine: 'Quarantäne', smuggle: 'Zollkontrolle: Schmuggel entdeckt' };
 const RISK_NAME = {
   accident: 'Unfall', robbery: 'Plünderung', pothole: 'Schlagloch und Panne', weather: 'Schnee und Unwetter', customs: 'Zollkontrolle', strike: 'Streik im Verkehr', quarantine: 'Quarantäne', smuggle: 'Zoll umgangen – erwischt',
 };
@@ -348,15 +349,18 @@ function arrive(ctx, route, c) {
   const evs = trip.events.map((x) => x.key);
   logAdd(state, { route: route.id, no: trip.no, label, status: net >= 0 ? 'delivered' : 'loss', net, units: delivered, sent: trip.units, mode: trip.modeName, events: evs, days: state.day - trip.depart, squeeze, cargo: trip.cargo, revenue });
   // Meldung, Ruf, Spuren
-  const parts = [];
-  const names = { accident: 'Unfall', robbery: 'Plünderung', pothole: 'Panne auf schlechter Straße', weather: 'Schnee und Unwetter', customs: 'Zollkontrolle', strike: 'Streik', quarantine: 'Quarantäne', smuggle: 'Zollkontrolle: Schmuggel entdeckt' };
-  for (const ev of trip.events) parts.push(`${names[ev.key] || ev.key}${ev.loss ? ` (−${Math.round(ev.loss * 100)} % der Ladung)` : ev.delay ? ` (+${ev.delay} Tage)` : ''}`);
+  const gd = goods.good(route.good);
+  const evText = (ev) => { const nm = EV_NAME[ev.key] || ev.key; return ev.loss ? `${nm} (−${Math.round(ev.loss * 100)} % der Ladung)` : ev.delay ? `${nm} (+${ev.delay} Tage)` : nm; };
   const bad = net < 0 || trip.events.some((x) => x.loss || x.key === 'smuggle');
+  const info = ['Die Ladung wurde im Zielort verkauft, der Erlös liegt in der Firmenkasse.', squeeze > 0 ? 'Der Wettbewerb hat einen Teil der Preisspanne weggedrückt – so hoch ist die Rendite einer Route gedeckelt.' : 'Gewinn je Fahrt ist durch die Rendite-Obergrenze und die Last auf dem Paar begrenzt.'];
+  if (trip.events.length) info.push(`Unterwegs: ${trip.events.map(evText).join(', ')}`);
+  if (payout) info.push(`Die Transportversicherung zahlte ${money(state, world, payout)}.`);
+  info.push(bad ? 'Eine Transportversicherung ersetzt einen Teil verlorener Ladung.' : 'Die Route fährt weiter, solange sie sich lohnt.');
   notice(state, {
     level: net >= 0 && !trip.caught ? 'good' : 'warn', tab: 'trade',
-    title: net >= 0 ? `Fracht angekommen: ${label}` : `Fahrt mit Verlust: ${label}`,
-    text: `${delivered} von ${trip.units} ${goods.good(route.good).unit} geliefert. ${net >= 0 ? 'Gewinn' : 'Verlust'}: ${money(state, world, net)}${parts.length ? `. Unterwegs: ${parts.join(', ')}` : ''}${payout ? `. Die Transportversicherung zahlte ${money(state, world, payout)}.` : ''}`,
-    info: ['Die Ladung wurde im Zielort verkauft, der Erlös liegt in der Firmenkasse.', squeeze > 0 ? 'Der Wettbewerb hat einen Teil der Preisspanne weggedrückt – so hoch ist die Rendite einer Route gedeckelt.' : 'Gewinn je Fahrt ist durch die Rendite-Obergrenze und die Last auf dem Paar begrenzt.', bad ? 'Eine Transportversicherung ersetzt einen Teil verlorener Ladung.' : 'Die Route fährt weiter, solange sie sich lohnt.'],
+    title: net >= 0 ? `Fracht angekommen: ${gd.name}` : `Fahrt mit Verlust: ${gd.name}`,
+    text: net >= 0 ? `${delivered} von ${trip.units} ${gd.unit} ${gd.name} aus ${cityFrom ? cityFrom.name : '?'} in ${cityTo ? cityTo.name : '?'} geliefert. Gewinn: ${money(state, world, net)}.` : `${delivered} von ${trip.units} ${gd.unit} ${gd.name} aus ${cityFrom ? cityFrom.name : '?'} in ${cityTo ? cityTo.name : '?'} geliefert. Verlust: ${money(state, world, net)}.`,
+    info,
   });
   if (!bad) rep.queue(state, 'trade', 0.2, 'route_ok', `r${route.id}`);
   if (trip.stolen) { (state.pending.tradeEv || (state.pending.tradeEv = [])).push({ kind: 'theft', cityId: route.to, damageReal: Math.round((lostValue / idx) * 1), subject: c.name }); }
@@ -448,10 +452,12 @@ function suggest(world, state, c, opt = {}) {
     if (!e0.ok || !(e0.units >= 1)) continue;
     // Menge wählen: je größer die Ladung, desto stärker der Preisdruck – probiere Anteile der Kasse und nimm den besten Tagesgewinn
     let e = null;
-    for (const f of [1, 0.5, 0.25, 0.12, 0.06]) {
+    for (const f of [1, 0.5, 0.25, 0.12, 0.06, 0.03, 0.015, 0.007, 0.003]) {
       const u = Math.min(Math.max(1, Math.floor(units * f)), e0.maxUnits);
       const x = evaluate(world, state, c, { ...base, qty: u, interval: e0.cycleMin + 2 });
-      if (x.ok && x.cargo <= budget * 1.02 && x.cargo / idx >= minReal && (!e || x.perDay > e.perDay)) e = x;
+      if (!x.ok || x.cargo / idx < minReal) break;
+      if (x.cargo <= budget * 1.02 && (!e || x.perDay > e.perDay)) e = x;
+      else if (e && x.perDay < e.perDay * 0.8) break;
     }
     if (!e || e.net <= 0) continue;
     out.push({ good: o.gk, goodName: g.name, unit: g.unit, from: o.a.id, fromName: o.a.name, to: o.b.id, toName: o.b.name, qty: e.units, interval: e.interval, mode: e.mode.key, modeName: e.mode.name, days: e.mode.days, km: e.q.km,

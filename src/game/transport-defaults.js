@@ -59,7 +59,7 @@ module.exports = {
     insurancePct: 2.5, insureCoverPct: 70,
     ownFleetDiscountPct: 25,    // Eigener Fuhrpark (Speditionsbetrieb): Fracht so viel billiger
     carrierCostSharePct: 55,    // Anteil der Frachtzahlung, den ein Frachtführer für Treibstoff, Fahrer und Wartung selbst aufwendet
-    absorbShare: 0.5, impact: 0.25, impactMax: 0.35,
+    absorbShare: 2, impact: 0.2, impactMax: 0.3,
     retryDays: 2, maxWaitDays: 12, minCargoReal: 150,
     roomsPerVehicleCarrier: 3, roomsPerVehicleOther: 6,
     historyMax: 40,

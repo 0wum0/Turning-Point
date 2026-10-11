@@ -132,7 +132,7 @@ function modeAt(m, year) {
 
 /** Warum ein Verkehrsträger zwischen zwei Orten nicht geht (null = möglich). */
 function whyNot(m, a, b, year, ha, hb, unitKg) {
-  if (year < m.from) return `ab ${m.from}`;
+  if (year < m.from) return `gibt es erst ab ${m.from}`;
   if (year > m.to) return 'nicht mehr üblich';
   if (m.maxUnitKg && unitKg > m.maxUnitKg) return 'nur für leichte Waren';
   const need = { rail: 'rail', port: 'port', air: 'air', hyper: 'hyper' }[m.net];

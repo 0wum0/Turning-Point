@@ -321,7 +321,7 @@ async function offer(userId, input) {
     "INSERT INTO supply_contracts (seller_id, seller_company, buyer_id, buyer_company, proposer_id, good, qty, price_real, term_days, days_left, auto_renew, status, freight_real, freight_mode, lag_days, km, ship_mode, carrier_offer, carrier_user, carrier_firm, carrier_pct) VALUES (?,?,?,?,?,?,?,?,?,?,?, 'offer', ?,?,?,?,?,?,?,?,?)",
     [sellerFirm.user_id, sellerFirm.company_id, buyerFirm.user_id, buyerFirm.company_id, userId, goodKey, qty, price, term, term, input.auto ? 1 : 0, fr.perUnit || 0, farApart ? freightMode : 'buyer', fr.days || 0, fr.km || 0, fr.mode || null, carrier ? carrier.offer : null, carrier ? carrier.user : null, carrier ? carrier.firm : null, carrier ? carrier.pct : null]);
   const unit = g.unit;
-  const frText = farApart && fr.perUnit > 0 ? ` Fracht: ${Math.round(fr.km)} km, ${fr.days} Tage Lieferzeit, ${freightMode === 'seller' ? 'frei Haus (der Verkäufer zahlt)' : 'ab Werk (der Käufer zahlt)'}${carrier ? `, Frachtführer ${carrier.name}` : ''}.` : '';
+  const frText = farApart && fr.perUnit > 0 ? ` Fracht: ${Math.round(fr.km)} km, ${fr.days} Tage Lieferzeit, ${freightMode === 'seller' ? 'frei Haus (der Verkäufer zahlt)' : 'ab Werk (der Käufer zahlt)'}.${carrier ? ` Frachtführer: ${carrier.name}.` : ''}` : '';
   await social.sendSystemLetter(otherId, 'Lieferangebot', `${ps.name} bietet einen Liefervertrag an: ${role === 'sell' ? `${sellerFirm.name} liefert dir` : `${buyerFirm.name} möchte von dir`} ${g.name} (${Math.round(qty * 10) / 10} ${unit} pro Tag, ${term} Tage, ${Math.round(pct)} % des Marktpreises).${frText} Antworte unter „Unternehmen → Lieferverträge“.`, userId);
   live.publish('business', {}, otherId);
   return r.insertId;

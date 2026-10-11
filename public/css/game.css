@@ -568,3 +568,4 @@ html { scroll-padding-top: calc(var(--hud-h, 62px) + 10px); }
 .chips { display: flex; flex-wrap: wrap; gap: .35rem; }
 #trPol .pol { border: 1px solid var(--border); border-radius: 14px; padding: .65rem .8rem; background: color-mix(in srgb, var(--surface-2) 70%, transparent); }
 @media (max-width: 520px) { .route .tl-step span { display: none; } .route .tl-step { min-width: 1.6rem; } }
+.sup-auto[hidden], .field[hidden] { display: none !important; }

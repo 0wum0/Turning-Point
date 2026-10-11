@@ -53,7 +53,8 @@ async function reconcile(conn, user, state) {
     const row = byId.get(r.id);
     if (row && row.cancelled && !r.locked) {
       r.locked = true; r.active = false;
-      notice(state, { level: 'warn', tab: 'trade', title: 'Route angehalten', text: `Die Spielleitung hat die Route ${r.good} angehalten.${row.cancel_note ? ` Grund: ${row.cancel_note}` : ''} Eine laufende Fahrt kommt noch an.`, info: ['Die Route startet keine neuen Fahrten mehr.', 'Du verlierst keine Ware: eine Fahrt unterwegs wird noch abgerechnet.', 'Bei Fragen wende dich an die Spielleitung.'] });
+      const gn = (goods.good(r.good) || {}).name || r.good;
+      notice(state, { level: 'warn', tab: 'trade', title: 'Route angehalten', text: `Die Spielleitung hat die Route ${gn} angehalten. Eine laufende Fahrt kommt noch an.`, info: ['Die Route startet keine neuen Fahrten mehr.', 'Du verlierst keine Ware: eine Fahrt unterwegs wird noch abgerechnet.', ...(row.cancel_note ? [`Grund: ${row.cancel_note}`] : []), 'Bei Fragen wende dich an die Spielleitung.'] });
     } else if (row && !row.cancelled && r.locked) { r.locked = false; }
   }
   const ids = [...new Set(t.routes.filter((r) => r.carrier && r.carrier.offer).map((r) => r.carrier.offer))];
