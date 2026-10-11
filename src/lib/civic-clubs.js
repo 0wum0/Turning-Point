@@ -95,7 +95,7 @@ async function found(userId, input) {
     await K.clubBook(conn, id, userId, 'found', num(k.foundFeeReal, 4000), 'gegründet');
     const city = (world.city(state.cityId) || {}).name || 'der Stadt';
     chronicle(state, `${state.person.first} gründet den ${kind.name} „${nm.name}“ in ${city}.`, 'society');
-    notice(state, { level: 'good', title: `Verein gegründet: ${nm.name}`, tab: 'society', text: `Du bist Vorsitzende/r des ${kind.name}s „${nm.name}“. Gewinne Mitglieder, damit er wirkt.`, info: ['Ein Verein wirkt ab ' + num(k.minActive, 3) + ' Mitgliedern auf alle, die dazugehören.', 'Beiträge fließen in die Vereinskasse. Mit der Kasse richtest du Feste aus – das macht den Verein beliebt.', 'Im Kassenbuch sehen alle Mitglieder jede Buchung. Wer Geld privat entnimmt, begeht Veruntreuung.'] });
+    notice(state, { level: 'good', title: `Verein gegründet: ${nm.name}`, tab: 'society', text: `Du bist Vorsitzende/r des Vereins „${nm.name}“. Gewinne Mitglieder, damit er wirkt.`, info: [`Ein Verein wirkt ab ${num(k.minActive, 3)} Mitgliedern auf alle, die dazugehören.`, 'Beiträge fließen in die Vereinskasse. Mit der Kasse richtest du Feste aus – das macht den Verein beliebt.', 'Im Kassenbuch sehen alle Mitglieder jede Buchung. Wer Geld privat entnimmt, begeht Veruntreuung.'] });
     const who = ctx.user.social_public ? `${state.person.first} ${state.person.last}` : 'Ein Bürger';
     await tagesblatt.post('life', 'Vereinsgründung', `${who} gründet in ${city} den ${kind.name} „${nm.name}“.`, state.cityId, conn);
     K.after(conn, () => live.publish('civic', {}));
@@ -116,7 +116,7 @@ async function join(userId, clubId) {
     const cnt = Number((await conn.one('SELECT COUNT(*) n FROM club_members WHERE user_id = ?', [userId])).n);
     if (cnt >= await slotsFor(conn, userId)) fail('Du bist schon in so vielen Vereinen, wie du schaffen kannst. Tritt zuerst aus einem aus.');
     const left = await conn.one('SELECT left_ms FROM club_left WHERE club_id = ? AND user_id = ?', [club.id, userId]);
-    if (left && Date.now() - Number(left.left_ms) < num(k.rejoinHours, 12) * HOUR) fail(`Du bist erst vor Kurzem ausgetreten. Beitritt wieder in ${Math.ceil((num(k.rejoinHours, 12) * HOUR - (Date.now() - Number(left.left_ms))) / HOUR)} Stunden.`);
+    if (left && Date.now() - Number(left.left_ms) < num(k.rejoinHours, 12) * HOUR) { const hrs = Math.ceil((num(k.rejoinHours, 12) * HOUR - (Date.now() - Number(left.left_ms))) / HOUR); fail(`Du bist erst vor Kurzem ausgetreten. Beitritt wieder in ${hrs} Stunden.`); }
     const idx = K.idxOf(world, state); const feeCents = Math.round(club.fee_real * idx);
     if (state.money < feeCents) fail(`Der erste Beitrag kostet ${K.money(feeCents, world, state)}. Dafür reicht dein Geld nicht.`);
     const now = Date.now();
@@ -140,15 +140,17 @@ async function leave(userId, clubId) {
     await conn.query('DELETE FROM club_members WHERE club_id = ? AND user_id = ?', [club.id, userId]);
     await conn.query('INSERT INTO club_left (club_id, user_id, left_ms) VALUES (?,?,?) ON DUPLICATE KEY UPDATE left_ms = VALUES(left_ms)', [club.id, userId, Date.now()]);
     await K.clubBook(conn, club.id, userId, 'leave', 0, 'ausgetreten');
-    let note = '';
+    let note = 0;
     if (m.role === 'president') {
       const r = await succeed(conn, club, userId, 'Vorsitz nach Austritt');
-      note = r.closed ? ' Du warst das letzte Mitglied: Der Verein ist aufgelöst, sein Vermögen fällt an die Stadt.' : ' Der Vorsitz ging an das dienstälteste Mitglied.';
+      note = r.closed ? 1 : 2;
     }
     chronicle(state, `${state.person.first} verlässt den Verein „${club.name}“.`, 'society');
     K.after(conn, () => live.publish('civic', {}));
     await refresh(conn, ctx.user, state, world);
-    return { msg: `Du bist aus dem Verein „${club.name}“ ausgetreten.${note}`, level: 'info' };
+    const msg = note === 1 ? `Du bist aus dem Verein „${club.name}“ ausgetreten. Du warst das letzte Mitglied: Der Verein ist aufgelöst, sein Vermögen fällt an die Stadt.`
+      : note === 2 ? `Du bist aus dem Verein „${club.name}“ ausgetreten. Der Vorsitz ging an das dienstälteste Mitglied.` : `Du bist aus dem Verein „${club.name}“ ausgetreten.`;
+    return { msg, level: 'info' };
   }, { needAlive: true });
 }
 
@@ -402,7 +404,10 @@ async function endorse(userId, clubId, input) {
     await K.clubBook(conn, club.id, cand, 'endorse', cost, funded ? 'Wahlkampfhilfe' : 'Wahlempfehlung');
     const cn = await conn.one('SELECT COALESCE(ps.name, u.username) name, u.social_public FROM users u LEFT JOIN player_stats ps ON ps.user_id = u.id WHERE u.id = ?', [cand]);
     K.after(conn, () => { live.publish('civic', {}); live.publish('market', {}); });
-    return { msg: `Der Verein „${club.name}“ empfiehlt ${cn && cn.social_public ? cn.name : 'den Kandidaten'}. Das gibt etwa +${M.endorseBoost(n, funded)} % Stimmengewicht – gewählt wird weiter von den Bürgern.`, level: 'good' };
+    const boost = M.endorseBoost(n, funded); const cname = cn && cn.social_public ? cn.name : '';
+    const msg = cname ? `Der Verein „${club.name}“ empfiehlt ${cname}. Das gibt etwa +${boost} % Stimmengewicht – gewählt wird weiter von den Bürgern.`
+      : `Der Verein „${club.name}“ empfiehlt den Kandidaten. Das gibt etwa +${boost} % Stimmengewicht – gewählt wird weiter von den Bürgern.`;
+    return { msg, level: 'good' };
   }, { needAlive: true });
 }
 

@@ -56,7 +56,7 @@ function addPair(de, en, tokenizer) {
   let src = '^'; const first = dt[0].lit;
   for (const t of dt) src += t.expr !== undefined ? '(.+?)' : esc(t.lit);
   src += '$';
-  const entry = { re: new RegExp(src, 's'), order };
+  const entry = { re: new RegExp(src, 's'), order, spec: dt.reduce((n, t) => n + (t.expr === undefined ? t.lit.length : 0), 0) };
   const key = first.length >= 6 ? first.slice(0, 6) : null;
   if (key) { if (!BUCKETS.has(key)) BUCKETS.set(key, []); BUCKETS.get(key).push(entry); } else GENERAL.push(entry);
 }
@@ -81,6 +81,8 @@ function load() {
     for (const k of ['press', 'paper', 'news', 'guide']) if (en[k]) pairUp(de[k], en[k], pairs);
     pairs.forEach(([a, b]) => addPair(a, b, tokenizeNamed));
   }
+  GENERAL.sort((a, b) => b.spec - a.spec); // spezifischere Vorlagen (mehr fester Text) zuerst
+  for (const l of BUCKETS.values()) l.sort((a, b) => b.spec - a.spec);
 }
 
 function applyEntry(e, m) {

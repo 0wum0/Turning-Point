@@ -2,7 +2,7 @@
  * Beträge kommen in Cent der eigenen Währung vom Server; Eingaben gehen in der Hauptwährung (z. B. 12,50) zurück. Zahlen stehen in eigenen Elementen (für die englische Oberfläche). */
 import { html, icon, api, on, modal, toast, money, infoBtn, term, bar } from './ui.js';
 
-const TABS = [['clubs', 'Vereine', 'users'], ['parish', 'Gemeinde', 'church'], ['foundation', 'Stiftung', 'crown'], ['titles', 'Titel & Ränge', 'award']];
+const TABS = [['clubs', 'Vereine', 'users'], ['parish', 'Glaubensgemeinde', 'church'], ['foundation', 'Stiftung', 'crown'], ['titles', 'Titel & Ränge', 'award']];
 const dec1 = (x) => (Math.round(Number(x) * 10) / 10).toLocaleString(document.documentElement.lang === 'en' ? 'en-US' : 'de-DE', { maximumFractionDigits: 1 });
 const when = (ms) => new Date(ms).toLocaleString(document.documentElement.lang === 'en' ? 'en-GB' : 'de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 const inTxt = (ms) => { const h = (ms - Date.now()) / 3600000; if (h <= 0) return 'gleich'; if (h < 1) return `in ${Math.max(1, Math.round(h * 60))} Min.`; if (h < 48) return `in ${Math.round(h)} Std.`; return `in ${Math.round(h / 24)} Tagen`; };
@@ -49,7 +49,7 @@ export function civicMini(ctx) {
     <div class="chips mt">
       ${c.titles.map((t) => html`<span class="chip good" title="Titel">${icon('award')} <span>${t.name}</span></span>`)}
       ${c.clubs.map((x) => html`<span class="chip" title="Verein">${icon('users')} <span data-i18n-skip>${x.name}</span></span>`)}
-      ${c.parish ? html`<span class="chip" title="Gemeinde">${icon('church')} <span data-i18n-skip>${c.parish.name}</span></span>` : ''}
+      ${c.parish ? html`<span class="chip" title="Glaubensgemeinde">${icon('church')} <span data-i18n-skip>${c.parish.name}</span></span>` : ''}
       ${c.foundation ? html`<span class="chip good" title="Stiftung">${icon('crown')} <span data-i18n-skip>${c.foundation.name}</span></span>` : ''}
       ${c.due ? html`<span class="chip warn">${icon('clock')} <span>Beitrag offen</span></span>` : ''}
       ${c.funerals ? html`<span class="chip warn">${icon('heart')} <span>Trauerfeier offen</span></span>` : ''}
@@ -119,7 +119,7 @@ async function clubDialog(ctx, id, reload) {
         ${pres ? html`<button class="btn sm" data-cd="fee">${icon('pencil')} Beitrag ändern</button>` : ''}
         ${me.role !== 'president' ? html`<button class="btn sm ${me.mistrust ? 'warn' : ''}" data-cd="mistrust">${icon('flag')} ${me.mistrust ? 'Misstrauen zurücknehmen' : 'Misstrauen gegen den Vorsitz'}</button>` : ''}
         <button class="btn sm ghost" data-cd="leave">Austreten</button>${pres ? html`<button class="btn sm danger" data-cd="dissolve">Verein auflösen</button>` : ''}</div>
-      ${me.role !== 'president' && x.mistrustVotes ? html`<div class="small dim mt"><b>${x.mistrustVotes}</b> <span>von</span> <b>${x.count}</b> <span>Mitgliedern misstrauen dem Vorsitz. Bei einer Mehrheit (mindestens drei Stimmen) ist er abgewählt.</span></div>` : ''}
+      ${me.role !== 'president' && x.mistrustVotes ? html`<div class="small dim mt"><span>${x.mistrustVotes} von ${x.count} Mitgliedern misstrauen dem Vorsitz. Bei einer Mehrheit (mindestens drei Stimmen) ist er abgewählt.</span></div>` : ''}
       ${x.elections && x.elections.length ? html`<div class="card-title mt">${icon('landmark')} Wahlempfehlung</div>
         <p class="small dim">Der Vorstand darf vor einer Wahl einen Kandidaten empfehlen (etwa +${dec1(x.elections[0].boost)} % Stimmengewicht, mit Wahlkampfhilfe aus der Kasse etwa +${dec1(x.elections[0].boostFunded)} %). Gewählt wird weiter von den Bürgern – ein Verein ersetzt keine Stimmen.</p>
         <div class="stack" style="--gap:.4rem">${x.elections.map((e) => html`<div class="card flat"><b>${e.office}</b> <span class="dim small">· <span>Wahl beginnt</span> ${when(e.voteStart)}</span>
@@ -157,8 +157,8 @@ async function clubDialog(ctx, id, reload) {
 function parishView(d, ctx) {
   const p = d.parish; const cur = d.currency; const me = p.mine;
   if (!me) {
-    return html`<p class="small dim">Die ${term('Gemeinde')} ist die Glaubensgemeinschaft deiner Stadt. Mitglieder spenden in die Gemeindekasse; daraus gibt es ${term('Notgabe', 'Notgaben')} für Mitglieder in Not. Hochzeit, Taufe und Trauerfeier feierst du hier mit deiner Familie. Die Mitgliedschaft bleibt deiner Familie über die Generationen erhalten – aber du musst nicht beitreten.</p>
-      <div class="stack mt" style="--gap:.5rem">${p.faiths.map((f) => html`<div class="firm" data-faith="${f.key}">${icon('church')}<div class="grow"><b>${f.name}</b><div class="small dim"><b>${f.members}</b> <span>${f.members === 1 ? 'Mitglied' : 'Mitglieder'}</span> · <span>Kasse</span> ${money(f.fund, cur)}</div></div>
+    return html`<p class="small dim">Die ${term('Gemeinde', 'Glaubensgemeinde')} ist die Glaubensgemeinschaft deiner Stadt. Mitglieder spenden in die Gemeindekasse; daraus gibt es ${term('Notgabe', 'Notgaben')} für Mitglieder in Not. Hochzeit, Taufe und Trauerfeier feierst du hier mit deiner Familie. Die Mitgliedschaft bleibt deiner Familie über die Generationen erhalten – aber du musst nicht beitreten.</p>
+      <div class="stack mt" style="--gap:.5rem">${p.faiths.map((f) => html`<div class="firm" data-faith="${f.key}">${icon('church')}<div class="grow"><b>${f.name}</b><div class="small dim"><b>${f.members}</b> <span>${f.members === 1 ? 'Mitglied' : 'Mitglieder'}</span> · <span>Gemeindekasse</span> ${money(f.fund, cur)}</div></div>
         <button class="btn sm primary" data-parish-join="${f.key}" data-name="${f.name}" ${p.joinWhy ? html`disabled title="${p.joinWhy}"` : ''}>Beitreten</button></div>`)}</div>
       ${p.joinWhy ? html`<div class="small dim mt">${p.joinWhy}</div>` : ''}`;
   }
@@ -210,7 +210,7 @@ function foundationView(d, ctx) {
 /* ------------------------------------------------------------------ Titel ------------------------------------------------------------------ */
 function titlesView(d, ctx) {
   const T = d.titles; const cur = d.currency; const fx = T.fx;
-  const fxLine = (r) => [r.vote ? html`<span class="chip">${icon('landmark')} <span>Stimmengewicht</span> +${dec1(r.vote)} %</span>` : '', r.fee ? html`<span class="chip">${icon('coins')} <span>Kandidaturgebühr</span> −${dec1(r.fee)} %</span>` : '', r.rev ? html`<span class="chip">${icon('trending-up')} <span>Umsatz</span> +${dec1(r.rev)} %</span>` : '', r.slots ? html`<span class="chip">${icon('users')} +${r.slots} <span>Verein</span></span>` : ''];
+  const fxLine = (r) => [r.vote ? html`<span class="chip">${icon('landmark')} <span>Stimmengewicht</span> +${dec1(r.vote)} %</span>` : '', r.fee ? html`<span class="chip">${icon('coins')} <span>Kandidaturgebühr</span> −${dec1(r.fee)} %</span>` : '', r.rev ? html`<span class="chip">${icon('trending-up')} <span>Umsatz</span> +${dec1(r.rev)} %</span>` : '', r.slots ? html`<span class="chip">${icon('users')} +${r.slots} <span>Vereinsplatz</span></span>` : ''];
   const mine = T.mine.filter((x) => x.active);
   const need = (l) => (l.key === 'lvl' ? l.need : l.key === 'office' ? '' : l.money ? money(l.need, cur) : l.need);
   return html`
@@ -223,7 +223,7 @@ function titlesView(d, ctx) {
     <div class="stack mt" style="--gap:.6rem">${T.catalog.map((t) => html`<article class="card flat"><div class="row nowrap spread"><b>${t.name}</b><span class="chip ${t.have ? 'good' : ''}">${t.have ? t.ranks[t.have - 1].name : 'noch nicht'}</span></div>
       <div class="small dim">${t.what}</div>
       ${t.auto ? html`<div class="stack mt" style="--gap:.4rem">${t.ranks.map((r) => html`<div class="small ${r.got ? '' : 'dim'}">${icon(r.got ? 'circle-check' : 'lock')} <b>${r.name}</b>${r.lines.length ? html`: ${r.lines.map((l) => html`<span class="chip ${l.ok ? 'good' : ''}" title="Du: ${l.money ? money(l.have, cur) : l.have}"><span>${l.label}</span> ${l.key === 'office' ? '' : need(l)}</span> `)}` : ''}
-        ${r.fx.vote || r.fx.fee || r.fx.rev || r.fx.slots ? html`<div class="dim" style="margin-left:1.4rem">${r.fx.vote ? html`<span>Stimmen</span> +${dec1(r.fx.vote)} % · ` : ''}${r.fx.fee ? html`<span>Gebühr</span> −${dec1(r.fx.fee)} % · ` : ''}${r.fx.rev ? html`<span>Umsatz</span> +${dec1(r.fx.rev)} % · ` : ''}${r.fx.slots ? html`+${r.fx.slots} <span>Verein</span>` : ''}</div>` : ''}</div>`)}</div>`
+        ${r.fx.vote || r.fx.fee || r.fx.rev || r.fx.slots ? html`<div class="dim" style="margin-left:1.4rem">${r.fx.vote ? html`<span>Stimmen</span> +${dec1(r.fx.vote)} % · ` : ''}${r.fx.fee ? html`<span>Gebühr</span> −${dec1(r.fx.fee)} % · ` : ''}${r.fx.rev ? html`<span>Umsatz</span> +${dec1(r.fx.rev)} % · ` : ''}${r.fx.slots ? html`+${r.fx.slots} <span>Vereinsplatz</span>` : ''}</div>` : ''}</div>`)}</div>`
         : html`<div class="small mt">${icon('landmark')} <span>Wird nicht automatisch vergeben: Ein Bürgermeister verleiht die Würde einem verdienten Bürger seiner Stadt.</span></div>`}</article>`)}</div>`;
 }
 

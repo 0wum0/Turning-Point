@@ -107,7 +107,8 @@ async function grantTitle(userId, key, rank = 1, cityId = 0, ref = null, opts = 
   for (const fn of after) { try { await fn(); } catch (_) { /* optional */ } }
   if (!opts.quiet) {
     await require('./reputation').add(userId, 'civic', num((cfg().titles || {}).repOnGrant, 3) * rk, 'title_gain', key, { cityId: cityId || 0 });
-    await letter(userId, 'Titel verliehen', `Dir wurde der Titel „${M.titleName(key, rk)}“ verliehen. Unter „Gesellschaft → Titel“ siehst du, was er bewirkt.`);
+    const nm = M.titleName(key, rk);
+    await letter(userId, 'Titel verliehen', `Dir wurde der Titel „${nm}“ verliehen. Unter „Gesellschaft → Titel“ siehst du, was er bewirkt.`);
   }
   live.publish('civic', {}, userId);
   return true;
@@ -176,7 +177,9 @@ async function collect(conn, user, state, world, now) {
           await conn.query("UPDATE clubs SET treasury_real = treasury_real + ? WHERE id = ? AND status = 'active'", [num(m.fee_real, 0) * pay, m.club_id]);
           await K.clubBook(conn, m.club_id, user.id, 'fee', num(m.fee_real, 0) * pay, pay > 1 ? `${pay} Beiträge` : 'Beitrag');
           RP.queue(state, 'civic', null, 'club_active', `c${m.club_id}`);
-          notice(state, { level: pay < d.periods ? 'warn' : 'info', title: `Vereinsbeitrag: ${m.cname}`, tab: 'society', text: `Der Beitrag${pay > 1 ? ` für ${pay} Jahre` : ''} wurde abgebucht: ${K.money(amount, world, state)}.${pay < d.periods ? ' Für die übrigen Jahre reichte das Geld nicht.' : ''}` });
+          const money = K.money(amount, world, state);
+          const text = pay === 1 && d.periods === 1 ? `Der Beitrag wurde abgebucht: ${money}.` : pay === d.periods ? `Die Beiträge für ${pay} Jahre wurden abgebucht: ${money}.` : `Die Beiträge für ${pay} Jahre wurden abgebucht: ${money}. Für die übrigen Jahre reichte das Geld nicht.`;
+          notice(state, { level: pay < d.periods ? 'warn' : 'info', title: `Vereinsbeitrag: ${m.cname}`, tab: 'society', text });
         }
       } else if (d.lapsed) {
         const del = await conn.query('DELETE FROM club_members WHERE club_id = ? AND user_id = ? AND paid_until = ?', [m.club_id, user.id, m.paid_until]);
@@ -219,7 +222,7 @@ async function titlesView(conn, user, state, world, idx) {
     const have = mine.find((x) => x.tkey === d.key && x.active);
     const ranks = d.ranks.map((rn, i) => {
       const req = (d.req || [])[i] || null;
-      const lines = req ? Object.keys(req).map((k) => ({ key: k, label: FACT_LABEL[k] || k, need: k === 'lvl' ? RP.levelName(req[k]) : k === 'office' ? ((state.politics && state.politics.completed) ? `Amt Nr. ${req[k]}` : '') : val(k, req[k]), have: k === 'lvl' ? RP.levelName(facts.lvl) : k === 'office' ? facts.office : val(k, facts[k]), ok: Number(facts[k] || 0) >= Number(req[k]), money: ['donated', 'contributed', 'biz'].includes(k), levelMin: k === 'lvl' ? req[k] : undefined })) : [];
+      const lines = req ? Object.keys(req).map((k) => ({ key: k, label: FACT_LABEL[k] || k, need: k === 'lvl' ? RP.levelName(req[k]) : k === 'office' ? ((world.econ.politics.offices[req[k] - 1] || {}).name || '') : val(k, req[k]), have: k === 'lvl' ? RP.levelName(facts.lvl) : k === 'office' ? ((world.econ.politics.offices[facts.office - 1] || {}).name || '–') : val(k, facts[k]), ok: Number(facts[k] || 0) >= Number(req[k]), money: ['donated', 'contributed', 'biz'].includes(k), levelMin: k === 'lvl' ? req[k] : undefined })) : [];
       const fx = d.fx || {};
       return { rank: i + 1, name: rn, got: !!(have && have.rnk >= i + 1), lines, fx: { vote: (fx.vote || [])[i] || 0, fee: (fx.fee || [])[i] || 0, rev: (fx.rev || [])[i] || 0, slots: (fx.slots || [])[i] || 0 } };
     });
@@ -490,9 +493,10 @@ async function adminDissolveClub(clubId, note) {
   let members = []; let name = '';
   await db.tx(async (conn) => {
     const club = await conn.one("SELECT * FROM clubs WHERE id = ? AND status = 'active' FOR UPDATE", [int(clubId)]); if (!club) return;
-    name = club.name; members = (await Clubs.closeClub(conn, club, `von der Spielleitung aufgelöst${note ? `: ${String(note).slice(0, 80)}` : ''}`)) || [];
+    name = club.name; members = (await Clubs.closeClub(conn, club, 'von der Spielleitung aufgelöst')) || [];
   });
-  for (const id of members) await letter(id, 'Verein aufgelöst', `Der Verein „${name}“ wurde von der Spielleitung aufgelöst.${note ? ` Grund: ${String(note).slice(0, 160)}` : ''}`);
+  const reason = note ? String(note).slice(0, 160) : '';
+  for (const id of members) await letter(id, 'Verein aufgelöst', reason ? `Der Verein „${name}“ wurde von der Spielleitung aufgelöst. Grund: ${reason}` : `Der Verein „${name}“ wurde von der Spielleitung aufgelöst.`);
   return members.length;
 }
 async function adminSetPresident(clubId, userId) {
@@ -520,7 +524,8 @@ async function adminDissolveFoundation(id, note) {
     if (back > 0) await conn.query("INSERT INTO pending_credits (user_id, real_amount, reason, text) VALUES (?,?, 'foundation', ?)", [owner, back, `Die Stiftung „${name}“ wurde von der Spielleitung aufgelöst.`]);
     await K.addUserSum(conn, owner, 'contributed_real', -back);
   });
-  if (owner) await letter(owner, 'Stiftung aufgelöst', `Die Stiftung „${name}“ wurde von der Spielleitung aufgelöst${note ? `: ${String(note).slice(0, 160)}` : ''}. Das Vermögen wird dir gutgeschrieben.`);
+  const why = note ? String(note).slice(0, 160) : '';
+  if (owner) await letter(owner, 'Stiftung aufgelöst', why ? `Die Stiftung „${name}“ wurde von der Spielleitung aufgelöst. Grund: ${why} Das Vermögen wird dir gutgeschrieben.` : `Die Stiftung „${name}“ wurde von der Spielleitung aufgelöst. Das Vermögen wird dir gutgeschrieben.`);
   return owner ? 1 : 0;
 }
 

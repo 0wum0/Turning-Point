@@ -30,7 +30,7 @@ async function myRow(conn, userId, lock = false) {
   return conn.one(`SELECT pm.*, p.city_id, p.faith, p.fund_real FROM parish_members pm JOIN parishes p ON p.id = pm.parish_id WHERE pm.user_id = ?${lock ? ' FOR UPDATE' : ''}`, [userId]);
 }
 const standingOf = (row) => M.standingDecay(row.standing, K.today() - num(row.st_day, K.today()));
-const nameOf = (world, row) => `${(M.faithOf(row.faith) || {}).name || row.faith} ${(world.city(row.city_id) || {}).name || ''}`.trim();
+const nameOf = (world, row) => `${(M.faithOf(row.faith) || {}).name || row.faith} ${(world.city(row.city_id) || {}).name || ''}`.trim(); // Anzeigename (Eigenname: wird nie in Sätze eingebaut, die übersetzt werden)
 
 async function join(userId, faith) {
   return service.withCharacter(userId, async (ctx) => {
@@ -45,11 +45,11 @@ async function join(userId, faith) {
     const p = await parishFor(conn, state.cityId, f.key);
     await conn.query('INSERT INTO parish_members (user_id, parish_id, joined_ms, st_day) VALUES (?,?,?,?)', [userId, p.id, Date.now(), K.today()]);
     await K.parishBook(conn, p.id, userId, 'join', 0, 'beigetreten');
-    chronicle(state, `${state.person.first} schließt sich der ${f.name} an.`, 'society');
+    chronicle(state, `${state.person.first} tritt der Gemeinde bei: ${f.name}.`, 'society');
     notice(state, { level: 'good', title: `Gemeinde: ${f.name}`, tab: 'society', text: 'Du gehörst jetzt zur Gemeinde. Spenden stärken dein Ansehen dort; Hochzeit, Taufe und Trauerfeier kannst du hier feiern.', info: ['Die Gemeinde bleibt deiner Familie über die Generationen erhalten.', 'Spenden fließen in die Gemeindekasse – daraus gibt es Notgaben für Mitglieder in Not.', 'Dein Gemeinde-Ansehen steigt mit Spenden und sinkt langsam, wenn du sie einstellst.'] });
     K.after(conn, () => live.publish('civic', {}));
     await refresh(conn, ctx.user, state, world);
-    return { msg: `Du bist jetzt Mitglied der ${f.name}.`, level: 'good' };
+    return { msg: `Du bist jetzt Mitglied dieser Gemeinde: ${f.name}.`, level: 'good' };
   }, { needAlive: true });
 }
 
@@ -129,7 +129,8 @@ async function aid(userId) {
     chronicle(state, `${state.person.first} erhält eine Notgabe der Gemeinde.`, 'society');
     K.after(conn, () => live.publish('civic', {}));
     await refresh(conn, ctx.user, state, world);
-    return { msg: `Die Gemeinde hilft dir in der Not mit ${K.money(cents, world, state)}. ${need}`, level: 'good' };
+    void need;
+    return { msg: `Die Gemeinde hilft dir in der Not mit ${K.money(cents, world, state)}.`, level: 'good' };
   }, { needAlive: true });
 }
 
@@ -143,30 +144,30 @@ async function ceremony(userId, kind, input = {}) {
     const C = M.ceremonyCfg(kind) || {}; const idx = K.idxOf(world, state);
     const cost = Math.round(num(C.feeReal, 1000) * idx);
     const label = M.ceremonyLabel(row.faith, kind);
-    if (state.money < cost) fail(`Für „${label}“ brauchst du ${K.money(cost, world, state)}.`);
-    let who = ''; let text = '';
+    if (state.money < cost) fail(`Für diese Feier brauchst du ${K.money(cost, world, state)}.`);
+    let text = '';
     if (kind === 'wedding') {
       const p = state.partner; if (!p) fail('Dafür brauchst du einen Partner.');
       if (!p.married) fail('Ihr müsst zuerst heiraten – dann könnt ihr in der Gemeinde feiern.');
       if (p.churchWed) fail('Ihr habt schon in der Gemeinde geheiratet.');
-      p.churchWed = true; p.sat = Math.max(0, Math.min(100, p.sat + num(C.partner, 12))); who = p.name;
+      p.churchWed = true; p.sat = Math.max(0, Math.min(100, p.sat + num(C.partner, 12)));
       state.meters.wellbeing = Math.min(100, state.meters.wellbeing + num(C.well, 3));
-      text = `${label}: ${state.person.first} und ${p.name} feiern in der ${nameOf(world, row)}.`;
+      text = `${state.person.first} und ${p.name} feiern in der Gemeinde ihre Hochzeit.`;
     } else if (kind === 'baptism') {
       const c = (state.children || []).find((x) => x.id === Number(input.child));
       if (!c || c.status !== 'home') fail('Bitte ein Kind wählen, das bei dir lebt.');
       if (ageOfChild(state, c) > num(C.maxAge, 3)) fail(`Dafür ist ${c.name.split(' ')[0]} schon zu alt (bis ${num(C.maxAge, 3)} Jahre).`);
       if (c.baptized) fail('Dieses Kind ist schon getauft.');
-      c.baptized = true; c.sat = Math.max(0, Math.min(100, c.sat + num(C.child, 12))); who = c.name.split(' ')[0];
+      c.baptized = true; c.sat = Math.max(0, Math.min(100, c.sat + num(C.child, 12)));
       state.meters.wellbeing = Math.min(100, state.meters.wellbeing + num(C.well, 2));
-      text = `${label} für ${c.name.split(' ')[0]} in der ${nameOf(world, row)}.`;
+      text = `Für ${c.name.split(' ')[0]} wird in der Gemeinde Taufe bzw. Namensfeier gehalten.`;
     } else {
       const f = M.ensure(state); const i = Math.max(0, f.funerals.findIndex((x) => x.id === Number(input.id)));
       const fu = f.funerals[i]; if (!fu) fail('Es gibt keine Trauerfeier zu halten.');
-      f.funerals.splice(i, 1); who = fu.name;
+      f.funerals.splice(i, 1);
       state.meters.wellbeing = Math.min(100, state.meters.wellbeing + num(C.well, 5));
       for (const c of state.children || []) if (c.status === 'home') c.sat = Math.min(100, c.sat + num(C.kids, 4));
-      text = `${label} für ${fu.name} in der ${nameOf(world, row)}.`;
+      text = `Für ${fu.name} wird in der Gemeinde eine Trauerfeier gehalten.`;
     }
     const real = cost / idx;
     state.money -= cost; state.stats.spent += cost;
@@ -177,7 +178,7 @@ async function ceremony(userId, kind, input = {}) {
     notice(state, { level: 'good', title: label, tab: 'family', text: `${text} Die Familie ist bewegt.` });
     K.after(conn, () => live.publish('civic', {}));
     await refresh(conn, ctx.user, state, world);
-    return { msg: `${label}${who ? ` – ${who}` : ''}: gefeiert. Die Gebühr (${K.money(cost, world, state)}) kommt der Gemeinde zugute.`, level: 'good' };
+    return { msg: `Die Feier ist gehalten. Die Gebühr (${K.money(cost, world, state)}) kommt der Gemeinde zugute.`, level: 'good' };
   }, { needAlive: true });
 }
 

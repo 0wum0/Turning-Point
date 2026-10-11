@@ -91,7 +91,7 @@ async function set(userId, input) {
     await conn.query('UPDATE foundations SET payout_pct = ?, name = ? WHERE id = ?', [pct, name, f.id]);
     K.after(conn, () => live.publish('civic', {}));
     await refresh(conn, ctx.user, state, world);
-    return { msg: `Die Stiftung schüttet künftig ${String(pct).replace('.', ',')} % ihres Vermögens im Jahr aus.`, level: 'good' };
+    return { msg: `Die Stiftung schüttet künftig ${pct} % ihres Vermögens im Jahr aus.`, level: 'good' };
   }, { needAlive: true });
 }
 
