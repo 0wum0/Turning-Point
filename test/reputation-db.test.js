@@ -160,6 +160,21 @@ test('Ansehen: Ereignisse, Grenzen, Erbe, Wirkungen und Ehrenbürgerwürde gegen
     assert.strictEqual(Number((await db.one('SELECT COUNT(*) n FROM reputation_log WHERE user_id = ?', [C])).n), 1);
   });
 
+  await t.test('Admin setzt Ansehen über den Spieler-Lock: Werte, Stufe, Protokoll, keine Tagesblatt-Meldung', async () => {
+    const posts = async () => Number((await db.one('SELECT COUNT(*) n FROM world_events')).n);
+    const before = await posts();
+    const r1 = await service.withCharacter(A, (ctx) => rep.adminSetConn(ctx.conn, A, { comps: { rel: 80, trade: 80, civic: 80, office: 80, scandal: 0 }, note: 'Test Grund' }));
+    assert.strictEqual(r1.after.level, 4);
+    const g = await rep.get(A, city); assert.strictEqual(g.level, 4); assert.strictEqual(g.comps.rel, 80);
+    assert.strictEqual((await state(A)).rep.lv, 4, 'Spielstand-Zwischenspeicher folgt');
+    const r2 = await service.withCharacter(A, (ctx) => rep.adminSetConn(ctx.conn, A, { level: -2 }));
+    assert.strictEqual(r2.after.level, -2); assert.strictEqual((await rep.get(A, city)).level, -2);
+    const r3 = await service.withCharacter(A, (ctx) => rep.adminSetConn(ctx.conn, A, { comps: { rel: 999, scandal: 500 } }));
+    assert.strictEqual(r3.after.comps.rel, 100); assert.strictEqual(r3.after.comps.scandal, 100);
+    const led = await rep.ledger(A, 5); assert.ok(led.some((e) => e.reason === 'admin' && /Test Grund/.test(e.label)));
+    assert.strictEqual(await posts(), before, 'kein Tagesblatt-Eintrag');
+  });
+
   await t.test('Plaketten für viele Spieler in einer Abfrage', async () => {
     const m = await rep.many([A, B, C, 99999], city);
     assert.strictEqual(m.size, 4);

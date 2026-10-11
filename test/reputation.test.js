@@ -229,3 +229,13 @@ test('Missbrauchsschutz: Ereignis ohne Zählung wird nicht protokolliert (gleich
   const n = await rl.addConn(conn, 1, 'rel', 1, 'rent_paid', 'x', { other: 0 });
   assert.ok(n > 0); assert.ok(real);
 });
+
+test('Admin: clampComps begrenzt, compsForLevel trifft jede Stufe', () => {
+  const c = R.clampComps({ rel: 500, trade: -99, civic: 'x', office: '12,5', scandal: -4 }, { civic: 7 });
+  assert.deepStrictEqual(c, { rel: 100, trade: -40, civic: 7, office: 0, scandal: 0 });
+  for (let lv = -2; lv <= 4; lv++) {
+    const comps = R.compsForLevel(lv, C());
+    assert.strictEqual(R.levelOf(R.score(comps, C()), C()), lv, `Stufe ${lv}`);
+    assert.deepStrictEqual(R.clampComps(comps), comps);
+  }
+});

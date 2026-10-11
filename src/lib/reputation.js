@@ -220,7 +220,7 @@ async function ledger(userId, limit = 30) {
 function labelOf(reason, ref) {
   if (reason === 'inherit') return 'Familienruf: Der Erbe übernimmt einen Teil des Rufs';
   if (reason === 'restart') return 'Neuanfang: Ein Teil des alten Rufs bleibt';
-  if (reason === 'admin') return ref && /^[\w\s,.!-]{1,60}$/.test(String(ref)) ? `Von der Spielleitung angepasst (${ref})` : 'Von der Spielleitung angepasst';
+  if (reason === 'admin') return ref && /^[\p{L}\p{N}\s,.!-]{1,60}$/u.test(String(ref)) ? `Von der Spielleitung angepasst (${ref})` : 'Von der Spielleitung angepasst';
   return (R.REASONS[reason] || {}).label || 'Sonstiges';
 }
 
@@ -293,8 +293,31 @@ async function adminReset(userId, comps = null) {
   invalidate(userId);
   live.publish('rep', {}, userId);
 }
+/**
+ * Admin: Bestandteile setzen (oder eine Stufe wählen). Läuft in der Transaktion conn (aus service.withCharacter: Spieler gesperrt).
+ * Keine Brief- und Tagesblatt-Meldung (notifyChange wird bewusst nicht aufgerufen). Das Protokoll behält die Einträge; ein Eintrag „admin“ hält Änderung und Grund fest.
+ * input: { comps?: {rel,trade,civic,office,scandal} (fehlende Werte bleiben), level?: -2…4 (hat Vorrang), note?, clearLocal? }
+ */
+async function adminSetConn(conn, userId, input = {}) {
+  const C = cfg();
+  await ensureRow(conn, userId);
+  const row = await readRow(conn, userId, 0, true);
+  const st = settle(row, null);
+  const beforeScore = R.score(st.c, C);
+  let c;
+  if (input.level != null && input.level !== '') c = R.compsForLevel(input.level, C);
+  else c = R.clampComps(input.comps || {}, st.c);
+  const sc = R.score(c, C); const lv = R.levelOf(sc, C);
+  await conn.query('UPDATE reputation SET rel=?, trade=?, civic=?, office=?, scandal=?, score=?, lvl=?, caps=NULL, decay_day=?, updated_at=? WHERE user_id=?', [c.rel, c.trade, c.civic, c.office, c.scandal, sc, lv, today(), Date.now(), userId]);
+  if (input.clearLocal) await conn.query('DELETE FROM reputation_city WHERE user_id = ?', [userId]);
+  const note = String(input.note || '').replace(/[^\p{L}\p{N}\s,.!-]/gu, '').slice(0, 60) || 'gesetzt';
+  await conn.query('INSERT INTO reputation_log (user_id, kind, reason, delta, n, ref, day_no) VALUES (?,?,?,?,?,?,?)', [userId, 'rel', 'admin', Math.round((sc - beforeScore) * 10) / 10, 1, note, today()]);
+  invalidate(userId);
+  if (conn.repAfter) conn.repAfter.push(() => live.publish('rep', {}, userId)); else live.publish('rep', {}, userId);
+  return { before: { comps: pick(st.c), score: beforeScore, level: R.levelOf(beforeScore, C) }, after: { comps: c, score: sc, level: lv } };
+}
 async function adminDeleteEntry(userId, id) { await db.query('DELETE FROM reputation_log WHERE id = ? AND user_id = ?', [Number(id) || 0, userId]); }
 
 function start() { setInterval(() => { prune().catch((e) => log.warn(`[ruf] ${e.message}`)); }, 6 * 3600000).unref(); }
 
-module.exports = { bumpLocal, confidence, punish, add, addConn, get, many, badge, snapshot, flush, runAfter, inherit, ledger, view, prune, adminReset, adminDeleteEntry, describe, start, countsFor, labelOf, invalidate, REASONS: R.REASONS };
+module.exports = { bumpLocal, confidence, punish, add, addConn, get, many, badge, snapshot, flush, runAfter, inherit, ledger, view, prune, adminReset, adminSetConn, adminDeleteEntry, describe, start, countsFor, labelOf, invalidate, REASONS: R.REASONS };

@@ -150,6 +150,26 @@ module.exports = function mount(router, H) {
     if (!t) { flash(req, 'bad', 'Spieler nicht gefunden.'); return res.redirect('/admin/users'); }
     if (what === 'reset') { await lib.adminReset(id); flash(req, 'good', 'Ansehen und Protokoll wurden zurückgesetzt.'); }
     else if (what === 'delete') { await lib.adminDeleteEntry(id, int(req.body.entry)); lib.invalidate(id); flash(req, 'good', 'Eintrag gelöscht (der Wert bleibt, bis er abflaut – bei Bedarf zurücksetzen).'); }
+    else if (what === 'set') {
+      // Setzen über den Spieler-Lock (service.withCharacter): kein Rennen mit laufenden Spielzügen; keine Tagesblatt-Meldung, kein Brief
+      const b = req.body; const comps = {};
+      for (const k of ['rel', 'trade', 'civic', 'office', 'scandal']) {
+        const raw = String(b[k] == null ? '' : b[k]).trim().replace(',', '.');
+        if (raw === '') continue;
+        const v = Number(raw);
+        if (!Number.isFinite(v)) { flash(req, 'bad', 'Ungültiger Wert bei „' + k + '“ (Zahl erwartet).'); return res.redirect(`/admin/users/${id}`); }
+        comps[k] = v;
+      }
+      const levelRaw = String(b.level == null ? '' : b.level).trim();
+      const level = levelRaw === '' ? null : Number(levelRaw);
+      if (level != null && !(Number.isInteger(level) && level >= -2 && level <= 4)) { flash(req, 'bad', 'Stufe: ganze Zahl von −2 bis 4.'); return res.redirect(`/admin/users/${id}`); }
+      const note = clean(b.note, 60);
+      if (!Object.keys(comps).length && level == null) { flash(req, 'bad', 'Bitte Werte oder eine Stufe angeben.'); return res.redirect(`/admin/users/${id}`); }
+      const res2 = await require('../game/service').withCharacter(id, (ctx) => lib.adminSetConn(ctx.conn, id, { comps: level != null ? null : comps, level, note, clearLocal: b.clearLocal === '1' }));
+      await audit(req, 'admin_reputation_set', { user: id, before: res2.before, after: res2.after, note });
+      flash(req, 'good', `Ansehen gesetzt: ${res2.after.score} (Stufe ${require('../game/reputation').levelName(res2.after.level)}).`);
+      return res.redirect(`/admin/users/${id}`);
+    }
     else flash(req, 'bad', 'Unbekannte Aktion.');
     await audit(req, `admin_reputation_${what}`, { user: id });
     res.redirect(`/admin/users/${id}`);

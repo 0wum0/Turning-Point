@@ -188,6 +188,30 @@ function applyEvent(rec, ev, C = cfg(), day = isDay(Date.now())) {
   return { c, caps, applied, kind };
 }
 
+/** Admin: Bestandteile auf den erlaubten Bereich bringen (rel/trade/civic/office −40 … 100, Skandal 0 … 100); fehlende Werte bleiben wie in base. */
+function clampComps(input, base = blank()) {
+  const out = {};
+  for (const k of KINDS) {
+    const raw = input && input[k] != null && input[k] !== '' ? Number(input[k]) : NaN;
+    const v = Number.isFinite(raw) ? raw : num(base[k], 0);
+    out[k] = round1(k === 'scandal' ? clamp(v, 0, 100) : clamp(v, -40, 100));
+  }
+  return out;
+}
+
+/** Admin: Bestandteile, die genau die gewünschte Stufe (−2 … 4) ergeben (Mitte der Stufe, ohne Skandal; unter Unbekannt über Skandal). */
+function compsForLevel(lv, C = cfg()) {
+  const t = Array.isArray(C.levels) && C.levels.length === 6 ? C.levels : [-30, -10, 12, 32, 55, 78];
+  const L = clamp(Math.round(num(lv, 0)), -2, 4);
+  const lo = L <= -2 ? Math.max(-100, t[0] - 20) : t[L + 1]; const hi = L >= 4 ? 100 : t[L + 2];
+  const target = L >= 4 ? Math.min(100, t[5] + 5) : L <= -2 ? lo : (lo + hi) / 2;
+  const w = C.weights || {}; const pos = num(w.rel, 0.35) + num(w.trade, 0.2) + num(w.civic, 0.25) + num(w.office, 0.2);
+  const c = blank();
+  if (target >= 0) { const v = round1(clamp(target / Math.max(0.01, pos), 0, 100)); for (const k of ['rel', 'trade', 'civic', 'office']) c[k] = v; }
+  else c.scandal = round1(clamp(-target / Math.max(0.01, num(w.scandal, 0.9)), 0, 100));
+  return c;
+}
+
 /** Punkte, die ein angewendeter Betrag am Gesamtwert ändert (für das örtliche Ansehen). */
 function pointsOf(kind, applied, C = cfg()) {
   const w = C.weights || {};
@@ -298,6 +322,6 @@ function brief(state) {
 }
 
 module.exports = {
-  KINDS, KIND_LABEL, KIND_HINT, LEVELS, REASONS, TIPS, levelInfo, levelName, blank, score, levelOf, progress, localScore, decay, inherit, applyEvent, pointsOf,
+  KINDS, KIND_LABEL, KIND_HINT, LEVELS, REASONS, TIPS, levelInfo, levelName, blank, score, levelOf, progress, localScore, decay, inherit, applyEvent, pointsOf, clampComps, compsForLevel,
   makeSnap, stand, queue, brief, policyMood, creditRateDelta, creditLimitMult, contractBandPad, tenantDemandMult, arrearsMult, voteWeight, officeMin, minFor, needText, block, strength, isDay, cfg,
 };
