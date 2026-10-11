@@ -52,7 +52,7 @@ export default {
 
     <div class="panel-head mt2"><div><h3 style="font-size:1.5rem">Dein Besitz</h3></div>
       <label class="check"><input type="checkbox" id="auto" ${v.autoMaintain ? 'checked' : ''}> Automatische Instandhaltung ${infoBtn(['Gepflegte Immobilien behalten ihren Wert und steigen stärker.', 'Vernachlässigte Häuser verfallen und können im Extremfall weniger wert sein als der Kaufpreis.', 'Die automatische Pflege kostet etwa 1 % Wert pro Jahr zusätzlich.'], 'Instandhaltung')}</label></div>
-    ${v.properties.length ? html`<div class="grid auto" style="--gap:1rem">${v.properties.map((p) => html`<article class="card property">
+    ${v.properties.length ? html`<div class="grid auto" style="--gap:1rem">${v.properties.map((p) => html`<article class="card property" data-sim-entity="property:${p.id}">
       <div class="row nowrap spread"><h4>${p.name}</h4>${p.residence ? html`<span class="chip good">${icon('map-pin')} Wohnsitz</span>` : ''}</div>
       <div class="dim small">${p.city} · ${p.rooms} Zimmer</div>
       <div class="mt small">Zustand ${p.condition} %</div>${bar(p.condition, p.condition < 50 ? 'bad' : 'good')}

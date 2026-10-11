@@ -9,7 +9,7 @@ die Auswahl pro Browser. Die separate Hell-/Dunkel-Präferenz bleibt erhalten.
 V2 verwendet eine dauerhafte, bildschirmfüllende Spielwelt. Die Verwaltung öffnet
 sich darüber in einem Fenster mit Identität/Vermögen links, Bereichsreitern oben,
 Funktionsauswahl im Inhalt und Rückkehr zur Karte unten. Das illustrierte Dock
-enthält fünf Bereiche; sämtliche bisherigen Routen bleiben erreichbar:
+enthält fünf einzeln gefasste, illustrierte Bereichsknöpfe; sämtliche bisherigen Routen bleiben erreichbar:
 
 | Dock | Bereiche im Verwaltungsfenster |
 | --- | --- |
@@ -39,6 +39,19 @@ Spielmodule. Einführung und Hilfen bleiben über „Spielhilfe“ zugänglich.
 - Wohnort grün, eigener Immobilien-/Unternehmensstandort violett, andere Orte blau.
 - Ortssuche, Zoom, Verschieben, Pinch, Stadtauswahl, Umzug/Preisvorschau und
   EFS-Sammeln bleiben verfügbar. Tastaturaktivierung ist ebenfalls möglich.
+- Kompakte Kartenverwaltung mit Reitern **Standorte / Betriebe / Routen**,
+  tatsächlichen Besitzanzahlen, Tagesbilanz, Vermögen und Betriebskennzahlen.
+- Stadtinformationen zeigen die eigenen Immobilien und Unternehmen vor Ort.
+  Ein Klick öffnet direkt deren bestehenden Verwaltungsabschnitt; Formulare
+  und Aktionen werden nicht nachgebaut. Betriebskennzahlen stehen zusammen
+  in einer kompakten Übersicht.
+- Handelsverbindungen stammen aus `/api/transport`. Linien verbinden Start
+  und Ziel **schematisch**, ohne Straßenverläufe oder Fahrzeugpositionen zu
+  behaupten. Auswahl über Karte oder Routenliste öffnet Status, Ware, Menge,
+  Fahrten, Gewinn und den Fortschritt anhand echter Spieltage. Die bestehende
+  Routenverwaltung bleibt für Änderungen und Start/Stopp zuständig.
+- Filter für eigenen Besitz, EFS und Handelsrouten. Transportfehler blockieren
+  die Karte nicht; bei der Rückkehr aus der Verwaltung werden Daten erneuert.
 - Standortliste und Filter für eigenen Besitz/EFS. Kartenausschnitt und Filter
   bleiben während der Sitzung über Verwaltungswechsel und Aktualisierungen erhalten.
 - Die Basiskarte wird mitgeliefert: vereinfachte Natural-Earth-Länderumrisse,
@@ -68,7 +81,11 @@ nicht. Charaktererstellung, Erbfolge und Spielende bleiben scrollbar.
   Städten/Gebäuden/Zeitungsdaten und simulierten Serverantworten. Prüft alle 14
   Navigationsziele, Bereichsauswahl, Lebensmittelaktion, Gruppenauswahl, Ortssuche,
   Zoom, Besitzfilter, kollisionsfreie Beschriftungen, responsive Fenster,
-  Classic-Rückkehr und Speicherung nach Neuladen.
+  Classic-Rückkehr und Speicherung nach Neuladen. Außerdem: gezieltes Öffnen
+  von Betrieben/Immobilien/Routen, 50-%-Fahrtfortschritt, Routenfilter und
+  Anhalten einer Route über den originalen Handler mit Aktualisierung der Karte.
+  Die Funktionsauswahl respektiert unabhängig gesetzte `hidden`-Attribute der
+  Spielmodule.
 - Viewports: 1440×900, 832×384, 412×915 und 320×640.
 
 Playwright lokal installieren oder `TP_PLAYWRIGHT_PATH` angeben; optional

@@ -39,7 +39,10 @@ app.get('/api/live',(_,res)=>{res.set('Content-Type','text/event-stream');res.wr
 app.post('/api/action/seen',(_,res)=>res.json({ok:true,view}));
 app.get('/api/shop',(_,res)=>res.json({ok:true,mode:'off',packages:[],subscription:{enabled:false}}));
 app.get('/api/supply/mine',(_,res)=>res.json({ok:true,contracts:[],offers:[]}));
-app.get('/api/transport',(_,res)=>res.json({ok:true,enabled:true,env:{},modes:[{key:'bahn',name:'Güterbahn',speed:220,capKg:20000}],view:{routes:[],log:[],max:6},eligibleFirms:[],offers:{mine:[],market:[]},trade:{roiCapPct:24},contracts:{}}));
+const route = { id: 701, firm: 1, good: 'grain', goodName: 'Getreide', unit: 'kg', from: w.cityList[0].id, fromName: w.cityList[0].name, to: w.cityList[1].id, toName: w.cityList[1].name, qty: 100, interval: 10, mode: 'bahn', active: true, locked: false, status: 'underway', insured: true, smuggle: false, nextIn: 2, trip: { no: 1, modeName: 'Güterbahn', units: 100, days: 4, left: 2, events: [] }, made: { trips: 3, lost: 0, profit: 125000, last: { net: 42000 } } };
+const transport = {ok:true,enabled:true,env:{},modes:[{key:'bahn',name:'Güterbahn',speed:220,capKg:20000}],view:{routes:[route],log:[],max:6},eligibleFirms:[{id:1,name:'Bäckerei Müller'}],goods:[],offers:{mine:[],market:[]},trade:{roiCapPct:24},contracts:{}};
+app.get('/api/transport',(_,res)=>res.json(transport));
+app.post('/api/transport/route/701/active',(req,res)=>{route.active=req.body.on;res.json({ok:true});});
 app.get('/api/transport/policy',(_,res)=>res.json({ok:true,enabled:false}));
 app.get('/api/archive',(_,res)=>res.json({ok:true,lives:[]}));
 app.get('/api/newspaper',(req,res)=>res.json({ok:true,here:true,edition:edition(w,state,Number(req.query.cityId)||state.cityId)}));
@@ -53,4 +56,4 @@ app.post('/api/action/buyFood',(req,res)=>{view.meters.fridge=100;res.json({ok:t
 app.post('/api/action/collect',(_,res)=>res.json({ok:true,view,coins:25,efsPool:40,message:'+10 EFS'}));
 app.get('/api/reputation',(_,res)=>res.json({ok:true,level:0,localLevel:0,score:0,top:[],ledger:[],progress:{next:10,pct:0}}));
 app.use('/api',(_,res)=>res.json({ok:true,enabled:false,rows:[],items:[]}));
-module.exports = { app, view, world };
+module.exports = { app, view, world, transport };

@@ -33,12 +33,13 @@ export function syncSimulator(ctx) {
     frame.querySelectorAll('[data-sim-close]').forEach((b) => { b.onclick = () => ctx.go('map'); });
   }
   const isMap = ctx.route === 'map';
+  const returning = isMap && !frame.hidden;
   frame.hidden = isMap;
   const world = document.getElementById('sim-world');
   world.inert = !isMap; world.setAttribute('aria-hidden', String(!isMap));
   shell.classList.toggle('sim-management', !isMap);
   // A failed map fetch never prevents opening a management module.
-  ensureWorld(ctx).catch(() => {});
+  ensureWorld(ctx, returning).catch(() => {});
 }
 
 export async function ensureWorld(ctx, force = false) {

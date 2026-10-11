@@ -7,7 +7,7 @@ import { firmSeasonChips, epiBanner, bindSeasons, harvestStrip } from '../season
 function card(c, v, ctx) {
   const cur = v.currency; const f = c.flows;
   if (c.abandoned) {
-    return html`<article class="card biz lost"><div class="boards"></div>
+    return html`<article class="card biz lost" data-sim-entity="firm:${c.id}"><div class="boards"></div>
       <div class="row nowrap spread"><h3>${c.name}</h3><span class="chip bad">${icon('triangle-alert')} Lost Place</span></div>
       <div class="dim small">${c.city} · ${c.tierName} · Wert verfällt</div>
       <dl class="kv small mt"><dt>Aktueller Wert</dt><dd>${money(c.value, cur)}</dd><dt>Reaktivierung</dt><dd>${money(c.reactivateCost, cur)}</dd></dl>
@@ -15,7 +15,7 @@ function card(c, v, ctx) {
       ${c.qualified ? '' : html`<div class="small neg mt">Dir fehlt die Qualifikation (${c.profession}).</div>`}
       ${contractsSection(c, v, ctx)}</article>`;
   }
-  return html`<article class="card biz ${c.profitAll < 0 ? 'loss' : ''}">
+  return html`<article class="card biz ${c.profitAll < 0 ? 'loss' : ''}" data-sim-entity="firm:${c.id}">
     <div class="row nowrap spread"><h3>${c.name}</h3><span class="chip accent">${c.tierName}</span></div>
     <div class="dim small">${c.city} · ${c.profession}${c.owner ? ' · du arbeitest hier' : ''}${c.manager ? ' · Manager' : ''}</div>
     <div class="grid c2 mt small" style="--gap:.6rem"><div><div class="dim">Räume</div><b>${c.rooms} / ${c.maxRooms}</b></div><div><div class="dim">Mitarbeiter</div><b>${c.staff} / ${c.needed}</b></div></div>
@@ -55,7 +55,7 @@ export default {
     ${foundBar(v)}
     ${epiBanner(ctx)}
     <div class="mt">${contractsPanel(v)}</div>
-    ${cs.length ? html`<div class="grid c3 mt" style="--gap:1rem"><div class="card flat"><div class="card-title">Betriebe</div><div class="big-money">${cs.length}</div></div><div class="card flat"><div class="card-title">Gewinn / Tag</div><div class="big-money ${profit >= 0 ? 'pos' : 'neg'}">${signed(profit, cur)}</div></div><div class="card flat"><div class="card-title">Firmenkassen</div><div class="big-money">${money(cash, cur)}</div>${cash > 0 ? html`<button class="btn sm primary mt" data-b="bizCollect" data-id="all">Alles abholen</button>` : ''}</div></div>
+    ${cs.length ? html`<div class="grid c3 mt" data-sim-metrics style="--gap:1rem"><div class="card flat"><div class="card-title">Betriebe</div><div class="big-money">${cs.length}</div></div><div class="card flat"><div class="card-title">Gewinn / Tag</div><div class="big-money ${profit >= 0 ? 'pos' : 'neg'}">${signed(profit, cur)}</div></div><div class="card flat"><div class="card-title">Firmenkassen</div><div class="big-money">${money(cash, cur)}</div>${cash > 0 ? html`<button class="btn sm primary mt" data-b="bizCollect" data-id="all">Alles abholen</button>` : ''}</div></div>
       <div class="mt">${cyclePanel(v, ctx)}</div>
       <div class="grid auto mt" style="--gap:1rem;grid-template-columns:repeat(auto-fill,minmax(340px,1fr))">${cs.map((c) => card(c, v, ctx))}</div>`
     : html`<div class="card empty-note mt">${icon('store', 'lg')}<span>Du besitzt noch keinen Betrieb. Gründe dein eigenes Unternehmen mit dem Knopf oben – oder schau, ob in der Zeitung unter „Gewerbe“ ein Betrieb zum Verkauf steht.</span><button class="btn sm" data-go="newspaper">Zur Zeitung</button></div>`}`;

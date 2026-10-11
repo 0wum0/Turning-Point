@@ -267,3 +267,63 @@
 :root[data-game-design="v2"] body.game .hud .ring { animation:none; }
 :root[data-game-design="v2"] body.game .sim-window .aerial-card .map-tools { top:9px;left:9px;display:flex; }
 :root[data-game-design="v2"] body.game .sim-window .aerial-card .map-tools .btn { width:34px;height:34px;min-height:34px;padding:5px; }
+
+/* Operational map: compact ledger, selectable real routes and entity shortcuts. */
+:root[data-game-design="v2"] body.game .sim-ops-summary { display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px;background:#17282055;border-bottom:1px solid #ffffff19; }
+:root[data-game-design="v2"] body.game .sim-ops-summary span { font-size:9px;color:#b7c9be;min-width:0; }
+:root[data-game-design="v2"] body.game .sim-ops-summary b { display:block;font-size:13px;line-height:1.6;font-variant-numeric:tabular-nums;color:#ecf1eb;overflow-wrap:anywhere; }
+:root[data-game-design="v2"] body.game .sim-ops-tabs { display:flex;position:sticky;top:0;z-index:2;background:#28372f;border-bottom:1px solid #88af9355; }
+:root[data-game-design="v2"] body.game .sim-ops-tabs button { flex:1;min-width:0;display:flex;align-items:center;justify-content:center;gap:4px;padding:10px 2px;font:600 10px var(--font-ui);border:0;border-bottom:2px solid transparent;background:transparent;color:#bbc9be;cursor:pointer; }
+:root[data-game-design="v2"] body.game .sim-ops-tabs button[aria-pressed="true"] { color:#b9ffd2;border-color:#6bdba0;background:#405945; }
+:root[data-game-design="v2"] body.game .sim-ops-tabs b { font-size:9px;border-radius:3px;padding:1px 4px;background:#14231b66; }
+:root[data-game-design="v2"] body.game .sim-ops-caption { display:flex;justify-content:space-between;font-size:8px;color:#a1b5a6;padding:2px 3px 7px; }
+:root[data-game-design="v2"] body.game .sim-ops-row { display:flex;align-items:center;gap:7px;width:100%;text-align:left;margin:0;padding:9px 4px;border:0;border-bottom:1px solid #a4bca128;background:transparent;color:#edf4eb;font:inherit;cursor:pointer; }
+:root[data-game-design="v2"] body.game .sim-ops-row:hover, :root[data-game-design="v2"] body.game .sim-ops-row:focus-visible { background:#65897045;outline:1px solid #77c99b;outline-offset:-1px; }
+:root[data-game-design="v2"] body.game .sim-ops-row > .i { width:17px;height:17px;flex:none;color:#a1dcb8; }
+:root[data-game-design="v2"] body.game .sim-ops-row > span { flex:1;min-width:0;overflow-wrap:anywhere; }
+:root[data-game-design="v2"] body.game .sim-ops-row b { display:block;font-size:11px;line-height:1.35; }
+:root[data-game-design="v2"] body.game .sim-ops-row small { display:block;font-size:9px;color:#b5c6b9;margin-top:2px; }
+:root[data-game-design="v2"] body.game .sim-ops-row em { display:block;font-size:10px;font-style:normal;margin-top:4px; }
+:root[data-game-design="v2"] body.game .sim-ops-count { font-size:11px;font-variant-numeric:tabular-nums;white-space:nowrap;color:#b5f4c5; }
+:root[data-game-design="v2"] body.game .sim-city-assets { margin-top:12px;padding-top:8px;border-top:1px solid #ffffff20; }
+:root[data-game-design="v2"] body.game .sim-city-assets h4 { font-size:10px;margin:0 0 3px;color:#b7cabb;text-transform:uppercase;letter-spacing:.05em; }
+:root[data-game-design="v2"] body.game .sim-ops-empty { display:grid;justify-items:center;text-align:center;padding:18px 8px 8px;color:#c0d0c3;gap:8px; }
+:root[data-game-design="v2"] body.game .sim-ops-empty > .i { width:40px;height:40px;color:#85bda0; }
+:root[data-game-design="v2"] body.game .sim-ops-empty p { font-size:11px;margin:0; }
+:root[data-game-design="v2"] body.game .sim-route-hit { fill:none;stroke:transparent;stroke-width:16;vector-effect:non-scaling-stroke;pointer-events:stroke;cursor:pointer; }
+:root[data-game-design="v2"] body.game .sim-route-stroke { fill:none;stroke:#777e76;stroke-width:2;stroke-dasharray:5 5;vector-effect:non-scaling-stroke;pointer-events:none; }
+:root[data-game-design="v2"] body.game .sim-route-line.active .sim-route-stroke { stroke:#b38a22;stroke-dasharray:none; }
+:root[data-game-design="v2"] body.game .sim-route-line.selected .sim-route-stroke, :root[data-game-design="v2"] body.game .sim-route-line:focus .sim-route-stroke { stroke:#176cce;stroke-width:3;stroke-dasharray:5 5; }
+:root[data-game-design="v2"] body.game .sim-route-end { fill:#dcbd5b;stroke:#5e6045;stroke-width:1;vector-effect:non-scaling-stroke;pointer-events:none; }
+:root[data-game-design="v2"] body.game .sim-route-heading { display:flex;gap:12px;align-items:center;margin:6px 0 12px; }
+:root[data-game-design="v2"] body.game .sim-route-heading > .i { width:32px;height:32px;color:#99d0b8;flex:none; }
+:root[data-game-design="v2"] body.game .sim-route-heading h3 { margin:0;font-size:16px;overflow-wrap:anywhere; }
+:root[data-game-design="v2"] body.game .sim-route-heading small { display:block;font-size:9px;font-weight:400;color:#a6bdb0;margin:3px 0; }
+:root[data-game-design="v2"] body.game .sim-trip-progress { margin:12px 0;padding:10px;background:#17251f6b;border:1px solid #7389774d; }
+:root[data-game-design="v2"] body.game .sim-trip-progress progress { width:100%;height:8px;accent-color:#65d496; }
+:root[data-game-design="v2"] body.game .sim-trip-progress div { display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px;font-size:9px;margin-top:4px; }
+:root[data-game-design="v2"] body.game .sim-route-places { display:flex;gap:6px;margin-top:10px; }
+:root[data-game-design="v2"] body.game .sim-section-hidden { display:none !important; }
+:root[data-game-design="v2"] body.game .sim-workspace-content[data-focused="true"] { grid-template-columns:minmax(0,1fr); }
+:root[data-game-design="v2"] body.game .sim-entity-focus { outline:1px solid #7be4a5;outline-offset:2px; }
+/* Individual raised dock buttons follow the reference's map-first navigation. */
+:root[data-game-design="v2"] body.game .side { gap:9px;padding:0;border:0;background:none;box-shadow:none;backdrop-filter:none; }
+:root[data-game-design="v2"] body.game .sim-dock-link { border:1px solid #adbea475;border-radius:15px;background:linear-gradient(#65715beb,#2d3d2ff5);box-shadow:0 3px 8px #182d2866,inset 0 1px #ffffff28; }
+:root[data-game-design="v2"] body.game .sim-dock-link + .sim-dock-link { border-left:1px solid #adbea475; }
+:root[data-game-design="v2"] body.game .sim-dock-link.on { border-color:#a7e9ae;background:linear-gradient(#6c9765,#304e38);box-shadow:0 0 0 1px #7ebf7950,0 3px 8px #182d2866; }
+:root[data-game-design="v2"] body.game .sim-illustration { margin-top:-10px;height:42px; }
+@media(max-width:650px) {
+  :root[data-game-design="v2"] body.game .side { gap:4px; }
+  :root[data-game-design="v2"] body.game .sim-dock-link { border-radius:10px; }
+  :root[data-game-design="v2"] body.game .sim-illustration { height:35px; }
+}
+:root[data-game-design="v2"] body.game .sim-workspace-content > [data-sim-metrics] { grid-column:1 / -1;order:-1;padding:0;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px !important; }
+:root[data-game-design="v2"] body.game [data-sim-metrics] .card-title { font-size:10px;letter-spacing:.02em; }
+:root[data-game-design="v2"] body.game [data-sim-metrics] .big-money { font-size:20px; }
+@media(max-width:650px) {
+  :root[data-game-design="v2"] body.game [data-sim-metrics] .card { padding:7px; }
+  :root[data-game-design="v2"] body.game [data-sim-metrics] .big-money { font-size:16px; }
+  :root[data-game-design="v2"] body.game [data-sim-metrics] .btn { padding:5px;font-size:9px; }
+}
+:root[data-game-design="v2"] body.game .sim-ops-summary .pos { color:#80e8aa; }
+:root[data-game-design="v2"] body.game .sim-ops-summary .neg { color:#ff9290; }

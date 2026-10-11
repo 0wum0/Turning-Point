@@ -62,7 +62,7 @@ export function decorateDesign(hud, side, route, ctx) {
   side.replaceChildren(dock);
   const tabs = document.getElementById('sim-tabs');
   if (tabs) {
-    tabs.replaceChildren(...links.filter((l) => current ? current.ids.includes(l.dataset.nav) : true));
+    tabs.replaceChildren(...(current ? current.ids.map((id) => links.find((l) => l.dataset.nav === id)).filter(Boolean) : links));
     tabs.querySelector('.nav.on')?.setAttribute('aria-current', 'page');
   }
   const title = document.getElementById('sim-window-title');
@@ -122,7 +122,7 @@ export function decoratePageDesign(root, ctx) {
   // Flatten only top-level multi-section grids; never split a form or a card.
   const grids = [];
   root.querySelectorAll(':scope > .grid').forEach((grid) => {
-    if ([...grid.children].every((el) => el.matches('.card, section, article'))) {
+    if (!grid.matches('[data-sim-metrics]') && [...grid.children].every((el) => el.matches('.card, section, article'))) {
       const placeholder = document.createComment('original grid'); const children = [...grid.children];
       grid.before(placeholder); grid.replaceWith(...children); grids.push({ grid, children, placeholder });
     }
@@ -130,7 +130,7 @@ export function decoratePageDesign(root, ctx) {
   const sections = [...root.children].filter((el) => !el.matches('.panel-head, .sim-guide, .alert, .ann, .soc-strip') && !el.hidden && el.textContent.trim());
   const restoreGrids = () => grids.forEach(({ grid, children, placeholder }) => { grid.append(...children.filter((el) => el.isConnected)); placeholder.replaceWith(grid); });
   if (sections.length < 2) { restoreGrids(); return; }
-  const positions = sections.map((el) => { const marker = document.createComment('original section'); el.before(marker); return { el, marker, hidden: el.hidden }; });
+  const positions = sections.map((el) => { const marker = document.createComment('original section'); el.before(marker); return { el, marker }; });
   const wrap = document.createElement('div'); wrap.className = 'sim-workspace';
   const nav = document.createElement('nav'); nav.className = 'sim-section-nav'; nav.setAttribute('aria-label', text('Funktionen', 'Functions'));
   const content = document.createElement('div'); content.className = 'sim-workspace-content';
@@ -139,8 +139,9 @@ export function decoratePageDesign(root, ctx) {
   const buttons = [];
   const choose = (id) => {
     ctx.ui.simSection = ctx.ui.simSection || {}; ctx.ui.simSection[root.dataset.route] = id;
-    sections.forEach((el, i) => { el.hidden = id !== 'all' && id !== String(i); });
+    sections.forEach((el, i) => { el.classList.toggle('sim-section-hidden', id !== 'all' && id !== String(i)); });
     buttons.forEach((b) => { b.classList.toggle('on', b.dataset.section === id); b.setAttribute('aria-pressed', String(b.dataset.section === id)); });
+    content.dataset.focused = String(id !== 'all');
     content.scrollTop = 0;
   };
   const add = (id, label, ic) => {
@@ -154,6 +155,7 @@ export function decoratePageDesign(root, ctx) {
     const cleanHeading = heading?.cloneNode(true); cleanHeading?.querySelectorAll('button:not(.term), .badge, svg, .i').forEach((x) => x.remove());
     let label = cleanHeading?.textContent.trim().replace(/\s+/g, ' ') || text('Weitere Funktionen', 'More functions');
     label = ({ polBox: 'Versorgungspolitik', civicBox: 'Vereine & Gemeinde', courtBox: 'Recht & Gericht', epiBanner: 'Gesundheitslage', seasonCard: 'Jahreszeit', civicMini: 'Gemeinwohl', econBox: 'Preisbarometer', honorCard: 'Ehrenbürgerwürde', trPol: 'Verkehrspolitik' })[el.id] || label;
+    if (el.matches('[data-sim-metrics]')) label = text('Betriebsübersicht', 'Business overview');
     if (el.matches('.scene-card')) label = text('Wohnort & Lebensstand', 'Home & life');
     if (el.matches('.time-card')) label = text('Zeit & EFS', 'Time & EFS');
     if (label.length > 34) label = label.slice(0, 32) + '…';
@@ -167,8 +169,21 @@ export function decoratePageDesign(root, ctx) {
   const previousDispose = root.__dispose;
   root.__dispose = () => { observer.disconnect(); previousDispose?.(); };
   root.__restoreSimulator = () => {
-    positions.forEach(({ el, marker, hidden }) => { el.hidden = hidden; el.classList.remove('sim-section'); el.removeAttribute('data-sim-section'); if (el.isConnected) marker.replaceWith(el); else marker.remove(); });
+    root.querySelectorAll('.sim-entity-focus').forEach((el) => { el.classList.remove('sim-entity-focus'); el.removeAttribute('tabindex'); });
+    positions.forEach(({ el, marker }) => { el.classList.remove('sim-section', 'sim-section-hidden'); el.removeAttribute('data-sim-section'); if (el.isConnected) marker.replaceWith(el); else marker.remove(); });
     observer.disconnect(); wrap.remove(); restoreGrids();
   };
   choose(saved === 'all' || Number(saved) < sections.length ? saved : 'all');
+  const focus = ctx.ui.simFocus;
+  if (focus?.route === root.dataset.route) {
+    delete ctx.ui.simFocus;
+    const target = [...root.querySelectorAll('[data-sim-entity]')].find((el) => el.dataset.simEntity === focus.entity);
+    const section = target?.closest('.sim-section');
+    if (section) {
+      choose(section.dataset.simSection);
+      target.classList.add('sim-entity-focus');
+      target.setAttribute('tabindex', '-1');
+      requestAnimationFrame(() => { if (target.isConnected) { target.scrollIntoView({ block: 'nearest' }); target.focus({ preventScroll: true }); } });
+    }
+  }
 }

@@ -39,7 +39,7 @@ function routeCard(r, d, ctx) {
   const v = ctx.view; const cur = v.currency; const st = STATUS[r.status] || STATUS.idle;
   const firm = (v.companies.find((c) => c.id === r.firm) || {}).name || '';
   const last = r.made.last;
-  return html`<article class="card flat route" data-route="${r.id}">
+  return html`<article class="card flat route" data-route="${r.id}" data-sim-entity="route:${r.id}">
     <div class="row nowrap spread"><h3 class="serif" style="margin:0;font-size:1.15rem">${icon(r.mode && MODE_ICON[r.mode] ? MODE_ICON[r.mode] : 'route')} <span>${r.goodName}</span></h3><span class="chip ${st[0]}">${icon(st[2])} <span>${st[1]}</span></span></div>
     <div class="small mt"><b data-i18n-skip>${r.fromName}</b> ${icon('arrow-right')} <b data-i18n-skip>${r.toName}</b> <span class="dim">· <span data-i18n-skip>${firm}</span></span></div>
     <div class="mt">${timeline(r, v)}</div>

@@ -2,6 +2,7 @@ import { html, raw, icon, money, infoBtn, api, on, toast, num, esc, mount, modal
 import { project, VIEW, outlinePath } from '../germany.js';
 import { isV2 } from '../design.js';
 import { layoutMarkers } from '../map-layout.js';
+import { operationsPanel, cityAssets, routePanel, routeDrawing } from '../map-operations.js';
 import { GEOGRAPHY } from '../map-geography.js';
 import { sceneFor } from './overview.js';
 import { bindPlaceSearch, describe, kindOf } from '../places.js';
@@ -15,7 +16,11 @@ function graticule() {
 
 export default {
   id: 'map', label: 'Karte', icon: 'map',
-  async load(ctx) { return api('GET', '/api/map'); },
+  async load(ctx) {
+    if (!isV2()) return api('GET', '/api/map');
+    const [data, transport] = await Promise.all([api('GET', '/api/map'), api('GET', '/api/transport').catch(() => null)]);
+    return { ...data, transport };
+  },
   render(ctx, data) {
     const v = ctx.view;
     const simulator = isV2();
@@ -31,14 +36,14 @@ export default {
       <section class="card map-card">
         <div class="map-search pl-wrap"><input id="mapq" type="search" placeholder="Ort suchen …" autocomplete="off" aria-label="Ort suchen"><div class="pl-res" id="mapres"></div></div>
         <div class="map-tools"><button class="btn sm" id="zin" aria-label="Vergrößern">${icon('plus')}</button><button class="btn sm" id="zout" aria-label="Verkleinern">${icon('minus')}</button><button class="btn sm" id="zreset" aria-label="Zurücksetzen">${icon('refresh-cw')}</button></div>
-        ${simulator ? html`<div class="sim-map-toolbar"><label><input type="checkbox" data-map-owned ${ctx.ui.mapFilter === 'owned' ? 'checked' : ''}> Eigene Standorte</label><label><input type="checkbox" data-map-efs ${ctx.ui.mapShowEfs === false ? '' : 'checked'}> EFS-Funde anzeigen</label><span class="sim-map-efs" id="efsToday">${data.activeEfs.today} / ${data.activeEfs.cap} EFS heute</span></div>` : ''}
+        ${simulator ? html`<div class="sim-map-toolbar"><label><input type="checkbox" data-map-owned ${ctx.ui.mapFilter === 'owned' ? 'checked' : ''}> Eigene Standorte</label><label><input type="checkbox" data-map-efs ${ctx.ui.mapShowEfs === false ? '' : 'checked'}> EFS-Funde anzeigen</label><label><input type="checkbox" data-map-routes ${ctx.ui.mapShowRoutes === false ? '' : 'checked'}> Handelsrouten</label><span class="sim-map-efs" id="efsToday">${data.activeEfs.today} / ${data.activeEfs.cap} EFS heute</span></div>` : ''}
         <svg id="germany" class="z1" viewBox="0 0 ${VIEW.w} ${VIEW.h}" preserveAspectRatio="xMidYMid meet" role="application" aria-label="Karte von Deutschland">
           <defs><linearGradient id="land" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity=".30"/><stop offset="1" stop-color="var(--accent)" stop-opacity=".10"/></linearGradient>
           <filter id="glow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
           <g id="vp">${simulator ? html`<g class="sim-geography" aria-hidden="true">${GEOGRAPHY.map((c) => html`<path d="${c.path}" fill="${c.id === '276' ? '#b6c99a' : '#9ab997'}" fill-rule="evenodd" stroke="#e9edc4" stroke-width=".65"/>`)}</g>` : html`<g class="grat">${raw(graticule())}</g><path class="land-glow" d="${outlinePath()}" filter="url(#glow)"/><path class="land" d="${outlinePath()}"/>` }
-            <g id="dots"></g>${raw(sparks)}</g>
+            ${simulator ? html`<g id="sim-routes"></g>` : ''}<g id="dots"></g>${raw(sparks)}</g>
         </svg>
-        <div class="map-legend small dim"><span>${icon('map-pin')} Du wohnst hier</span><span>★ Geburtsstadt (Rückkehr gratis)</span><span><i class="sq"></i> Eigener Besitz</span>${simulator ? html`<span title="Natural Earth · heutige Grenzen als Orientierung">Zahl = Orte · Natural Earth</span>` : ''}</div>
+        <div class="map-legend small dim"><span>${icon('map-pin')} Du wohnst hier</span><span>★ Geburtsstadt (Rückkehr gratis)</span><span><i class="sq"></i> Eigener Besitz</span>${simulator ? html`<span title="Natural Earth · heutige Grenzen als Orientierung">Zahl = Orte · Routen schematisch · Natural Earth</span>` : ''}</div>
       </section>
       <aside class="card map-panel" id="mapPanel"><div class="dim">Wähle eine Stadt auf der Karte.</div></aside>
     </div>`;
@@ -73,6 +78,7 @@ export default {
       if (simulator) {
         const layout = layoutMarkers(pts, { box, width: svg.clientWidth, height: svg.clientHeight, selected: ctx.ui.mapCity, home: data.here, birth: data.birthCityId, owned: own, filter });
         kk = 1 / layout.scale; clusters = layout.markers;
+        svg.querySelector('#sim-routes').innerHTML = ctx.ui.mapShowRoutes === false ? '' : routeDrawing(ctx, data.transport, ctx.ui.mapRoute, ctx.ui.mapCity, kk);
         dotsG.innerHTML = clusters.map((p, i) => `<g class="sim-marker${p.owned ? ' owned' : ''}${p.c.id === data.here ? ' home' : ''}${p.c.id === ctx.ui.mapCity ? ' selected' : ''}" data-marker="${i}" transform="translate(${p.xy[0]} ${p.xy[1]}) scale(${kk})" tabindex="0" role="button" aria-label="${esc(p.members.length > 1 ? p.members.length + ' Orte bei ' + p.c.label : p.c.label)}"><circle r="15" fill="transparent"/><path class="sim-pin" d="${p.members.length > 1 ? 'M0 7L-5 1a13 13 0 1 1 10 0Z' : 'M0 4C-2 1-8-5-8-10a8 8 0 0 1 16 0c0 5-6 11-8 14Z'}"/>${p.members.length > 1 ? `<text class="sim-cluster-count" y="-7">${p.members.length >= 1000 ? (Math.round(p.members.length / 100) / 10).toLocaleString('de-DE') + 'k' : p.members.length}</text>` : '<circle class="sim-pin-core" cy="-10" r="2.6"/>'}${p.label ? `<text class="sim-marker-label" x="${p.label.dx}" y="${p.label.dy}">${esc(p.label.text)}</text>` : ''}</g>`).join('');
       } else {
       const z = full.w / box.w; const minTier = z < 1.5 ? 3 : z < 3 ? 2 : 1; const pad = 24; const out = []; kk = Math.max(0.2, Math.min(1, box.w / full.w * 1.15));
@@ -118,8 +124,9 @@ export default {
     root.__dispose = () => { disposed = true; observer?.disconnect(); };
     root.querySelector('[data-map-owned]')?.addEventListener('change', (e) => { filter = e.target.checked ? 'owned' : 'all'; ctx.ui.mapFilter = filter; scheduleDraw(); });
     root.querySelector('[data-map-efs]')?.addEventListener('change', (e) => { ctx.ui.mapShowEfs = e.target.checked; scheduleDraw(); });
+    root.querySelector('[data-map-routes]')?.addEventListener('change', (e) => { ctx.ui.mapShowRoutes = e.target.checked; scheduleDraw(); });
     const ptrs = new Map(); let dragged = false; let pinch = 0;
-    svg.addEventListener('pointerdown', (e) => { if (!simulator || !e.target.closest('[data-marker], .pickup')) svg.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, [e.clientX, e.clientY]); dragged = false; if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = Math.hypot(a[0] - b[0], a[1] - b[1]); } });
+    svg.addEventListener('pointerdown', (e) => { if (!simulator || !e.target.closest('[data-marker], [data-map-route], .pickup')) svg.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, [e.clientX, e.clientY]); dragged = false; if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = Math.hypot(a[0] - b[0], a[1] - b[1]); } });
     svg.addEventListener('pointermove', (e) => {
       if (!ptrs.has(e.pointerId)) return;
       const prev = ptrs.get(e.pointerId); const cur = [e.clientX, e.clientY]; ptrs.set(e.pointerId, cur);
@@ -137,7 +144,7 @@ export default {
       if (simulator) ctx.ui.mapPanelCollapsed = false;
       panelToggle.setAttribute('aria-expanded', 'true');
       panelToggle.closest('.map-layout').dataset.panelCollapsed = 'false';
-      ctx.ui.mapCity = id; scheduleDraw();
+      ctx.ui.mapCity = id; ctx.ui.mapRoute = null; scheduleDraw();
       const request = ++cityRequest;
       const c = ctx.world.cityById.get(id); if (!c) return;
       const v = ctx.view; const here = id === v.city.id;
@@ -145,6 +152,7 @@ export default {
       const node = svg.querySelector(`.city[data-id="${id}"]`); if (node) node.classList.add('sel');
       const props = v.properties.filter((p) => p.cityId === id);
       let quote = null;
+      if (simulator && !here) mount(panel, html`<div class="sim-map-card-head"><button class="btn ghost sm" data-ops-back>${icon('chevron-left')} Übersicht</button><span>STADT</span></div><div class="sim-map-card-body" role="status"><h3>${c.label}</h3><p class="dim small">Stadtinformationen werden geladen …</p></div>`);
       if (!here) { try { quote = (await api('GET', `/api/move-quote?cityId=${id}`)).quote; } catch (_) { /* ignore */ } }
       if (request !== cityRequest || disposed) return;
       const cur = v.currency;
@@ -156,6 +164,7 @@ export default {
         <div class="dim small">${c.state} · ${kindOf(c)}${c.pop ? ' · ' + num(c.pop) + ' Einwohner' : ''}${c.since > 1945 ? ' · seit ' + c.since : ''}</div>
         <p class="dim small" style="margin:.6rem 0">${describe(c)}</p>
         <div class="row small">${id === data.birthCityId ? html`<span class="chip accent">★ Geburtsstadt</span>` : ''}${c.factor >= 1.1 ? html`<span class="chip warn">teuer</span>` : c.factor <= 0.88 ? html`<span class="chip good">günstig</span>` : ''}${props.length ? html`<span class="chip good">${props.length} eigene Immobilie(n)</span>` : ''}</div>
+        ${simulator ? cityAssets(ctx, id) : ''}
         <button class="btn primary block mt" id="enterCity">${icon('building-2')} Stadt ansehen</button>
         <hr>
         ${here ? html`<div class="alert good">${icon('map-pin')}<div>Hier wohnst du.</div></div>`
@@ -167,25 +176,38 @@ export default {
               ${quote.coins > 1 && ctx.world.adsEnabled ? html`<button class="btn block" id="adDiscount">${icon('circle-play')} Werbung ansehen · Coin-Preis halbieren</button>` : ''}
               <button class="btn primary block" id="doMove" ${(v.money < quote.money || ctx.coins < quote.coins) ? 'disabled' : ''}>${icon('truck')} Umziehen</button>
               ${(v.money < quote.money || ctx.coins < quote.coins) ? html`<div class="small neg">${v.money < quote.money ? 'Es fehlt Geld. ' : ''}${ctx.coins < quote.coins ? 'Es fehlen Coins (du hast ' + ctx.coins + ').' : ''}</div>` : ''}
-            </div>` : html`<div class="skel" style="height:80px"></div>`}</div>`);
+            </div>` : html`<p class="dim small" role="status">Umzugskosten konnten nicht geladen werden.</p><button class="btn block" data-move-retry>Erneut versuchen</button>`}</div>`);
       panel.querySelector('[data-portfolio]')?.addEventListener('click', showPortfolio);
       panel.querySelector('#enterCity').onclick = () => { ctx.ui.cityId = id; ctx.ui.cityBox = null; ctx.go('city'); };
+      panel.querySelector('[data-move-retry]')?.addEventListener('click', () => showCity(id));
       const mv = panel.querySelector('#doMove');
       if (mv) mv.onclick = async () => { const ok = await ctx.confirm({ title: `Nach ${c.name} ziehen?`, text: 'Kosten werden sofort abgebucht. Du verlierst deine Stelle und eine gemietete Wohnung.', ok: 'Umziehen' }); if (ok) { ctx.ui.mapCity = null; await ctx.act('move', { cityId: id }); } };
       const ad = panel.querySelector('#adDiscount');
       if (ad) ad.onclick = async () => { await ctx.watchAd(`discount:move:${id}`); showCity(id); };
     }
     function showPortfolio() {
-      ++cityRequest;
-      const v = ctx.view;
-      const ids = [...new Set([data.here, data.birthCityId, ...own, ...v.companies.map((c) => c.cityId)])];
-      mount(panel, html`<div class="sim-map-card-head"><b>MEINE STANDORTE</b><span>${ids.length}</span></div><div class="sim-map-card-body"><div class="sim-map-stats"><div class="sim-map-stat"><span>Immobilien</span><b>${v.properties.length}</b></div><div class="sim-map-stat"><span>Unternehmen</span><b>${v.companies.length}</b></div></div><div class="stack" style="--gap:6px">${ids.map((id) => {
-        const c = ctx.world.cityById.get(id); if (!c) return '';
-        const count = v.properties.filter((p) => p.cityId === id).length;
-        return html`<button class="btn block" data-location="${id}">${icon(id === data.here ? 'home' : 'map-pin')}<span class="grow">${c.label}</span><span>${count || (id === data.birthCityId ? '★' : '')}</span></button>`;
-      })}</div><a class="btn primary block mt" href="#/housing">${icon('building-2')} Immobilien verwalten</a><a class="btn block mt" href="#/business">${icon('briefcase')} Unternehmen verwalten</a></div>`);
-      panel.querySelectorAll('[data-location]').forEach((b) => { b.onclick = () => focusCity(ctx.world.cityById.get(Number(b.dataset.location))); });
+      ++cityRequest; ctx.ui.mapRoute = null; ctx.ui.mapCity = null; scheduleDraw();
+      mount(panel, operationsPanel(ctx, data));
     }
+    function showRoute(id) {
+      const route = data.transport?.view?.routes?.find((r) => String(r.id) === String(id));
+      if (!route) return;
+      ++cityRequest; ctx.ui.mapRoute = route.id; ctx.ui.mapCity = null;
+      ctx.ui.mapPanelCollapsed = false;
+      panelToggle.setAttribute('aria-expanded', 'true');
+      panelToggle.closest('.map-layout').dataset.panelCollapsed = 'false';
+      mount(panel, routePanel(ctx, route)); scheduleDraw();
+    }
+    on(panel, 'click', '[data-ops-tab]', (e, b) => { ctx.ui.mapOpsTab = b.dataset.opsTab; showPortfolio(); });
+    on(panel, 'click', '[data-location]', (e, b) => { const c = ctx.world.cityById.get(Number(b.dataset.location)); if (c) focusCity(c); });
+    on(panel, 'click', '[data-ops-route]', (e, b) => { showRoute(b.dataset.opsRoute); });
+    on(panel, 'click', '[data-ops-back]', showPortfolio);
+    on(panel, 'click', '[data-sim-open]', (e, b) => {
+      ctx.ui.simFocus = { route: b.dataset.simOpen, entity: b.dataset.entity };
+      ctx.go(b.dataset.simOpen);
+    });
+    on(svg, 'click', '[data-map-route]', (e, b) => { if (!dragged) showRoute(b.dataset.mapRoute); });
+    on(svg, 'keydown', '[data-map-route]', (e, b) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showRoute(b.dataset.mapRoute); } });
     function pickMarker(index) {
       const p = clusters[index]; if (!p) return;
       if (p.members.length === 1) { showCity(p.c.id); return; }
@@ -211,7 +233,8 @@ export default {
     bindPlaceSearch(root.querySelector('#mapq'), root.querySelector('#mapres'), ctx, { year, onPick: focusCity });
     const initialCollapsed = ctx.ui.mapPanelCollapsed ?? (matchMedia('(max-width:650px)').matches && !ctx.ui.mapCity);
     clampBox(); apply();
-    if (simulator && !ctx.ui.mapCity) showPortfolio();
+    if (simulator && ctx.ui.mapRoute && data.transport?.view?.routes?.some((r) => r.id === ctx.ui.mapRoute)) showRoute(ctx.ui.mapRoute);
+    else if (simulator && !ctx.ui.mapCity) showPortfolio();
     else showCity(ctx.ui.mapCity || ctx.view.city.id);
     if (simulator && initialCollapsed) {
       ctx.ui.mapPanelCollapsed = true;
