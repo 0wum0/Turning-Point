@@ -1,3 +1,4 @@
+import { startSplash } from './splash.js';
 import { syncSimulator, ensureWorld } from './simulator.js';
 import { isV2, openDesignSettings, decorateDesign, decoratePageDesign } from './design.js';
 import { decodeWorld } from './places.js';
@@ -102,9 +103,10 @@ function render() {
   if (!shellActive()) {
     mount(app, html`<div class="shell"><header class="hud" id="hud"></header><nav class="side" id="side" aria-label="Hauptmenü"></nav><main class="page" id="page" tabindex="-1"></main></div>`);
   }
-  syncSimulator(ctx); renderHud(); trackHud(); renderPage(true);
+  syncSimulator(ctx); renderHud(); trackHud(); const ready = renderPage(true);
   startSocialPoll(); startBadges();
   startLive(ctx, { pollSocial, softRefresh: () => renderPage(false), refreshHud: async () => { const r = await refresh(); if (r && r.view) renderHud(); } });
+  return ready;
 }
 
 let socialTimer = 0;
@@ -349,15 +351,19 @@ setInterval(async () => {
 /* ---------- Start ---------- */
 audio.resumeOnGesture();
 async function boot() {
+  const splash = startSplash(app);
   try {
-    const [world, st] = await Promise.all([api('GET', '/api/world'), api('GET', '/api/state')]);
+    const [world, st] = await Promise.all([api('GET', '/api/world').then((r) => { splash.done('world'); return r; }), api('GET', '/api/state').then((r) => { splash.done('state'); return r; })]);
     decodeWorld(world);
     ctx.world = world; ctx.coins = st.coins; ctx.efsPool = st.efsPool;
     setView(st.view);
-    render();
+    await render();
+    if (isV2() && ctx.view?.status === 'alive') await ensureWorld(ctx);
+    splash.done('map'); splash.finish();
     showSync(st.sync);
     maybeWelcome(ctx);
   } catch (e) {
+    splash.cancel();
     app.innerHTML = `<div class="boot-error card"><h2>Das Spiel konnte nicht geladen werden</h2><p class="dim">${esc(e.message)}</p><button class="btn primary" data-boot-retry>Neu laden</button></div>`;
   }
 }

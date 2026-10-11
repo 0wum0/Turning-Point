@@ -1,4 +1,5 @@
 import { html, icon, money, signed, num, esc } from './ui.js';
+import { freightProgress, freightPoint } from './freight-motion.js';
 import { project } from './germany.js';
 
 const status = (r) => ({ underway: 'Unterwegs', ready: 'Abfahrt bereit', idle: 'Wartet auf Abfahrt', waiting: 'Wartet · Hochwasser', stopped: 'Angehalten' })[r.status] || 'Wartet auf Abfahrt';
@@ -40,7 +41,7 @@ export function routePanel(ctx, r) {
     <span class="chip ${r.active ? 'good' : 'warn'}">${status(r)}</span>
     ${t ? html`<div class="sim-trip-progress"><progress max="100" value="${progress}" aria-label="Fortschritt der aktuellen Fahrt"></progress><div><span>${t.modeName}</span><b>Noch ${t.left} ${t.left === 1 ? 'Spieltag' : 'Spieltage'}</b></div></div>` : ''}
     <dl class="kv small mt"><dt>Ware</dt><dd>${r.goodName}</dd><dt>Menge / Fahrt</dt><dd>${num(r.qty)} ${r.unit}</dd><dt>Intervall</dt><dd>${r.interval} Tage</dd><dt>Fahrten</dt><dd>${r.made.trips}</dd><dt>Gewinn insgesamt</dt><dd class="${r.made.profit >= 0 ? 'pos' : 'neg'}">${signed(r.made.profit, ctx.view.currency)}</dd></dl>
-    <p class="dim small">Die Kartenlinie verbindet Start und Ziel schematisch. Den Fahrfortschritt bestimmen die Spieltage.</p>
+    <p class="dim small">Die Kartenlinie verbindet Start und Ziel schematisch. Frachtsymbole zeigen den Fortschritt der Spieltage; die laufende Spur kennzeichnet eine aktive Fahrt.</p>
     ${open('trade', `route:${r.id}`, 'Route verwalten', 'settings')}
     <div class="sim-route-places"><button class="btn sm" data-location="${r.from}">${icon('map-pin')} Startort</button><button class="btn sm" data-location="${r.to}">${icon('flag')} Zielort</button></div></div>`;
 }
@@ -53,6 +54,33 @@ export function routeDrawing(ctx, transport, selected, city, scale) {
     const chosen = r.id === selected || (city != null && (r.from === city || r.to === city));
     // Schematic connection, never a fabricated road or vehicle position.
     const d = `M${A[0]} ${A[1]}L${B[0]} ${B[1]}`;
-    return `<g class="sim-route-line${chosen ? ' selected' : ''}${r.active ? ' active' : ''}" data-map-route="${esc(r.id)}" tabindex="0" role="button" aria-label="${esc(`${r.fromName} nach ${r.toName}: ${status(r)}`)}"><path class="sim-route-hit" d="${d}"/><path class="sim-route-stroke" d="${d}"/><circle class="sim-route-end" cx="${A[0]}" cy="${A[1]}" r="${4 * scale}"/><circle class="sim-route-end" cx="${B[0]}" cy="${B[1]}" r="${4 * scale}"/></g>`;
+    const moving = r.status === 'underway' && r.trip && r.trip.left > 0;
+    const position = freightPoint(A, B, freightProgress(r.trip, ctx.view.clock, Date.now() - ctx.__viewAt));
+    const glyph = { bahn: 'train-front', container: 'ship', luft: 'plane', drohne: 'plane', hyperloop: 'train-front' }[r.mode] || 'truck';
+    return `<g class="sim-route-line${moving ? ' underway' : ''}${chosen ? ' selected' : ''}${r.active ? ' active' : ''}" data-map-route="${esc(r.id)}" tabindex="0" role="button" aria-label="${esc(`${r.fromName} nach ${r.toName}: ${status(r)}`)}"><path class="sim-route-hit" d="${d}"/><path class="sim-route-stroke" d="${d}"/>${moving ? `<path class="sim-route-flow" d="${d}"/>` : ''}<circle class="sim-route-end" cx="${A[0]}" cy="${A[1]}" r="${4 * scale}"/><circle class="sim-route-end" cx="${B[0]}" cy="${B[1]}" r="${4 * scale}"/>${moving ? `<g class="sim-freight" data-freight="${r.id}" data-scale="${scale}" transform="translate(${position[0]} ${position[1]}) scale(${scale})"><circle class="sim-freight-halo" r="16"/><circle r="10"/><svg x="-7" y="-7" width="14" height="14" viewBox="0 0 24 24"><use href="/img/icons.svg#i-${glyph}"/></svg></g>` : ''}</g>`;
   }).join('');
+}
+
+
+export function animateFreight(svg, ctx, transport) {
+  let frame = 0, last = 0, disposed = false;
+  const routes = new Map((transport?.view?.routes || []).filter((r) => r.trip && r.status === 'underway').map((r) => [String(r.id), r]));
+  if (!routes.size) return () => {};
+  const clock = { ...ctx.view.clock }, sampledAt = ctx.__viewAt || Date.now();
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  const tick = (now) => {
+    if (disposed) return;
+    if (now - last >= 80 && !document.hidden && !svg.closest('[inert]') && !reduced.matches && document.documentElement.dataset.motion !== 'off') {
+      last = now;
+      svg.querySelectorAll('[data-freight]').forEach((el) => {
+        const r = routes.get(el.dataset.freight), a = ctx.world.cityById.get(r?.from), b = ctx.world.cityById.get(r?.to);
+        if (!a || !b) return;
+        const pos = freightPoint(project(a.lon, a.lat), project(b.lon, b.lat), freightProgress(r.trip, clock, Date.now() - sampledAt));
+        el.setAttribute('transform', `translate(${pos[0]} ${pos[1]}) scale(${el.dataset.scale})`);
+      });
+    }
+    frame = requestAnimationFrame(tick);
+  };
+  frame = requestAnimationFrame(tick);
+  return () => { disposed = true; cancelAnimationFrame(frame); };
 }

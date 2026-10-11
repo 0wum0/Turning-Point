@@ -28,3 +28,33 @@ test('own locations and selected city have priority without losing cluster membe
   assert.equal(layoutMarkers(data,{...opts,selected:3}).markers[0].c.id,3);
   assert.equal(layoutMarkers(data,{...opts,filter:'owned'}).markers[0].members.length,2);
 });
+
+test('every label stays bound to its actual city coordinates across zoom and pan', async () => {
+  const { layoutMarkers } = await load();
+  for (const factor of [1, 2, 4, 8]) {
+    const box = { x: 80 / factor, y: 30 / factor, w: 420 / factor, h: 600 / factor };
+    const blocked = { x: 220, y: 0, w: 180, h: 200 };
+    const layout = layoutMarkers(points, { box, width: 412, height: 800, excluded: [blocked], measure: s => s.length * 8 });
+    for (const marker of layout.markers) {
+      assert.deepEqual(marker.xy, points[marker.c.id].xy, 'no centroid or displaced marker');
+      if (!marker.label) continue;
+      const label = marker.label;
+      assert.equal(label.cityId, marker.c.id);
+      assert.equal(label.text, marker.c.name.length > 23 ? marker.c.name.slice(0, 21) + '…' : marker.c.name);
+      assert.equal(label.rect.w, label.text.length * 8 + 12);
+      assert.ok(Math.abs(label.edge - (label.rect.x > marker.sx ? 24 : -24)) < .001, 'leader touches the name plate');
+      assert.ok(!(label.rect.x < blocked.x + blocked.w && label.rect.x + label.rect.w > blocked.x && label.rect.y < blocked.y + blocked.h && label.rect.y + label.rect.h > blocked.y));
+    }
+  }
+});
+
+test('freight advances with the game clock, clamps to destination and never loops a trip', async () => {
+  const { freightProgress, freightPoint } = await import('data:text/javascript;base64,' + fs.readFileSync(path.join(__dirname, '../public/js/game/freight-motion.js')).toString('base64'));
+  const trip = { days: 4, left: 2 };
+  assert.equal(freightProgress(trip, { carry: 0, perMs: 1 / 1000 }, 0), .5);
+  assert.equal(freightProgress(trip, { carry: .5, perMs: 1 / 1000 }, 500), .75);
+  assert.equal(freightProgress(trip, { perMs: 1 / 1000 }, 99999), 1);
+  assert.equal(freightProgress(null), 0);
+  assert.equal(freightProgress({ days: 0, left: 0 }), 0);
+  assert.deepEqual(freightPoint([0, 10], [40, 30], .5), [20, 20]);
+});

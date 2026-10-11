@@ -1,5 +1,5 @@
 /* Screen-space marker layout for the simulator map. Pure function, no DOM. */
-export function layoutMarkers(points, { box, width, height, selected, home, birth, owned = new Set(), filter = 'all' }) {
+export function layoutMarkers(points, { box, width, height, selected, home, birth, owned = new Set(), filter = 'all', measure = (text) => text.length * 6.8, excluded = [] }) {
   const scale = Math.min(width / box.w, height / box.h);
   if (!Number.isFinite(scale) || scale <= 0) return { markers: [], scale: 1 };
   const ox = (width - box.w * scale) / 2, oy = (height - box.h * scale) / 2;
@@ -25,7 +25,8 @@ export function layoutMarkers(points, { box, width, height, selected, home, birt
     if (nearby) { nearby.members.push(...p.members); nearby.owned ||= p.owned; }
     else spaced.push(p);
   }
-  const reserved = spaced.map((p) => ({ x: p.sx - 11, y: p.sy - 18, w: p.members.length > 1 ? 30 : 22, h: 27 }));
+  const reserved = spaced.map((p) => ({ x: p.sx - 14, y: p.sy - 29, w: 28, h: 33 }));
+  const blocked = [...excluded];
   const overlaps = (a, b) => a.x < b.x + b.w + 4 && a.x + a.w + 4 > b.x && a.y < b.y + b.h + 3 && a.y + a.h + 3 > b.y;
   const maxLabels = Math.max(4, Math.min(42, Math.floor(width * height / 12000)));
   let labels = 0;
@@ -35,11 +36,11 @@ export function layoutMarkers(points, { box, width, height, selected, home, birt
     const important = p.c.id === selected || p.c.id === home || owned.has(p.c.id) || p.c.id === birth;
     if (p.members.length > 1 && !important && p.c.pop < 50000) continue;
     const title = p.c.name.length > 23 ? p.c.name.slice(0, 21) + '…' : p.c.name;
-    const w = title.length * 6.8 + 6;
-    const choices = [{ x: p.sx + 26, y: p.sy - 13, w, h: 16 }, { x: p.sx - w - 26, y: p.sy - 13, w, h: 16 }];
-    const rect = choices.find((r) => r.x > 2 && r.x + r.w < width - 2 && r.y > 2 && r.y + r.h < height - 2 && !reserved.some((b) => overlaps(r, b)));
+    const w = Math.ceil(measure(title)) + 12;
+    const choices = [{ x: p.sx + 24, y: p.sy - 10, w, h: 20 }, { x: p.sx - w - 24, y: p.sy - 10, w, h: 20 }];
+    const rect = choices.find((r) => r.x > 2 && r.x + r.w < width - 2 && r.y > 2 && r.y + r.h < height - 2 && ![...reserved, ...blocked].some((b) => overlaps(r, b)));
     if (!rect) continue;
-    p.label = { text: title, dx: rect.x - p.sx + 3, dy: rect.y - p.sy + 12, rect };
+    p.label = { cityId: p.c.id, text: title, dx: rect.x - p.sx + 6, dy: 4, edge: rect.x > p.sx ? rect.x - p.sx : rect.x + rect.w - p.sx, rect };
     reserved.push(rect); labels++;
   }
   return { markers: spaced, scale };

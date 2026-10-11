@@ -34,6 +34,10 @@ Spielmodule. Einführung und Hilfen bleiben über „Spielhilfe“ zugänglich.
 
 - Bildschirmbezogene Gruppierung des vollständigen Ortsdatensatzes. Auch bei
   rund 9.000 Orten überlappen weder Gruppierungsmarker noch Ortsbeschriftungen.
+- Ortsnamen sind mit einer Linie an der exakten Koordinate ihres Ortes verankert.
+  Namensschild, Kartenpunkt und Gruppenauswahl verwenden dieselbe Orts-ID;
+  keine Gruppenmittelpunkte. Textbreiten werden im Browser gemessen. Namen
+  weichen Kartenfiltern, Suchfeld, Standortpanel, Legende und Dock aus.
 - Zahlen auf Markern bezeichnen **Orte in der Gruppe**, nicht Immobilien.
   Gruppen öffnen eine vollständige Ortsliste oder lassen sich weiter vergrößern.
 - Wohnort grün, eigener Immobilien-/Unternehmensstandort violett, andere Orte blau.
@@ -47,7 +51,11 @@ Spielmodule. Einführung und Hilfen bleiben über „Spielhilfe“ zugänglich.
   in einer kompakten Übersicht.
 - Handelsverbindungen stammen aus `/api/transport`. Linien verbinden Start
   und Ziel **schematisch**, ohne Straßenverläufe oder Fahrzeugpositionen zu
-  behaupten. Auswahl über Karte oder Routenliste öffnet Status, Ware, Menge,
+  behaupten. Unterwegs befindliche Fracht erhält ein Verkehrsmittel-Symbol
+  (Bahn, Schiff, Flugzeug oder Straßenfracht). Seine schematische Position folgt
+  dem Anteil der abgelaufenen Spieltage, einschließlich der laufenden Spieluhr.
+  Eine bewegte Spur zeigt die Fahrtrichtung. Wartende Routen erhalten keine
+  Bewegung. Auswahl über Karte oder Routenliste öffnet Status, Ware, Menge,
   Fahrten, Gewinn und den Fortschritt anhand echter Spieltage. Die bestehende
   Routenverwaltung bleibt für Änderungen und Start/Stopp zuständig.
 - Filter für eigenen Besitz, EFS und Handelsrouten. Transportfehler blockieren
@@ -73,6 +81,23 @@ Ein blockierter Browserspeicher verhindert die Auswahl für die laufende Sitzung
 nicht. Kartenfehler haben einen Wiederholen-Knopf und blockieren die Verwaltung
 nicht. Charaktererstellung, Erbfolge und Spielende bleiben scrollbar.
 
+## Ladebildschirm und Bewegung
+
+V2 startet mit einem eigenen illustrierten Deutschland-Panorama, Turning-Point-
+Schriftzug und animierter Sanduhr. Die drei Ladeabschnitte werden durch tatsächlich
+abgeschlossene Anfragen und den fertigen Spielaufbau gefüllt; es gibt keine
+künstliche Wartezeit oder vorgetäuschte Prozentanzeige. Fehler lösen die Sperre
+und zeigen den bisherigen Wiederholen-Knopf. Classic behält seinen Ladebildschirm.
+
+Verwaltungsfenster und Kartenpanels blenden kurz ein. Kartenfilter sind auf kleinen
+Bildschirmen zunächst eingeklappt. Frachtbewegung, Spur, Sanduhr und Übergänge
+respektieren „Animationen aus“ und `prefers-reduced-motion`. Hinter der Verwaltung
+pausiert die Kartenanimation, beim Entfernen der Karte wird sie beendet.
+
+Deutschland bleibt der einzige spielbare Ortskatalog. Eine spätere Welt-Erweiterung
+benötigt einen eigenen Import und eine erweiterte Kartenprojektion; diese Änderung
+fügt noch keine anderen spielbaren Länder hinzu.
+
 ## Prüfung
 
 - `npm test`: Spiellogik, statische UI-Prüfungen und Gruppierungs-/Kollisionstests
@@ -86,6 +111,9 @@ nicht. Charaktererstellung, Erbfolge und Spielende bleiben scrollbar.
   Anhalten einer Route über den originalen Handler mit Aktualisierung der Karte.
   Die Funktionsauswahl respektiert unabhängig gesetzte `hidden`-Attribute der
   Spielmodule.
+- Zusätzlicher Browsertest: gestaffeltes Laden, Startfehler/Wiederholen,
+  Koordinaten und Beschriftungs-IDs über drei Zoomstufen und vier Viewports,
+  fortschreitende Frachtposition, ruhende Routen und reduzierte Bewegung.
 - Viewports: 1440×900, 832×384, 412×915 und 320×640.
 
 Playwright lokal installieren oder `TP_PLAYWRIGHT_PATH` angeben; optional

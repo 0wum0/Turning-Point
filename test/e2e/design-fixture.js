@@ -29,7 +29,7 @@ const placeGame=require(R+'/src/game/places');
 const express=require(R+'/node_modules/express'),app=express();
 app.use(express.json());
 app.use(express.static(R+'/public'));
-app.get('/play',(_,res)=>res.send(`<!doctype html><html lang="de" data-era="1"><head><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="csrf-token" content="fixture"><script src="/js/theme.js"></script><link rel="stylesheet" href="/css/app.css"><link rel="stylesheet" href="/css/game.css"><link rel="stylesheet" href="/css/design-v2.css"><link rel="stylesheet" href="/css/motion.css"></head><body class="game"><div id="app"></div><script type="module" src="/js/game/main.js"></script></body></html>`));
+app.get('/play',(_,res)=>res.send(`<!doctype html><html lang="de" data-era="1"><head><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="csrf-token" content="fixture"><script src="/js/theme.js"></script><link rel="stylesheet" href="/css/app.css"><link rel="stylesheet" href="/css/game.css"><link rel="stylesheet" href="/css/design-v2.css"><link rel="stylesheet" href="/css/motion.css"></head><body class="game"><div id="app"></div><div id="sim-splash" class="sim-splash" role="status">Deine Geschichte beginnt …</div><script type="module" src="/js/game/main.js"></script></body></html>`));
 app.get('/api/world',(_,res)=>res.json(world));
 app.get('/api/state',(_,res)=>res.json({ok:true,view,coins:25,efsPool:30}));
 app.get('/api/map',(_,res)=>res.json({ok:true,properties:view.properties,pickups:[{key:"fixture-spark",cityId:state.cityId,amount:10}],here:view.city.id,birthCityId:view.city.id,activeEfs:{today:0,cap:30}}));

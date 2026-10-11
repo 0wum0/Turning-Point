@@ -327,3 +327,77 @@
 }
 :root[data-game-design="v2"] body.game .sim-ops-summary .pos { color:#80e8aa; }
 :root[data-game-design="v2"] body.game .sim-ops-summary .neg { color:#ff9290; }
+
+/* A city name and its geographical anchor form one unambiguous unit. */
+:root[data-game-design="v2"] body.game .sim-label-leader { fill:none;stroke:#405745;stroke-width:1.2;pointer-events:none; }
+:root[data-game-design="v2"] body.game .sim-label-plate { fill:#f0f3dfed;stroke:#506a5140;stroke-width:.6;pointer-events:none; }
+:root[data-game-design="v2"] body.game .sim-place-anchor { fill:#334d3a;stroke:#f3f6df;stroke-width:1;pointer-events:none; }
+:root[data-game-design="v2"] body.game .sim-marker-label { font:600 12px var(--font-ui);stroke:none;fill:#2c4434; }
+:root[data-game-design="v2"] body.game .sim-route-flow { fill:none;stroke:#fff1a5;stroke-width:2;stroke-dasharray:3 15;vector-effect:non-scaling-stroke;pointer-events:none;animation:sim-cargo-flow 1.8s linear infinite; }
+:root[data-game-design="v2"] body.game .sim-route-line.selected .sim-route-flow { stroke:#c3f0ff; }
+:root[data-game-design="v2"] body.game .sim-freight { pointer-events:none; }
+:root[data-game-design="v2"] body.game .sim-freight > circle { fill:#254a44;stroke:#f3e3a7;stroke-width:1.5; }
+:root[data-game-design="v2"] body.game .sim-freight > .sim-freight-halo { fill:#f0d68725;stroke:#f9e3a445;animation:sim-cargo-halo 2.8s ease-in-out infinite; }
+:root[data-game-design="v2"] body.game .sim-freight svg { fill:none;stroke:#fff3c4;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round; }
+@keyframes sim-cargo-flow { to { stroke-dashoffset:-36; } }
+@keyframes sim-cargo-halo { 50% { opacity:.3; } }
+@keyframes sim-window-in { from { opacity:.3;transform:translateY(7px) scale(.995); } to { opacity:1;transform:none; } }
+@keyframes sim-panel-in { from { opacity:.4; } to { opacity:1; } }
+:root[data-game-design="v2"] body.game .sim-window:not([hidden]) { animation:sim-window-in .24s ease-out; }
+:root[data-game-design="v2"] body.game .sim-map-card-body { animation:sim-panel-in .2s ease-out; }
+:root[data-game-design="v2"] body.game .sim-dock-link { transition:background .18s,box-shadow .18s,transform .18s; }
+:root[data-game-design="v2"] body.game .sim-dock-link:active { transform:translateY(2px); }
+:root[data-game-design="v2"] body.game .sim-world[inert] .sim-route-flow,
+:root[data-game-design="v2"] body.game .sim-world[inert] .sim-freight-halo { animation-play-state:paused; }
+
+/* V2's illustrated first paint and real boot milestones. Classic keeps its loader. */
+.sim-splash { display:none; }
+:root[data-game-design="v2"] body.game .sim-splash { display:flex;position:fixed;inset:0;z-index:4000;flex-direction:column;align-items:center;justify-content:space-between;padding:clamp(32px,9vh,100px) 24px max(30px,7vh);background:linear-gradient(#0c20279e 0%,#132a2a10 55%,#081d26e8 100%),url('/img/turning-point-splash.svg') center 65% / cover no-repeat,#19302f;color:#f1f0d7;overflow:hidden;transition:opacity .3s ease; }
+:root[data-game-design="v2"] body.game .sim-splash.leaving { opacity:0;pointer-events:none; }
+:root[data-game-design="v2"] body.game .sim-splash-brand { text-align:center;text-shadow:0 3px 25px #051714; }
+:root[data-game-design="v2"] body.game .sim-splash-seal { width:60px;height:60px;display:grid;place-items:center;border:1px solid #d5c38b80;border-radius:15px;background:linear-gradient(145deg,#dcc69335,#163c3630);box-shadow:0 0 60px #dfca7840,inset 0 1px #ffffdc70;margin:0 auto 18px; }
+:root[data-game-design="v2"] body.game .sim-splash-seal .i { width:34px;height:34px;color:#e9d59b;animation:sim-hourglass 6s ease-in-out infinite; }
+:root[data-game-design="v2"] body.game .sim-splash-eyebrow { font-size:10px;letter-spacing:.34em;color:#d4d7bd; }
+:root[data-game-design="v2"] body.game .sim-splash h1 { font:800 clamp(30px,5vw,72px)/1.15 var(--font-ui);letter-spacing:.055em;margin:12px 0 8px; }
+:root[data-game-design="v2"] body.game .sim-splash h1 b { color:#e7ce91; }
+:root[data-game-design="v2"] body.game .sim-splash-brand p { font-size:clamp(12px,1.5vw,17px);letter-spacing:.07em;margin:0;color:#ecedd6; }
+:root[data-game-design="v2"] body.game .sim-splash-loading { width:min(540px,100%);font-size:12px;text-shadow:0 1px 5px #071b20; }
+:root[data-game-design="v2"] body.game .sim-splash-status { display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:13px; }
+:root[data-game-design="v2"] body.game .sim-splash-status > span { font-size:9px;letter-spacing:.12em;color:#b7c9ba; }
+:root[data-game-design="v2"] body.game .sim-splash progress { display:block;appearance:none;width:100%;height:5px;overflow:hidden;border:0;border-radius:5px;background:#c8debc25;accent-color:#e4cb8b; }
+:root[data-game-design="v2"] body.game .sim-splash progress::-webkit-progress-bar { background:#c8debc25; }
+:root[data-game-design="v2"] body.game .sim-splash progress::-webkit-progress-value { background:linear-gradient(90deg,#5ca68c,#e4cb8b);transition:width .25s ease; }
+:root[data-game-design="v2"] body.game .sim-splash-steps { display:flex;justify-content:space-between;gap:8px;margin-top:11px;font-size:9px;color:#b3c1b0; }
+:root[data-game-design="v2"] body.game .sim-splash-steps .done { color:#b8f0c7; }
+:root[data-game-design="v2"] body.game .sim-splash-tip { text-align:center;font-size:11px;color:#bccdbf;margin:22px 0 0;line-height:1.6; }
+@keyframes sim-hourglass { 0%,35%,100% { transform:rotate(0); } 50%,85% { transform:rotate(180deg); } }
+@media(max-height:500px) and (orientation:landscape) {
+  :root[data-game-design="v2"] body.game .sim-splash { padding:20px 32px; }
+  :root[data-game-design="v2"] body.game .sim-splash-seal { width:38px;height:38px;margin-bottom:7px;border-radius:9px; }
+  :root[data-game-design="v2"] body.game .sim-splash-seal .i { width:24px;height:24px; }
+  :root[data-game-design="v2"] body.game .sim-splash h1 { font-size:34px;margin:4px 0; }
+  :root[data-game-design="v2"] body.game .sim-splash-tip { margin-top:8px; }
+}
+:root[data-game-design="v2"][data-motion="off"] body.game .sim-route-flow,
+:root[data-game-design="v2"][data-motion="off"] body.game .sim-freight-halo,
+:root[data-game-design="v2"][data-motion="off"] body.game .sim-window,
+:root[data-game-design="v2"][data-motion="off"] body.game .sim-map-card-body,
+:root[data-game-design="v2"][data-motion="off"] body.game .sim-splash-seal .i { animation:none; }
+@media(prefers-reduced-motion:reduce) {
+  :root[data-game-design="v2"] body.game .sim-route-flow,
+  :root[data-game-design="v2"] body.game .sim-freight-halo,
+  :root[data-game-design="v2"] body.game .sim-window,
+  :root[data-game-design="v2"] body.game .sim-map-card-body,
+  :root[data-game-design="v2"] body.game .sim-splash-seal .i { animation:none; }
+  :root[data-game-design="v2"] body.game .sim-splash { transition:none; }
+}
+:root[data-game-design="v2"] body.game .sim-map-toolbar { padding:0;width:175px;max-width:175px; }
+:root[data-game-design="v2"] body.game .sim-map-toolbar summary { display:flex;align-items:center;gap:6px;padding:8px; }
+:root[data-game-design="v2"] body.game .sim-map-toolbar summary > .i { width:15px;height:15px;flex:none; }
+:root[data-game-design="v2"] body.game .sim-map-toolbar summary > span { flex:1; }
+:root[data-game-design="v2"] body.game .sim-map-toolbar summary .sim-map-efs { display:block;font-size:8px;border:0;padding:2px 0 0; }
+:root[data-game-design="v2"] body.game .sim-map-filter-options { display:grid;gap:8px;padding:0 8px 10px; }
+:root[data-game-design="v2"] body.game .sim-map-toolbar[open] summary > .i:last-child { transform:rotate(180deg); }
+@media(max-width:650px) {
+  :root[data-game-design="v2"] body.game .sim-world .sim-map-toolbar { padding:0;width:165px; }
+}

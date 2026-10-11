@@ -1,7 +1,8 @@
 <%- include('../partials/head', { title: 'Spiel', era: 1, css: ['game', 'design-v2'], noindex: true, bodyClass: 'game' }) %>
 <% if (typeof impersonating !== 'undefined' && impersonating) { %><form class="imp-bar" method="post" action="/stop-impersonation"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><span>Admin-Ansicht: du spielst als <b><%= impersonating %></b></span><button class="btn sm">Zurück zum Admin</button></form><% } %>
 <div id="app"><div class="boot"><div class="boot-mark"><%- icon('hourglass', 'xl') %></div><div class="dim">Turning Point lädt …</div></div></div>
-<noscript><div class="card" style="margin:2rem auto;max-width:480px">Turning Point benötigt JavaScript.</div></noscript>
+<div id="sim-splash" class="sim-splash" role="status"><div class="sim-splash-brand"><div class="sim-splash-seal"><%- icon('hourglass') %></div><span class="sim-splash-eyebrow">LIFE. WORK. LEGACY.</span><h1>TURNING <b>POINT</b></h1><p>Ein Leben. Tausend Möglichkeiten.</p></div><div class="sim-splash-loading">Deine Geschichte beginnt …</div></div>
+<noscript><style>.sim-splash{display:none!important}</style><div class="card" style="margin:2rem auto;max-width:480px">Turning Point benötigt JavaScript.</div></noscript>
 <script type="module" src="/js/game/main.js?v=<%= assetV %>"></script>
 </body>
 </html>
