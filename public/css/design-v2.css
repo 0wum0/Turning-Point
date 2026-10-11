@@ -19,156 +19,251 @@
 .sim-map-toggle { display: none; }
 
 :root[data-game-design="v2"] body.game {
-  --bg: #171d20; --bg-2: #20282b; --surface: #30383adb; --surface-2: #414b4de0; --surface-solid: #293235;
-  --border: #ffffff24; --border-strong: #ffffff40; --text: #f0f4f1; --text-dim: #bbc9c5; --text-faint: #98aaa4;
-  --accent: #39d994; --accent-2: #7cf5bd; --accent-ink: #082c20; --accent-glow: #39d99426;
-  --good: #69efab; --warn: #f1ce6e; --bad: #ff9090; --info: #85c8ff;
-  --radius: 5px; --radius-sm: 4px; --font-display: var(--font-ui);
-  --shadow: 0 12px 30px #0005, inset 0 1px #ffffff0e;
-  --sim-dock-h: calc(82px + env(safe-area-inset-bottom));
-  color-scheme: dark; background: radial-gradient(ellipse at 50% 0, #43595133, transparent 75%), #1b2325;
+  --bg:#1c2325; --bg-2:#252c2f; --surface:#ffffff09; --surface-2:#ffffff12; --surface-solid:#303739;
+  --border:#ffffff20; --border-strong:#ffffff3a; --text:#eff3f1; --text-dim:#b1beb9; --text-faint:#a0b0a8;
+  --accent:#35d98b; --accent-2:#81f8b9; --accent-ink:#063420; --accent-glow:#38eb9420;
+  --good:#71e9a7; --warn:#efd16e; --bad:#ff8585; --info:#74b7eb; --radius:3px; --radius-sm:3px;
+  --font-display:var(--font-ui); --sim-dock:72px; --shadow:0 8px 28px #0006;
+  background:#1d2827; color-scheme:dark;
 }
-:root[data-game-design="v2"] body.game::before { display: none; }
-:root[data-game-design="v2"] body.game .shell { display: block; padding-top: var(--hud-h, 52px); }
-:root[data-game-design="v2"] body.game .hud { gap: .5rem; padding: .35rem max(.65rem, env(safe-area-inset-right)) .35rem max(.65rem, env(safe-area-inset-left)); flex-wrap: nowrap; background: linear-gradient(#40494bef, #202729f5); border-bottom: 1px solid #8fa49b6b; box-shadow: 0 3px 12px #0005; }
-:root[data-game-design="v2"] body.game .hud .brand .mark { width: 30px; height: 30px; border-radius: 4px; background: linear-gradient(#a78d50, #5c4b29); color: #ffe3a2; box-shadow: inset 0 0 0 1px #e9ce8366; }
-:root[data-game-design="v2"] body.game .hud-id { flex: 1; max-width: 260px; }
-:root[data-game-design="v2"] body.game .hud-id b { font-size: .85rem; }
-:root[data-game-design="v2"] body.game .hud-id small { font-size: .65rem; }
-:root[data-game-design="v2"] body.game .hud > .grow { display: none; }
-:root[data-game-design="v2"] body.game .hud-res { width: auto; order: 0; gap: 0; }
-:root[data-game-design="v2"] body.game .res { flex: none; background: none; border: 0; border-right: 1px solid #ffffff20; border-radius: 0; padding: .3rem .65rem; }
-:root[data-game-design="v2"] body.game .res b { font-size: .8rem; }
-:root[data-game-design="v2"] body.game .hud-meters { order: 0; width: auto; display: flex; gap: 4px; padding: 0; margin-left: auto; }
-:root[data-game-design="v2"] body.game .hud .meter { padding: 2px; }
-:root[data-game-design="v2"] body.game .hud .ring { --s: 27px !important; }
-:root[data-game-design="v2"] body.game .hud .ring::before { inset: 3px; }
-:root[data-game-design="v2"] body.game .hud .mlabel { display: none; }
-:root[data-game-design="v2"] body.game .hud > .btn { min-width: 34px; min-height: 34px; padding: .35rem; }
-:root[data-game-design="v2"] body.game .sim-utility { position: relative; }
-:root[data-game-design="v2"] body.game summary { cursor: pointer; list-style: none; }
-:root[data-game-design="v2"] body.game summary::-webkit-details-marker { display: none; }
-:root[data-game-design="v2"] body.game .sim-utility summary { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid var(--border); border-radius: 4px; }
-:root[data-game-design="v2"] body.game .sim-utility-menu { position: absolute; right: 0; top: calc(100% + 8px); width: 240px; max-height: calc(100dvh - var(--hud-h) - 20px); overflow-y: auto; background: #293235; padding: .5rem; border: 1px solid var(--border-strong); box-shadow: 0 12px 32px #0009; border-radius: 5px; }
-:root[data-game-design="v2"] body.game .sim-utility-menu .btn { width: 100%; justify-content: start; gap: .7rem; min-height: 42px; }
-:root[data-game-design="v2"] body.game .sim-utility-menu .logout { display: block; }
-:root[data-game-design="v2"] body.game .side { position: fixed; z-index: 70; left: 50%; right: auto; top: auto; bottom: max(10px, env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(740px, calc(100% - 24px)); height: 68px; display: flex; flex-direction: row; align-items: stretch; overflow: visible; padding: 0 .45rem; gap: .2rem; border: 1px solid #a9beb15c; border-radius: 14px; background: linear-gradient(#495351dd, #242d2cf5); box-shadow: 0 7px 30px #0007, inset 0 1px #ffffff2c; backdrop-filter: blur(16px); }
-:root[data-game-design="v2"] body.game .sim-group { flex: 1; min-width: 0; }
-:root[data-game-design="v2"] body.game .sim-group > summary { height: 100%; display: grid; justify-items: center; align-content: center; gap: 1px; position: relative; font-size: .73rem; color: #d2dbd7; border-bottom: 3px solid transparent; }
-:root[data-game-design="v2"] body.game .sim-group > summary > .i { width: 28px; height: 28px; stroke-width: 1.5; color: #d8e9e1; filter: drop-shadow(0 2px 2px #0008); }
-:root[data-game-design="v2"] body.game .sim-group.active > summary { border-color: #64f4b1; background: linear-gradient(transparent, #7af5bd15); color: #a6ffd2; }
-:root[data-game-design="v2"] body.game .sim-group[open] > summary { background: #ffffff14; }
-:root[data-game-design="v2"] body.game .sim-chevron { position: absolute; right: 8px; top: 6px; font-size: 12px; opacity: .6; }
-:root[data-game-design="v2"] body.game .sim-menu { position: absolute; bottom: calc(100% + 10px); left: 0; width: 100%; display: grid; grid-template-columns: repeat(auto-fit, minmax(125px, 1fr)); gap: 5px; background: linear-gradient(#3a4445f7, #242c2ffb); border: 1px solid #afc5bb5c; border-radius: 6px; box-shadow: 0 6px 30px #0008; padding: .6rem; max-height: calc(100dvh - var(--hud-h) - var(--sim-dock-h) - 28px); overflow: auto; }
-:root[data-game-design="v2"] body.game .sim-menu-title { grid-column: 1 / -1; padding: 0 .4rem .35rem; border-bottom: 1px solid var(--border); font-size: .78rem; text-transform: uppercase; letter-spacing: .08em; }
-:root[data-game-design="v2"] body.game .sim-menu .nav { display: flex; gap: .65rem; min-height: 44px; padding: .7rem; border-radius: 4px; font-size: .78rem; flex: none; }
-:root[data-game-design="v2"] body.game .sim-menu .nav .dot { top: 2px; right: 4px; }
-:root[data-game-design="v2"] body.game .page { max-width: 1440px; padding: 1rem clamp(.75rem, 2vw, 2rem) calc(var(--sim-dock-h) + 20px); }
-:root[data-game-design="v2"] body.game .panel-head { padding: .65rem .9rem; margin-bottom: .8rem; background: linear-gradient(90deg, #ffffff0d, transparent); border-left: 3px solid #65eab0; border-bottom: 1px solid var(--border); }
-:root[data-game-design="v2"] body.game .panel-head h2 { font-size: 1.2rem; }
-:root[data-game-design="v2"] body.game .panel-head p { font-size: .8rem; }
-:root[data-game-design="v2"] body.game .card { background: linear-gradient(130deg, #3a4345ed, #293134f5); border-radius: 5px; }
-:root[data-game-design="v2"] body.game .card-title { border-bottom: 1px solid #ffffff1c; padding-bottom: .65rem; color: #dce8e1; }
-:root[data-game-design="v2"] body.game .btn { border-radius: 5px; }
-:root[data-game-design="v2"] body.game .btn.primary { border-radius: 20px; background: linear-gradient(#64f3b3, #20c582); border: 1px solid #b1ffcf99; color: #073326; box-shadow: inset 0 1px #ffffff80, 0 2px 6px #0003; }
-:root[data-game-design="v2"] body.game .tabs { background: #20272bd9; border-bottom: 1px solid #83968d70; padding: .3rem; }
-:root[data-game-design="v2"] body.game .tabs > * { border-radius: 3px 3px 0 0; }
-:root[data-game-design="v2"] body.game .modal { background: linear-gradient(145deg, #3b4547, #242e30); }
-:root[data-game-design="v2"] body.game .scene-card { padding: 0; }
-:root[data-game-design="v2"] body.game .scene-title { font-weight: 750; letter-spacing: -.04em; }
-:root[data-game-design="v2"] body.game .imp-bar { bottom: calc(var(--sim-dock-h) + 12px); max-width: calc(100% - 20px); }
+:root[data-game-design="v2"] body.game.sim-playing { height:100dvh; overflow:hidden; }
+:root[data-game-design="v2"] body.game::before { display:none; }
+:root[data-game-design="v2"] body.game .shell { display:block; padding:0; height:100dvh; overflow:hidden; }
+:root[data-game-design="v2"] body.game .hud { position:fixed; inset:0 0 auto; z-index:80; flex-wrap:nowrap; gap:6px; padding:4px max(9px,env(safe-area-inset-right)) 4px max(9px,env(safe-area-inset-left)); background:linear-gradient(#41494af5,#242b2def); border-bottom:1px solid #9aa89f65; box-shadow:0 2px 12px #0004; }
+:root[data-game-design="v2"] body.game .hud .brand .mark { width:27px;height:27px;border-radius:3px;color:#ffe4a2;background:linear-gradient(#a08a50,#5b4d30);box-shadow:inset 0 0 0 1px #cfb86c66; }
+:root[data-game-design="v2"] body.game .hud-id { flex:1; min-width:100px;max-width:250px; }
+:root[data-game-design="v2"] body.game .hud-id b { font-size:12px; }
+:root[data-game-design="v2"] body.game .hud-id small { font-size:10px; }
+:root[data-game-design="v2"] body.game .hud > .grow { display:none; }
+:root[data-game-design="v2"] body.game .hud .hud-res { width:auto;flex-basis:auto;order:0;gap:0;flex:none; }
+:root[data-game-design="v2"] body.game .res { flex:none; padding:4px 9px; background:none;border:0;border-right:1px solid #ffffff20;border-radius:0; }
+:root[data-game-design="v2"] body.game .res b { font-size:12px; }
+:root[data-game-design="v2"] body.game .res small { font-size:9px; }
+:root[data-game-design="v2"] body.game .hud .hud-meters { display:flex;flex-basis:auto;width:auto;order:0;gap:3px;margin-left:auto;flex:none;padding:0; }
+:root[data-game-design="v2"] body.game .hud .meter { padding:0; }
+:root[data-game-design="v2"] body.game .hud .ring { --s:25px !important; }
+:root[data-game-design="v2"] body.game .hud .ring::before { inset:3px; }
+:root[data-game-design="v2"] body.game .hud .mlabel { display:none; }
+:root[data-game-design="v2"] body.game .hud > .btn { min-height:30px; min-width:30px;padding:4px; }
+:root[data-game-design="v2"] body.game .btn { border-radius:3px;font-size:12px;min-height:32px;padding:6px 12px; }
+:root[data-game-design="v2"] body.game .btn.primary { border-radius:18px;color:#0a301f;background:linear-gradient(#57ef9b,#1dc875);border:1px solid #acf7bc88;box-shadow:inset 0 1px #deffe78a,0 2px 5px #0003; }
+:root[data-game-design="v2"] body.game .btn:not(.primary):not(.danger):not(.ghost) { background:linear-gradient(#3f6475,#244b62);border-color:#749daf80;color:#d4f0ff; }
+:root[data-game-design="v2"] body.game .btn.danger { color:#ffd5d0; }
+:root[data-game-design="v2"] body.game .card { border-radius:3px;background:linear-gradient(145deg,#3b4243e8,#2e3437ef);box-shadow:0 4px 12px #0003; }
+:root[data-game-design="v2"] body.game .card-title { font-size:12px;padding-bottom:7px;border-bottom:1px solid #ffffff24;margin-bottom:10px;font-weight:650; }
+:root[data-game-design="v2"] body.game .panel-head { padding:6px 0 9px;margin:0 0 10px;border-bottom:1px solid #ffffff25; }
+:root[data-game-design="v2"] body.game .panel-head h2 { font-size:17px; }
+:root[data-game-design="v2"] body.game .panel-head p { font-size:11px;line-height:1.4; }
+:root[data-game-design="v2"] body.game .tabs { background:#222a2ddd;border-bottom:1px solid #87938c88;padding:3px;gap:2px; }
+:root[data-game-design="v2"] body.game .tabs > * { border-radius:2px 2px 0 0; }
+:root[data-game-design="v2"] body.game .modal { border-radius:3px;background:linear-gradient(140deg,#424a4c,#293236);border:1px solid #9eaaa27a;max-height:calc(100dvh - 30px); }
+:root[data-game-design="v2"] body.game .modal-backdrop { background:#06110c75;backdrop-filter:blur(2px); }
+:root[data-game-design="v2"] body.game .sim-utility { position:relative; }
+:root[data-game-design="v2"] body.game summary { cursor:pointer;list-style:none; }
+:root[data-game-design="v2"] body.game summary::-webkit-details-marker { display:none; }
+:root[data-game-design="v2"] body.game .sim-utility summary { display:grid;place-items:center;width:30px;height:30px;border:1px solid var(--border);border-radius:3px; }
+:root[data-game-design="v2"] body.game .sim-utility-menu { position:absolute;right:0;top:calc(100% + 7px);width:240px;max-height:calc(100dvh - var(--hud-h) - 20px);overflow:auto;background:#2e3839;border:1px solid var(--border-strong);padding:6px;box-shadow:0 12px 28px #0009; }
+:root[data-game-design="v2"] body.game .sim-utility-menu .btn { width:100%;justify-content:flex-start;gap:9px;min-height:40px; }
+:root[data-game-design="v2"] body.game .sim-utility-menu .logout { display:block; }
+:root[data-game-design="v2"] body.game .side { position:fixed;inset:auto auto max(8px,env(safe-area-inset-bottom)) 50%;transform:translateX(-50%);z-index:70;width:min(720px,calc(100% - 28px));height:62px;display:flex;flex-direction:row;align-items:stretch;overflow:visible;padding:0 5px;gap:0;border:1px solid #bac3b75f;border-radius:20px;background:linear-gradient(#707973ba,#343f3be6);backdrop-filter:blur(10px);box-shadow:0 5px 20px #061c1950,inset 0 1px #ffffff29; }
+:root[data-game-design="v2"] body.game .sim-dock-link { display:flex;flex:1;flex-direction:column;align-items:center;justify-content:center;min-width:0;position:relative;text-decoration:none;color:#e6ebe5;font-size:11px;border-bottom:2px solid transparent;text-shadow:0 1px 3px #0009; }
+:root[data-game-design="v2"] body.game .sim-dock-link + .sim-dock-link { border-left:1px solid #ffffff12; }
+:root[data-game-design="v2"] body.game .sim-dock-link.on { color:#acffcb;border-bottom-color:#82edb1;background:linear-gradient(transparent,#91f8c014); }
+:root[data-game-design="v2"] body.game .sim-illustration { width:49px;height:37px;overflow:visible;filter:drop-shadow(0 3px 2px #0006); }
+:root[data-game-design="v2"] body.game .sim-group-badge { position:absolute;top:7px;right:25%;width:7px;height:7px;background:#ffda67;border-radius:50%;box-shadow:0 0 0 2px #384238; }
+:root[data-game-design="v2"] body.game .sim-world { position:fixed;inset:var(--hud-h,40px) 0 0;z-index:1;overflow:hidden;background:#96c7c9; }
+:root[data-game-design="v2"] body.game .sim-world > .panel-head { display:none; }
+:root[data-game-design="v2"] body.game .sim-world .map-layout { position:absolute;inset:0;display:block; }
+:root[data-game-design="v2"] body.game .sim-world .map-card { position:absolute;inset:0;margin:0;padding:0;background:none;border:0;border-radius:0;box-shadow:none;overflow:hidden; }
+:root[data-game-design="v2"] body.game .sim-world .map-card svg#germany { display:block;width:100%;height:100%;max-width:none;border-radius:0;touch-action:none;background:linear-gradient(150deg,#9dd3d4,#b3dcd6); }
+:root[data-game-design="v2"] body.game .sim-world .map-card .land { fill:#95b681;stroke:#699360;stroke-width:.7; }
+:root[data-game-design="v2"] body.game .sim-world .map-card .land-glow { display:none; }
+:root[data-game-design="v2"] body.game .sim-world .map-card .grat { opacity:.15; }
+:root[data-game-design="v2"] body.game .sim-world .map-legend { position:absolute;bottom:calc(var(--sim-dock) + 6px);left:10px;display:flex;gap:8px;width:max-content;max-width:calc(100% - 20px);padding:4px 7px;border-radius:3px;background:#edf5ddbf;color:#334d3c;font-size:9px;pointer-events:none; }
+:root[data-game-design="v2"] body.game .sim-world .map-search.pl-wrap { position:absolute;left:auto;right:12px;top:12px;width:220px;max-width:47%;z-index:4; }
+:root[data-game-design="v2"] body.game .sim-world .map-search input { background:#283734dd;color:#fff;border:1px solid #d2ded084;border-radius:3px;font-size:12px;padding:7px 10px; }
+:root[data-game-design="v2"] body.game .sim-world .map-search input::placeholder { color:#cbdad1; }
+:root[data-game-design="v2"] body.game .sim-world .map-tools { left:auto;right:12px;top:53px;display:flex;gap:4px; }
+:root[data-game-design="v2"] body.game .sim-world .map-tools .btn { background:#293a36db;border:1px solid #d7e6d596;min-width:34px;min-height:34px;padding:4px;color:#f0fff7; }
+:root[data-game-design="v2"] body.game .sim-world .map-panel { position:absolute;z-index:5;top:12px;left:12px;width:245px;max-height:calc(100% - var(--sim-dock) - 45px);overflow:auto;padding:0;border:1px solid #c3d2ba91;box-shadow:0 4px 14px #173c3255;background:linear-gradient(145deg,#3b4543f2,#263332f7); }
+:root[data-game-design="v2"] body.game .sim-world .map-panel h3 { margin:0 !important;font-size:15px; }
+:root[data-game-design="v2"] body.game .sim-world .map-panel .city-hero .scene { height:90px; }
+:root[data-game-design="v2"] body.game .sim-world .map-panel .city-hero { border:0;border-radius:0; }
+:root[data-game-design="v2"] body.game .sim-world .sim-map-toggle { display:flex;position:absolute;z-index:6;left:263px;top:12px;min-width:30px;min-height:34px;padding:5px;background:#30473cdf;border:1px solid #d2e3c990;color:#b1ffcb; }
+:root[data-game-design="v2"] body.game .sim-world .map-layout[data-panel-collapsed="true"] .map-panel { display:none; }
+:root[data-game-design="v2"] body.game .sim-world .map-layout[data-panel-collapsed="true"] .sim-map-toggle { left:12px; }
+:root[data-game-design="v2"] body.game .sim-map-toolbar { position:absolute;z-index:3;top:99px;right:12px;display:grid;gap:5px;padding:7px;background:#2d3d37e8;border:1px solid #a7c7b575;border-radius:3px;max-width:165px;font-size:10px; }
+:root[data-game-design="v2"] body.game .sim-map-toolbar label { display:flex;align-items:center;gap:5px;cursor:pointer; }
+:root[data-game-design="v2"] body.game .sim-map-toolbar input { width:14px;height:14px;accent-color:#44e899;margin:0; }
+:root[data-game-design="v2"] body.game .sim-map-toolbar .sim-map-efs { color:#9dfbb8;padding-top:5px;border-top:1px solid #ffffff25;font-variant-numeric:tabular-nums; }
+:root[data-game-design="v2"] body.game .sim-marker { cursor:pointer; }
+:root[data-game-design="v2"] body.game .sim-pin { fill:#327cd0;stroke:#fff;stroke-width:1.5; }
+:root[data-game-design="v2"] body.game .sim-marker.owned .sim-pin { fill:#b63bad; }
+:root[data-game-design="v2"] body.game .sim-marker.home .sim-pin { fill:#19ab68; }
+:root[data-game-design="v2"] body.game .sim-marker.selected .sim-pin { stroke:#fffbd0;stroke-width:2.5; }
+:root[data-game-design="v2"] body.game .sim-pin-core { fill:#fff;stroke:none; }
+:root[data-game-design="v2"] body.game .sim-cluster-count { fill:#fff;font-size:9px;font-weight:750;text-anchor:middle;paint-order:stroke;stroke:#34647c;stroke-width:2px; }
+:root[data-game-design="v2"] body.game .sim-marker-label { font:500 12px var(--font-ui);fill:#31432f;paint-order:stroke;stroke:#f4f4d4d9;stroke-width:3px;stroke-linejoin:round;pointer-events:none; }
+:root[data-game-design="v2"] body.game .sim-world .pickup { filter:drop-shadow(0 1px 2px #755d1966); }
+:root[data-game-design="v2"] body.game .sim-map-card-head { display:flex;align-items:center;justify-content:space-between;padding:7px 9px;font-size:11px;border-bottom:1px solid #b4c4b375;background:#111e1755; }
+:root[data-game-design="v2"] body.game .sim-map-card-body { padding:10px;font-size:12px; }
+:root[data-game-design="v2"] body.game .sim-map-card-body .small { font-size:11px; }
+:root[data-game-design="v2"] body.game .sim-map-card-body hr { margin:10px 0; }
+:root[data-game-design="v2"] body.game .sim-map-card-body .btn { min-height:34px;font-size:11px; }
+:root[data-game-design="v2"] body.game .sim-map-card-body .dim { line-height:1.45; }
+:root[data-game-design="v2"] body.game .sim-map-stats { display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:10px 0; }
+:root[data-game-design="v2"] body.game .sim-map-stat { padding:7px;background:#111d1945;border:1px solid #ffffff15; }
+:root[data-game-design="v2"] body.game .sim-map-stat span { display:block;font-size:9px;color:#b6c9bc; }
+:root[data-game-design="v2"] body.game .sim-map-stat b { font-size:13px;font-variant-numeric:tabular-nums; }
+:root[data-game-design="v2"] body.game .sim-cluster-list { display:grid;max-height:55dvh;overflow:auto;gap:5px; }
+:root[data-game-design="v2"] body.game .sim-cluster-list button { text-align:left;justify-content:space-between; }
+:root[data-game-design="v2"] body.game .sim-window { position:fixed;z-index:30;inset:calc(var(--hud-h,40px) + 14px) max(20px,calc((100vw - 1390px) / 2)) calc(var(--sim-dock) + 14px);display:flex;flex-direction:column;min-height:0;background:linear-gradient(130deg,#38403dfc,#252c2dfc);border:1px solid #a9b6a783;box-shadow:0 16px 60px #0009,inset 0 1px #ffffff28;border-radius:3px; }
+:root[data-game-design="v2"] body.game .sim-window[hidden] { display:none; }
+:root[data-game-design="v2"] body.game .sim-window-bar { display:flex;align-items:center;justify-content:space-between;height:34px;flex:none;padding:2px 7px 2px 12px;background:linear-gradient(#536058,#353e38);border-bottom:1px solid #9cac9180;font-size:12px;font-weight:700; }
+:root[data-game-design="v2"] body.game .sim-window-bar .btn { min-height:27px;min-width:28px;padding:3px; }
+:root[data-game-design="v2"] body.game .sim-tabs { display:flex;align-items:stretch;flex:none;padding-left:220px;overflow-x:auto;scrollbar-width:thin;background:#252c2c;border-bottom:1px solid #8e9b9170; }
+:root[data-game-design="v2"] body.game .sim-tabs .nav { flex:1;min-width:max-content;display:flex;justify-content:center;align-items:center;gap:5px;border-radius:0;border:0;border-right:1px solid #ffffff20;padding:9px 15px;font-size:12px;background:linear-gradient(#474c4c,#353a3b);color:#c7d0cb;box-shadow:none; }
+:root[data-game-design="v2"] body.game .sim-tabs .nav .i { width:15px;height:15px; }
+:root[data-game-design="v2"] body.game .sim-tabs .nav.on { color:#fff;background:linear-gradient(#657169,#3b4841);box-shadow:inset 0 2px #76e2a6; }
+:root[data-game-design="v2"] body.game .sim-tabs .nav .dot { position:static; }
+:root[data-game-design="v2"] body.game .sim-window-body { display:grid;grid-template-columns:220px minmax(0,1fr);flex:1;min-height:0;overflow:hidden; }
+:root[data-game-design="v2"] body.game .sim-profile { padding:12px;overflow-y:auto;background:linear-gradient(#333e38,#222c27);border-right:1px solid #93aa9366;font-size:11px; }
+:root[data-game-design="v2"] body.game .sim-profile-name { display:grid;gap:3px;margin-bottom:10px; }
+:root[data-game-design="v2"] body.game .sim-profile-name b { font-size:14px; }
+:root[data-game-design="v2"] body.game .sim-profile-name span { color:#b6ccb9;font-size:10px; }
+:root[data-game-design="v2"] body.game .sim-profile-art { height:118px;overflow:hidden;border:1px solid #728476;background:#25332c;margin-bottom:10px; }
+:root[data-game-design="v2"] body.game .sim-profile-art .scene { width:100%;height:100%;object-fit:cover; }
+:root[data-game-design="v2"] body.game .sim-profile-level { display:flex;justify-content:space-between;font-size:11px;padding:6px 0 10px;border-bottom:1px solid var(--border); }
+:root[data-game-design="v2"] body.game .sim-profile .kv { font-size:10px;gap:7px;margin:10px 0; }
+:root[data-game-design="v2"] body.game .sim-profile .kv dd { font-size:11px; }
+:root[data-game-design="v2"] body.game .sim-profile-meters { display:flex;justify-content:space-between;margin:12px 0; }
+:root[data-game-design="v2"] body.game .sim-profile-meters span { display:flex;gap:4px;color:#a4e0b9;font-size:10px; }
+:root[data-game-design="v2"] body.game .sim-window .page { grid-row:1;grid-column:2;display:block;max-width:none;width:100%;height:100%;padding:12px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;min-width:0; }
+:root[data-game-design="v2"] body.game .sim-window .page.enter { animation:none; }
+:root[data-game-design="v2"] body.game .sim-window-footer { display:flex;align-items:center;gap:10px;padding:3px 9px;height:32px;flex:none;border-top:1px solid #83957959;background:#1a241ed9;font-size:9px; }
+:root[data-game-design="v2"] body.game .sim-window-footer .btn { min-height:23px;font-size:10px;padding:2px 5px;color:#8eecb5; }
+:root[data-game-design="v2"] body.game #sim-breadcrumb { flex:1;color:#9eae9d;letter-spacing:.06em;overflow:hidden;white-space:nowrap;text-overflow:ellipsis; }
+:root[data-game-design="v2"] body.game .sim-guide { margin-bottom:8px;background:#14291c52;border:1px solid #94b4963b; }
+:root[data-game-design="v2"] body.game .sim-guide > summary { display:flex;align-items:center;gap:6px;padding:5px 8px;color:#b8cbbd;font-size:10px; }
+:root[data-game-design="v2"] body.game .sim-guide > summary span { margin-left:auto; }
+:root[data-game-design="v2"] body.game .sim-guide .tab-intro { margin:0;border:0;border-radius:0;padding:8px;font-size:11px; }
+:root[data-game-design="v2"] body.game .sim-guide .tab-intro .tx { font-size:11px; }
+:root[data-game-design="v2"] body.game .sim-workspace { display:grid;grid-template-columns:160px minmax(0,1fr);gap:10px;align-items:start; }
+:root[data-game-design="v2"] body.game .sim-section-nav { display:grid;gap:2px;position:sticky;top:0; }
+:root[data-game-design="v2"] body.game .sim-section-nav button { display:flex;gap:6px;align-items:center;text-align:left;width:100%;padding:9px 7px;font:500 11px var(--font-ui);color:#c8d2cb;background:#242f2970;border:1px solid #85958a24;cursor:pointer; }
+:root[data-game-design="v2"] body.game .sim-section-nav button.on { border-color:#64c68a90;color:#b9ffd2;background:linear-gradient(90deg,#3e5f48,#2c4136); }
+:root[data-game-design="v2"] body.game .sim-section-nav .i { width:14px;height:14px; }
+:root[data-game-design="v2"] body.game .sim-workspace-content { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;min-width:0;align-items:start; }
+:root[data-game-design="v2"] body.game .sim-workspace-content > .sim-section { margin:0 !important;min-width:0;padding:12px;font-size:12px; }
+:root[data-game-design="v2"] body.game .sim-workspace-content > .sim-section:only-of-type { grid-column:1 / -1; }
+:root[data-game-design="v2"] body.game .sim-workspace-content:has(> [hidden]) { grid-template-columns:minmax(0,1fr); }
+:root[data-game-design="v2"] body.game .sim-section[hidden] { display:none !important; }
+:root[data-game-design="v2"] body.game .sim-workspace-content .grid.auto { grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr)) !important; }
+:root[data-game-design="v2"] body.game .sim-section .big-money { font-size:24px; }
+:root[data-game-design="v2"] body.game .sim-section .card { padding:10px; }
+:root[data-game-design="v2"] body.game .sim-section .small { font-size:11px; }
+:root[data-game-design="v2"] body.game .sim-section .mt { margin-top:10px; }
+:root[data-game-design="v2"] body.game .sim-section .row { gap:6px; }
+:root[data-game-design="v2"] body.game .sim-section hr { margin:12px 0; }
+:root[data-game-design="v2"] body.game .sim-section .btn { font-size:11px; }
+:root[data-game-design="v2"] body.game .sim-workspace-content > .scene-card { grid-column:1 / -1;padding:0; }
+:root[data-game-design="v2"] body.game .sim-section.scene-card .scene { height:180px; }
+:root[data-game-design="v2"] body.game .sim-section .scene-overlay { padding:30px 12px 10px; }
+:root[data-game-design="v2"] body.game .sim-section .scene-title { font-size:24px; }
+:root[data-game-design="v2"] body.game .sim-section .scene-date b { font-size:14px; }
+:root[data-game-design="v2"] body.game .sim-workspace-content > .tree-card { grid-column:1 / -1; }
+:root[data-game-design="v2"] body.game .sim-workspace-content > div:has(.aerial-card), :root[data-game-design="v2"] body.game .sim-workspace-content > div:has(.biz) { grid-column:1 / -1; }
+:root[data-game-design="v2"] body.game .sim-window .aerial-card { padding:0; }
+:root[data-game-design="v2"] body.game .sim-window .city-layout { display:grid;grid-template-columns:minmax(0,1fr) 200px;gap:10px; }
+:root[data-game-design="v2"] body.game .sim-window .bl-panel { max-height:480px;overflow:auto;font-size:11px; }
+:root[data-game-design="v2"] body.game .sim-window .aerial-card svg.aerial { min-height:300px; }
+:root[data-game-design="v2"] body.game .sim-window .paper { border-radius:3px; }
+:root[data-game-design="v2"] body.game .sim-world-error { width:min(400px,90%);margin:10vh auto; }
+:root[data-game-design="v2"] body.game .imp-bar { bottom:calc(var(--sim-dock) + 16px); }
+@media (max-width:1100px) {
+  :root[data-game-design="v2"] body.game .sim-window-body { grid-template-columns:175px minmax(0,1fr); }
+  :root[data-game-design="v2"] body.game .sim-tabs { padding-left:175px; }
+  :root[data-game-design="v2"] body.game .sim-profile { padding:9px; }
+  :root[data-game-design="v2"] body.game .sim-workspace { grid-template-columns:135px minmax(0,1fr); }
+  :root[data-game-design="v2"] body.game .sim-workspace-content { grid-template-columns:minmax(0,1fr); }
+}
+@media (max-width:650px) {
+  :root[data-game-design="v2"] body.game { --sim-dock:64px; }
+  :root[data-game-design="v2"] body.game .hud { flex-wrap:wrap;gap:3px;padding:4px 7px; }
+  :root[data-game-design="v2"] body.game .hud .brand { display:none; }
+  :root[data-game-design="v2"] body.game .hud-id { flex:1 1 calc(100% - 143px);min-width:120px;max-width:none; }
+  :root[data-game-design="v2"] body.game .hud-id b { font-size:11px; }
+  :root[data-game-design="v2"] body.game .hud-id small { font-size:9px; }
+  :root[data-game-design="v2"] body.game .hud .hud-res { order:3;margin-right:auto; }
+  :root[data-game-design="v2"] body.game .hud .hud-meters { order:4;margin-left:0; }
+  :root[data-game-design="v2"] body.game .hud .ring { --s:22px !important; }
+  :root[data-game-design="v2"] body.game .res { padding:3px 6px; }
+  :root[data-game-design="v2"] body.game .res b { font-size:11px; }
+  :root[data-game-design="v2"] body.game .res small { display:none; }
+  :root[data-game-design="v2"] body.game .hud > .btn, :root[data-game-design="v2"] body.game .sim-utility summary { width:29px;min-width:29px;height:29px;min-height:29px; }
+  :root[data-game-design="v2"] body.game .side { width:calc(100% - 12px);height:55px;bottom:max(5px,env(safe-area-inset-bottom));border-radius:13px; }
+  :root[data-game-design="v2"] body.game .sim-dock-link { font-size:8px; }
+  :root[data-game-design="v2"] body.game .sim-illustration { width:40px;height:31px; }
+  :root[data-game-design="v2"] body.game .sim-world .sim-map-toggle { left:9px;top:9px; }
+  :root[data-game-design="v2"] body.game .sim-world .map-search.pl-wrap { top:9px;right:9px;width:55%;max-width:none; }
+  :root[data-game-design="v2"] body.game .sim-world .map-tools { top:50px;right:9px; }
+  :root[data-game-design="v2"] body.game .sim-world .sim-map-toolbar { top:91px;right:9px;padding:6px;font-size:9px; }
+  :root[data-game-design="v2"] body.game .sim-world .map-panel { left:8px;right:8px;top:auto;bottom:calc(var(--sim-dock) + 8px);width:auto;max-height:min(44dvh,370px); }
+  :root[data-game-design="v2"] body.game .sim-world .map-panel .city-hero { display:none; }
+  :root[data-game-design="v2"] body.game .sim-world .map-legend { font-size:8px;gap:5px; }
+  :root[data-game-design="v2"] body.game .sim-window { inset:calc(var(--hud-h) + 5px) 5px calc(var(--sim-dock) + 5px); }
+  :root[data-game-design="v2"] body.game .sim-window-bar { height:29px;font-size:11px; }
+  :root[data-game-design="v2"] body.game .sim-window-body { display:block; }
+  :root[data-game-design="v2"] body.game .sim-profile { display:none; }
+  :root[data-game-design="v2"] body.game .sim-tabs { padding-left:0; }
+  :root[data-game-design="v2"] body.game .sim-tabs .nav { padding:9px 10px;font-size:10px; }
+  :root[data-game-design="v2"] body.game .sim-tabs .nav .i { display:none; }
+  :root[data-game-design="v2"] body.game .sim-window .page { padding:8px; }
+  :root[data-game-design="v2"] body.game .sim-workspace { display:flex;flex-direction:column;gap:8px; }
+  :root[data-game-design="v2"] body.game .sim-section-nav { display:flex;position:sticky;top:-8px;z-index:3;width:100%;overflow-x:auto;gap:3px;background:#2b3630;flex:none;padding:4px 0;scrollbar-width:thin; }
+  :root[data-game-design="v2"] body.game .sim-section-nav button { width:auto;flex:none;white-space:nowrap;padding:8px;font-size:10px; }
+  :root[data-game-design="v2"] body.game .sim-workspace-content { width:100%; }
+  :root[data-game-design="v2"] body.game .sim-window .city-layout { display:block; }
+  :root[data-game-design="v2"] body.game .sim-window .bl-panel { margin-top:8px;max-height:none; }
+  :root[data-game-design="v2"] body.game .sim-window-footer { height:26px; }
+  :root[data-game-design="v2"] body.game .design-choices { gap:7px; }
+}
+@media (max-height:500px) and (min-width:651px) {
+  :root[data-game-design="v2"] body.game { --sim-dock:54px; }
+  :root[data-game-design="v2"] body.game .hud { padding-top:2px;padding-bottom:2px;gap:3px; }
+  :root[data-game-design="v2"] body.game .hud-id { max-width:150px; }
+  :root[data-game-design="v2"] body.game .hud .brand .mark { width:23px;height:23px; }
+  :root[data-game-design="v2"] body.game .res { padding:3px 6px; }
+  :root[data-game-design="v2"] body.game .res b { font-size:11px; }
+  :root[data-game-design="v2"] body.game .side { height:47px;bottom:4px;width:min(650px,85%); }
+  :root[data-game-design="v2"] body.game .sim-illustration { height:29px;width:38px; }
+  :root[data-game-design="v2"] body.game .sim-dock-link { font-size:9px; }
+  :root[data-game-design="v2"] body.game .sim-window { inset:calc(var(--hud-h) + 5px) 12px calc(var(--sim-dock) + 5px); }
+  :root[data-game-design="v2"] body.game .sim-window-bar { height:25px; }
+  :root[data-game-design="v2"] body.game .sim-tabs .nav { padding:5px 10px;font-size:11px; }
+  :root[data-game-design="v2"] body.game .sim-window-body { grid-template-columns:150px minmax(0,1fr); }
+  :root[data-game-design="v2"] body.game .sim-tabs { padding-left:150px; }
+  :root[data-game-design="v2"] body.game .sim-profile-art { height:65px; }
+  :root[data-game-design="v2"] body.game .sim-window-footer { height:24px; }
+  :root[data-game-design="v2"] body.game .sim-world .map-panel { width:210px;max-height:calc(100% - var(--sim-dock) - 25px); }
+  :root[data-game-design="v2"] body.game .sim-world .sim-map-toggle { left:228px; }
+  :root[data-game-design="v2"] body.game .sim-world .map-panel .city-hero { display:none; }
+  :root[data-game-design="v2"] body.game .sim-map-card-body { padding:8px; }
+}
+@media (prefers-reduced-motion:reduce) {
+  :root[data-game-design="v2"] body.game *, :root[data-game-design="v2"] body.game *::before, :root[data-game-design="v2"] body.game *::after { scroll-behavior:auto; }
+}
 
-/* Full-size interactive map; its SVG and every original handler are reused. */
-:root[data-game-design="v2"] body.game .page[data-route="map"] { max-width: none; padding: 0 0 var(--sim-dock-h); }
-:root[data-game-design="v2"] body.game .page[data-route="map"] > .panel-head { margin: 0; padding: .45rem 1rem; }
-:root[data-game-design="v2"] body.game .page[data-route="map"] > .panel-head p { margin: 0; }
-:root[data-game-design="v2"] body.game .map-layout { position: relative; display: block; }
-:root[data-game-design="v2"] body.game .map-card { border: 0; border-radius: 0; padding: 0; box-shadow: none; background: #aecdc3; }
-:root[data-game-design="v2"] body.game .map-card svg#germany { height: max(350px, calc(100dvh - var(--hud-h) - 65px - var(--sim-dock-h))); border-radius: 0; background: radial-gradient(ellipse at 62% 45%, #b9d6cd, #86b5b4); }
-:root[data-game-design="v2"] body.game .map-card .land { fill: #88ae89; stroke: #547c64; }
-:root[data-game-design="v2"] body.game .map-card .land-glow { stroke: #c6ddb1; opacity: .65; }
-:root[data-game-design="v2"] body.game .map-card .grat line { stroke: #537e7750; }
-:root[data-game-design="v2"] body.game .map-card .city .dot { fill: #357fc2; stroke: #f2fffa; }
-:root[data-game-design="v2"] body.game .map-card .city.here .dot { fill: #0bb46c; }
-:root[data-game-design="v2"] body.game .map-card .city.sel .dot { fill: #c43bb6; stroke: #fff; }
-:root[data-game-design="v2"] body.game .map-card .city .lbl { fill: #243e34; paint-order: stroke; stroke: #e3edd57d; stroke-width: 2px; }
-:root[data-game-design="v2"] body.game .map-card .own { fill: #c13caf; stroke: #fff; }
-:root[data-game-design="v2"] body.game .map-legend { padding: .4rem 1rem; color: #213e34; background: #c4dacf; }
-:root[data-game-design="v2"] body.game .map-search.pl-wrap { left: auto; right: 12px; width: min(260px, 40%); }
-:root[data-game-design="v2"] body.game .map-tools { left: auto; right: 12px; top: 3.7rem; }
-:root[data-game-design="v2"] body.game .map-panel { position: absolute; z-index: 4; left: 14px; top: 14px; width: 280px; max-height: calc(100% - 58px); overflow-y: auto; padding: .8rem; box-shadow: 0 4px 16px #18352c66; border: 1px solid #bdcfc18a; }
-:root[data-game-design="v2"] body.game .map-panel .city-hero .scene { height: 100px; }
-:root[data-game-design="v2"] body.game .sim-map-toggle { display: flex; position: absolute; z-index: 5; left: 302px; top: 15px; background: #2b3735; color: #9ff5cd; min-height: 40px; }
-:root[data-game-design="v2"] body.game .map-layout[data-panel-collapsed="true"] .map-panel { display: none; }
-:root[data-game-design="v2"] body.game .map-layout[data-panel-collapsed="true"] .sim-map-toggle { left: 12px; }
-@media (max-width: 1000px) {
-  :root[data-game-design="v2"] body.game .hud { flex-wrap: wrap; gap: .25rem .4rem; }
-  :root[data-game-design="v2"] body.game .hud-id { max-width: none; }
-  :root[data-game-design="v2"] body.game .hud-res { order: 3; margin-right: auto; }
-  :root[data-game-design="v2"] body.game .hud-meters { order: 4; }
-  :root[data-game-design="v2"] body.game .res { padding: .2rem .55rem; }
-}
-@media (max-width: 600px) and (orientation: portrait) {
-  :root[data-game-design="v2"] body.game .map-panel { position: relative; left: auto; top: auto; width: auto; margin: .65rem; max-height: none; }
-  :root[data-game-design="v2"] body.game .map-card svg#germany { height: 54dvh; min-height: 300px; }
-  :root[data-game-design="v2"] body.game .sim-map-toggle { left: 12px; }
-  :root[data-game-design="v2"] body.game .map-search.pl-wrap { width: 55%; }
-}
-@media (max-width: 600px) {
-  :root[data-game-design="v2"] body.game .side { width: calc(100% - 12px); padding: 0 .15rem; }
-  :root[data-game-design="v2"] body.game .sim-group > summary { font-size: .6rem; }
-  :root[data-game-design="v2"] body.game .sim-chevron { right: 3px; top: 3px; }
-  :root[data-game-design="v2"] body.game .hud-id b { font-size: .75rem; }
-  :root[data-game-design="v2"] body.game .hud .brand { display: none; }
-}
-@media (max-height: 500px) and (min-width: 601px) {
-  :root[data-game-design="v2"] body.game { --sim-dock-h: calc(64px + env(safe-area-inset-bottom)); }
-  :root[data-game-design="v2"] body.game .hud { flex-wrap: nowrap; }
-  :root[data-game-design="v2"] body.game .hud-res, :root[data-game-design="v2"] body.game .hud-meters { order: 0; }
-  :root[data-game-design="v2"] body.game .hud-id { max-width: 150px; }
-  :root[data-game-design="v2"] body.game .side { height: 54px; bottom: max(5px, env(safe-area-inset-bottom)); }
-  :root[data-game-design="v2"] body.game .sim-group > summary > .i { width: 23px; height: 23px; }
-  :root[data-game-design="v2"] body.game .map-card svg#germany { height: calc(100dvh - var(--hud-h) - 42px); min-height: 220px; }
-  :root[data-game-design="v2"] body.game .map-panel { width: 240px; max-height: calc(100% - 36px); }
-  :root[data-game-design="v2"] body.game .sim-map-toggle { left: 262px; }
-}
-@media (prefers-reduced-motion: reduce) {
-  :root[data-game-design="v2"] body.game .sim-group * { transition: none; }
-}
-:root[data-game-design="v2"] body.game .sim-group-badge { position: absolute; width: 7px; height: 7px; border-radius: 50%; right: 23%; top: 9px; background: var(--warn); box-shadow: 0 0 0 2px #28332f; }
-:root[data-game-design="v2"] body.game .hud .hud-res,
-:root[data-game-design="v2"] body.game .hud .hud-meters { flex-basis: auto; }
-:root[data-game-design="v2"] body.game .sim-guide { position: relative; z-index: 5; margin: 0; border-bottom: 1px solid var(--border); background: #25322e; }
-:root[data-game-design="v2"] body.game .sim-guide > summary { display: flex; gap: .5rem; align-items: center; padding: .35rem 1rem; color: #b9d9ca; font-size: .72rem; }
-:root[data-game-design="v2"] body.game .sim-guide > summary span { margin-left: auto; }
-:root[data-game-design="v2"] body.game .sim-guide .tab-intro { margin: 0; border-radius: 0; }
-@media (min-width: 601px) {
-  :root[data-game-design="v2"] body.game .page[data-route="map"] { display: flex; flex-direction: column; height: calc(100dvh - var(--hud-h)); padding: 0; }
-  :root[data-game-design="v2"] body.game .page[data-route="map"] > .panel-head { flex: none; }
-  :root[data-game-design="v2"] body.game .map-layout { flex: 1; min-height: 220px; background: #96bfba; }
-  :root[data-game-design="v2"] body.game .map-card { height: calc(100% - var(--sim-dock-h)); }
-  :root[data-game-design="v2"] body.game .map-card svg#germany { height: 100%; min-height: 0; }
-  :root[data-game-design="v2"] body.game .map-legend { position: absolute; bottom: -22px; left: 0; right: 0; padding: 2px 1rem; font-size: .65rem; background: transparent; }
-  :root[data-game-design="v2"] body.game .map-panel { max-height: calc(100% - var(--sim-dock-h) - 20px); }
-  :root[data-game-design="v2"] body.game .sim-guide[open] .tab-intro { position: absolute; left: 0; right: 0; background: #283b33; box-shadow: 0 8px 20px #0008; }
-}
-@media (max-height: 500px) and (min-width: 601px) {
-  :root[data-game-design="v2"] body.game .page[data-route="map"] > .panel-head { padding: .2rem .8rem; }
-  :root[data-game-design="v2"] body.game .page[data-route="map"] > .panel-head h2 { font-size: .9rem; margin: 0; }
-  :root[data-game-design="v2"] body.game .page[data-route="map"] > .panel-head p { display: none; }
-  :root[data-game-design="v2"] body.game .map-panel .city-hero { display: none; }
-  :root[data-game-design="v2"] body.game .map-panel h3 { margin-top: 0 !important; }
-}
-@media (max-width: 600px) {
-  :root[data-game-design="v2"] body.game .hud-id { min-width: 145px; flex-basis: calc(100% - 175px); }
-  :root[data-game-design="v2"] body.game .hud-res { flex-shrink: 0; }
-  :root[data-game-design="v2"] body.game .hud-meters { flex-shrink: 0; }
-}
-:root[data-game-design="v2"] body.game .sim-illustration { width: 48px; height: 39px; overflow: visible; filter: drop-shadow(0 3px 2px #0005); transition: transform .18s ease; }
-:root[data-game-design="v2"] body.game .sim-group > summary:hover .sim-illustration { transform: translateY(-2px); }
-@media (max-height: 500px) and (min-width: 601px) {
-  :root[data-game-design="v2"] body.game .sim-illustration { width: 39px; height: 30px; }
-}
-@media (prefers-reduced-motion: reduce) {
-  :root[data-game-design="v2"] body.game .sim-illustration { transition: none; }
-}
+:root[data-game-design="v2"] body.game .sim-window-body { grid-template-rows:minmax(0,1fr); }
+
+:root[data-game-design="v2"] body.game .sim-world .map-legend .sq { background:#b63bad; }
+:root[data-game-design="v2"] body.game .create-wrap { max-width:960px;padding:24px 14px 40px; }
+:root[data-game-design="v2"] body.game .create-head { padding:12px;background:linear-gradient(#536058,#353e38);border:1px solid #a9b6a783; }
+:root[data-game-design="v2"] body.game .create-card { border:1px solid #a9b6a783; }
+
+/* Window navigation is immediate; retain optional motion on game artwork/buttons. */
+:root[data-game-design="v2"] body.game .page.enter > *,
+:root[data-game-design="v2"] body.game .hud .meter,
+:root[data-game-design="v2"] body.game .hud .ring { animation:none; }
+:root[data-game-design="v2"] body.game .sim-window .aerial-card .map-tools { top:9px;left:9px;display:flex; }
+:root[data-game-design="v2"] body.game .sim-window .aerial-card .map-tools .btn { width:34px;height:34px;min-height:34px;padding:5px; }

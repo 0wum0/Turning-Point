@@ -1,3 +1,4 @@
+import { syncSimulator, ensureWorld } from './simulator.js';
 import { isV2, openDesignSettings, decorateDesign, decoratePageDesign } from './design.js';
 import { decodeWorld } from './places.js';
 import { openChatModal, openBell, chatUnread } from './chatmodal.js';
@@ -75,7 +76,7 @@ function markSeen(key) {
   act('seen', { key }, { silent: true, noRender: true }).catch(() => { seenSent.delete(key); });
 }
 window.addEventListener('tp-seen', (e) => markSeen(e.detail));
-const routeFromHash = () => { const r = (location.hash || '').replace(/^#\/?/, ''); return byId[r] ? r : 'overview'; };
+const routeFromHash = () => { const r = (location.hash || '').replace(/^#\/?/, ''); return byId[r] ? r : isV2() ? 'map' : 'overview'; };
 function go(route) {
   if (!shellActive()) { history.replaceState(null, '', `#/${route}`); render(); return; }
   if (location.hash === `#/${route}`) rerender(); else location.hash = `#/${route}`;
@@ -88,6 +89,12 @@ const shellActive = () => !!document.getElementById('page');
 /* ---------- Gesamtansicht ---------- */
 function render() {
   const v = ctx.view;
+  if (!v || ctx.ui.forceCreate || v.status === 'dead' || (v.status === 'gameover' && !ctx.ui.gameoverChron)) {
+    document.getElementById('sim-world')?.__dispose?.();
+    document.getElementById('page')?.__dispose?.();
+    document.body.classList.remove('sim-playing');
+    hudObs?.disconnect(); hudObs = null;
+  }
   if (!v || ctx.ui.forceCreate) { renderCreate(app, ctx); return; }
   if (v.status === 'dead') { renderHeir(app, ctx); return; }
   if (v.status === 'gameover' && !ctx.ui.gameoverChron) { renderGameOver(app, ctx); return; }
@@ -95,7 +102,7 @@ function render() {
   if (!shellActive()) {
     mount(app, html`<div class="shell"><header class="hud" id="hud"></header><nav class="side" id="side" aria-label="Hauptmenü"></nav><main class="page" id="page" tabindex="-1"></main></div>`);
   }
-  renderHud(); trackHud(); renderPage(true);
+  syncSimulator(ctx); renderHud(); trackHud(); renderPage(true);
   startSocialPoll(); startBadges();
   startLive(ctx, { pollSocial, softRefresh: () => renderPage(false), refreshHud: async () => { const r = await refresh(); if (r && r.view) renderHud(); } });
 }
@@ -126,6 +133,7 @@ function trackHud() {
 }
 
 function renderHud() {
+  syncSimulator(ctx);
   const hud = document.getElementById('hud'); const side = document.getElementById('side');
   if (!hud || !ctx.view) return;
   const v = ctx.view; const m = v.meters;
@@ -156,7 +164,7 @@ function renderHud() {
   const unseen = v.notices.filter((n) => !n.seen).length;
   const label = (p) => (p.id === 'newspaper' && v.date.medium === 'web' ? 'Web' : p.label);
   mount(side, html`${PAGES.map((p) => html`<a href="#/${p.id}" class="nav ${ctx.route === p.id ? 'on' : ''} ${hintLevel[p.id] ? 'hint-' + hintLevel[p.id] : ''} ${gated(p.id) ? 'locked' : ''}" data-nav="${p.id}" ${gated(p.id) ? html`title="${lockHint(ctx, GATES[p.id])}"` : ''}>${icon(gated(p.id) ? 'lock' : p.icon)}<span>${label(p)}</span>${p.id === 'overview' && unseen ? html`<i class="dot">${unseen}</i>` : p.id === 'social' && ctx.social && ctx.social.total ? html`<i class="dot">${ctx.social.total}</i>` : hintLevel[p.id] ? html`<i class="dot soft"></i>` : ''}</a>`)}`);
-  decorateDesign(hud, side, ctx.route);
+  decorateDesign(hud, side, ctx.route, ctx);
   const on = !isV2() && side.querySelector('.nav.on'); if (on && on.scrollIntoView) { try { on.scrollIntoView({ inline: 'center', block: 'nearest' }); } catch (_) { /* ältere Browser */ } }
 }
 
@@ -171,14 +179,20 @@ function showAnnouncement(root) {
 
 let pageSeq = 0;
 async function renderPage(animate) {
+  syncSimulator(ctx);
+  if (isV2() && ctx.route === 'map') {
+    ++pageSeq;
+    const panel = document.getElementById('page'); if (panel) panel.dataset.route = 'map';
+    await ensureWorld(ctx, !animate); return;
+  }
   let root = document.getElementById('page'); if (!root) return;
   const page = byId[ctx.route]; const my = ++pageSeq;
   if (animate && ctx.route === 'newspaper') markSeen('newspaper');
-  if (gated(ctx.route)) { const r0 = root.cloneNode(false); root.replaceWith(r0); mount(r0, html`<div class="panel-head"><div><h2>${page.label}</h2></div></div>${lockCard(ctx, GATES[ctx.route])}`); r0.dataset.route = page.id; if (animate) document.title = `${page.label} · ${document.title.split(' · ').pop()}`; return; }
-  const scroll = animate ? 0 : window.scrollY;
+  if (gated(ctx.route)) { const r0 = root.cloneNode(false); root.__dispose?.(); root.replaceWith(r0); mount(r0, html`<div class="panel-head"><div><h2>${page.label}</h2></div></div>${lockCard(ctx, GATES[ctx.route])}`); r0.dataset.route = page.id; decoratePageDesign(r0, ctx); if (animate) document.title = `${page.label} · ${document.title.split(' · ').pop()}`; return; }
+  const scroll = animate ? 0 : isV2() ? root.scrollTop : window.scrollY;
   let data = null;
   // Seitenwechsel: sofort leeres Gerüst mit Platzhaltern. Aktualisierung derselben Seite: alter Inhalt bleibt stehen, bis der neue fertig ist (kein Flackern).
-  if (animate) { const f0 = root.cloneNode(false); root.replaceWith(f0); root = f0; if (page.load) root.innerHTML = '<div class="skel" style="height:220px"></div><div class="skel" style="height:320px;margin-top:1rem"></div>'; }
+  if (animate) { const f0 = root.cloneNode(false); root.__dispose?.(); root.replaceWith(f0); root = f0; if (page.load) root.innerHTML = '<div class="skel" style="height:220px"></div><div class="skel" style="height:320px;margin-top:1rem"></div>'; }
   if (page.load) {
     try { data = await page.load(ctx); } catch (e) { if (my !== pageSeq) return; mount(document.getElementById('page') || root, html`<div class="alert bad">${icon('circle-alert')}<div>${e.message}</div></div>`); return; }
     if (my !== pageSeq) return;
@@ -186,16 +200,16 @@ async function renderPage(animate) {
   // Fokus und Eingaben merken, damit ein Nachladen nichts unterbricht
   const ae = document.activeElement; const keep = ae && ae.id && root.contains(ae) ? { id: ae.id, s: ae.selectionStart, e: ae.selectionEnd, v: ae.value } : null;
   // Frisches Element, damit Event-Listener früherer Renderings nicht kumulieren
-  const cur = document.getElementById('page') || root; const fresh = cur.cloneNode(false); cur.replaceWith(fresh); root = fresh;
+  const cur = document.getElementById('page') || root; const fresh = cur.cloneNode(false); cur.__dispose?.(); cur.replaceWith(fresh); root = fresh;
   mount(root, page.render(ctx, data));
   root.dataset.route = page.id; // Marke „Seite fertig aufgebaut“ (nutzen die Browser-Tests)
   if (keep) { const el = document.getElementById(keep.id); if (el) { if (keep.v != null && 'value' in el && !el.value) el.value = keep.v; el.focus({ preventScroll: true }); try { el.setSelectionRange(keep.s, keep.e); } catch (_) { /* kein Textfeld */ } } }
   root.classList.remove('enter'); void root.offsetWidth; if (animate) root.classList.add('enter');
   page.bind(root, ctx, data);
   mountIntro(root, ctx);
-  decoratePageDesign(root);
+  decoratePageDesign(root, ctx);
   showAnnouncement(root);
-  window.scrollTo(0, scroll);
+  if (isV2()) root.scrollTop = scroll; else window.scrollTo(0, scroll);
   if (ctx.route === 'legacy' && ctx.view.status === 'gameover') {
     root.insertAdjacentHTML('afterbegin', '<div class="alert warn"><div>Dieses Leben ist beendet. <button class="btn sm" id="backGO">Zurück</button></div></div>');
     document.getElementById('backGO').onclick = () => { ctx.ui.gameoverChron = false; render(); };
@@ -284,7 +298,13 @@ document.addEventListener('click', (e) => {
   if (mt) { const k = mt.dataset.meter; const lab = { fridge: 'Kühlschrank', wellbeing: 'Wohlbefinden', rest: 'Erholung', health: 'Gesundheit' }[k]; modal(html`<h3>${icon('info')} ${lab}: ${ctx.view.meters[k]} %</h3><ol class="info-steps">${['Was ist das?', 'Warum ist das wichtig?', 'Was kann ich tun?'].map((t, i) => html`<li><div><b>${t}</b>${METER_INFO[k][i]}</div></li>`)}</ol><div class="row end mt"><button class="btn primary" data-close="1">Verstanden</button></div>`); }
   if (e.target.closest('#hud [data-chat]')) openChatModal(ctx);
   if (e.target.closest('#hud [data-bell]')) openBell(ctx);
-  if (e.target.closest('#hud [data-design-settings]')) openDesignSettings(() => { renderHud(); trackHud(); decoratePageDesign(document.getElementById('page')); });
+  if (e.target.closest('#hud [data-design-settings]')) openDesignSettings(() => {
+    const root = document.getElementById('page');
+    syncSimulator(ctx); renderHud(); trackHud();
+    if (ctx.route === 'map') { root.__dispose?.(); root.innerHTML = ''; renderPage(false); }
+    else decoratePageDesign(root, ctx);
+    window.dispatchEvent(new Event('tp-design-change'));
+  });
   if (e.target.closest('#hud [data-help]')) openHelp(ctx);
   if (e.target.closest('[data-showall]')) setShowAll(ctx, true);
   if (e.target.closest('#hud [data-sound]')) { audio.toggle(); renderHud(); }
