@@ -92,6 +92,7 @@ async function grant(mayorId, targetId) {
   const civic = num(cfg().civic, 8); const pts = num(cfg().localPts, 15);
   await rep.add(targetId, 'civic', civic, 'honor', `m${mayorId}`, { other: mayorId, cityId: info.cityId });
   await rep.bumpLocal(targetId, info.cityId, pts);
+  try { await require('./civic').grantTitle(targetId, 'ehrenbuerger', 1, info.cityId, `m${mayorId}`, { quiet: true }); } catch (e) { require('./log').warn(`[ehrenbuerger] Titel: ${e.message}`); } // Titel „Ehrenbürger“ (Gesellschaft)
   await social.sendSystemLetter(targetId, 'Ehrenbürgerwürde', `${info.nm} verleiht dir die Ehrenbürgerwürde von ${info.city}. Dein Ansehen vor Ort ist gestiegen.`, mayorId);
   await tagesblatt.post('election', 'Ehrenbürgerwürde', `${info.nm} verleiht ${info.t.name} die Ehrenbürgerwürde von ${info.city}.`, info.cityId);
   return { name: info.t.name };

@@ -22,6 +22,7 @@ const ACTS = {
   bribe: { label: 'Bestechung', text: 'Bestechungsversuch gegenüber dem Gericht', needsPresence: false },
   theft: { label: 'Diebstahl auf dem Transportweg', text: 'Fracht wurde unterwegs gestohlen', needsPresence: false },
   smuggle: { label: 'Schmuggel und Zollhinterziehung', text: 'Ware am Zoll vorbeigeschleust, ehrliche Händler unterboten', needsPresence: false },
+  embezzle: { label: 'Veruntreuung der Vereinskasse', text: 'Geld aus der Vereinskasse in die eigene Tasche gesteckt', needsPresence: false },
 };
 const ACT_KEYS = Object.keys(ACTS);
 

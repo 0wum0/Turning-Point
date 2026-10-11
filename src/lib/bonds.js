@@ -306,6 +306,7 @@ async function reconcile(conn, user, row, state, world) {
     await require('./exchange').reconcile(conn, user, state);
     await require('./supply').reconcile(conn, user, state, world);
     await require('./transport').reconcile(conn, user, state, world);
+    await require('./civic').reconcile(conn, user, state, world); // Gesellschaft: Vereinsbeiträge, Feste, Titel, Zwischenspeicher der Mitgliedschaften
     if (state.status !== 'alive') return;
     await reconcileOwner(conn, user, state, world);
     await reconcileEmployee(conn, user, state, world);
@@ -385,6 +386,7 @@ async function reconcileCouple(conn, user, state, world) {
     const pr = state.tree.persons.find((x) => x.id === p.personId); if (pr) { pr.note = widow ? 'verstorben' : 'Trennung'; pr.status = widow ? 'dead' : 'away'; }
     const me = state.tree.persons.find((x) => x.id === state.person.id); if (me) delete me.partnerId;
     chronicle(state, widow ? `${p.name} stirbt.` : `${wasMarried ? 'Scheidung' : 'Trennung'} von ${p.name}.`, 'family');
+    if (widow) { try { require('../game/civic').addFuneral(state, p.name); } catch (_) { /* optional */ } } // Gemeinde: eine Trauerfeier für den verstorbenen Partner kann ausgerichtet werden
     notice(state, { level: widow ? 'bad' : 'warn', title: widow ? `${p.name} ist gestorben` : wasMarried ? 'Scheidung' : 'Trennung', text: widow ? 'Dein Ehepartner ist verstorben. Ein Teil des Nachlasses geht an dich.' : `Die Beziehung zu ${p.name} ist beendet.`, tab: 'family', interrupt: true });
     if (!widow) press.story(world, state, 'separation', { partner: p.name });
     // Abfindung bei Scheidung (zahlt, wer sie beendet hat)

@@ -166,6 +166,7 @@ function present(world, state, user, now) {
     learned,
     credit: require('./credit').view(world, state),
     rep: require('./reputation').brief(state),
+    civic: require('./civic').brief(state),
     court: courtBrief(state),
     properties: state.properties.map((p) => ({
       id: p.id, name: p.name, kind: p.kind, cityId: p.cityId, city: (world.city(p.cityId) || {}).name, rooms: p.rooms, condition: round(p.condition),

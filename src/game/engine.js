@@ -11,6 +11,7 @@ const {
 const { LEVELS, ILLNESSES } = require('./content');
 const { applyTownEvents, rollPrivateEvent, seasonalFestivals } = require('./events');
 const { familyDaily, endLife, ageOfChild } = require('./family');
+const CIV = require('./civic');
 const { businessDaily } = require('./business');
 const society = require('./society');
 const rep = require('./reputation');
@@ -142,8 +143,9 @@ function dayStep(ctx) {
   { const oe = society.officeEffects(world, state, year); restDelta -= oe.rest; state.mods.officeHealth = oe.health; }
   restDelta -= kidsAtHome(state).filter((c) => ageOfChild(state, c) < 18).length * 1.2;
   restDelta += TL.restPts(state.talents); // Kondition: etwas mehr Erholung
+  const civ = CIV.body(state); // Gesellschaft: Vereine (Sport, Kultur), Gemeinde, Stadttöpfe
   const bodyS = SFX.body(state); // Jahreszeit: im Sommer erholt man sich leichter, im Winter schwerer; Stimmung folgt dem Licht
-  restDelta += bodyS.rest;
+  restDelta += bodyS.rest + civ.rest;
   m.rest = clamp(m.rest + restDelta, 0, 100);
   if (m.rest === 0) state.restZero++; else state.restZero = 0;
 
@@ -156,7 +158,7 @@ function dayStep(ctx) {
     + (state.partner ? 10 * (state.partner.sat / 100) * (state.partner.cohabit ? 1 : 0.4) : 0)
     + Math.min(6, state.children.filter((c) => c.status === 'home' && c.sat > 50).length * 1.5)
     - state.children.filter((c) => c.status === 'home' && c.sat < 30).length * 2
-    + (state.mods.wellBoost || 0) + bodyS.mood - (EPI.shieldOn(state) && !(state.companies || []).length ? 3 : 0);
+    + (state.mods.wellBoost || 0) + bodyS.mood + civ.mood - (EPI.shieldOn(state) && !(state.companies || []).length ? 3 : 0);
   state.mods.wellBoost = (state.mods.wellBoost || 0) * 0.86;
   m.wellbeing = clamp(m.wellbeing + (clamp(wt, 0, 100) - m.wellbeing) * 0.18, 0, 100);
 
@@ -168,7 +170,7 @@ function dayStep(ctx) {
     if (ctx.offline) m.health = Math.max(25, m.health - 4);
     else m.health -= 100 / settings.get('game.street_survival_days') + 1;
   } else {
-    const ht = 55 + 0.22 * m.wellbeing + 0.12 * m.rest + fm.health + eh.health * 3 + medicine - agePenalty - (state.life.illness ? 25 : 0) + TL.healthPts(state.talents);
+    const ht = 55 + 0.22 * m.wellbeing + 0.12 * m.rest + fm.health + eh.health * 3 + medicine - agePenalty - (state.life.illness ? 25 : 0) + TL.healthPts(state.talents) + civ.health;
     m.health += (clamp(ht, 0, 100) - m.health) * 0.07;
   }
   if (state.hunger > 0) m.health -= ctx.offline ? 2 : 6;
@@ -215,6 +217,7 @@ function dayStep(ctx) {
   businessDaily(ctx);
   require('./trade').daily(ctx); // Handelsrouten: Abfahrt, Ankunft, Erlös in die Firmenkasse
   society.politicsDaily(ctx);
+  CIV.daily(ctx); // Gesellschaft: Bildungstöpfe der Stadt, verfallende Trauerfeiern
   applyTownEvents(ctx);
   seasonalFestivals(ctx);
   rollPrivateEvent(ctx, flows);

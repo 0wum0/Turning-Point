@@ -457,6 +457,7 @@ async function finalize(c, now, fromState) {
   const [dfn, pl] = [await userInfo(c.defendant_id), await userInfo(c.plaintiff_id)];
   if (c.guilty) {
     if (punish) await rep().punish(c.defendant_id, 'court_convicted', punish, `k${c.id}`, { cityId: c.city_id });
+    try { await require('./civic').onVerdict(c, dfn); } catch (e) { log.warn(`[gericht] Gesellschaft: ${e.message}`); } // Veruntreuung: Ämter im Verein, Titel
     if (c.level >= num(S.publicFromLevel, 3)) {
       const nm = dfn && dfn.social_public && dfn.name ? dfn.name : 'Ein Bürger';
       const lbl = M.ACTS[c.act].label; const pl = planText(plan);
@@ -579,7 +580,10 @@ async function reconcile(conn, user, state, world) {
           state.money -= cents; state.stats.spent = (state.stats.spent || 0) + cents;
           if (s.kind === 'damages' && s.to_user) {
             const share = real * (1 - num(S.damagesStatePct, 0) / 100);
-            if (share > 0) await conn.query("INSERT INTO pending_credits (user_id, real_amount, reason, text) VALUES (?,?,'court',?)", [s.to_user, share, 'Schadenersatz aus einem Gerichtsverfahren.']);
+            // Veruntreuung der Vereinskasse: der Schadenersatz geht zurück in die Kasse des Vereins statt an das Mitglied, das geklagt hat
+            const emb = share > 0 ? await conn.one("SELECT e.victim_company club FROM court_cases k JOIN court_evidence e ON e.id = k.evidence_id WHERE k.id = ? AND k.act = 'embezzle'", [s.case_id]) : null;
+            if (emb && emb.club && await require('./civic').restitution(conn, emb.club, share, 'Rückzahlung nach Urteil')) { /* in die Vereinskasse gebucht */ }
+            else if (share > 0) await conn.query("INSERT INTO pending_credits (user_id, real_amount, reason, text) VALUES (?,?,'court',?)", [s.to_user, share, 'Schadenersatz aus einem Gerichtsverfahren.']);
             live.publish('court', {}, s.to_user); live.publish('business', {}, s.to_user);
           }
           notice(state, { level: 'warn', title: s.kind === 'damages' ? 'Schadenersatz gezahlt' : 'Geldstrafe gezahlt', tab: 'society', text: full ? `Aus einem Gerichtsverfahren wurden ${formatMoney(cents, cur)} abgebucht.` : `Aus einem Gerichtsverfahren wurden ${formatMoney(cents, cur)} abgebucht (Ratenzahlung: Der Rest folgt, sobald wieder Geld da ist).` });

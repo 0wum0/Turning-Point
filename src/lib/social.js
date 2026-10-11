@@ -37,6 +37,7 @@ function statsOf(world, state, user, charRow) {
     pkey: state.occupation && state.occupation.pkey ? state.occupation.pkey : ((state.skills && state.skills.learned && state.skills.learned[0]) || null),
     partnered: state.partner ? 1 : 0,
     days: state.day, occupation: occ ? occ.name : (state.occupation && state.occupation.kind === 'study' ? 'Studium' : null),
+    title: state.civic && Array.isArray(state.civic.titles) ? require('../game/civic').bestTitle(state.civic.titles) : null, // höchster Titel (Gesellschaft)
   };
 }
 
@@ -44,11 +45,11 @@ async function upsertStats(conn, user, charRow, state, world) {
   try {
     const s = statsOf(world, state, user, charRow);
     await conn.query(
-      `INSERT INTO player_stats (user_id, char_id, username, name, city_id, year, status, wealth, biz_value, companies, properties, children, generation, cycle, influence, office, days, occupation, pkey, partnered)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      `INSERT INTO player_stats (user_id, char_id, username, name, city_id, year, status, wealth, biz_value, companies, properties, children, generation, cycle, influence, office, days, occupation, pkey, partnered, title)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
        ON DUPLICATE KEY UPDATE char_id=VALUES(char_id), username=VALUES(username), name=VALUES(name), city_id=VALUES(city_id), year=VALUES(year), status=VALUES(status), wealth=VALUES(wealth), biz_value=VALUES(biz_value),
-         companies=VALUES(companies), properties=VALUES(properties), children=VALUES(children), generation=VALUES(generation), cycle=VALUES(cycle), influence=VALUES(influence), office=VALUES(office), days=VALUES(days), occupation=VALUES(occupation), pkey=VALUES(pkey), partnered=VALUES(partnered)`,
-      [s.user_id, s.char_id, s.username, s.name, s.city_id, s.year, s.status, s.wealth, s.biz_value, s.companies, s.properties, s.children, s.generation, s.cycle, s.influence, s.office, s.days, s.occupation, s.pkey, s.partnered]);
+         companies=VALUES(companies), properties=VALUES(properties), children=VALUES(children), generation=VALUES(generation), cycle=VALUES(cycle), influence=VALUES(influence), office=VALUES(office), days=VALUES(days), occupation=VALUES(occupation), pkey=VALUES(pkey), partnered=VALUES(partnered), title=VALUES(title)`,
+      [s.user_id, s.char_id, s.username, s.name, s.city_id, s.year, s.status, s.wealth, s.biz_value, s.companies, s.properties, s.children, s.generation, s.cycle, s.influence, s.office, s.days, s.occupation, s.pkey, s.partnered, s.title]);
     const year = yearOf(state.day, state.startYear); const idx = Math.max(0.0001, world.idx(year));
     const biz = require('../game/business'); const lord = require('../game/landlord');
     const askF = new Map((await conn.query('SELECT company_id, ask_real FROM player_firms WHERE user_id = ?', [user.id])).map((r) => [r.company_id, r.ask_real]));
@@ -159,7 +160,7 @@ async function leaderboard(userId, { cat = 'wealth', scope = 'all', cityId = 0 }
   return { cat, scope, label: C.label, unit: C.unit, hint: C.hint, total, rows: out, me, cats: Object.entries(CATS).map(([k, v]) => ({ key: k, label: v.label })) };
 }
 function pub(r) {
-  return { userId: r.user_id, role: r.role && r.role !== 'player' ? r.role : undefined, username: r.username, name: r.name, cityId: r.city_id, year: r.year, status: r.status, wealth: Number(r.wealth), bizValue: Number(r.biz_value), companies: r.companies, properties: r.properties, children: r.children, generation: r.generation, cycle: r.cycle, influence: r.influence, office: r.office, days: r.days, occupation: r.occupation };
+  return { userId: r.user_id, role: r.role && r.role !== 'player' ? r.role : undefined, username: r.username, name: r.name, cityId: r.city_id, year: r.year, status: r.status, wealth: Number(r.wealth), bizValue: Number(r.biz_value), companies: r.companies, properties: r.properties, children: r.children, generation: r.generation, cycle: r.cycle, influence: r.influence, office: r.office, days: r.days, occupation: r.occupation, title: r.title || null };
 }
 
 /* =============================== Profile & Beziehungen =============================== */
@@ -189,7 +190,9 @@ async function profile(viewerId, targetId) {
     const ahead = (await db.one(`SELECT COUNT(*) n FROM player_stats ps JOIN users u ON u.id = ps.user_id WHERE ${VISIBLE} AND (${C.expr} > (SELECT ${C.expr.replace(/ps\./g, 'p2.')} FROM player_stats p2 WHERE p2.user_id = ?) )`, [targetId])).n;
     ranks[k] = ahead + 1;
   }
-  return { ...base, bio: u.bio, stats: pub(ps), firms, ranks };
+  let civic = null;
+  try { civic = await require('./civic').publicOf(targetId); } catch (_) { /* Gesellschaft ist optional */ }
+  return { ...base, bio: u.bio, stats: pub(ps), firms, ranks, civic };
 }
 
 async function setProfile(userId, { bio, social_public }) {

@@ -85,6 +85,16 @@ const REASONS = {
   court_false: { kind: 'scandal', d: 5, cap: 10, label: 'Haltlose Anzeige', why: 'Deine Anzeige hat sich als haltlos erwiesen. Wer andere zu Unrecht beschuldigt, verliert an Ansehen.' },
   court_fair: { kind: 'rel', d: 1.5, cap: 4, label: 'Vor Gericht freigesprochen', why: 'Ein Gericht hat dich freigesprochen. Dein guter Name bleibt erhalten.' },
   court_amnesty: { kind: 'office', d: -3, cap: 6, label: 'Amnestie erlassen', why: 'Eine Amnestie ist umstritten: Opfer fühlen sich übergangen.' },
+  club_active: { kind: 'civic', d: 0.4, cap: 1.2, label: 'Im Verein aktiv', why: 'Du bist Mitglied in einem Verein und zahlst deinen Beitrag. Ehrenamt zählt fürs Gemeinwohl.' },
+  club_event: { kind: 'civic', d: 0.8, cap: 2.4, label: 'Vereinsfest ausgerichtet', why: 'Dein Verein hat ein Fest für alle Mitglieder gegeben. Das macht dich im Ort bekannt und beliebt.' },
+  donate: { kind: 'civic', d: 0.8, cap: 3, label: 'Gespendet', why: 'Du hast an einen Verein oder eine Gemeinde gespendet. Wer gibt, stärkt das Gemeinwohl.' },
+  foundation_give: { kind: 'civic', d: 3, cap: 9, label: 'Vermögen in eine Stiftung eingebracht', why: 'Du hast dauerhaft Vermögen für das Gemeinwohl gebunden. Das spricht sich herum.' },
+  foundation_pay: { kind: 'civic', d: 0.6, cap: 1.8, label: 'Stiftung hilft', why: 'Deine Stiftung hat Geld für das Gemeinwohl ausgeschüttet.' },
+  parish_ceremony: { kind: 'civic', d: 0.6, cap: 1.8, label: 'Feier in der Gemeinde', why: 'Du hast eine Feier in deiner Gemeinde ausgerichtet. Familie und Glaube verbinden die Menschen.' },
+  title_gain: { kind: 'civic', d: 3, cap: 9, label: 'Titel verliehen', why: 'Für dein Wirken wurde dir ein Titel verliehen. Das hebt dein Ansehen.' },
+  title_lost: { kind: 'scandal', d: 6, cap: 12, label: 'Titel aberkannt', why: 'Dir wurde ein Titel aberkannt, weil du die Voraussetzungen nicht mehr erfüllst.' },
+  club_embezzle: { kind: 'scandal', d: 12, cap: 24, label: 'Vereinskasse veruntreut', why: 'Du hast Geld aus der Vereinskasse in die eigene Tasche genommen. Alle Mitglieder können es im Kassenbuch lesen.' },
+  club_ousted: { kind: 'scandal', d: 3, cap: 6, label: 'Als Vereinsvorsitzender abgewählt', why: 'Die Mitglieder haben dir das Vertrauen entzogen und dich als Vorsitzenden abgewählt.' },
   admin: { kind: 'rel', d: 0, cap: 100, label: 'Von der Spielleitung angepasst', why: 'Die Spielleitung hat deinen Ruf angepasst.' },
 };
 

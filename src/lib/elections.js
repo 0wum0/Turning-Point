@@ -100,7 +100,7 @@ function voteBlock(ps, accountHours, el, candidateId, c) {
 
 async function candidatesOf(electionId, conn = db) {
   return conn.query(
-    `SELECT ec.user_id, ec.platform, COALESCE(ps.name, u.username) name, u.username, COALESCE(ps.influence, 0) influence, ps.city_id, ps.talents
+    `SELECT ec.user_id, ec.platform, COALESCE(ps.name, u.username) name, u.username, COALESCE(ps.influence, 0) influence, ps.city_id, ps.talents, ps.title
      FROM election_candidates ec JOIN users u ON u.id = ec.user_id LEFT JOIN player_stats ps ON ps.user_id = ec.user_id WHERE ec.election_id = ? ORDER BY ec.created_at, ec.user_id`, [electionId]);
 }
 
@@ -117,16 +117,18 @@ async function overview(world, userId) {
   const pc = world.econ.politics;
   const idxPrice = state ? world.idx(yearOf(state.day, state.startYear)) : 1;
   const mine = await db.one("SELECT e.id, e.office_idx FROM election_candidates ec JOIN elections e ON e.id = ec.election_id WHERE ec.user_id = ? AND e.status = 'open'", [userId]);
+  const feeDisc = await require('./civic').feeDiscount(db, userId);
   const list = [];
   for (let idx = 0; idx < pc.offices.length; idx++) {
     const o = pc.offices[idx]; const sc = scopeCity(c, idx, cityId);
     const el = await db.one("SELECT * FROM elections WHERE office_idx = ? AND city_id = ? AND status = 'open' ORDER BY id DESC LIMIT 1", [idx, sc]);
     const cands = el ? await candidatesOf(el.id) : [];
     const cbadge = await require('./reputation').many(cands.map((x) => x.user_id), sc);
+    const endo = el ? new Map((await db.query('SELECT candidate_id, COUNT(*) n FROM club_endorsements WHERE election_id = ? GROUP BY candidate_id', [el.id])).map((r) => [r.candidate_id, Number(r.n)])) : new Map();
     const myVote = el ? await db.one('SELECT candidate_id FROM election_votes WHERE election_id = ? AND voter_id = ?', [el.id, userId]) : null;
     const voting = el ? now >= Number(el.vote_start) && now < Number(el.vote_end) : win.phase === 'voting';
     const block = state ? runBlock(world, state, idx, c, acc.h) : 'Du brauchst einen lebenden Charakter.';
-    const fee = Math.round((scale(o.campaign, idxPrice) * c.feePct) / 100);
+    const fee = Math.round((scale(o.campaign, idxPrice) * c.feePct) / 100 * (1 - feeDisc / 100)); // Titel (Gesellschaft) senken die Gebühr
     let why = block;
     if (!why && sc && state && state.cityId !== sc) why = 'Du kandidierst in der Stadt, in der du wohnst.';
     if (!why && win.phase !== 'nomination') why = 'Die Kandidatur ist geschlossen – die Wahl läuft bereits.';
@@ -137,7 +139,7 @@ async function overview(world, userId) {
       idx, name: o.name, national: !sc, cityId: sc, city: cityName(world, sc), electionId: el ? el.id : null,
       voteStart: el ? Number(el.vote_start) : win.voteStart, voteEnd: el ? Number(el.vote_end) : win.voteEnd, voting, fee,
       minLevel: RP.officeMin(idx), minName: RP.officeMin(idx) >= 0 ? RP.levelName(RP.officeMin(idx)) : null,
-      candidates: cands.map((x) => ({ userId: x.user_id, name: x.name, username: x.username, influence: x.influence, platform: x.platform, mine: x.user_id === userId, lv: (cbadge.get(x.user_id) || {})[sc ? 'll' : 'lv'] || 0 })),
+      candidates: cands.map((x) => ({ userId: x.user_id, name: x.name, username: x.username, influence: x.influence, platform: x.platform, title: x.title || null, endorsed: endo.get(x.user_id) || 0, mine: x.user_id === userId, lv: (cbadge.get(x.user_id) || {})[sc ? 'll' : 'lv'] || 0 })),
       isCandidate: !!(el && cands.some((x) => x.user_id === userId)), myVote: myVote ? myVote.candidate_id : null,
       canRun: !why, whyNot: why || null,
       canVote: voting && !!el && !voteBlock(ps, acc.h, el, 0, c) && !myVote,
@@ -165,7 +167,8 @@ async function run(userId, idx, platform) {
     const busy = await conn.one("SELECT 1 x FROM election_candidates ec JOIN elections e ON e.id = ec.election_id WHERE ec.user_id = ? AND e.status = 'open' LIMIT 1", [userId]);
     if (busy) fail('Du kandidierst bereits in einer Wahl.');
     const o = offices(world)[idx];
-    const fee = Math.round((scale(o.campaign, world.idx(yearOf(state.day, state.startYear))) * c.feePct) / 100);
+    const disc = await require('./civic').feeDiscount(conn, userId); // Titel (Gesellschaft) senken die Gebühr
+    const fee = Math.round((scale(o.campaign, world.idx(yearOf(state.day, state.startYear))) * c.feePct) / 100 * (1 - disc / 100));
     if (state.money < fee) fail('Für die Kandidatur reicht dein Geld nicht.');
     await conn.query('INSERT IGNORE INTO elections (office_idx, city_id, cycle, vote_start, vote_end) VALUES (?,?,?,?,?)', [idx, sc, win.cycle, win.voteStart, win.voteEnd]);
     const el = await conn.one('SELECT * FROM elections WHERE office_idx = ? AND city_id = ? AND cycle = ?', [idx, sc, win.cycle]);
@@ -232,7 +235,8 @@ async function finish(electionId) {
   for (const x of cands) { try { const pk = await service.peek(x.user_id); const tm = pk && pk.state && pk.state.politics && pk.state.politics.term; if (tm && tm.idx === el.office_idx) incumbent.add(x.user_id); } catch (_) { /* ohne Amtsangabe */ } }
   const weightOf = (uid) => { const m = wmap.get(uid) || { s: 0, l: 0, scandal: 0 }; return RP.voteWeight(el.city_id ? m.l : m.s, m.scandal, incumbent.has(uid)); };
   const talW = (x) => require('../game/talents').voteWeight(require('../game/talents').unpack(x.talents)); // Charme und Führung: Stimmen-Faktor höchstens ±6 %
-  const t = tally(cands.map((x) => ({ userId: x.user_id, influence: x.influence, weight: weightOf(x.user_id) * talW(x) })), human, bots);
+  const civicW = await require('./civic').voteFactors(electionId, cands.map((x) => x.user_id)); // Vereine und Titel (Gesellschaft): höchstens +6 % Stimmengewicht – sie unterstützen, ersetzen aber keine Stimmen
+  const t = tally(cands.map((x) => ({ userId: x.user_id, influence: x.influence, weight: weightOf(x.user_id) * talW(x) * (civicW.get(x.user_id) || 1) })), human, bots);
   const nameOf = new Map(cands.map((x) => [x.user_id, x.name]));
   const ranking = t.ranking.map((r) => ({ userId: r.userId, name: nameOf.get(r.userId), votes: r.votes, human: r.human, bots: r.bots }));
   const winner = t.winnerId ? nameOf.get(t.winnerId) : null;

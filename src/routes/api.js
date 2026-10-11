@@ -37,6 +37,7 @@ router.use('/economy', require('./economy'));
 router.use('/reputation', require('./reputation'));
 router.use('/court', require('./court'));
 router.use('/transport', require('./transport'));
+router.use('/civic', require('./civic'));
 
 router.get('/state', wrap(async (req, res) => {
   const r = await service.getView(req.user.id);

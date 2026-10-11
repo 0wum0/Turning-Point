@@ -79,6 +79,7 @@ const DEFAULTS = {
     batch: 2000,            // Zeilen je DELETE (kurze Sperren)
     chatDays: 30, lettersReadDays: 180, newsDays: 90, worldEventsDays: 60,
     marketDays: 30, ordersDays: 30, tradesDays: 180, leasesDays: 90, anonSessionDays: 2,
+    clubLogDays: 120, parishLogDays: 120, foundationLogDays: 120, clubsClosedDays: 30,   // Gesellschaft: Kassenbücher und aufgelöste Vereine
   },
   push: {
     enabled: true,         // Web-Push (Handy-Benachrichtigungen) global an/aus
@@ -220,7 +221,7 @@ const DEFAULTS = {
     minAccountHours: 24, blockSameIp: true, minGameDays: 20,   // Schutz: neue Konten und Konten gleicher IP kommen nicht vor Gericht zusammen
     evidence: {
       keepHours: 336, halfLifeHours: 120, minUsable: 3,          // Spuren verblassen: Halbwertszeit, Aufbewahrung, darunter nicht mehr verwertbar
-      base: { sabotage: 55, spy: 30, poach: 35, price: 22, breach: 85, default: 80, evict: 75, fraud: 70, bribe: 65, theft: 30, smuggle: 55 }, // Grundstärke der Spuren je Handlung (0 … 100)
+      base: { sabotage: 55, spy: 30, poach: 35, price: 22, breach: 85, default: 80, evict: 75, fraud: 70, bribe: 65, theft: 30, smuggle: 55, embezzle: 60 }, // Grundstärke der Spuren je Handlung (0 … 100)
       securityBonus: 15, failedAttackBonus: 10, luck: 12, policeStep: 8, // Sicherheitsdienst des Opfers, abgewehrter Angriff, Zufall (±), Polizeibudget je Stufe
       maxDamageReal: 60000,                                      // Obergrenze für den festgehaltenen Schaden (Schadenersatz)
     },
@@ -239,13 +240,15 @@ const DEFAULTS = {
       fineByLevel: [0, 500, 1200, 2500, 5000, 9000, 15000], maxFineReal: 30000, damagesStatePct: 0,
       honor: [0, 3, 6, 10, 15, 22, 30],                          // Skandalpunkte (Ehrverlust) je Stufe
       closureHours: [0, 0, 0, 0, 1, 2, 3], gewerbeHours: [0, 0, 0, 0, 0, 6, 12], berufHours: [0, 0, 0, 0, 0, 0, 24], haftHours: [0, 0, 0, 0, 0, 2, 6], haftMaxHours: 24,
-      payDays: 14, maxPayPct: 70, minorLevel: 2, publicFromLevel: 3, severity: { sabotage: 3, spy: 1, poach: 1, price: 0, breach: 1, default: 2, evict: 1, fraud: 2, bribe: 3 },
+      payDays: 14, maxPayPct: 70, minorLevel: 2, publicFromLevel: 3, severity: { sabotage: 3, spy: 1, poach: 1, price: 0, breach: 1, default: 2, evict: 1, fraud: 2, bribe: 3, embezzle: 3 },
     },
     politics: { policeLevels: [-1, 1, 2], policeLevy: [0, 0.4, 0.8], policeDetect: [-0.05, 0.05, 0.1], rangePct: [-25, 0, 25, 50], strictness: [0.9, 1, 1.12], limitation: [0.5, 1, 1.5], amnestyMaxLevel: 2 },
     bribe: { enabled: true, cost: 3000, successPct: 35, evidence: 65 },
   },
   // Handelsrouten und Transport (src/game/transport.js, trade.js)
   transport: require('./game/transport-defaults'),
+  // Gesellschaft (src/game/civic.js, src/lib/civic.js): Vereine, Gemeinden, Stiftungen, Titel und Ränge
+  gesellschaft: require('./game/civic-defaults'),
   cycles: { realEstate: [[1945, 0.75], [1950, 0.85], [1957, 1.0], [1965, 1.08], [1973, 1.15], [1976, 1.05], [1985, 1.0], [1990, 1.2], [1993, 1.3], [1996, 1.0], [2005, 0.9], [2010, 1.0], [2015, 1.2], [2021, 1.5], [2023, 1.35], [2035, 1.4], [2060, 1.5], [2100, 1.6]] },
   exchange: { enabled: true, shares: 1000, minValueReal: 300000, minGameDays: 90, minFloatPct: 10, maxFloatPct: 49, makerSpreadPct: 5, makerDailyPct: 5, maxOrderShares: 500, openOrdersMax: 12, takeoverPct: 50,
     // Grenzen des Marktteilnehmers: Tageslimit je Nutzer (Gesamtwert real in Cent, 0 = kein Limit), Mindest-Haltedauer vor dem Rückverkauf an ihn,

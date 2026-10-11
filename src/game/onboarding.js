@@ -7,7 +7,7 @@
  */
 
 /** Marken, die die Oberfläche melden darf (Seitenbesuche und Aktionen, die der Spielstand nicht selbst festhält). */
-const SEEN_KEYS = ['newspaper', 'map', 'friend', 'marketOffer', 'vote', 'glossary', 'prices', 'court', 'season', 'trade', 'route'];
+const SEEN_KEYS = ['newspaper', 'map', 'friend', 'marketOffer', 'vote', 'glossary', 'prices', 'court', 'season', 'trade', 'route', 'civic'];
 /** Nach so vielen Spieljahren öffnet sich alles von selbst (wer so lange spielt, kennt das Spiel). */
 const OPEN_AFTER_YEARS = 6;
 
@@ -55,6 +55,8 @@ const QUESTS = [
   { id: 'winter', title: 'Bereite dich auf den Winter vor', why: 'Die Jahreszeiten bestimmen Heizkosten, Krankheiten und Geschäfte. Wirf einen Blick auf den Jahreszeiten-Check und halte ein Polster in Höhe deines Startgelds bereit – so überstehst du auch einen harten Winter oder eine Seuche.', tab: 'overview', spot: 'season', reward: { efs: 5 }, done: (s, q, k) => !!q.seen.season && s.money >= (k.startMoney || 4000) },
   { id: 'route', title: 'Richte deine erste Handelsroute ein', why: 'Waren sind nicht überall gleich teuer. Eine Handelsroute kauft sie dort, wo sie billig sind, und verkauft sie dort, wo sie mehr bringen – automatisch. „Beste Route finden“ rechnet dir vorher alles vor.', tab: 'trade', spot: 'trade', reward: { efs: 6 }, done: (s, q) => !!(s.trade && ((s.trade.routes || []).length || (s.trade.stats && s.trade.stats.trips))) || !!q.seen.route },
   { id: 'court', title: 'Lerne das Gericht kennen', why: 'Wer dir schadet, hinterlässt Spuren. Im Bereich „Recht & Gericht“ siehst du, wie Beweise, Anzeige, Vergleich und Strafen funktionieren – bevor du sie brauchst.', tab: 'society', spot: 'court', reward: { efs: 6 }, done: (s, q) => !!q.seen.court },
+  { id: 'club', title: 'Tritt einem Verein bei', why: 'Ein Verein verbindet: Sport hält fit, Kultur hebt die Stimmung, Handwerker stärken ihren Umsatz – und Ehrenamt zählt fürs Ansehen. Die Beiträge füllen die Vereinskasse, aus der Feste bezahlt werden.', tab: 'society', spot: 'civic', reward: { efs: 6 }, done: (s, q) => !!(s.civic && (s.civic.clubs || []).length) },
+  { id: 'give', title: 'Tu etwas für das Gemeinwohl', why: 'Eine Gemeinde, eine Spende, eine Stiftung oder ein Titel: Wer der Stadt etwas zurückgibt, steigert sein Ansehen – und Titel bringen spürbare Vorteile bei Wahlen und im Geschäft.', tab: 'society', spot: 'civic', reward: { efs: 6 }, done: (s, q) => !!(s.civic && (s.civic.parish || s.civic.foundation || (s.civic.titles || []).length)) || !!q.seen.civic },
 ];
 const QUEST_IDS = QUESTS.map((x) => x.id);
 
@@ -215,6 +217,10 @@ function advise(v, nextQuest, opts) {
   if (cj && cj.act > 0) add(87, { id: 'court-sued', level: 'bad', icon: 'gavel', title: 'Du wurdest verklagt – Anwalt oder Vergleich?', why: 'Gegen dich läuft ein Verfahren. Mit einem Rechtsanwalt, einem Vergleich oder einem Geständnis bestimmst du selbst, wie es ausgeht.', cta: { kind: 'go', label: 'Zum Gericht', tab: 'society', spot: 'court' } });
   if (cj && cj.ev > 0 && !cj.p) add(58, { id: 'court-evidence', level: 'warn', icon: 'search', title: 'Spuren am Tatort – Anzeige erstatten?', why: 'Jemand hat dir geschadet und Spuren hinterlassen. Sie verblassen: Stärke sie mit einem Detektiv oder erstatte Anzeige.', cta: { kind: 'go', label: 'Spuren ansehen', tab: 'society', spot: 'court' } });
   if (cj && (cj.r || []).some((x) => x.k === 'haft')) add(72, { id: 'court-haft', level: 'warn', icon: 'lock', title: 'Du bist in Haft', why: 'Wirtschaftliche Handlungen sind gesperrt, bis die Haft endet. Essen, Schlafen, Briefe und Chat gehen weiter; deine Spielzeit läuft geschützt.', cta: { kind: 'go', label: 'Details', tab: 'society', spot: 'court' } });
+  // Gesellschaft: offene Beiträge und Trauerfeiern
+  const cv = v.civic;
+  if (cv && cv.on && cv.due > 0 && v.status === 'alive') add(57, { id: 'civic-due', level: 'warn', icon: 'users', title: 'Ein Vereinsbeitrag ist offen', why: 'Wer den Beitrag nicht zahlt, scheidet nach einigen Tagen aus dem Verein aus. Der Beitrag wird abgebucht, sobald das Geld reicht.', cta: { kind: 'go', label: 'Zu den Vereinen', tab: 'society', spot: 'civic' } });
+  if (cv && cv.on && cv.parish && cv.funerals > 0 && v.status === 'alive') add(53, { id: 'civic-funeral', level: 'info', icon: 'heart', title: 'Eine Trauerfeier steht aus', why: 'Die Gemeinde kann für einen Verstorbenen der Familie eine Trauerfeier ausrichten. Das tröstet Kinder und Partner und bringt ein wenig Ansehen.', cta: { kind: 'go', label: 'Zur Gemeinde', tab: 'society', spot: 'civic' } });
   // Ansehen: pünktlich zahlen schützt den Ruf; ein angeschlagener Ruf ist ein eigener Hinweis
   if (v.housing && v.housing.type === 'rent' && v.flows && v.flows.exp && v.flows.exp.lodging > 0 && v.money < v.flows.exp.lodging * 6) {
     add(83, { id: 'rentrisk', level: 'warn', icon: 'clock', title: 'Deine Miete ist in Gefahr', why: 'Reicht das Geld nicht für die Miete, verlierst du die Wohnung – und dein Ansehen leidet. Pünktlich zahlen dagegen stärkt es.', cta: { kind: 'go', label: 'Einnahmen verbessern', tab: 'work' } });

@@ -68,7 +68,7 @@ function companyFlows(world, state, c, year) {
   const hit = c.hit && state.day < c.hit.until ? c.hit.factor : 1; const outage = c.outageUntil && state.day < c.outageUntil ? 0 : 1;
   const ce = require('./cityecon'); // Stadtwirtschaft: Sektor-Index (Umsatz, abgeschwächt) und örtliches Lohnniveau; ohne Stadtindizes = 1
   const tfx = TL.firmEffects(world, state, c, ef.edu); // Talente: Teamqualität → Umsatz (±12 %), Lieferverlässlichkeit, Lohnsumme
-  const raw = tfx.rev * c.rooms * t.incomePerRoom * idx * cityMult(world.city(c.cityId)) * eff * marketPhase(year).factor * strike * comp.factor * hit * outage * ce.revenueMult(world, c.cityId, c.pkey, year) * sfx.rev;
+  const raw = tfx.rev * c.rooms * t.incomePerRoom * idx * cityMult(world.city(c.cityId)) * eff * marketPhase(year).factor * strike * comp.factor * hit * outage * ce.revenueMult(world, c.cityId, c.pkey, year) * sfx.rev * require('./civic').revMult(state);
   // Warenkreislauf: Rezept, Versorgung, Verträge, Politik (siehe goods.js). Ohne Rezeptzutaten/aus: identisch zur früheren Rechnung.
   const ar = goods.activeRecipe(world, c.pkey, year, c.cityId);
   const rPot = Math.round(raw * ar.mult * goods.outputFactor(ar, year, ef));

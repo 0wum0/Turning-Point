@@ -216,7 +216,7 @@ async function create(userId, input) {
     if (err.length) throw new actions.ActionError(err.join(' '));
     const cycle = row ? row.cycle + 1 : 1;
     const state = createCharacter(w, input, user, { cycle });
-    if (row) { try { await require('../lib/reputation').inherit(conn, userId, 'restart'); } catch (e) { require('../lib/log').warn(`[ruf] ${e.message}`); } }
+    if (row) { try { await require('../lib/reputation').inherit(conn, userId, 'restart'); } catch (e) { require('../lib/log').warn(`[ruf] ${e.message}`); } await require('../lib/civic').afterRestart(conn, userId); }
     await loadRep(conn, user, state);
     user.efs_accrued_at = now;
     user.efs_carry = 0;
@@ -277,11 +277,15 @@ async function chooseHeir(userId, childId, bequest) {
     const row = await activeRow(conn, userId);
     if (!row || row.status !== 'dead') throw new actions.ActionError('Es steht kein Erbe an.');
     const old = parseState(row.state);
+    const civic = require('../lib/civic');
+    const will = await civic.beforeHeir(conn, userId, old, w); // Vermächtnis an die Stiftung mindert den Nachlass (gebucht in dieser Transaktion)
     const { state } = createHeirState(w, old, childId, Array.isArray(bequest) ? bequest : []);
     flush(user, state);
     // Familienruf: Der Erbe übernimmt einen Teil des Ansehens der Eltern
     try { await require('../lib/reputation').inherit(conn, userId, 'heir'); } catch (e) { require('../lib/log').warn(`[ruf] ${e.message}`); }
     await loadRep(conn, user, state);
+    await civic.afterHeir(conn, userId, old, state, w); // Titel, Gemeinde, Stiftung, Trauerfeier
+    void will;
     await conn.query(
       'INSERT INTO characters (user_id, parent_id, cycle, generation, status, name, state, game_day, money) VALUES (?,?,?,?,?,?,?,?,?)',
       [userId, row.id, state.cycle, state.generation, 'alive', `${state.person.first} ${state.person.last}`, JSON.stringify(state), state.day, state.money],
@@ -301,8 +305,10 @@ async function previewHeir(userId, childId, bequest) {
   const row = await db.one("SELECT * FROM characters WHERE user_id = ? AND status = 'dead' ORDER BY id DESC LIMIT 1", [userId]);
   if (!row) throw new actions.ActionError('Es steht kein Erbe an.');
   const state = parseState(row.state);
+  const will = await require('../lib/civic').previewWill(userId, state, w); // Vermächtnis an die Stiftung (Cent), mindert den Nachlass
+  if (will) state.money -= will;
   const plan = planInheritance(w, state, childId, Array.isArray(bequest) ? bequest : []);
-  return { n: plan.est.n, share: plan.est.share, cash: plan.cash, properties: plan.properties.concat(plan.companies).map((p) => p.name) };
+  return { n: plan.est.n, share: plan.est.share, cash: plan.cash, properties: plan.properties.concat(plan.companies).map((p) => p.name), will };
 }
 
 /** Nur lesen (ohne Sperre/Sync) – für Zeitung, Karte, Kostenvoranschläge. */

@@ -44,6 +44,11 @@ async function gatherInputs(world) {
     i.rooms.all += rooms; if (s === 'food' || s === 'services' || s === 'build') i.rooms[s] += rooms;
   }
   for (const r of players) { if (world.city(r.city_id)) get(r.city_id).players += Number(r.n) || 0; }
+  try { // Vereins- und Gemeindeleben (Gesellschaft)
+    const cm = await db.query("SELECT c.city_id, COUNT(*) n FROM club_members m JOIN clubs c ON c.id = m.club_id AND c.status = 'active' GROUP BY c.city_id");
+    const pm = await db.query('SELECT p.city_id, COUNT(*) n FROM parish_members m JOIN parishes p ON p.id = m.parish_id GROUP BY p.city_id');
+    for (const r of [...cm, ...pm]) if (world.city(r.city_id)) { const i = get(r.city_id); i.civic = (i.civic || 0) + (Number(r.n) || 0) / 20; }
+  } catch (_) { /* Tabellen fehlen vor der Migration */ }
   return inputs;
 }
 

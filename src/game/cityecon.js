@@ -166,14 +166,18 @@ const noPolicy = () => ({ zone: 0, rentCap: null, brake: 0 });
 
 /**
  * Nachfrage und Angebot eines Sektors (in „Räumen“, der Einheit der Konkurrenz-Obergrenze).
- * inp = { players, rooms: { food, services, build, all } }.
+ * inp = { players, civic (Mitglieder von Vereinen und Gemeinden ÷ 20, optional), rooms: { food, services, build, all } }.
  */
 function balance(world, cityId, sector, inp, pol) {
   const c = C(); const B = capOf(world, cityId) * c.npc[sector];
   const players = Math.max(0, Number(inp && inp.players) || 0); const r = (inp && inp.rooms) || {};
   const P = pol || noPolicy();
   let D = B; let S = B;
-  if (sector === 'food' || sector === 'services') { D += players * c.pd; S += (r[sector] || 0) * c.fw; }
+  if (sector === 'food' || sector === 'services') {
+    D += players * c.pd; S += (r[sector] || 0) * c.fw;
+    // Vereins- und Gemeindeleben (Gesellschaft): Feste, Chor und Gemeindehaus fragen Dienste nach – klein und nach oben gedeckelt
+    if (sector === 'services') D += Math.min(players * 0.5, Math.max(0, Number(inp && inp.civic) || 0)) * c.pd;
+  }
   else if (sector === 'rent') {
     D += players * c.pd * 1.5; S += (r.build || 0) * c.fw * 0.5 + B * (P.zone / 100) * 2;
     if (P.rentCap != null) S *= 1 - c.policy.capPenalty;
