@@ -28,6 +28,7 @@ const JSON_OUT = argv.includes('--json');
 // Stadtwirtschaft: off = ohne Stadtindizes (wie vor Schritt 2), era = nur deterministischer Epochenfaktor, live = Indizes folgen Nachfrage/Angebot der Simulation
 const CITY = String(arg('city', 'live'));
 const REP = arg('rep', 'on') !== 'off'; // Ruf und Ansehen (src/game/reputation.js) mitrechnen: --rep off für die Werte ohne Ansehen
+const CIVIC = arg('civic', 'on') !== 'off'; // Gesellschaft (src/game/civic.js): Verein(e), Gemeinde und Spenden mitrechnen: --civic off für die Werte ohne Gesellschaft
 const OTHERS = Number(arg('others', 12)); // andere lebende Charaktere in der Stadt des Spielers
 if (arg('seasons', 'on') === 'off') require('../src/settings').DEFAULTS.jahreszeiten.enabled = false; // --seasons off: ohne Jahreszeiten, Ernte und Seuchen (Vergleichswert)
 const cityecon = require('../src/game/cityecon');
@@ -77,6 +78,15 @@ function makeRun(name, pkey, policy) {
   const maxDays = YEARS * 365;
   // Ansehen: 365 Spieltage = 1 echter Tag. Vorgemerkte Ereignisse laufen mit Tagesgrenzen durch das reine Modell, der Zwischenspeicher wirkt zurück.
   const RP = require('../src/game/reputation'); const RC = require('../src/settings').get('ruf');
+  // Gesellschaft: ein typischer Spieler ist in einem Sportverein, in der Gemeinde (Stufe 2); Betriebsinhaber auch im Gewerbeverein. Beiträge und Spenden kosten Geld, die Wirkung kommt über state.civic.fx
+  const CV = require('../src/game/civic'); const CVG = require('../src/settings').get('gesellschaft');
+  const civicClubs = () => [{ kind: 'sport', members: 12 }].concat((s.companies || []).some((c) => !c.abandoned) ? [{ kind: 'handwerk', members: 10 }] : []);
+  const civicYear = (year) => {
+    if (!CIVIC) return;
+    const idxY = w.idx(year); const clubs = civicClubs();
+    s.civic = { fx: CV.combineFx({ clubs, parishLevel: 2, pot: null, titles: [] }), clubs: clubs.length, due: 0 };
+    return Math.round((clubs.length * CVG.clubs.feeDefaultReal + 2400) * idxY);
+  };
   const rstate = { c: RP.blank(), caps: null, pts: 0, day: 0, seen: {} }; const repLog = [];
   const repDay = () => {
     const q = s.pending.rep || []; s.pending.rep = [];
@@ -101,6 +111,7 @@ function makeRun(name, pkey, policy) {
   for (let d = 0; d < maxDays && s.status === 'alive'; d++) {
     const year = yearOf(s.day, s.startYear); const idx = w.idx(year);
     if (d % 365 === 0) cityLive(s, d / 365);
+    if (CIVIC && d % 365 === 0) { const cost = civicYear(year); if (cost) s.money -= Math.min(cost, Math.max(0, s.money)); }
     if (d % 14 === 0) { policy({ s, act, year, idx, w, edition }); supply(s); }
     s.meters.fridge = 100; s.meters.rest = Math.max(s.meters.rest, 60); s.meters.health = Math.max(s.meters.health, 80);
     const f = core.dailyFlows(w, s);

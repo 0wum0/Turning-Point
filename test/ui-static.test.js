@@ -72,3 +72,27 @@ test('Englisches Wörterbuch enthält die Ergänzungen aus client-H und die Must
   assert.equal(tr('Wahlkampf 2k DM · Einkommen unbezahlt · Kraft −6/Tag'), 'Campaign 2k DM · Income unpaid · Energy −6/day');
   assert.equal(tr('Anna Test stirbt (verhungert).'), 'Anna Test dies (of starvation).');
 });
+
+test('Gesellschaft: jeder Knopf der Oberfläche ist verdrahtet, jede Server-Adresse existiert, Glossarbegriffe sind vorhanden', () => {
+  const ui = fs.readFileSync(path.join(ROOT, 'public/js/game/civic.js'), 'utf8');
+  const routes = fs.readFileSync(path.join(ROOT, 'src/routes/civic.js'), 'utf8');
+  // Auswahlen der Handler (on(root, 'click', '[data-x]')) ↔ Attribute in den Vorlagen
+  const sels = new Set([...ui.matchAll(/on\([a-z.]+, 'click', '\[(data-[a-z-]+)\]'/g)].map((m) => m[1]));
+  assert.ok(sels.size >= 12, [...sels].join());
+  for (const a of sels) assert.ok(new RegExp(` ${a}(=|[ >])`).test(ui), `Kein Knopf mit ${a}`);
+  // API-Adressen: /api/civic/... im Client ↔ router.<verb>('/...') im Server
+  const served = new Set([...routes.matchAll(/router\.(?:get|post)\('([^']*)'/g)].map((m) => m[1].replace(/:[a-z]+(\(\\\\d\+\))?/g, ':x')));
+  for (const m of ui.matchAll(/\/api\/civic(\/[^'`"?]*)?/g)) {
+    const p = (m[1] || '/').replace(/\$\{[^}]+\}/g, ':x');
+    if (p === '/') { assert.ok(served.has('/'), 'GET /'); continue; }
+    assert.ok(served.has(p), `Server kennt ${p} nicht`);
+  }
+  // Glossarbegriffe: term('…') nennt vorhandene Schlüssel
+  const gl = fs.readFileSync(path.join(ROOT, 'public/js/game/glossary-civic.js'), 'utf8');
+  const keys = new Set([...gl.matchAll(/^\s*\['([^']+)'/gm)].map((m) => m[1]));
+  for (const m of ui.matchAll(/term\('([^']+)'/g)) assert.ok(keys.has(m[1]), `Glossar fehlt: ${m[1]}`);
+  // Oberfläche ist an Übersicht, Gesellschaft und Live angebunden
+  assert.match(fs.readFileSync(path.join(ROOT, 'public/js/game/views/society.js'), 'utf8'), /bindCivic\(root, ctx\)/);
+  assert.match(fs.readFileSync(path.join(ROOT, 'public/js/game/views/overview.js'), 'utf8'), /civicMini\(ctx\)/);
+  assert.match(fs.readFileSync(path.join(ROOT, 'public/js/game/live.js'), 'utf8'), /tp-live-civic/);
+});

@@ -574,6 +574,59 @@ function runRepScenario(seed, days = 400) {
 }
 
 
+/** Gesellschaft (Modell): zufällige und unsinnige Eingaben – Beiträge, Wirkungen, Deckel für Stimmengewicht, Stiftungsabrechnung (Kapital bleibt erhalten), Töpfe, Titel; alles endlich, im Rahmen, deterministisch. */
+function runCivicScenario(seed, rounds = 300) {
+  const failures = []; const r = mulberry32(seed ^ 0x2b7e1516); const M = require('../src/game/civic'); const G = settings.get('gesellschaft');
+  const bad = (m) => failures.push({ seed, msg: m });
+  const junk = () => [NaN, Infinity, -Infinity, -5, 0, 1e15, '7', null, undefined, {}][Math.floor(r() * 10)];
+  const HOUR = 3600000; const kinds = M.kinds().map((k) => k.key).concat(['gibtsnicht']);
+  let now = 1e12;
+  for (let i = 0; i < rounds; i++) {
+    now += Math.floor(r() * 90) * HOUR;
+    // Beiträge: nie mehr als catchUpMax Zeiträume, nie negativ
+    const m = { paid_until: r() < 0.2 ? junk() : now - Math.floor(r() * 400) * HOUR + Math.floor(r() * 100) * HOUR };
+    const du = M.dues(m, r() < 0.15 ? junk() : Math.floor(r() * 7000), now);
+    if (!(du.periods >= 0 && du.periods <= Math.max(1, G.clubs.catchUpMax)) || !Number.isFinite(du.late)) bad(`Beitragszeiträume ${JSON.stringify(du)}`);
+    if (M.clampFee(junk()) < 0 || M.clampFee(r() * 1e9) > G.clubs.feeMaxReal) bad('Beitrag nicht gedeckelt');
+    // Wirkungen
+    const clubs = Array.from({ length: Math.floor(r() * 6) }, () => ({ kind: kinds[Math.floor(r() * kinds.length)], members: r() < 0.1 ? junk() : Math.floor(r() * 60) }));
+    const titles = M.evaluate({ lvl: Math.floor(r() * 7) - 2, donated: r() * 5e7, contributed: r() * 5e7, biz: r() * 5e8, staff: Math.floor(r() * 80), chair: Math.floor(r() * 90), chairDays: Math.floor(r() * 900), office: Math.floor(r() * 4), scandal: r() < 0.2 ? r() * 40 : 0 });
+    const fx = M.combineFx({ clubs, parishLevel: Math.floor(r() * 6) - 1, pot: { health: r() * 9, wellbeing: r() * 9, kids: r() * 3, aid: r() * 9 }, titles });
+    const lim = { health: 4, rest: 2, mood: 4, rev: 3, kids: 0.5, aid: 2 };
+    for (const k of Object.keys(lim)) if (!Number.isFinite(fx[k]) || fx[k] < 0 || fx[k] > lim[k] + 1e-9) bad(`Wirkung ${k} außerhalb: ${fx[k]}`);
+    // Stimmengewicht bleibt gedeckelt – Politik bleibt offen
+    const bo = M.totalBoost(Array.from({ length: Math.floor(r() * 8) }, () => M.endorseBoost(Math.floor(r() * 200), r() < 0.5)), r() < 0.1 ? junk() : r() * 20);
+    if (!(bo >= 0 && bo <= G.elections.maxBoostPct + 1e-9)) bad(`Stimmengewicht-Zuschlag ${bo}`);
+    const vf = M.voteFactor(r() < 0.1 ? junk() : r() * 50);
+    if (!(vf >= 1 && vf <= 1 + G.elections.maxBoostPct / 100 + 1e-9)) bad(`Stimmfaktor ${vf}`);
+    const tf = M.titleFx(titles);
+    if (tf.vote > G.titles.maxVotePct + 1e-9 || tf.fee > G.titles.maxFeeDiscPct + 1e-9 || tf.slots > 2 || tf.rev > 3) bad(`Titelwirkung ${JSON.stringify(tf)}`);
+    // Stiftung: Kapital + Ertrag − Ausschüttung = neues Kapital; nie negativ; versäumte Zeiträume verfallen
+    const cap0 = Math.floor(r() * 5e7); const t = M.foundationTick({ capital: cap0, payoutPct: r() < 0.2 ? junk() : r() * 12, lastMs: now - Math.floor(r() * 2000) * HOUR }, now);
+    if (!(t.capital >= 0) || t.periods > G.foundation.catchUpMax || Math.abs(cap0 + t.income - t.payout - t.capital) > 0.05 * Math.max(1, t.periods)) bad(`Stiftungsabrechnung ${JSON.stringify(t)} aus ${cap0}`);
+    if (t.payout > cap0 + t.income + 1e-6) bad('Ausschüttung größer als Vermögen');
+    // Gemeinde und Töpfe
+    const sg = M.standingGain(r() < 0.1 ? junk() : r() * 1e6); if (!(sg >= 0 && sg <= G.parish.donate.standingDayCap + 1e-9)) bad(`Gemeinde-Ansehen ${sg}`);
+    const sd = M.standingDecay(r() * 100, r() * 4000); if (!(sd >= 0 && sd <= 100)) bad(`Verfall ${sd}`);
+    const aid = M.aidAmount(r() * 1e7, r() * 3); if (!(aid >= 0 && aid <= G.parish.aid.maxReal * 3)) bad(`Notgabe ${aid}`);
+    const pe = M.potEffect({ bildung: r() * 1e7, gesundheit: r() * 1e7, kultur: r() < 0.1 ? junk() : r() * 1e7, armut: r() * 1e7 }, Math.floor(r() * 6));
+    for (const v of Object.values(pe)) if (!Number.isFinite(v) || v < 0 || v > 1.5) bad(`Topfwirkung ${JSON.stringify(pe)}`);
+    const p0 = r() * 1e6; if (M.potDecay(p0, 3) > p0 + 1e-9 || M.potDecay(p0, 3) > M.potDecay(p0, 1) + 1e-9) bad('Topf wächst von allein');
+    const cash = r() < 0.1 ? junk() : Math.floor(r() * 1e9); const bq = M.bequest(cash, r() < 0.1 ? junk() : r() * 100); if (!(bq >= 0) || bq > Math.max(0, Number(cash) || 0) * G.foundation.willMaxPct / 100 + 1) bad(`Vermächtnis ${bq}`);
+    // Abwahl und Nachfolge
+    const n = Math.floor(r() * 30) + 1; const votes = Math.floor(r() * (n + 2));
+    if (M.mistrustReached(votes, n) && (votes < G.clubs.mistrust.min || votes * 100 <= n * G.clubs.mistrust.pct)) bad('Abwahl zu früh');
+    const rows = Array.from({ length: Math.floor(r() * 6) }, (_, k) => ({ user_id: k + 1, role: ['member', 'board', 'president'][Math.floor(r() * 3)], joined_ms: Math.floor(r() * 5) }));
+    const a = M.successor(rows, 1); const b = M.successor(rows.slice().reverse(), 1);
+    if ((a && a.user_id) !== (b && b.user_id)) bad('Nachfolge hängt von der Reihenfolge ab');
+    if (a && a.user_id === 1) bad('Nachfolge: der Ausgeschiedene folgt sich selbst');
+    // Namen: nie länger als erlaubt, nie Adressen
+    const nm = M.cleanName(`${'ab'.repeat(Math.floor(r() * 30))} ${['www.x.de', 'ok', '<b>', ''][Math.floor(r() * 4)]}`);
+    if (nm.ok && (nm.name.length > 40 || /www\.|\.de/.test(nm.name))) bad(`Name ${nm.name}`);
+  }
+  return failures;
+}
+
 /** Gerichte: Spuren, Urteile, Sanktionen und Sperren bleiben endlich, in den Grenzen, deterministisch; Sperren laufen ab; Geld bleibt erhalten (Zahlungsplan). */
 function runCourtScenario(seed, rounds = 300) {
   const failures = []; const r = mulberry32(seed ^ 0x6f1d2c3b); const M = require('../src/game/court'); const C = settings.get('gericht');
@@ -679,4 +732,4 @@ function runTransportScenario(seed, rounds = 14) {
   return { failures, digest };
 }
 
-module.exports = { runTransportScenario, runCourtScenario, runRepScenario, world, runScenario, runTradeScenario, runSupplyScenario, runCityEconScenario, invariants, inputFor, JUNK, clone };
+module.exports = { runCivicScenario, runTransportScenario, runCourtScenario, runRepScenario, world, runScenario, runTradeScenario, runSupplyScenario, runCityEconScenario, invariants, inputFor, JUNK, clone };
