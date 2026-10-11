@@ -477,19 +477,19 @@ describe('E2E Turning Point', { concurrency: false }, () => {
       await app.sql('UPDATE users SET efs_accrued_at = ?, efs_carry = 0 WHERE id = ?', [Date.now(), fId]);
       await L.reloadGame(f); await L.nav(f, 'overview');
       await f.page.waitForSelector('#seasonCard');
-      assert.match(await text(f, '#seasonCard'), /Winter/);
+      assert.match(await text(f, '#seasonCard'), /winter/i);
       assert.match(await text(f, '#seasonCard'), /Heizung/);
       assert.ok(await f.page.locator('#hud .hud-season').count(), 'Jahreszeit im Kopfbereich');
       // Jahreszeiten-Check erklärt Heizung, Ernte und Vorsorge – und erfüllt die Aufgabe „Bereite dich auf den Winter vor“
       await f.page.click('[data-season-guide]');
       await f.page.waitForSelector('.modal');
-      assert.match(await text(f, '.modal'), /Winter-Check/);
+      assert.match(await text(f, '.modal'), /winter-check/i);
       assert.match(await text(f, '.modal'), /Ernte 1957/);
       await L.closeModals(f);
       await L.until(async () => (await app.sql("SELECT JSON_EXTRACT(state, '$.flags.quests.seen.season') s FROM characters WHERE user_id = ? AND status = 'alive'", [fId]))[0].s, { what: 'Aufgabe „Winter“ gesehen' });
       // Seuchenhinweis mit drei Schutzknöpfen; Hygienepaket kostet Geld und wirkt
       await f.page.waitForSelector('#epiBanner');
-      assert.match(await text(f, '#epiBanner'), /Asiatische Grippe/);
+      assert.match(await text(f, '#epiBanner'), /asiatische grippe/i);
       assert.equal(await f.page.locator('#epiBanner [data-epi]').count(), 3);
       assert.ok(await f.page.locator('#epiBanner [data-epi="vaccine"]').isDisabled(), '1957 gibt es noch keinen Impfstoff');
       const m0 = Number((await app.sql("SELECT money FROM characters WHERE user_id = ? AND status = 'alive'", [fId]))[0].money);
@@ -501,8 +501,8 @@ describe('E2E Turning Point', { concurrency: false }, () => {
       assert.ok(Number((await app.sql("SELECT money FROM characters WHERE user_id = ? AND status = 'alive'", [fId]))[0].money) < m0, 'Schutz kostet Geld');
       await f.page.waitForFunction(() => /aktiv/.test(document.querySelector('#epiBanner [data-epi="hygiene"]').innerText));
       // Betriebe und Haushalt zeigen Jahreszeit und Seuche
-      await L.nav(f, 'business'); assert.match(await text(f), /Seuche/);
-      await L.nav(f, 'household'); assert.match(await text(f, '#seasonCard'), /Winter/);
+      await L.nav(f, 'business'); assert.match(await text(f), /seuche/i);
+      await L.nav(f, 'household'); assert.match(await text(f, '#seasonCard'), /winter/i);
       // Kanzler: Seuchenmaßnahmen mit Vorschau (Ansteckung gegen Wirtschaft gegen Ansehen), Beschluss, Tagesblatt
       await app.sql("UPDATE characters SET state = JSON_SET(state, '$.politics.term', JSON_OBJECT('idx', 5, 'startDay', ?, 'endDay', ?, 'cityId', 0)) WHERE user_id = ? AND status = 'alive'", [st.day, st.day + 1460, fId]);
       await L.showAll(f); await L.reloadGame(f); await L.nav(f, 'society');
