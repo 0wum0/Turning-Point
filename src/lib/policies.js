@@ -61,7 +61,8 @@ function describe(world, r) {
 async function refresh() {
   const world = await worldP();
   const firms = await db.query("SELECT f.city_id, f.pkey, f.tier, f.rooms, ps.year FROM player_firms f JOIN player_stats ps ON ps.user_id = f.user_id WHERE f.abandoned = 0 AND ps.status = 'alive'");
-  goods.setScarcity(goods.computeScarcity(world, firms));
+  await require('./transport').refresh();
+  goods.setScarcity(goods.computeScarcity(world, firms, require('./transport').flows()));
   const rows = await db.query(
     `SELECT p.*, ps.office, ps.status, ps.name holder, u.social_public FROM goods_policies p JOIN player_stats ps ON ps.user_id = p.user_id JOIN users u ON u.id = p.user_id
      WHERE p.expires_at > ? ORDER BY p.id`, [Date.now()]);
@@ -69,6 +70,7 @@ async function refresh() {
   const valid = rows.filter((r) => r.status === 'alive' && r.office === (offices[r.office_idx] || {}).name);
   goods.setPolicies(goods.buildPolicies(valid));
   require('./court-policy').refresh().catch((e) => log.warn(`[gericht] ${e.message}`));
+  require('./transport-policy').refresh().catch((e) => log.warn(`[verkehr] ${e.message}`));
   ACTIVE = valid.map((r) => ({ id: r.id, kind: r.kind, good: r.good, val: r.val, cityId: r.scope_city, region: r.region, office: r.office, holder: r.social_public ? r.holder : null, until: Number(r.expires_at), text: describe(world, r) }));
 }
 

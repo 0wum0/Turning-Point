@@ -245,6 +245,7 @@ async function playGameSafe(userId, opts) {
   try { await playGame(userId, opts); } catch (e) { log.warn(`[bots] Spiel von ${userId}: ${e.message}`); }
   // Lieferverträge laufen außerhalb der Spielstand-Transaktion (eigene Datenbankzugriffe), daher erst nach der Sitzung
   try { await require('./supply').botRound(userId); } catch (e) { log.warn(`[bots] Lieferverträge von ${userId}: ${e.message}`); }
+  try { await require('./transport').botRound(userId); } catch (e) { log.warn(`[bots] Handelsrouten von ${userId}: ${e.message}`); }
 }
 
 async function lifeCycle(userId) {

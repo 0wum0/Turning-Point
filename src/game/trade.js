@@ -211,6 +211,7 @@ function create(world, state, input) {
 
 function edit(world, state, id, input) {
   const t = ensure(state); const r = t.routes.find((x) => x.id === Number(id)); if (!r) return { err: 'Diese Route gibt es nicht.' };
+  if (r.locked) return { err: 'Diese Route wurde von der Spielleitung angehalten.' };
   const c = (state.companies || []).find((x) => x.id === r.firm && !x.abandoned);
   const d = { good: r.good, from: r.from, to: r.to, qty: input.qty != null ? input.qty : r.qty, mode: input.mode != null ? input.mode : r.mode, interval: input.interval != null ? input.interval : r.interval, insured: input.insured != null ? !!input.insured : r.insured, smuggle: input.smuggle != null ? !!input.smuggle : r.smuggle, carrier: input.carrier !== undefined ? input.carrier : r.carrier };
   const e = evaluate(world, state, c, d, { skipOwnA: r.reg, skipOwnB: r.reg });
@@ -223,6 +224,7 @@ function edit(world, state, id, input) {
 
 function setActive(state, id, on) {
   const r = ensure(state).routes.find((x) => x.id === Number(id)); if (!r) return { err: 'Diese Route gibt es nicht.' };
+  if (on && r.locked) return { err: 'Diese Route wurde von der Spielleitung angehalten.' };
   r.active = !!on; if (on) { r.wait = 0; if (r.next < state.day + 1) r.next = state.day + 1; }
   return { route: r };
 }
@@ -362,7 +364,7 @@ function arrive(ctx, route, c) {
     rep.queue(state, 'scandal', null, 'smuggle_caught', `r${route.id}`);
     (state.pending.tradeEv || (state.pending.tradeEv = [])).push({ kind: 'smuggle', cityId: route.to, good: route.good, damageReal: Math.round((trip.saved / idx) * 1), subject: c.name });
   }
-  if (route.carrier && route.carrier.user) rep.queue(state, 'trade', 0.15, 'freight_ok', `f${route.carrier.offer}`);
+  if (route.carrier && route.carrier.user) rep.queue(state, 'trade', 0.15, 'freight_ok', `f${route.carrier.offer}`, { user: route.carrier.user });
   void cash0;
   return net;
 }
@@ -460,7 +462,7 @@ function view(world, state) {
       const g = goods.good(r.good); const A = world.city(r.from); const B = world.city(r.to);
       return {
         id: r.id, firm: r.firm, good: r.good, goodName: g ? g.name : r.good, unit: g ? g.unit : '', from: r.from, fromName: A ? A.name : '?', to: r.to, toName: B ? B.name : '?', qty: r.qty, interval: r.interval, mode: r.mode, insured: !!r.insured, smuggle: !!r.smuggle,
-        carrier: r.carrier ? { user: r.carrier.user, name: r.carrier.name, pct: r.carrier.pct } : null, active: !!r.active, status: routeStatus(r, state.day), strict: r.strict !== false,
+        carrier: r.carrier ? { user: r.carrier.user, name: r.carrier.name, pct: r.carrier.pct } : null, active: !!r.active, locked: !!r.locked, status: routeStatus(r, state.day), strict: r.strict !== false,
         nextIn: r.trip ? Math.max(0, r.trip.arrive - state.day) : Math.max(0, r.next - state.day),
         trip: r.trip ? { no: r.trip.no, modeName: r.trip.modeName, units: r.trip.units, departed: r.trip.depart, arrive: r.trip.arrive, days: r.trip.arrive - r.trip.depart, left: Math.max(0, r.trip.arrive - state.day), events: r.trip.events.map((x) => x.key), cargo: r.trip.cargo } : null,
         made: { trips: r.made.trips, lost: r.made.lost, profit: r.made.profit, last: r.made.last },

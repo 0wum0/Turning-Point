@@ -26,6 +26,17 @@ const int = (v, d = 0) => { const n = parseInt(v, 10); return Number.isFinite(n)
 const on = () => cfg().enabled !== false && ccfg().enabled !== false;
 const worldP = () => require('../game/world').get();
 const round3 = (x) => Math.round(x * 1000) / 1000;
+const TRL = () => require('./transport');
+const TG = () => require('../game/transport');
+/** Fracht und Lieferzeit zwischen zwei Betrieben (Zeilen mit city_id; Tarif im Jahr des Käufers). null = keine Verbindung. */
+const freightOf = (world, sellerFirm, buyerFirm, goodKey, carrierPct) => TRL().contractFreight(world, sellerFirm, buyerFirm, goodKey, Math.floor(Number(buyerFirm.year) || 1945), carrierPct);
+/** Dürfen zwei Orte Lieferverträge haben? Mit Transport: Entfernung bis maxKm (auch über Landesgrenzen), sonst dasselbe Bundesland. */
+function placesOk(world, cityA, cityB) {
+  if (!cityA || !cityB) return false;
+  if (TRL().crossRegion()) return cityA.id === cityB.id || TG().distanceKm(cityA, cityB) <= TRL().maxKm();
+  return ccfg().sameRegionOnly === false || cityA.state === cityB.state;
+}
+const kgPerDay = (good, qty) => (Number(qty) || 0) * TG().weightOf(good);
 
 /** Brief über die Transaktion des Aufrufers (kein zweiter Datenbankzugriff, der auf gesperrte Zeilen wartet). */
 async function letterConn(conn, to, subject, body, from = null) {
@@ -77,8 +88,9 @@ async function reconcile(conn, user, state, world) {
       let why = null;
       if (!mine) why = 'firm_gone'; else if (!other || other.abandoned || other.status !== 'alive' || other.banned) why = 'partner_gone';
       if (why) { await endRow(conn, r, user.id, why, WHY[why]); continue; }
-      if (iBuy) buys.push({ id: r.id, firmId: myFirm, sellerId: r.seller_id, sellerFirm: r.seller_company, sellerName: other.owner, sellerFirmName: other.firm, good: r.good, qty: r.qty, price: r.price_real, daysLeft: r.days_left, term: r.term_days, auto: !!r.auto_renew, fill: r.fill, take: r.take, _dl: r.days_left, _take: r.take });
-      else sells.push({ id: r.id, firmId: myFirm, buyerId: r.buyer_id, buyerFirm: r.buyer_company, buyerName: other.owner, buyerFirmName: other.firm, good: r.good, qty: r.qty, price: r.price_real, fill: r.fill, take: r.take, _fill: r.fill });
+      const fr = { freight: r.freight_real || 0, fmode: r.freight_mode === 'seller' ? 'seller' : 'buyer', km: r.km || 0, carrierUser: r.carrier_user || 0, carrierFirm: r.carrier_firm || 0 };
+      if (iBuy) buys.push({ id: r.id, firmId: myFirm, sellerId: r.seller_id, sellerFirm: r.seller_company, sellerName: other.owner, sellerFirmName: other.firm, good: r.good, qty: r.qty, price: r.price_real, daysLeft: r.days_left, term: r.term_days, auto: !!r.auto_renew, fill: r.fill, take: r.take, _dl: r.days_left, _take: r.take, ...fr, lag: r.lag_left || 0, _lag: r.lag_left || 0, lagDays: r.lag_days || 0, shipMode: r.ship_mode || null });
+      else sells.push({ id: r.id, firmId: myFirm, buyerId: r.buyer_id, buyerFirm: r.buyer_company, buyerName: other.owner, buyerFirmName: other.firm, good: r.good, qty: r.qty, price: r.price_real, fill: r.fill, take: r.take, _fill: r.fill, ...fr, lag: r.lag_left || 0, lagDays: r.lag_days || 0, shipMode: r.ship_mode || null });
     }
   }
   state.contracts = { buys, sells };
@@ -114,9 +126,9 @@ async function flush(conn, user, state) {
   for (const b of K.buys || []) {
     if (b.ended) {
       await endRow(conn, { id: b.id, buyer_id: user.id, seller_id: b.sellerId, good: b.good }, user.id, 'expired', WHY.expired);
-    } else if (b.daysLeft !== b._dl || b.take !== b._take) {
-      await conn.query("UPDATE supply_contracts SET days_left = ?, take = ? WHERE id = ? AND buyer_id = ? AND status = 'active'", [Math.max(0, Math.round(b.daysLeft)), round3(b.take == null ? 1 : b.take), b.id, user.id]);
-      b._dl = b.daysLeft; b._take = b.take;
+    } else if (b.daysLeft !== b._dl || b.take !== b._take || (b.lag || 0) !== (b._lag || 0)) {
+      await conn.query("UPDATE supply_contracts SET days_left = ?, take = ?, lag_left = ? WHERE id = ? AND buyer_id = ? AND status = 'active'", [Math.max(0, Math.round(b.daysLeft)), round3(b.take == null ? 1 : b.take), Math.max(0, Math.round(b.lag || 0)), b.id, user.id]);
+      b._dl = b.daysLeft; b._take = b.take; b._lag = b.lag || 0;
     }
   }
   K.buys = (K.buys || []).filter((b) => !b.ended);
@@ -173,15 +185,29 @@ async function partners(userId, companyId, goodKey, side) {
   const keys = pkeysFor(world, goodKey, want);
   if (!keys.length) return { good: g.name, unit: g.unit, list: [], note: want === 'out' ? 'Diese Ware wird von keiner Betriebsart hergestellt – du kaufst sie im Großhandel.' : 'Diese Ware verbraucht kein Betrieb.' };
   const city = world.city(mine.city_id);
-  const sameRegion = ccfg().sameRegionOnly !== false;
-  const cityIds = world.cityList.filter((c) => (sameRegion ? c.state === (city && city.state) : true)).map((c) => c.id);
-  if (!cityIds.length) return { good: g.name, unit: g.unit, list: [] };
-  const rows = await db.query(
+  const cross = TRL().crossRegion();
+  const cityIds = cross ? [] : world.cityList.filter((c) => (ccfg().sameRegionOnly !== false ? c.state === (city && city.state) : true)).map((c) => c.id);
+  if (!cross && !cityIds.length) return { good: g.name, unit: g.unit, list: [] };
+  const rows0 = await db.query(
     `SELECT f.user_id, f.company_id, f.city_id, f.name, f.pkey, f.tier, f.rooms, ps.name owner, ps.year, u.username
      FROM player_firms f JOIN users u ON u.id = f.user_id JOIN player_stats ps ON ps.user_id = f.user_id
      WHERE f.abandoned = 0 AND f.user_id <> ? AND ps.status = 'alive' AND u.banned = 0 AND u.social_public = 1
-       AND f.pkey IN (${keys.map(() => '?').join(',')}) AND f.city_id IN (${cityIds.map(() => '?').join(',')})
-     ORDER BY (f.city_id = ?) DESC, f.rooms DESC LIMIT 40`, [userId, ...keys, ...cityIds, mine.city_id]);
+       AND f.pkey IN (${keys.map(() => '?').join(',')}) ${cross ? '' : `AND f.city_id IN (${cityIds.map(() => '?').join(',')})`}
+     ORDER BY (f.city_id = ?) DESC, f.rooms DESC LIMIT ${cross ? 400 : 40}`, [userId, ...keys, ...cityIds, mine.city_id]);
+  // Mit Transport: Entfernung und Fracht je Anbieter; Orte außerhalb der Reichweite oder ohne Verbindung fallen weg
+  const rows = [];
+  for (const r of rows0) {
+    const c = world.city(r.city_id);
+    if (!placesOk(world, city, c)) continue;
+    const km = city && c && city.id !== c.id ? Math.round(TG().distanceKm(city, c)) : 0;
+    const sf = side === 'buyer' ? { city_id: mine.city_id, year: ps.year } : { city_id: r.city_id, year: r.year };
+    const bf = side === 'buyer' ? { city_id: r.city_id, year: r.year } : { city_id: mine.city_id, year: ps.year };
+    const fr = TRL().on() ? freightOf(world, sf, bf, goodKey, null) : { same: true, perUnit: 0, days: 0, km: 0 };
+    if (!fr) continue;
+    rows.push({ ...r, _km: km, _fr: fr });
+  }
+  rows.sort((a, b) => (b.city_id === mine.city_id) - (a.city_id === mine.city_id) || a._km - b._km || b.rooms - a.rooms);
+  rows.length = Math.min(rows.length, 40);
   const ids = rows.map((r) => r.user_id);
   const deals = ids.length ? await db.query(`SELECT seller_id, COUNT(*) n FROM supply_contracts WHERE status IN ('active','ended') AND seller_id IN (${ids.map(() => '?').join(',')}) GROUP BY seller_id`, ids) : [];
   const dmap = new Map(deals.map((d) => [d.seller_id, Number(d.n)]));
@@ -190,10 +216,13 @@ async function partners(userId, companyId, goodKey, side) {
     userId: r.user_id, companyId: r.company_id, firm: r.name, owner: r.owner, cityId: r.city_id, city: (world.city(r.city_id) || {}).name, sameCity: r.city_id === mine.city_id,
     tier: r.tier, rooms: r.rooms, units: Math.round(unitsOf(world, r, r.year, want, goodKey) * 10) / 10,
     deals: dmap.get(r.user_id) || 0, linked: my.some((m) => (m.seller_id === r.user_id && m.seller_company === r.company_id) || (m.buyer_id === r.user_id && m.buyer_company === r.company_id)),
+    km: r._km, freight: r._fr.perUnit || 0, days: r._fr.days || 0, shipMode: r._fr.modeName || null,
   })).filter((r) => r.units > 0);
+  const anyFar = list.some((r) => !r.sameCity);
+  const carriers = anyFar && TRL().on() ? await TRL().marketOffers(userId, { w: world, state: { cityId: mine.city_id } }).catch(() => []) : [];
   const price = goods.priceReal(g, ps.year); // Richtpreis (Wert 1945) – Spanne in Prozent legt der Spieler fest
   const band = await bandFor(userId); // Preisband: Das Ansehen weitet oder verengt den Rahmen
-  return { good: g.name, unit: g.unit, key: g.key, baseReal: price, min: Math.ceil(band.lo), max: Math.floor(band.hi), band: { pad: band.pad, name: band.name, blocked: band.blocked }, list };
+  return { good: g.name, unit: g.unit, key: g.key, baseReal: price, min: Math.ceil(band.lo), max: Math.floor(band.hi), band: { pad: band.pad, name: band.name, blocked: band.blocked }, list, carriers, kg: TG().weightOf(goodKey), freightMaxPct: Number(TG().C().contracts.maxFreightSharePct) || 50, maxKm: TRL().crossRegion() ? TRL().maxKm() : null };
 }
 
 /* ============================================================================================
@@ -216,10 +245,8 @@ async function checkDeal(world, sellerFirm, buyerFirm, goodKey, ignoreId = 0) {
   if (sellerFirm.user_id === buyerFirm.user_id) fail('Beide Betriebe gehören dir – dafür brauchst du keinen Vertrag.');
   if (!goods.activeRecipe(world, sellerFirm.pkey, sellerFirm.year, sellerFirm.city_id).out.some((o) => o.good === goodKey)) fail(`Der Lieferant stellt ${g.name} nicht her.`);
   if (!goods.activeRecipe(world, buyerFirm.pkey, buyerFirm.year, buyerFirm.city_id).inputs.some((o) => o.good === goodKey)) fail(`Der Abnehmer braucht ${g.name} gar nicht.`);
-  if (ccfg().sameRegionOnly !== false) {
-    const a = world.city(sellerFirm.city_id); const b = world.city(buyerFirm.city_id);
-    if (!a || !b || a.state !== b.state) fail('Lieferverträge gibt es nur innerhalb eines Bundeslands.');
-  }
+  { const a = world.city(sellerFirm.city_id); const b = world.city(buyerFirm.city_id);
+    if (!placesOk(world, a, b)) fail(TRL().crossRegion() ? `Lieferverträge gibt es nur bis ${TRL().maxKm()} km Entfernung.` : 'Lieferverträge gibt es nur innerhalb eines Bundeslands.'); }
   const max = int(ccfg().maxPerFirm, 4);
   if (await firmCount(sellerFirm.user_id, sellerFirm.company_id, ignoreId) >= max) fail(`Der Betrieb des Lieferanten hat schon ${max} Verträge/Angebote.`);
   if (await firmCount(buyerFirm.user_id, buyerFirm.company_id, ignoreId) >= max) fail(`Der Betrieb des Abnehmers hat schon ${max} Verträge/Angebote.`);
@@ -281,11 +308,21 @@ async function offer(userId, input) {
   const n = (await db.one("SELECT COUNT(*) n FROM supply_contracts WHERE proposer_id = ? AND created_at > NOW() - INTERVAL 1 DAY", [userId])).n;
   if (Number(n) >= int(c.offersPerDay, 12)) fail('Heute hast du schon genug Angebote verschickt.');
   const price = goods.priceReal(g, ps.year) * (pct / 100);
+  // Fracht: Wer liefert von einer anderen Stadt, zahlt Entfernung mit. ab Werk = Käufer zahlt, frei Haus = Verkäufer zahlt; optional ein Frachtführer (Spedition) mit Rabatt
+  const freightMode = input.freightMode === 'seller' ? 'seller' : 'buyer';
+  const farApart = sellerFirm.city_id !== buyerFirm.city_id;
+  let carrier = null;
+  if (farApart && input.carrierOffer) carrier = await TRL().attach(int(input.carrierOffer), userId, kgPerDay(goodKey, qty));
+  const fr = TRL().on() ? freightOf(world, sellerFirm, buyerFirm, goodKey, carrier ? carrier.pct : null) : { same: true, perUnit: 0, days: 0, km: 0 };
+  if (!fr) fail('Zwischen den beiden Orten gibt es für diese Ware keine Verbindung.');
+  const shareMax = Number(TG().C().contracts.maxFreightSharePct) || 50;
+  if (fr.perUnit > price * shareMax / 100) fail(`Die Fracht (${Math.round((fr.perUnit / price) * 100)} % des Warenpreises) ist zu hoch – höchstens ${shareMax} % sind erlaubt. Such einen näheren Partner oder eine günstigere Spedition.`);
   const r = await db.query(
-    "INSERT INTO supply_contracts (seller_id, seller_company, buyer_id, buyer_company, proposer_id, good, qty, price_real, term_days, days_left, auto_renew, status) VALUES (?,?,?,?,?,?,?,?,?,?,?, 'offer')",
-    [sellerFirm.user_id, sellerFirm.company_id, buyerFirm.user_id, buyerFirm.company_id, userId, goodKey, qty, price, term, term, input.auto ? 1 : 0]);
+    "INSERT INTO supply_contracts (seller_id, seller_company, buyer_id, buyer_company, proposer_id, good, qty, price_real, term_days, days_left, auto_renew, status, freight_real, freight_mode, lag_days, km, ship_mode, carrier_offer, carrier_user, carrier_firm, carrier_pct) VALUES (?,?,?,?,?,?,?,?,?,?,?, 'offer', ?,?,?,?,?,?,?,?,?)",
+    [sellerFirm.user_id, sellerFirm.company_id, buyerFirm.user_id, buyerFirm.company_id, userId, goodKey, qty, price, term, term, input.auto ? 1 : 0, fr.perUnit || 0, farApart ? freightMode : 'buyer', fr.days || 0, fr.km || 0, fr.mode || null, carrier ? carrier.offer : null, carrier ? carrier.user : null, carrier ? carrier.firm : null, carrier ? carrier.pct : null]);
   const unit = g.unit;
-  await social.sendSystemLetter(otherId, 'Lieferangebot', `${ps.name} bietet einen Liefervertrag an: ${role === 'sell' ? `${sellerFirm.name} liefert dir` : `${buyerFirm.name} möchte von dir`} ${g.name} (${Math.round(qty * 10) / 10} ${unit} pro Tag, ${term} Tage, ${Math.round(pct)} % des Marktpreises). Antworte unter „Unternehmen → Lieferverträge“.`, userId);
+  const frText = farApart && fr.perUnit > 0 ? ` Fracht: ${Math.round(fr.km)} km, ${fr.days} Tage Lieferzeit, ${freightMode === 'seller' ? 'frei Haus (der Verkäufer zahlt)' : 'ab Werk (der Käufer zahlt)'}${carrier ? `, Frachtführer ${carrier.name}` : ''}.` : '';
+  await social.sendSystemLetter(otherId, 'Lieferangebot', `${ps.name} bietet einen Liefervertrag an: ${role === 'sell' ? `${sellerFirm.name} liefert dir` : `${buyerFirm.name} möchte von dir`} ${g.name} (${Math.round(qty * 10) / 10} ${unit} pro Tag, ${term} Tage, ${Math.round(pct)} % des Marktpreises).${frText} Antworte unter „Unternehmen → Lieferverträge“.`, userId);
   live.publish('business', {}, otherId);
   return r.insertId;
 }
@@ -307,7 +344,15 @@ async function respond(userId, id, accept) {
   await self(userId); await guard(userId, proposer); await require('./court').assertFree(userId, 'trade');
   const sellerFirm = await loadFirm(row.seller_id, row.seller_company); const buyerFirm = await loadFirm(row.buyer_id, row.buyer_company);
   await checkDeal(world, sellerFirm, buyerFirm, row.good, row.id);
-  const ok = await db.query("UPDATE supply_contracts SET status = 'active', days_left = term_days, accepted_at = NOW(), fill = 1, take = 1 WHERE id = ? AND status = 'offer'", [row.id]);
+  // Fracht neu festlegen (Tarif im Jahr des Käufers zum Zeitpunkt der Annahme); der Frachtführer muss noch frei sein
+  const far = sellerFirm.city_id !== buyerFirm.city_id;
+  let carrierPct = null;
+  if (far && row.carrier_offer) { const cr = await TRL().attach(row.carrier_offer, userId, kgPerDay(row.good, row.qty), { contract: row.id }); carrierPct = cr.pct; }
+  const fr = TRL().on() ? freightOf(world, sellerFirm, buyerFirm, row.good, carrierPct) : { same: true, perUnit: 0, days: 0, km: 0 };
+  if (!fr) fail('Zwischen den beiden Orten gibt es für diese Ware keine Verbindung.');
+  const shareMax = Number(TG().C().contracts.maxFreightSharePct) || 50;
+  if (fr.perUnit > row.price_real * shareMax / 100) fail('Die Fracht ist inzwischen im Verhältnis zum Preis zu hoch. Bitte ein neues Angebot machen.');
+  const ok = await db.query("UPDATE supply_contracts SET status = 'active', days_left = term_days, accepted_at = NOW(), fill = 1, take = 1, freight_real = ?, lag_days = ?, lag_left = ?, km = ?, ship_mode = ? WHERE id = ? AND status = 'offer'", [far ? (fr.perUnit || 0) : 0, far ? (fr.days || 0) : 0, far ? (fr.days || 0) : 0, far ? (fr.km || 0) : 0, far ? (fr.mode || null) : null, row.id]);
   if (!ok.affectedRows) fail('Das Angebot ist nicht mehr gültig.');
   await social.sendSystemLetter(proposer, 'Lieferangebot angenommen', `Dein Lieferangebot über ${g ? g.name : row.good} wurde angenommen. Der Vertrag läuft ab dem nächsten Spieltag.`, userId);
   live.publish('business', {}, proposer); live.publish('business', {}, userId);
@@ -340,11 +385,12 @@ async function cancel(userId, id) {
 async function mine(userId) {
   const world = await worldP();
   const rows = await db.query(
-    `SELECT c.*, bs.name buyer_name, ss.name seller_name, bf.name buyer_firm, sf.name seller_firm
+    `SELECT c.*, cf.name carrier_name, bs.name buyer_name, ss.name seller_name, bf.name buyer_firm, sf.name seller_firm
      FROM supply_contracts c
      LEFT JOIN player_stats bs ON bs.user_id = c.buyer_id LEFT JOIN player_stats ss ON ss.user_id = c.seller_id
      LEFT JOIN player_firms bf ON bf.user_id = c.buyer_id AND bf.company_id = c.buyer_company
      LEFT JOIN player_firms sf ON sf.user_id = c.seller_id AND sf.company_id = c.seller_company
+     LEFT JOIN player_firms cf ON cf.user_id = c.carrier_user AND cf.company_id = c.carrier_firm
      WHERE (c.buyer_id = ? OR c.seller_id = ?) AND c.status IN ('offer','active') ORDER BY c.status, c.id DESC LIMIT 80`, [userId, userId]);
   const f = (r) => {
     const iBuy = r.buyer_id === userId; const g = goods.good(r.good);
@@ -353,6 +399,7 @@ async function mine(userId) {
       myCompany: iBuy ? r.buyer_company : r.seller_company, myFirm: iBuy ? r.buyer_firm : r.seller_firm,
       otherUser: iBuy ? r.seller_id : r.buyer_id, otherName: iBuy ? r.seller_name : r.buyer_name, otherFirm: iBuy ? r.seller_firm : r.buyer_firm,
       qty: r.qty, priceReal: r.price_real, term: r.term_days, daysLeft: r.days_left, auto: !!r.auto_renew, fill: r.fill, take: r.take, since: r.accepted_at || r.created_at,
+      km: r.km || 0, freightReal: r.freight_real || 0, freightMode: r.freight_mode === 'seller' ? 'seller' : 'buyer', lagDays: r.lag_days || 0, lagLeft: r.lag_left || 0, shipMode: r.ship_mode || null, carrier: r.carrier_user ? { name: r.carrier_name || 'Spedition', pct: r.carrier_pct } : null,
     };
   };
   const list = rows.map(f);
@@ -405,7 +452,7 @@ async function botRound(userId, rnd = Math.random) {
   const need = unitsOf(world, f, ps.year, 'in', inp.good);
   const qty = Math.max(0.5, Math.round(Math.min(need, p.units) * (0.4 + rnd() * 0.5) * 10) / 10);
   try {
-    await offer(userId, { role: 'buy', myCompany: f.company_id, otherUser: p.userId, otherCompany: p.companyId, good: inp.good, qty, pricePct: Math.round(lo + (hi - lo) * (0.35 + rnd() * 0.3)), termDays: [60, 90, 180, 365][Math.floor(rnd() * 4)], auto: rnd() < 0.5 });
+    await offer(userId, { role: 'buy', myCompany: f.company_id, otherUser: p.userId, otherCompany: p.companyId, good: inp.good, qty, pricePct: Math.round(lo + (hi - lo) * (0.35 + rnd() * 0.3)), termDays: [60, 90, 180, 365][Math.floor(rnd() * 4)], auto: rnd() < 0.5, freightMode: rnd() < 0.3 ? 'seller' : 'buyer', carrierOffer: p.km > 0 && (found.carriers || []).length && rnd() < 0.35 ? found.carriers[0].id : 0 });
   } catch (_) { /* Grenzen erreicht */ }
 }
 

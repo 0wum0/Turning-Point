@@ -180,6 +180,7 @@ async function withCharacterOnce(userId, fn, { needAlive = false } = {}) {
       // und das muss im gespeicherten Stand ankommen – sonst würden sie bei jedem weiteren Aufruf erneut ausgezahlt.
       try { await require('../game/contractors').flush(conn, state); } catch (e) { require('../lib/log').warn(`[contractors] ${e.message}`); }
       try { await require('../lib/supply').flush(conn, user, state); } catch (e) { require('../lib/log').warn(`[supply] ${e.message}`); }
+      try { await require('../lib/transport').flush(conn, user, state, w); } catch (e) { require('../lib/log').warn(`[transport] ${e.message}`); }
       try { await require('../lib/exchange').flushDividends(conn, state); } catch (e) { require('../lib/log').warn(`[exchange] ${e.message}`); }
       await saveCharacter(conn, row, state);
       const social = require('../lib/social');

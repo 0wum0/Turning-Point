@@ -251,13 +251,15 @@ function setScarcity(map) { SCARCITY = map instanceof Map ? map : new Map(); }
 function setPolicies(pol) { POL = pol || emptyPolicy(); }
 let EXTRA_LEVY = new Map(); // zusätzliche Umlage je Stadt (z. B. Polizeibudget, src/lib/court-policy.js)
 function setExtraLevy(m) { EXTRA_LEVY = m instanceof Map ? m : new Map(); }
+let TR_LEVY = { city: new Map(), region: new Map(), nation: 0 }; // Umlage der Verkehrsbeschlüsse (src/lib/transport-policy.js)
+function setTransportLevy(l) { TR_LEVY = l && l.city instanceof Map && l.region instanceof Map ? { city: l.city, region: l.region, nation: Number(l.nation) || 0 } : { city: new Map(), region: new Map(), nation: 0 }; }
 const currentPolicies = () => POL;
 
 /**
  * Knappheit je (Stadt, Ware) aus den veröffentlichten Betrieben (player_firms ∪ player_stats.year).
  * rows: [{city_id, pkey, tier, rooms, year}]. Marktgröße der Stadt (NPC-Grundlast) = Konkurrenz-Obergrenze × Umsatz je Raum.
  */
-function computeScarcity(world, rows) {
+function computeScarcity(world, rows, flows) {
   const w = W(); const comp = settings.get('competition') || {}; const tiers = (world.econ.companies || {}).tiers || [];
   const S = new Map(); const D = new Map();
   for (const r of rows || []) {
@@ -268,6 +270,12 @@ function computeScarcity(world, rows) {
     const rev = (Number(r.rooms) || 0) * t.incomePerRoom * (0.7 + 0.15 * city.size_tier) * ar.mult; // Umsatz je Tag (Wert 1945)
     for (const o of ar.out) { const k = `${r.city_id}|${o.good}`; S.set(k, (S.get(k) || 0) + rev * o.share); }
     for (const i of ar.inputs) { const k = `${r.city_id}|${i.good}`; D.set(k, (D.get(k) || 0) + rev * i.share); }
+  }
+  // Handelsrouten: Was in einer Stadt ankommt, vergrößert dort das Angebot; was abgeholt wird, die Nachfrage (Wert 1945 je Tag)
+  for (const f of flows || []) {
+    if (!GOODS[f.good] || !(f.perDay > 0)) continue;
+    const kt = `${f.to}|${f.good}`; const kf = `${f.from}|${f.good}`;
+    S.set(kt, (S.get(kt) || 0) + f.perDay); D.set(kf, (D.get(kf) || 0) + f.perDay);
   }
   const out = new Map();
   const keys = new Set([...S.keys(), ...D.keys()]);
@@ -335,7 +343,7 @@ function effectsFor(world, cityId) {
   const c = POL.city.get(cityId); const r = POL.region.get(region); const n = POL.nation;
   const fr = frame();
   if (c) out.surcharge = Math.max(clampN(P.surchargeMin, -2, -20, 0), Math.min(fr.maxSurcharge, c.surcharge || 0));
-  out.levy = (c ? c.levy : 0) + (r ? r.levy : 0) + n.levy + (EXTRA_LEVY.get(cityId) || 0);
+  out.levy = (c ? c.levy : 0) + (r ? r.levy : 0) + n.levy + (EXTRA_LEVY.get(cityId) || 0) + (TR_LEVY.city.get(cityId) || 0) + (TR_LEVY.region.get(region) || 0) + TR_LEVY.nation;
   out.vat = Math.max(clampN(P.vatMin, -3, -20, 0), Math.min(clampN(P.vatMax, 5, 0, 30), n.vat || 0));
   out.tariff = Math.max(clampN(P.tariffMin, -10, -50, 0), Math.min(clampN(P.tariffMax, 20, 0, 100), n.tariff || 0));
   for (const [g, v] of Object.entries(n.subsidy)) out.subsidy[g] = v;
@@ -412,7 +420,9 @@ function buyPlan(world, state, c, year, rPot, ar, w) {
     const unitBase = priceReal(g, year) * idx;
     const need = unitBase > 0 ? (rPot * inp.share) / unitBase : 0;
     let left = need; let byC = 0; let cents = 0;
-    const mine = buys.filter((b) => b.good === g.key).sort((a, b) => a.price - b.price);
+    // Fracht: ab Werk zahlt der Käufer sie zum Warenpreis dazu, frei Haus der Verkäufer (dann steht sie nur in der Gutschrift); unterwegs (lag) liefert der Vertrag noch nicht
+    const eff = (b) => (Number(b.price) || 0) + (b.fmode === 'seller' ? 0 : Math.max(0, Number(b.freight) || 0));
+    const mine = buys.filter((b) => b.good === g.key && !(Number(b.lag) > 0)).sort((a, b) => eff(a) - eff(b));
     const used = [];
     for (const b of mine) {
       if (left <= 1e-9) break;
@@ -420,9 +430,12 @@ function buyPlan(world, state, c, year, rPot, ar, w) {
       const want = Math.min(left, Math.max(0, Number(b.qty) || 0)); // so viel Ware will der Betrieb aus diesem Vertrag
       const give = want * fill;
       if (want <= 1e-9) continue;
-      const cc = Math.round(give * (Number(b.price) || 0) * idx);
-      used.push({ id: b.id, units: give, cents: cc, sellerId: b.sellerId, sellerFirm: b.sellerFirm, sellerName: b.sellerName });
-      pays.push({ id: b.id, sellerId: b.sellerId, sellerFirm: b.sellerFirm, cents: cc, units: give, take: Math.max(0, Number(b.qty) || 0) > 0 ? want / Number(b.qty) : 0 });
+      const fr = Math.max(0, Number(b.freight) || 0);
+      const cc = Math.round(give * eff(b) * idx);
+      const freightCents = Math.round(give * fr * idx);
+      const credit = Math.max(0, b.fmode === 'seller' ? cc - freightCents : Math.round(give * (Number(b.price) || 0) * idx));
+      used.push({ id: b.id, units: give, cents: cc, sellerId: b.sellerId, sellerFirm: b.sellerFirm, sellerName: b.sellerName, freightCents });
+      pays.push({ id: b.id, sellerId: b.sellerId, sellerFirm: b.sellerFirm, cents: cc, credit, freightCents, carrierUser: b.carrierUser || 0, carrierFirm: b.carrierFirm || 0, units: give, take: Math.max(0, Number(b.qty) || 0) > 0 ? want / Number(b.qty) : 0 });
       byC += give; left -= give; cents += cc;
     }
     const byW = auto ? Math.max(0, left) : 0;
@@ -652,6 +665,6 @@ const CHAINS = [
 
 module.exports = {
   GOODS, KINDS, POWERS, CHAINS, REC, enabled, W, good, inEra, priceReal, importShare, recipeFor, activeRecipe,
-  setScarcity, computeScarcity, scarcity, scarcityLabel, setPolicies, setExtraLevy, buildPolicies, currentPolicies, frame, effectsFor, price, priceList,
+  setScarcity, computeScarcity, scarcity, scarcityLabel, setPolicies, setExtraLevy, setTransportLevy, buildPolicies, currentPolicies, frame, effectsFor, price, priceList,
   outputFactor, buyPlan, sellPlan, powersOf, normalizePolicy, previewPolicy, tradable, SEAS, SEAS_LV,
 };

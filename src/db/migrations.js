@@ -884,6 +884,76 @@ const MIGRATIONS = [
     // Talente: verdichtetes Profil der Spielfigur ("52,61,48,70,55,43" = Handwerk, Handel, Führung, Bildung, Charme, Kondition) für Arbeitgeber, Wahlen und Gerichte
     'ALTER TABLE player_stats ADD COLUMN talents VARCHAR(40) NULL',
   ] },
+  { id: '031_transport', up: [
+    // Handelsrouten und Transport: Spiegel der Routen aus den Spielständen (für Last auf Strecken, Admin und Frachtführer), Frachtangebote von Speditionen,
+    // Beschlüsse der Ämter (Hafen-/Bahnhofsausbau, Maut, Straßenbau, Rahmen, Netzprogramm) und Fracht in Lieferverträgen (Entfernung, Lieferzeit, Frachtführer).
+    `CREATE TABLE IF NOT EXISTS transport_routes (
+      user_id INT UNSIGNED NOT NULL,
+      route_id INT UNSIGNED NOT NULL,
+      company_id INT UNSIGNED NOT NULL,
+      good VARCHAR(30) NOT NULL,
+      from_city INT UNSIGNED NOT NULL,
+      to_city INT UNSIGNED NOT NULL,
+      qty INT NOT NULL DEFAULT 0,
+      interval_days SMALLINT NOT NULL DEFAULT 10,
+      mode VARCHAR(12) NOT NULL DEFAULT 'auto',
+      status VARCHAR(10) NOT NULL DEFAULT 'idle',
+      active TINYINT(1) NOT NULL DEFAULT 1,
+      flow_real DOUBLE NOT NULL DEFAULT 0,
+      carrier_offer BIGINT UNSIGNED NULL,
+      trips INT NOT NULL DEFAULT 0,
+      profit_real DOUBLE NOT NULL DEFAULT 0,
+      cancelled TINYINT(1) NOT NULL DEFAULT 0,
+      cancel_note VARCHAR(160) NULL,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (user_id, route_id),
+      KEY idx_tr_to (to_city, good),
+      KEY idx_tr_from (from_city, good),
+      KEY idx_tr_offer (carrier_offer),
+      CONSTRAINT fk_tr_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    `CREATE TABLE IF NOT EXISTS freight_offers (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      user_id INT UNSIGNED NOT NULL,
+      company_id INT UNSIGNED NOT NULL,
+      pct SMALLINT NOT NULL DEFAULT 90,
+      cap_kg_day INT NOT NULL DEFAULT 1000,
+      status VARCHAR(8) NOT NULL DEFAULT 'open',
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      closed_at DATETIME NULL,
+      KEY idx_fo_user (user_id, status),
+      KEY idx_fo_status (status),
+      CONSTRAINT fk_fo_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    `CREATE TABLE IF NOT EXISTS transport_policies (
+      id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      user_id INT UNSIGNED NOT NULL,
+      term_key VARCHAR(40) NOT NULL,
+      office_idx TINYINT NOT NULL,
+      kind VARCHAR(12) NOT NULL,
+      good VARCHAR(12) NULL,
+      val DOUBLE NOT NULL DEFAULT 0,
+      scope_city INT UNSIGNED NOT NULL DEFAULT 0,
+      region VARCHAR(60) NULL,
+      expires_at BIGINT NOT NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY uq_tpol_term (user_id, term_key),
+      KEY idx_tpol_exp (expires_at),
+      CONSTRAINT fk_tpol_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    // Fracht in Lieferverträgen: freight_mode buyer = ab Werk (Käufer zahlt), seller = frei Haus (Verkäufer zahlt); lag_left zählt der Käufer herunter
+    `ALTER TABLE supply_contracts
+       ADD COLUMN freight_real DOUBLE NOT NULL DEFAULT 0,
+       ADD COLUMN freight_mode VARCHAR(8) NOT NULL DEFAULT 'buyer',
+       ADD COLUMN lag_days SMALLINT NOT NULL DEFAULT 0,
+       ADD COLUMN lag_left SMALLINT NOT NULL DEFAULT 0,
+       ADD COLUMN km SMALLINT NOT NULL DEFAULT 0,
+       ADD COLUMN ship_mode VARCHAR(12) NULL,
+       ADD COLUMN carrier_offer BIGINT UNSIGNED NULL,
+       ADD COLUMN carrier_user INT UNSIGNED NULL,
+       ADD COLUMN carrier_firm INT UNSIGNED NULL,
+       ADD COLUMN carrier_pct SMALLINT NULL`,
+  ] },
 ];
 
 async function ensureTable(db) {

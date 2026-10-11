@@ -68,7 +68,7 @@ const getPolicy = () => POL;
 function policyFor(city) {
   const c = (city && POL.city.get(city.id)) || null; const r = (city && POL.region.get(city.state)) || null; const n = POL.nation || {};
   const frame = n.frame != null ? n.frame : num(C().tolls.maxCityPct, 6, 0, 30);
-  return { hub: (c && c.hub) || {}, toll: clamp(num(c && c.toll, 0, 0, 30), 0, frame), road: (r && r.road) || 0, net: n.net || 0, frame };
+  return { hub: (c && c.hub) || {}, toll: clamp(num(c && c.toll, 0, -6, 30), -6, frame), road: (r && r.road) || 0, net: n.net || 0, frame };
 }
 
 /**
@@ -194,7 +194,7 @@ function quote(world, o) {
     if (o.ownFleet) freight *= 1 - num(k.trade.ownFleetDiscountPct, 25, 0, 80) / 100;
     else if (o.carrierPct != null) freight *= clamp(num(o.carrierPct, 100, 30, 150), 30, 150) / 100;
     const tollLkw = m.key === 'lkw' && year >= num(k.tolls.lkwFromYear, 2005) ? freight * num(k.tolls.lkwPct, 8) / 100 : 0;
-    const tollCity = freight * (pa.toll + pb.toll) / 100;
+    const tollCity = Math.max(-0.3 * freight, freight * (pa.toll + pb.toll) / 100);
     const port = m.net === 'port' ? freight * num(k.tolls.portFeePct, 5) / 100 : m.net === 'air' ? freight * num(k.tolls.airFeePct, 4) / 100 : 0;
     const dutyOn = (m.net === 'port' || m.net === 'air') && tariffPct > 0;
     const duty = dutyOn ? val * (tariffPct / 100) * imp : 0;

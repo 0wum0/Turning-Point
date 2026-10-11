@@ -305,6 +305,7 @@ async function reconcile(conn, user, row, state, world) {
     await require('./leases').reconcile(conn, user, state, world);
     await require('./exchange').reconcile(conn, user, state);
     await require('./supply').reconcile(conn, user, state, world);
+    await require('./transport').reconcile(conn, user, state, world);
     if (state.status !== 'alive') return;
     await reconcileOwner(conn, user, state, world);
     await reconcileEmployee(conn, user, state, world);
@@ -316,15 +317,18 @@ async function reconcileCredits(conn, user, state, world) {
   const rows = await conn.query('SELECT * FROM pending_credits WHERE user_id = ? FOR UPDATE', [user.id]); if (!rows.length || state.status !== 'alive') return;
   const year = yearOf(state.day, state.startYear); const idx = world.idx(year); const cur = curOf(world, year);
   const sup = new Map(); // Lieferungen: eine Meldung je Betrieb statt je Zahlung
+  const frt = new Map(); // Frachtzahlungen an Speditionen: ebenso
   for (const r of rows) {
     const cents = Math.round(r.real_amount * idx);
     const firm = r.company_id ? (state.companies || []).find((x) => x.id === r.company_id && !x.abandoned) : null;
+    if (r.reason === 'freight' && firm) { firm.cash += cents; const e = frt.get(firm.id) || { firm, cents: 0, n: 0 }; e.cents += cents; e.n++; frt.set(firm.id, e); continue; }
     if (r.reason === 'supply' && firm) { firm.cash += cents; const e = sup.get(firm.id) || { firm, cents: 0, n: 0 }; e.cents += cents; e.n++; sup.set(firm.id, e); continue; }
     if (firm) { firm.cash += cents; notice(state, { level: 'good', title: `Auftrag für ${firm.name}`, text: `${r.text || ''} ${money(cents, cur)} gingen in die Firmenkasse.`.trim(), tab: 'business' }); continue; }
     state.money += cents; state.stats.earned += cents;
     notice(state, { level: 'good', title: r.reason === 'inheritance' ? 'Erbe vom Ehepartner' : r.reason === 'settlement' ? 'Scheidungsabfindung' : 'Gutschrift', text: `${r.text || ''} ${money(cents, cur)} wurden dir gutgeschrieben.`.trim(), interrupt: true });
   }
   for (const e of sup.values()) notice(state, { level: 'good', title: `Lieferungen für ${e.firm.name}`, text: `Abnehmer haben ${e.n === 1 ? 'eine Lieferung' : `${e.n} Lieferungen`} bezahlt: ${money(e.cents, cur)} gingen in die Firmenkasse.`, tab: 'business' });
+  for (const e of frt.values()) notice(state, { level: 'good', title: `Fracht für ${e.firm.name}`, text: `${e.n === 1 ? 'Ein Auftraggeber hat' : `${e.n} Auftraggeber haben`} Fracht bezahlt: ${money(e.cents, cur)} gingen in die Firmenkasse.`, tab: 'business' });
   await conn.query('DELETE FROM pending_credits WHERE user_id = ?', [user.id]);
 }
 

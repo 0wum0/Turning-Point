@@ -71,7 +71,7 @@ function supplyView(sp) {
 function dealsView(state, firmId) {
   const K = state.contracts || { buys: [], sells: [] };
   const g = require('./goods');
-  const one = (x, buy) => ({ id: x.id, good: x.good, name: (g.good(x.good) || {}).name || x.good, unit: (g.good(x.good) || {}).unit || '', qty: r2(x.qty), priceReal: x.price, fill: x.fill == null ? 1 : x.fill, take: x.take == null ? 1 : x.take, other: buy ? x.sellerName : x.buyerName, otherFirm: buy ? x.sellerFirmName : x.buyerFirmName, daysLeft: x.daysLeft, term: x.term, auto: !!x.auto });
+  const one = (x, buy) => ({ id: x.id, good: x.good, name: (g.good(x.good) || {}).name || x.good, unit: (g.good(x.good) || {}).unit || '', qty: r2(x.qty), priceReal: x.price, fill: x.fill == null ? 1 : x.fill, take: x.take == null ? 1 : x.take, other: buy ? x.sellerName : x.buyerName, otherFirm: buy ? x.sellerFirmName : x.buyerFirmName, daysLeft: x.daysLeft, term: x.term, auto: !!x.auto, km: x.km || 0, freight: r2(x.freight || 0), fmode: x.fmode || 'buyer', lag: x.lag || 0, lagDays: x.lagDays || 0, shipMode: x.shipMode || null });
   return { buys: (K.buys || []).filter((x) => x.firmId === firmId && !x.ended).map((x) => one(x, true)), sells: (K.sells || []).filter((x) => x.firmId === firmId).map((x) => one(x, false)) };
 }
 /** Warenkreislauf für die Übersicht: Preise der Waren in der Stadt des Spielers, Beispielketten mit eigenen Betrieben. */

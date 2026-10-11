@@ -60,7 +60,7 @@ async function doBoot() {
     }
     await require('./src/lib/account').hashLegacyTokens().catch((e) => log.warn('Token-Umstellung übersprungen:', e && e.message));
     live = require('./src/app').createApp(cfg);
-    if (!bgStarted) { bgStarted = true; require('./src/lib/anticheat').start(); require('./src/lib/stats').start(); require('./src/lib/social').start(); require('./src/lib/bots').start(); require('./src/lib/market').start(); require('./src/lib/exchange').start(); require('./src/lib/tagesblatt').start(); require('./src/lib/court').start(); require('./src/lib/maintenance').start(); }
+    if (!bgStarted) { bgStarted = true; require('./src/lib/anticheat').start(); require('./src/lib/stats').start(); require('./src/lib/social').start(); require('./src/lib/bots').start(); require('./src/lib/market').start(); require('./src/lib/exchange').start(); require('./src/lib/tagesblatt').start(); require('./src/lib/court').start(); require('./src/lib/transport').start(); require('./src/lib/transport-policy').start(); require('./src/lib/maintenance').start(); }
     log.info(`Turning Point läuft. Daten-Ordner: ${config.paths.dataDir}`);
     return true;
   } catch (e) {

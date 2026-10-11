@@ -197,7 +197,14 @@ function settleContracts(state, c, f, idxNow) {
     const q = state.pending.supply || (state.pending.supply = []);
     let e = q.find((x) => x.id === p.id);
     if (!e) { e = { id: p.id, userId: p.sellerId, firm: p.sellerFirm, real: 0, what: c.name }; q.push(e); }
-    e.real += p.cents / idx;
+    e.real += (p.credit != null ? p.credit : p.cents) / idx; // Verkäufer erhält den Warenpreis (frei Haus abzüglich Fracht); die Fracht geht an den Frachtführer oder den Spediteursmarkt
+    if (p.carrierUser && p.freightCents > 0) { // Frachtvertrag: Die Spedition erhält die Frachtzahlung abzüglich ihrer eigenen Kosten (Rest ist Verbrauch)
+      const share = 1 - Math.max(0, Math.min(100, Number(require('../settings').get('transport').trade.carrierCostSharePct))) / 100;
+      const fq = state.pending.freight || (state.pending.freight = []);
+      let f = fq.find((x) => x.userId === p.carrierUser && x.firm === p.carrierFirm);
+      if (!f) { f = { userId: p.carrierUser, firm: p.carrierFirm, real: 0, what: c.name }; fq.push(f); }
+      f.real += (p.freightCents * share) / idx;
+    }
   }
   for (const s of K.sells || []) {
     if (s.firmId === c.id && sp.fills && sp.fills[s.id] != null) {
@@ -209,6 +216,7 @@ function settleContracts(state, c, f, idxNow) {
   for (const b of K.buys || []) {
     if (b.firmId !== c.id || b.ended) continue;
     if (sp.on && !(sp.pays || []).some((p) => p.id === b.id)) b.take = 0; // Bedarf schon anderweitig gedeckt: der Verkäufer muss nichts zurückhalten
+    if (b.lag > 0) b.lag -= 1; // unterwegs: die erste Lieferung kommt nach der Reisezeit an
     b.daysLeft = (b.daysLeft == null ? b.term || 30 : b.daysLeft) - 1;
     if (b.daysLeft <= 0) { if (b.auto) b.daysLeft = b.term || 30; else { b.ended = true; rep.queue(state, 'rel', null, 'contract_done', `c${b.id}`); rep.queue(state, 'rel', null, 'contract_done', `c${b.id}`, { user: b.sellerId }); } }
   }
