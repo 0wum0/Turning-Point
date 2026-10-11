@@ -213,6 +213,7 @@ function dayStep(ctx) {
   // Familie, Ereignisse
   familyDaily(ctx, flows);
   businessDaily(ctx);
+  require('./trade').daily(ctx); // Handelsrouten: Abfahrt, Ankunft, Erlös in die Firmenkasse
   society.politicsDaily(ctx);
   applyTownEvents(ctx);
   seasonalFestivals(ctx);

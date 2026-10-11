@@ -220,7 +220,7 @@ const DEFAULTS = {
     minAccountHours: 24, blockSameIp: true, minGameDays: 20,   // Schutz: neue Konten und Konten gleicher IP kommen nicht vor Gericht zusammen
     evidence: {
       keepHours: 336, halfLifeHours: 120, minUsable: 3,          // Spuren verblassen: Halbwertszeit, Aufbewahrung, darunter nicht mehr verwertbar
-      base: { sabotage: 55, spy: 30, poach: 35, price: 22, breach: 85, default: 80, evict: 75, fraud: 70, bribe: 65 }, // Grundstärke der Spuren je Handlung (0 … 100)
+      base: { sabotage: 55, spy: 30, poach: 35, price: 22, breach: 85, default: 80, evict: 75, fraud: 70, bribe: 65, theft: 30, smuggle: 55 }, // Grundstärke der Spuren je Handlung (0 … 100)
       securityBonus: 15, failedAttackBonus: 10, luck: 12, policeStep: 8, // Sicherheitsdienst des Opfers, abgewehrter Angriff, Zufall (±), Polizeibudget je Stufe
       maxDamageReal: 60000,                                      // Obergrenze für den festgehaltenen Schaden (Schadenersatz)
     },
@@ -244,6 +244,8 @@ const DEFAULTS = {
     politics: { policeLevels: [-1, 1, 2], policeLevy: [0, 0.4, 0.8], policeDetect: [-0.05, 0.05, 0.1], rangePct: [-25, 0, 25, 50], strictness: [0.9, 1, 1.12], limitation: [0.5, 1, 1.5], amnestyMaxLevel: 2 },
     bribe: { enabled: true, cost: 3000, successPct: 35, evidence: 65 },
   },
+  // Handelsrouten und Transport (src/game/transport.js, trade.js)
+  transport: require('./game/transport-defaults'),
   cycles: { realEstate: [[1945, 0.75], [1950, 0.85], [1957, 1.0], [1965, 1.08], [1973, 1.15], [1976, 1.05], [1985, 1.0], [1990, 1.2], [1993, 1.3], [1996, 1.0], [2005, 0.9], [2010, 1.0], [2015, 1.2], [2021, 1.5], [2023, 1.35], [2035, 1.4], [2060, 1.5], [2100, 1.6]] },
   exchange: { enabled: true, shares: 1000, minValueReal: 300000, minGameDays: 90, minFloatPct: 10, maxFloatPct: 49, makerSpreadPct: 5, makerDailyPct: 5, maxOrderShares: 500, openOrdersMax: 12, takeoverPct: 50,
     // Grenzen des Marktteilnehmers: Tageslimit je Nutzer (Gesamtwert real in Cent, 0 = kein Limit), Mindest-Haltedauer vor dem Rückverkauf an ihn,

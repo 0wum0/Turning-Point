@@ -20,6 +20,8 @@ const ACTS = {
   evict: { label: 'Räumung ohne Frist', text: 'Mieter ohne Frist vor die Tür gesetzt', needsPresence: false },
   fraud: { label: 'Betrug im Handel', text: 'Zuschlag oder Zusage nicht eingehalten', needsPresence: false },
   bribe: { label: 'Bestechung', text: 'Bestechungsversuch gegenüber dem Gericht', needsPresence: false },
+  theft: { label: 'Diebstahl auf dem Transportweg', text: 'Fracht wurde unterwegs gestohlen', needsPresence: false },
+  smuggle: { label: 'Schmuggel und Zollhinterziehung', text: 'Ware am Zoll vorbeigeschleust, ehrliche Händler unterboten', needsPresence: false },
 };
 const ACT_KEYS = Object.keys(ACTS);
 
@@ -179,9 +181,9 @@ function sanctionsFor(act, level, ctx = {}, C = {}) {
 /* ------------------------------------------------------------------ Einschränkungen ------------------------------------------------------------------ */
 
 /** Handlungen (Spielaktionen), die Haft sperrt: alles Wirtschaftliche. Politik, Alltag, Briefe, Chat bleiben frei. */
-const ECON_ACTIONS = ['buy', 'sell', 'letOn', 'letPlayers', 'letPrice', 'loanTake', 'buyBiz', 'foundBiz', 'bizHire', 'bizHireApplicant', 'bizFire', 'bizTrain', 'bizRaise', 'foster', 'bizSecurity', 'bizManager', 'bizSupply', 'bizExpand', 'bizUpgrade', 'bizCollect', 'bizSell', 'bizReactivate', 'gift', 'casino', 'lotto'];
+const ECON_ACTIONS = ['buy', 'sell', 'letOn', 'letPlayers', 'letPrice', 'loanTake', 'buyBiz', 'foundBiz', 'bizHire', 'bizHireApplicant', 'bizFire', 'bizTrain', 'bizRaise', 'foster', 'bizSecurity', 'bizManager', 'bizSupply', 'bizExpand', 'bizUpgrade', 'bizCollect', 'bizSell', 'bizReactivate', 'tradeRoute', 'gift', 'casino', 'lotto'];
 /** Handlungen, die ein Gewerbeverbot sperrt: Betriebe gründen, kaufen, ausbauen, Personal und Verträge. */
-const TRADE_ACTIONS = ['buyBiz', 'foundBiz', 'bizHire', 'bizHireApplicant', 'bizManager', 'bizExpand', 'bizUpgrade', 'bizReactivate'];
+const TRADE_ACTIONS = ['buyBiz', 'foundBiz', 'bizHire', 'bizHireApplicant', 'bizManager', 'bizExpand', 'bizUpgrade', 'bizReactivate', 'tradeRoute'];
 /** Handlungen mit Berufsschlüssel in der Eingabe (Gründen/Kaufen): Berufsverbot. */
 const PKEY_ACTIONS = ['foundBiz', 'buyBiz'];
 
