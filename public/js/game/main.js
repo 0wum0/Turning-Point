@@ -323,7 +323,7 @@ setInterval(async () => {
 
 /* ---------- Start ---------- */
 audio.resumeOnGesture();
-(async function boot() {
+async function boot() {
   try {
     const [world, st] = await Promise.all([api('GET', '/api/world'), api('GET', '/api/state')]);
     decodeWorld(world);
@@ -333,6 +333,30 @@ audio.resumeOnGesture();
     showSync(st.sync);
     maybeWelcome(ctx);
   } catch (e) {
-    app.innerHTML = `<div class="boot-error card"><h2>Das Spiel konnte nicht geladen werden</h2><p class="dim">${esc(e.message)}</p><button class="btn primary" onclick="location.reload()">Neu laden</button></div>`;
+    app.innerHTML = `<div class="boot-error card"><h2>Das Spiel konnte nicht geladen werden</h2><p class="dim">${esc(e.message)}</p><button class="btn primary" data-boot-retry>Neu laden</button></div>`;
   }
-})();
+}
+/* „Neu laden“ nach einem Startfehler: Daten erneut holen, ohne die Seite neu zu laden (Inline-Handler wären durch die CSP gesperrt) */
+app.addEventListener('click', (e) => { if (e.target.closest('[data-boot-retry]')) { app.innerHTML = '<div class="boot"><div class="boot-mark"></div><div class="dim">Turning Point lädt …</div></div>'; boot(); } });
+boot();
+
+/* Sprache wechseln ohne Seitenwechsel: Cookie setzen, Übersetzer laden bzw. anhalten, Daten in der neuen Sprache holen, neu zeichnen */
+const loadScript = (src) => new Promise((ok, fail) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = fail; document.head.appendChild(s); });
+let langBusy = false;
+document.addEventListener('click', async (e) => {
+  const a = e.target.closest('#hud a[href^="/lang/"]'); if (!a || e.metaKey || e.ctrlKey || e.shiftKey || e.button) return;
+  const code = /^\/lang\/(de|en)\b/.exec(a.getAttribute('href')); if (!code || !window.fetch) return;
+  e.preventDefault(); if (langBusy) return; langBusy = true;
+  try {
+    await fetch(`/lang/${code[1]}?next=/play`, { credentials: 'same-origin', redirect: 'manual' });
+    document.documentElement.lang = code[1];
+    if (code[1] === 'en') {
+      if (!window.TP_I18N) await loadScript('/i18n/en.js');
+      if (!window.tpI18n) await loadScript('/js/i18n.js'); else window.tpI18n.start();
+    } else if (window.tpI18n) window.tpI18n.stop();
+    const [world, st] = await Promise.all([api('GET', '/api/world'), api('GET', '/api/state')]);
+    decodeWorld(world); ctx.world = world; ctx.coins = st.coins; ctx.efsPool = st.efsPool; setView(st.view);
+    if (shellActive()) { renderHud(); await renderPage(false); } else render();
+    if (window.tpI18n && code[1] === 'en') window.tpI18n.refresh();
+  } catch (err) { location.href = a.href; } finally { langBusy = false; }
+});

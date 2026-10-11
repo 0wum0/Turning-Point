@@ -35,10 +35,13 @@
     }
   }
   function attrs(el) { ATTRS.forEach(function (a) { var v = el.getAttribute && el.getAttribute(a); if (v) { var r = tr(v); if (r !== null && r !== v) el.setAttribute(a, r); } }); if (el.nodeName === 'INPUT' && el.type === 'submit' && el.value) { var r2 = tr(el.value); if (r2) el.value = r2; } }
+  var obs = null, title0 = null;
+  function stop() { if (obs) { obs.disconnect(); obs = null; } if (title0 != null) { document.title = title0; title0 = null; } }
   function start() {
+    stop(); title0 = document.title;
     walk(document.body);
     var busy = false;
-    new MutationObserver(function (ms) {
+    obs = new MutationObserver(function (ms) {
       if (busy) return; busy = true;
       ms.forEach(function (m) {
         if (m.type === 'characterData') text(m.target);
@@ -46,8 +49,10 @@
         else m.addedNodes.forEach(walk);
       });
       busy = false;
-    }).observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ATTRS });
+    });
+    obs.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ATTRS });
     var tt = tr(document.title); if (tt) document.title = tt;
   }
+  window.tpI18n = { start: start, stop: stop, refresh: function () { if (obs) walk(document.body); } };
   if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
 })();

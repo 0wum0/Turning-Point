@@ -261,3 +261,6 @@ input[type=checkbox], input[type=radio] { accent-color: var(--accent); width: 1.
 .tb-short { display: none; }
 @media (max-width: 560px) { .topbar .container > [data-theme-toggle], .topbar .container > a[href='/account'] { display: none; } .topbar .brand { font-size: .8rem; letter-spacing: 0; } .topbar .langsw a { padding-inline: .45rem; } .topbar .container { gap: .4rem; } .tb-long { display: none; } .tb-short { display: inline; } }
 @media (max-width: 380px) { .topbar .brand > span:last-child { display: none; } }
+
+/* Seitenwechsel zwischen Server-Seiten (Start, Konto, Spiel) ohne weißes Aufblitzen: Browser blendet über */
+@view-transition { navigation: auto; }

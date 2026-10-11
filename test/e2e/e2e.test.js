@@ -55,6 +55,7 @@ describe('E2E Turning Point', { concurrency: false }, () => {
       await p.page.goto(`${app.base}/register`);
       await p.page.fill('#username', A.username); await p.page.fill('#email', 'andere@e2e.test'); await p.page.fill('#password', 'irgendwas-123');
       await p.page.check('input[name=terms]'); await p.page.click('button[type=submit]');
+      await p.page.waitForSelector('.auth-card .alert.bad'); // Fehler erscheint ohne Seitenwechsel
       assert.match(await text(p, '.auth-card'), /bereits vergeben/);
       await p.ctx.close();
     });
@@ -73,6 +74,7 @@ describe('E2E Turning Point', { concurrency: false }, () => {
       await b.page.goto(`${app.base}/login`);
       await b.page.fill('#login', B.username); await b.page.fill('#password', 'falsch-falsch');
       await b.page.click('button[type=submit]');
+      await b.page.waitForSelector('.auth-card .alert.bad');
       assert.match(await text(b, '.auth-card'), /stimmt nicht/);
       await L.login(b, { login: B.email, password: B.password }); // per E-Mail
       await b.page.waitForSelector('#hud .hud-id');
@@ -794,6 +796,7 @@ describe('E2E Turning Point', { concurrency: false }, () => {
       await p.page.goto(`${app.base}/register`);
       await p.page.fill('#username', '<script>x'); await p.page.fill('#email', 'evil@e2e.test'); await p.page.fill('#password', 'passwort-123');
       await p.page.check('input[name=terms]'); await p.page.click('button[type=submit]');
+      await p.page.waitForSelector('.auth-card .alert.bad');
       assert.match(await text(p, '.auth-card'), /3–24 Zeichen/);
       await p.ctx.close();
     });
@@ -1021,6 +1024,127 @@ describe('E2E Turning Point', { concurrency: false }, () => {
       assert.doesNotMatch(await text(e), /Kühlschrank/);
       noErrors(e);
       await e.ctx.close();
+    });
+  });
+  describe('Flackerfreie Bedienung (kein Seitenwechsel bei Klicks und Speichern)', () => {
+    /** Zählt echte Dokument-Anfragen und load-Ereignisse; window.__keep überlebt nur ohne Neuladen. */
+    const watch = async (pl) => {
+      const w = { docs: [], loads: 0 };
+      pl.page.on('request', (r) => { if (r.isNavigationRequest() && r.resourceType() === 'document') w.docs.push(r.url()); });
+      pl.page.on('load', () => { w.loads++; });
+      await pl.page.evaluate(() => { window.__keep = 'da'; });
+      w.reset = () => { w.docs.length = 0; w.loads = 0; };
+      w.check = async (what) => {
+        assert.equal(await pl.page.evaluate(() => window.__keep), 'da', `${what}: Seite wurde neu geladen (Marker weg)`);
+        assert.deepEqual(w.docs, [], `${what}: Dokument-Anfrage ausgelöst`); assert.equal(w.loads, 0, `${what}: load-Ereignis`);
+      };
+      return w;
+    };
+
+    it('Admin: Klicken, Speichern, Ansehen setzen und Zurück laden nichts neu', async () => {
+      const ad = await L.newPlayer(browser, app, 'admin3');
+      if (adminState) { await ad.ctx.close(); ad.ctx = await browser.newContext({ storageState: adminState, viewport: { width: 1280, height: 900 } }); ad.page = await ad.ctx.newPage(); ad.page.setDefaultTimeout(8000); ad.page.on('pageerror', (e) => ad.errors.push(`pageerror: ${e.message}`)); } else await L.login(ad, { login: 'e2eadmin', password: 'e2e-admin-pass-1' });
+      ad.page.removeAllListeners('dialog'); ad.page.on('dialog', (d) => d.accept());
+      const bob = await L.userId(app, B.username);
+      await ad.page.goto(`${app.base}/admin/users/${bob}`);
+      const w = await watch(ad);
+      const toast = (re) => ad.page.waitForFunction((src) => [...document.querySelectorAll('.toasts .toast')].some((t) => new RegExp(src, 'i').test(t.innerText)), re.source);
+
+      // 1) Schnellbuchung weit unten auf der Seite: Scroll-Position bleibt, Meldung als Hinweis, Wert aktualisiert
+      await ad.page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+      const y0 = await ad.page.evaluate(() => window.scrollY); assert.ok(y0 > 200);
+      const coins0 = Number((await app.sql('SELECT coins FROM users WHERE id = ?', [bob]))[0].coins);
+      await ad.page.click('form[action$="/coins"] button');
+      await toast(/Coins gebucht/);
+      assert.equal(Number((await app.sql('SELECT coins FROM users WHERE id = ?', [bob]))[0].coins), coins0 + 10);
+      assert.ok(Math.abs((await ad.page.evaluate(() => window.scrollY)) - y0) < 120, 'Scroll-Position bleibt');
+      assert.equal(await ad.page.locator('main .alert[data-flash]').count(), 0, 'Meldung steht nicht zusätzlich im Inhalt');
+      await w.check('Coins buchen');
+
+      // 2) Ansehen setzen (Pflicht-Funktion): Bestandteile
+      const f = ad.page.locator('form[data-rep-set]');
+      await f.locator('input[name=rel]').fill('70'); await f.locator('input[name=trade]').fill('60'); await f.locator('input[name=civic]').fill('55'); await f.locator('input[name=office]').fill('40'); await f.locator('input[name=scandal]').fill('0');
+      await f.locator('input[name=note]').fill('E2E Prüfung');
+      await f.locator('button.primary').click();
+      await toast(/Ansehen gesetzt/);
+      let row = (await app.sql('SELECT rel, trade, civic, office, scandal, lvl FROM reputation WHERE user_id = ?', [bob]))[0];
+      assert.equal(Number(row.rel), 70); assert.equal(Number(row.trade), 60); assert.equal(Number(row.scandal), 0); assert.ok(row.lvl >= 2, `Stufe ${row.lvl}`);
+      assert.match(await text(ad, 'main'), /E2E Prüfung/);
+      assert.equal(await ad.page.locator('form[data-rep-set] input[name=rel]').inputValue(), '70');
+      // ... und per Stufe
+      await ad.page.selectOption('form[data-rep-set] select[name=level]', '-2');
+      await ad.page.locator('form[data-rep-set] button.primary').click();
+      await toast(/Verrufen/);
+      row = (await app.sql('SELECT lvl, scandal FROM reputation WHERE user_id = ?', [bob]))[0];
+      assert.equal(row.lvl, -2); assert.ok(Number(row.scandal) > 0);
+      // Ungültiger Wert wird abgelehnt (Meldung, kein Seitenwechsel)
+      await ad.page.evaluate(() => { document.querySelector('form[data-rep-set] input[name=rel]').type = 'text'; }); await ad.page.fill('form[data-rep-set] input[name=rel]', 'abc'); await ad.page.selectOption('form[data-rep-set] select[name=level]', '');
+      await ad.page.locator('form[data-rep-set] button.primary').click();
+      await toast(/Ungültiger Wert/);
+      assert.equal(Number((await app.sql("SELECT COUNT(*) n FROM audit_log WHERE action = 'admin_reputation_set'"))[0].n), 2);
+      await w.check('Ansehen setzen');
+
+      // 3) Navigation per Seitenleiste und Zurück
+      await ad.page.click('.adm-side nav a[href="/admin/analytics"]');
+      await ad.page.waitForFunction(() => location.pathname === '/admin/analytics' && /Analytics/.test(document.querySelector('.panel-head h2').innerText));
+      assert.equal(await ad.page.locator('.adm-side nav a.on').getAttribute('href'), '/admin/analytics');
+      await w.check('Seitenleiste');
+      await ad.page.goBack();
+      await ad.page.waitForFunction((id) => location.pathname === `/admin/users/${id}` && !!document.querySelector('form[data-rep-set]'), bob);
+      await ad.page.goForward();
+      await ad.page.waitForFunction(() => location.pathname === '/admin/analytics');
+      await w.check('Zurück/Vor');
+
+      // 4) Einstellungen speichern (JSON-Baum-Editor wird nach dem Austausch neu aufgebaut)
+      await ad.page.click('.adm-side nav a[href="/admin/settings"]');
+      await ad.page.waitForFunction(() => location.pathname === '/admin/settings');
+      await ad.page.goto(`${app.base}/admin/settings/ruf`); // direkter Aufruf (neues Dokument), danach wird beobachtet
+      const w2 = await watch(ad);
+      await ad.page.waitForSelector('.tree');
+      await ad.page.locator('form.card button.primary').last().click();
+      await toast(/gespeichert/);
+      await ad.page.waitForSelector('.tree');
+      assert.equal(await ad.page.locator('textarea[data-tree-built]').count() > 0, true);
+      await w2.check('Einstellungen speichern');
+      noErrors(ad);
+      await ad.ctx.close();
+    });
+
+    it('Spiel: Navigation, Design, Sprache und Chat ohne Neuladen; Konto zeigt Fehler an Ort und Stelle', async () => {
+      const g = await L.newPlayer(browser, app, 'flicker');
+      await L.register(g, { username: 'flicker_e2e', email: 'flicker@e2e.test', password: 'flicker-pass-123' });
+      await L.createCharacter(g, { first: 'Fritz', last: 'Flink', city: 'Berlin' });
+      await g.page.waitForSelector('#hud .hud-id'); await L.dismissWelcome(g).catch(() => {});
+      const w = await watch(g);
+      for (const id of ['newspaper', 'household', 'overview']) await L.nav(g, id);
+      await g.page.click('#hud [data-theme-toggle]');
+      await w.check('Seitenwechsel im Spiel und Design');
+      // Sprache: Englisch und zurück
+      await g.page.click('#hud a[href^="/lang/en"]');
+      await g.page.waitForFunction(() => document.documentElement.lang === 'en' && /Newspaper|Overview/.test(document.querySelector('#side').innerText));
+      assert.doesNotMatch(await g.page.innerText('#side'), /Zeitung|Übersicht/);
+      await g.page.click('#hud a[href^="/lang/de"]');
+      await g.page.waitForFunction(() => document.documentElement.lang === 'de' && /Übersicht/.test(document.querySelector('#side').innerText));
+      assert.doesNotMatch(await g.page.innerText('#page'), /\bOverview\b/);
+      await w.check('Sprachwechsel');
+      // Chat senden (Formular im Dialog)
+      await g.page.click('#hud [data-chat]');
+      await g.page.fill('#cm-in', 'Hallo ohne Neuladen'); await g.page.press('#cm-in', 'Enter');
+      await g.page.waitForFunction(() => /Hallo ohne Neuladen/.test(document.body.innerText));
+      await L.closeModals(g);
+      await w.check('Chat senden');
+      noErrors(g);
+      // Konto: falsches Passwort → Fehler im selben Dokument
+      await g.page.goto(`${app.base}/account`);
+      const w2 = await watch(g);
+      await g.page.fill('form[action="/account/password"] input[name=current]', 'falsch-falsch-1');
+      await g.page.fill('form[action="/account/password"] input[name=pw]', 'Neues-Passwort-77x'); await g.page.fill('form[action="/account/password"] input[name=pw2]', 'Neues-Passwort-77x');
+      await g.page.click('form[action="/account/password"] button');
+      await g.page.waitForSelector('main .alert.bad');
+      assert.match(await text(g, 'main'), /stimmt nicht/);
+      await w2.check('Konto-Formular');
+      noErrors(g);
+      await g.ctx.close();
     });
   });
 });
