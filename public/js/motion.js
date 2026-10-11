@@ -158,7 +158,10 @@
   });
 
   /* ---------- Start & Beobachtung ---------- */
+  // Stille Aktualisierung im Spiel (Klick, Speichern, Live-Update): nichts neu einblenden, nichts von null hochzählen.
+  function quiet(scope) { return !!(scope.closest && scope.closest('#hud, #side, #page') && !scope.closest('.page.enter')); }
   function scan(scope) {
+    if (quiet(scope)) return;
     reveal(scope); counters(scope);
     if (scope.querySelectorAll) {
       var h = scope.querySelectorAll('h1[data-split]'); for (var i = 0; i < h.length; i++) splitHeadline(h[i]);

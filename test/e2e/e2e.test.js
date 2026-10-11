@@ -1119,6 +1119,12 @@ describe('E2E Turning Point', { concurrency: false }, () => {
       for (const id of ['newspaper', 'household', 'overview']) await L.nav(g, id);
       await g.page.click('#hud [data-theme-toggle]');
       await w.check('Seitenwechsel im Spiel und Design');
+      // Stilles Neuzeichnen (wie nach Instandsetzen/Speichern): keine Einblend-Markierung, nichts wird ausgeblendet
+      await g.page.evaluate(() => { window.__rv = 0; new MutationObserver((ms) => { for (const m of ms) if (m.type === 'attributes' && m.target.classList && m.target.classList.contains('rv')) window.__rv++; for (const m of ms) m.addedNodes.forEach((n) => { if (n.nodeType === 1 && (n.classList.contains('rv') || n.querySelector('.rv'))) window.__rv++; }); }).observe(document.getElementById('page').parentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ['class'] }); });
+      await g.page.evaluate(() => document.querySelector('#side [data-go="household"], #side a[href="#household"]')?.click());
+      await g.page.waitForTimeout(300);
+      await g.page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+      assert.equal(await g.page.evaluate(() => window.__rv), 0, 'Beim Neuzeichnen darf nichts per Einblend-Effekt ausgeblendet werden');
       // Sprache: Englisch und zurück
       await g.page.click('#hud a[href^="/lang/en"]');
       await g.page.waitForFunction(() => document.documentElement.lang === 'en' && /Newspaper|Overview/.test(document.querySelector('#side').innerText));
