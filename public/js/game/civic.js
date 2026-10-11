@@ -3,7 +3,7 @@
 import { html, icon, api, on, modal, toast, money, infoBtn, term, bar } from './ui.js';
 
 const TABS = [['clubs', 'Vereine', 'users'], ['parish', 'Glaubensgemeinde', 'church'], ['foundation', 'Stiftung', 'crown'], ['titles', 'Titel & Ränge', 'award']];
-const dec1 = (x) => (Math.round(Number(x) * 10) / 10).toLocaleString(document.documentElement.lang === 'en' ? 'en-US' : 'de-DE', { maximumFractionDigits: 1 });
+const dec1 = (x) => { const d = Math.abs(Number(x)) < 1 ? 100 : 10; return (Math.round(Number(x) * d) / d).toLocaleString(document.documentElement.lang === 'en' ? 'en-US' : 'de-DE', { maximumFractionDigits: d === 100 ? 2 : 1 }); };
 const when = (ms) => new Date(ms).toLocaleString(document.documentElement.lang === 'en' ? 'en-GB' : 'de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 const inTxt = (ms) => { const h = (ms - Date.now()) / 3600000; if (h <= 0) return 'gleich'; if (h < 1) return `in ${Math.max(1, Math.round(h * 60))} Min.`; if (h < 48) return `in ${Math.round(h)} Std.`; return `in ${Math.round(h / 24)} Tagen`; };
 const inp = (cents) => (Math.max(0, cents) / 100).toFixed(2);
@@ -49,7 +49,7 @@ export function civicMini(ctx) {
     <div class="chips mt">
       ${c.titles.map((t) => html`<span class="chip good" title="Titel">${icon('award')} <span>${t.name}</span></span>`)}
       ${c.clubs.map((x) => html`<span class="chip" title="Verein">${icon('users')} <span data-i18n-skip>${x.name}</span></span>`)}
-      ${c.parish ? html`<span class="chip" title="Glaubensgemeinde">${icon('church')} <span data-i18n-skip>${c.parish.name}</span></span>` : ''}
+      ${c.parish ? html`<span class="chip" title="Glaubensgemeinde">${icon('church')} <span>${c.parish.name}</span></span>` : ''}
       ${c.foundation ? html`<span class="chip good" title="Stiftung">${icon('crown')} <span data-i18n-skip>${c.foundation.name}</span></span>` : ''}
       ${c.due ? html`<span class="chip warn">${icon('clock')} <span>Beitrag offen</span></span>` : ''}
       ${c.funerals ? html`<span class="chip warn">${icon('heart')} <span>Trauerfeier offen</span></span>` : ''}
@@ -164,7 +164,7 @@ function parishView(d, ctx) {
   }
   const lv = me.level; const cer = p.ceremonies; const f = (k) => cer.labels && cer.labels[k];
   return html`
-    <article class="card flat"><div class="row nowrap spread"><h3 class="serif" style="margin:0;font-size:1.1rem">${icon('church')} <span data-i18n-skip>${me.name}</span></h3><span class="chip good">${lv.name}</span></div>
+    <article class="card flat"><div class="row nowrap spread"><h3 class="serif" style="margin:0;font-size:1.1rem">${icon('church')} <span>${me.name}</span> <span data-i18n-skip>${me.city}</span></h3><span class="chip good">${lv.name}</span></div>
       <div class="mt">${bar(lv.pct * 100, 'good')}<div class="small dim">${lv.next ? html`<span>Gemeinde-Ansehen:</span> <b>${dec1(me.standing)}</b> <span>Punkte – nächste Stufe:</span> <b>${lv.next}</b> <span>ab</span> <b>${lv.nextAt}</b> <span>Punkten</span>` : html`<span>Gemeinde-Ansehen:</span> <b>${dec1(me.standing)}</b> <span>Punkte – höchste Stufe erreicht.</span>`}</div></div>
       <div class="chips mt"><span class="chip">${icon('piggy-bank')} <span>Gemeindekasse:</span> <b>${money(me.fund, cur)}</b></span><span class="chip">${icon('coins')} <span>Von dir gespendet:</span> <b>${money(me.donated, cur)}</b></span></div>
       <div class="row mt" style="flex-wrap:wrap;gap:.4rem"><button class="btn sm primary" data-parish-donate>${icon('coins')} Spenden</button><button class="btn sm ghost" data-parish-leave>Austreten</button></div></article>

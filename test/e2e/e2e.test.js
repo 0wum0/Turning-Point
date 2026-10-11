@@ -975,15 +975,17 @@ describe('E2E Turning Point', { concurrency: false }, () => {
       await v.page.waitForSelector('#hud .hud-id');
       await L.nav(v, 'society');
       await v.page.waitForSelector('#civicBox [data-ctab=clubs]');
-      await v.page.waitForFunction(() => /Clubs/.test(document.querySelector('#civicBox').innerText));
-      const t = await text(v, '#civicBox');
-      assert.match(t, /Clubs, congregation, foundation & titles/i);
+      const German = /\b(Mitglied|Spende|Kasse|Beitrag|Notgabe|Vorsitz|Verein|Gemeinde|Titel|Gründ|Ausschüttung|Vermögen|Zustift|Voraussetzung|Stimmengewicht|Wahl)\w*/;
+      const seen = async (tab, re) => {
+        if (tab) await v.page.click(`#civicBox [data-ctab=${tab}]`);
+        await v.page.waitForFunction((src) => new RegExp(src, 'i').test(document.querySelector('#civicBox').innerText), re.source).catch(async (e) => { throw new Error(`${e.message}\n--- Text (${tab}) ---\n${await text(v, '#civicBox')}`); });
+        const t = await text(v, '#civicBox'); assert.doesNotMatch(t, German, `Deutscher Rest im Reiter ${tab || 'clubs'}:\n${t}`); return t;
+      };
+      const t = await seen(null, /Clubs, congregation, foundation & titles/);
       assert.match(t, /Chor Frohsinn E2E/, 'Eigennamen bleiben');
-      assert.doesNotMatch(t, /Vereinskasse|Gründen|Beitrag/);
-      await v.page.click('#civicBox [data-ctab=parish]');
-      await v.page.waitForFunction(() => /Congregation/.test(document.querySelector('#civicBox').innerText));
-      await v.page.click('#civicBox [data-ctab=titles]');
-      await v.page.waitForFunction(() => /Your titles/.test(document.querySelector('#civicBox').innerText));
+      await seen('parish', /Protestant congregation/);
+      await seen('foundation', /Bürgerstiftung E2E/);
+      await seen('titles', /Your titles/);
       const r = await L.api(v, 'POST', `/api/civic/club/${clubId}/withdraw`, { amount: 1 });
       assert.equal(r.status, 400);
       noErrors(v);

@@ -30,7 +30,6 @@ async function myRow(conn, userId, lock = false) {
   return conn.one(`SELECT pm.*, p.city_id, p.faith, p.fund_real FROM parish_members pm JOIN parishes p ON p.id = pm.parish_id WHERE pm.user_id = ?${lock ? ' FOR UPDATE' : ''}`, [userId]);
 }
 const standingOf = (row) => M.standingDecay(row.standing, K.today() - num(row.st_day, K.today()));
-const nameOf = (world, row) => `${(M.faithOf(row.faith) || {}).name || row.faith} ${(world.city(row.city_id) || {}).name || ''}`.trim(); // Anzeigename (Eigenname: wird nie in Sätze eingebaut, die übersetzt werden)
 
 async function join(userId, faith) {
   return service.withCharacter(userId, async (ctx) => {
@@ -211,7 +210,7 @@ async function view(conn, userId, world, state, idx) {
   return {
     faiths: faithsView,
     joinWhy: state.day < num(P.minGameDays, 10) ? `Ab ${num(P.minGameDays, 10)} Spieltagen.` : joinWait > 0 ? `Wieder möglich in ${Math.ceil(joinWait / HOUR)} Stunden.` : null,
-    mine: mine ? { faith: mine.faith, name: nameOf(world, mine), cityId: mine.city_id, fund: Math.round(Number(mine.fund_real) * idx), standing: Math.round(st * 10) / 10, level: lv, donated: Math.round(Number(mine.donated_real) * idx), joinedAt: Number(mine.joined_ms),
+    mine: mine ? { faith: mine.faith, name: (M.faithOf(mine.faith) || {}).name || mine.faith, city: (world.city(mine.city_id) || {}).name || '', cityId: mine.city_id, fund: Math.round(Number(mine.fund_real) * idx), standing: Math.round(st * 10) / 10, level: lv, donated: Math.round(Number(mine.donated_real) * idx), joinedAt: Number(mine.joined_ms),
       aid: { ok: !aidWhy, why: aidWhy, amount: Math.round(M.aidAmount(Number(mine.fund_real), pot ? pot.aid : 0) * idx), need }, ledger } : null,
     ceremonies: {
       fees, labels: mine ? Object.fromEntries(M.CEREMONIES.map((k) => [k, M.ceremonyLabel(mine.faith, k)])) : null,
