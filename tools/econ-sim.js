@@ -78,14 +78,14 @@ function makeRun(name, pkey, policy) {
   const maxDays = YEARS * 365;
   // Ansehen: 365 Spieltage = 1 echter Tag. Vorgemerkte Ereignisse laufen mit Tagesgrenzen durch das reine Modell, der Zwischenspeicher wirkt zurück.
   const RP = require('../src/game/reputation'); const RC = require('../src/settings').get('ruf');
-  // Gesellschaft: ein typischer Spieler ist in einem Sportverein, in der Gemeinde (Stufe 2); Betriebsinhaber auch im Gewerbeverein. Beiträge und Spenden kosten Geld, die Wirkung kommt über state.civic.fx
+  // Gesellschaft: ein typischer Spieler ist in einem Sportverein, in der Gemeinde (Stufe 2); Betriebsinhaber auch im Gewerbeverein. Beiträge und eine kleine Spende kosten Geld (6 DM im Jahr), die Wirkung kommt über state.civic.fx
   const CV = require('../src/game/civic'); const CVG = require('../src/settings').get('gesellschaft');
   const civicClubs = () => [{ kind: 'sport', members: 12 }].concat((s.companies || []).some((c) => !c.abandoned) ? [{ kind: 'handwerk', members: 10 }] : []);
   const civicYear = (year) => {
     if (!CIVIC) return;
     const idxY = w.idx(year); const clubs = civicClubs();
     s.civic = { fx: CV.combineFx({ clubs, parishLevel: 2, pot: null, titles: [] }), clubs: clubs.length, due: 0 };
-    return Math.round((clubs.length * CVG.clubs.feeDefaultReal + 2400) * idxY);
+    return Math.round((clubs.length * CVG.clubs.feeDefaultReal + 600) * idxY);
   };
   const rstate = { c: RP.blank(), caps: null, pts: 0, day: 0, seen: {} }; const repLog = [];
   const repDay = () => {
