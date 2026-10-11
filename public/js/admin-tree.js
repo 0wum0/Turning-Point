@@ -22,6 +22,7 @@
   }
 
   function build(ta) {
+    if (ta.getAttribute('data-tree-built')) return; ta.setAttribute('data-tree-built', '1');
     var data;
     try { data = JSON.parse(ta.value); } catch (e) { return; }
     var box = el('div', 'tree');
@@ -166,5 +167,6 @@
     render();
   }
 
-  document.querySelectorAll('textarea[data-tree]').forEach(build);
+  window.tpTreeInit = function (root) { (root || document).querySelectorAll('textarea[data-tree]').forEach(build); };
+  window.tpTreeInit();
 })();

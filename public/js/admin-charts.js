@@ -138,6 +138,7 @@
     });
   }
   function all() { document.querySelectorAll('[data-chart]').forEach(render); sparks(); }
+  window.tpChartsInit = all;
   var timer; var lastW = window.innerWidth;
   window.addEventListener('resize', function () { if (window.innerWidth === lastW) return; lastW = window.innerWidth; clearTimeout(timer); timer = setTimeout(all, 150); });
   new MutationObserver(function () { clearTimeout(timer); timer = setTimeout(all, 50); }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });

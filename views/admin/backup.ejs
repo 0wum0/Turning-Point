@@ -3,9 +3,9 @@
   <section class="card"><div class="card-title"><%- icon('download') %> Sicherung herunterladen</div>
     <p class="dim small">Konfiguration = alle Einstellungen, Städte und Berufe. Vollsicherung enthält zusätzlich Konten, Charaktere und Käufe (inkl. Passwort-Hashes – sicher aufbewahren!).</p>
     <div class="stack" style="--gap:.5rem">
-      <a class="btn" href="/admin/backup/download?scope=config">Konfiguration (ohne Geheimnisse)</a>
-      <a class="btn" href="/admin/backup/download?scope=config&secrets=1" data-confirm="Die Datei enthält Stripe-Schlüssel und SMTP-Passwort im Klartext. Weiter?">Konfiguration (mit Geheimnissen)</a>
-      <a class="btn" href="/admin/backup/download?scope=full" data-confirm="Die Vollsicherung enthält alle Spielerdaten und Passwort-Hashes. Weiter?">Vollsicherung (alle Spielerdaten)</a>
+      <a class="btn" data-no-ajax href="/admin/backup/download?scope=config">Konfiguration (ohne Geheimnisse)</a>
+      <a class="btn" data-no-ajax href="/admin/backup/download?scope=config&secrets=1" data-confirm="Die Datei enthält Stripe-Schlüssel und SMTP-Passwort im Klartext. Weiter?">Konfiguration (mit Geheimnissen)</a>
+      <a class="btn" data-no-ajax href="/admin/backup/download?scope=full" data-confirm="Die Vollsicherung enthält alle Spielerdaten und Passwort-Hashes. Weiter?">Vollsicherung (alle Spielerdaten)</a>
     </div>
     <div class="hint mt">Die Datenbank selbst sicherst du zusätzlich im hPanel (Datenbanken → Backups). Hochgeladene Bilder liegen im Daten-Ordner (siehe System).</div></section>
   <section class="card"><div class="card-title"><%- icon('upload') %> Sicherung einspielen</div>

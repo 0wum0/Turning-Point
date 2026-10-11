@@ -184,3 +184,10 @@ body.admin .adm-search input[type=search] { padding-left: 2.4rem; }
 .paper-pv h3 { font-family: var(--font-display); font-size: 1.5rem; margin: .35rem 0; } .paper-pv p { margin: 0; font-family: var(--font-display); line-height: 1.55; }
 .adm-main .card { min-width: 0; overflow-x: auto; }
 .adm-main .card .tree, .adm-main .card .tree-body { overflow-x: auto; }
+
+/* Flackerfreie Bedienung: dünner Fortschrittsbalken oben, Inhalt bleibt stehen */
+html.adm-busy { cursor: progress; }
+html.adm-busy::before { content: ''; position: fixed; left: 0; top: 0; height: 3px; width: 100%; z-index: 400; background: var(--accent, #e0a94a); transform-origin: 0 50%; animation: admbusy 1.2s ease-in-out infinite; pointer-events: none; }
+html.adm-busy .adm-main { opacity: .96; }
+@keyframes admbusy { 0% { transform: scaleX(.05); } 60% { transform: scaleX(.8); } 100% { transform: scaleX(.95); opacity: .4; } }
+@media (prefers-reduced-motion: reduce) { html.adm-busy::before { animation: none; transform: scaleX(.6); } }

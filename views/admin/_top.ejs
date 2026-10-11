@@ -8,25 +8,25 @@
 <div class="adm" id="adm">
   <aside class="adm-side" id="admSide">
     <a class="brand" href="/admin"><span class="mark"><%- icon('hourglass') %></span><span>TURNING POINT<small>Control Center</small></span></a>
-    <nav aria-label="Admin-Navigation">
+    <nav aria-label="Admin-Navigation" data-adm-nav>
       <% NAV.forEach(function(g){ %><div class="nav-label"><%= g[0] %></div>
         <% g[1].forEach(function(n){ if (typeof canSee === 'function' && !canSee(n[3])) return; %><a href="<%= n[3] %>" class="<%= active === n[0] ? 'on' : '' %>"><%- icon(n[2]) %><span><%= n[1] %></span><% if (badges[n[0]]) { %><em class="badge"><%= badges[n[0]] %></em><% } %></a><% }) %>
       <% }) %>
     </nav>
     <div class="adm-foot">
       <div class="who"><span class="av"><%= (user.username || '?').slice(0, 1).toUpperCase() %></span><div><b><%= user.username %></b><small><%= typeof roleLabel !== 'undefined' && roleLabel ? roleLabel : 'Administrator' %></small></div>
-        <form method="post" action="/logout"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn ghost sm" title="Abmelden" aria-label="Abmelden"><%- icon('log-out') %></button></form></div>
+        <form method="post" action="/logout" data-no-ajax><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="btn ghost sm" title="Abmelden" aria-label="Abmelden"><%- icon('log-out') %></button></form></div>
     </div>
   </aside>
   <div class="adm-scrim" id="admScrim"></div>
   <div class="adm-body">
     <header class="adm-bar">
       <button class="btn ghost sm adm-burger" id="admBurger" aria-label="Menü"><%- icon('menu') %></button>
-      <div class="crumb"><span>Admin</span><%- icon('chevron-right') %><b><%= current || title %></b></div>
+      <div class="crumb" data-adm-crumb><span>Admin</span><%- icon('chevron-right') %><b><%= current || title %></b></div>
       <form class="adm-search" method="get" action="/admin/users" role="search"><%- icon('search') %><input type="search" name="q" id="admQ" placeholder="Spieler suchen …  ( / )" autocomplete="off"></form>
       <button class="btn ghost sm" data-theme-toggle aria-label="Design wechseln" title="Hell/Dunkel"><%- icon('sun-medium') %></button>
       <a class="btn sm" href="/play"><%- icon('play') %><span class="hide-sm">Zum Spiel</span></a>
     </header>
     <main class="adm-main">
-      <% if (flash) { %><div class="alert <%= flash.type %>"><%- icon(flash.type === 'good' ? 'circle-check' : 'circle-alert') %><div><%= flash.msg %></div></div><% } %>
+      <% if (flash) { %><div class="alert <%= flash.type %>" data-flash><%- icon(flash.type === 'good' ? 'circle-check' : 'circle-alert') %><div><%= flash.msg %></div></div><% } %>
       <div class="panel-head"><div><h2><%= title %></h2><% if (typeof subtitle !== 'undefined' && subtitle) { %><p><%= subtitle %></p><% } %></div><div class="row"><%- typeof actions !== 'undefined' ? actions : '' %></div></div>

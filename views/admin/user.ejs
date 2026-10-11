@@ -27,7 +27,7 @@
   </section>
   <section class="card"><div class="card-title">Aktionen</div>
     <div class="row wrap">
-      <% if (u.id !== user.id) { %><form method="post" action="/admin/users/<%= u.id %>/impersonate"><%- csrf %><button class="btn sm primary" data-confirm="Als <%= u.username %> ins Spiel wechseln? Du kannst oben zurückwechseln.">Als Spieler einloggen</button></form><% } %>
+      <% if (u.id !== user.id) { %><form method="post" action="/admin/users/<%= u.id %>/impersonate" data-no-ajax><%- csrf %><button class="btn sm primary" data-confirm="Als <%= u.username %> ins Spiel wechseln? Du kannst oben zurückwechseln.">Als Spieler einloggen</button></form><% } %>
       <form method="post" action="/admin/users/<%= u.id %>/kick"><%- csrf %><button class="btn sm">Alle Sitzungen beenden</button></form>
       <form method="post" action="/admin/users/<%= u.id %>/password"><%- csrf %><button class="btn sm" data-confirm="Zufallspasswort setzen und anzeigen?">Zufallspasswort</button></form>
       <form method="post" action="/admin/users/<%= u.id %>/reset-character"><%- csrf %><button class="btn sm" data-confirm="Den aktuellen Charakter beenden (neues Leben möglich)?">Charakter beenden</button></form>
