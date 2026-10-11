@@ -101,8 +101,7 @@ document.addEventListener('submit', function (e) {
     if (a && main.contains(a) && a !== main && (a.id || a.name)) st.focus = { id: a.id, name: a.name, type: a.type, form: a.form ? a.form.getAttribute('action') : null, s: a.selectionStart, e: a.selectionEnd };
     return st;
   }
-  function restore(st, keepScroll) {
-    main.querySelectorAll('details').forEach(function (d, i) { if (st.open.indexOf(i) >= 0) d.open = true; });
+  function restore(st) {
     var n = {};
     main.querySelectorAll('input,textarea,select').forEach(function (el) {
       if (!el.name || el.type === 'hidden' || el.type === 'password' || el.type === 'file') return;
@@ -115,7 +114,6 @@ document.addEventListener('submit', function (e) {
       if (!f && st.focus.name) { var c = main.querySelectorAll('[name="' + String(st.focus.name).replace(/"/g, '') + '"]'); for (var i = 0; i < c.length; i++) { if ((c[i].form ? c[i].form.getAttribute('action') : null) === st.focus.form) { f = c[i]; break; } } }
       if (f && main.contains(f)) { try { f.focus({ preventScroll: true }); if (st.focus.s != null && f.setSelectionRange && /text|search|url|tel|email|textarea/.test(f.type || '')) f.setSelectionRange(st.focus.s, st.focus.e); } catch (e) { /* egal */ } }
     }
-    if (keepScroll) window.scrollTo(st.x, st.y);
   }
 
   function reinit() {
@@ -136,15 +134,19 @@ document.addEventListener('submit', function (e) {
     var fl = null;
     if (flash) { fl = { type: /\b(bad|warn|good|info)\b/.exec(flash.className) ? /\b(bad|warn|good|info)\b/.exec(flash.className)[1] : 'good', msg: flash.textContent.replace(/\s+/g, ' ').trim() }; flash.parentNode.removeChild(flash); }
     var apply = function () {
+      var keepH = main.offsetHeight; if (opts.keepScroll) main.style.minHeight = keepH + 'px'; // Seite wird beim Austausch nicht kürzer: Scroll-Position bleibt
       main.innerHTML = nm.innerHTML;
       var nav = document.querySelector('[data-adm-nav]'), nn = doc.querySelector('[data-adm-nav]'); if (nav && nn && nav.innerHTML !== nn.innerHTML) nav.innerHTML = nn.innerHTML;
       var cr = document.querySelector('[data-adm-crumb]'), nc = doc.querySelector('[data-adm-crumb]'); if (cr && nc && cr.innerHTML !== nc.innerHTML) cr.innerHTML = nc.innerHTML;
       if (doc.title) document.title = doc.title;
       document.getElementById('adm').classList.remove('open');
-      if (st) restore(st, opts.keepScroll);
-      else if (opts.scroll) window.scrollTo(opts.scroll.x, opts.scroll.y);
-      else window.scrollTo(0, 0);
+      if (st) restore(st);
       reinit();
+      if (st) { var all = main.querySelectorAll('details'); all.forEach(function (d, i) { d.open = st.open.indexOf(i) >= 0; }); }
+      // erst Editoren/Diagramme aufbauen, dann scrollen: sonst kappt der Browser die Position an der kürzeren Seite
+      if (st && opts.keepScroll) window.scrollTo({ left: st.x, top: st.y, behavior: 'instant' });
+      else window.scrollTo({ left: 0, top: 0, behavior: 'instant' });
+      main.style.minHeight = '';
     };
     apply();
     if (fl && fl.msg) toast(fl.type, fl.msg);

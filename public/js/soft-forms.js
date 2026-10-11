@@ -26,7 +26,7 @@
     fetch(url.href, { method: 'POST', credentials: 'same-origin', redirect: 'follow', headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8', 'X-Requested-With': 'fetch', Accept: 'text/html' }, body: q.toString() })
       .then(function (res) {
         var fin = new URL(res.url || url.href, location.href);
-        if (fin.origin !== location.origin || fin.pathname !== location.pathname || !/text\/html/i.test(res.headers.get('content-type') || '')) { location.assign(fin.href); return; }
+        if (fin.origin !== location.origin || (res.redirected && fin.pathname !== location.pathname) || !/text\/html/i.test(res.headers.get('content-type') || '')) { location.assign(fin.href); return; }
         return res.text().then(function (html) {
           var doc = new DOMParser().parseFromString(html, 'text/html'); var nm = doc.querySelector('main');
           if (!nm) { location.assign(fin.href); return; }

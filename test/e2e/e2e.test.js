@@ -1043,21 +1043,23 @@ describe('E2E Turning Point', { concurrency: false }, () => {
 
     it('Admin: Klicken, Speichern, Ansehen setzen und Zurück laden nichts neu', async () => {
       const ad = await L.newPlayer(browser, app, 'admin3');
-      if (adminState) { await ad.ctx.close(); ad.ctx = await browser.newContext({ storageState: adminState, viewport: { width: 1280, height: 900 } }); ad.page = await ad.ctx.newPage(); ad.page.setDefaultTimeout(8000); ad.page.on('pageerror', (e) => ad.errors.push(`pageerror: ${e.message}`)); } else await L.login(ad, { login: 'e2eadmin', password: 'e2e-admin-pass-1' });
+      if (adminState) { await ad.ctx.close(); ad.ctx = await browser.newContext({ storageState: adminState, viewport: { width: 1280, height: 900 } }); await ad.ctx.addInitScript(() => { document.addEventListener('DOMContentLoaded', () => { const st = document.createElement('style'); st.textContent = 'html{scroll-behavior:auto!important}'; document.head.appendChild(st); }); }); ad.page = await ad.ctx.newPage(); ad.page.setDefaultTimeout(8000); ad.page.on('pageerror', (e) => ad.errors.push(`pageerror: ${e.message}`)); } else await L.login(ad, { login: 'e2eadmin', password: 'e2e-admin-pass-1' });
       ad.page.removeAllListeners('dialog'); ad.page.on('dialog', (d) => d.accept());
-      const bob = await L.userId(app, B.username);
+      const bob = await L.userId(app, B.username); // spart Registrierungen (Bremse je Adresse)
       await ad.page.goto(`${app.base}/admin/users/${bob}`);
       const w = await watch(ad);
       const toast = (re) => ad.page.waitForFunction((src) => [...document.querySelectorAll('.toasts .toast')].some((t) => new RegExp(src, 'i').test(t.innerText)), re.source);
 
       // 1) Schnellbuchung weit unten auf der Seite: Scroll-Position bleibt, Meldung als Hinweis, Wert aktualisiert
-      await ad.page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-      const y0 = await ad.page.evaluate(() => window.scrollY); assert.ok(y0 > 200);
+      await ad.page.locator('form[action$="/coins"] button').scrollIntoViewIfNeeded();
+      await ad.page.evaluate(() => window.scrollBy({ top: 150, behavior: 'instant' })); // Schaltfläche bleibt sichtbar, Seite ist aber weit unten
+      let y0 = 0;
       const coins0 = Number((await app.sql('SELECT coins FROM users WHERE id = ?', [bob]))[0].coins);
-      await ad.page.click('form[action$="/coins"] button');
+      await ad.page.evaluate(() => { document.addEventListener('submit', () => { window.__y0 = window.scrollY; }, true); });
+      await ad.page.locator('form[action$="/coins"] button').evaluate((b) => b.click()); // ohne dass Playwright selbst scrollt
       await toast(/Coins gebucht/);
       assert.equal(Number((await app.sql('SELECT coins FROM users WHERE id = ?', [bob]))[0].coins), coins0 + 10);
-      assert.ok(Math.abs((await ad.page.evaluate(() => window.scrollY)) - y0) < 120, 'Scroll-Position bleibt');
+      const y1 = await ad.page.evaluate(() => window.scrollY); y0 = await ad.page.evaluate(() => window.__y0); assert.ok(y0 > 200, `y0 ${y0}`); assert.ok(Math.abs(y1 - y0) < 120, `Scroll-Position bleibt (${y0} -> ${y1})`);
       assert.equal(await ad.page.locator('main .alert[data-flash]').count(), 0, 'Meldung steht nicht zusätzlich im Inhalt');
       await w.check('Coins buchen');
 
@@ -1097,7 +1099,7 @@ describe('E2E Turning Point', { concurrency: false }, () => {
 
       // 4) Einstellungen speichern (JSON-Baum-Editor wird nach dem Austausch neu aufgebaut)
       await ad.page.click('.adm-side nav a[href="/admin/settings"]');
-      await ad.page.waitForFunction(() => location.pathname === '/admin/settings');
+      await ad.page.waitForFunction(() => location.pathname.startsWith('/admin/settings'));
       await ad.page.goto(`${app.base}/admin/settings/ruf`); // direkter Aufruf (neues Dokument), danach wird beobachtet
       const w2 = await watch(ad);
       await ad.page.waitForSelector('.tree');
@@ -1111,10 +1113,8 @@ describe('E2E Turning Point', { concurrency: false }, () => {
     });
 
     it('Spiel: Navigation, Design, Sprache und Chat ohne Neuladen; Konto zeigt Fehler an Ort und Stelle', async () => {
-      const g = await L.newPlayer(browser, app, 'flicker');
-      await L.register(g, { username: 'flicker_e2e', email: 'flicker@e2e.test', password: 'flicker-pass-123' });
-      await L.createCharacter(g, { first: 'Fritz', last: 'Flink', city: 'Berlin' });
-      await g.page.waitForSelector('#hud .hud-id'); await L.dismissWelcome(g).catch(() => {});
+      const g = a; // Alice hat einen Charakter (spart Registrierungen: die Bremse zählt je Adresse)
+      await g.page.goto(`${app.base}/play`); await g.page.waitForSelector('#hud .hud-id'); await L.closeModals(g);
       const w = await watch(g);
       for (const id of ['newspaper', 'household', 'overview']) await L.nav(g, id);
       await g.page.click('#hud [data-theme-toggle]');
@@ -1140,11 +1140,11 @@ describe('E2E Turning Point', { concurrency: false }, () => {
       await g.page.fill('form[action="/account/password"] input[name=current]', 'falsch-falsch-1');
       await g.page.fill('form[action="/account/password"] input[name=pw]', 'Neues-Passwort-77x'); await g.page.fill('form[action="/account/password"] input[name=pw2]', 'Neues-Passwort-77x');
       await g.page.click('form[action="/account/password"] button');
-      await g.page.waitForSelector('main .alert.bad');
+      await g.page.waitForSelector('main .alert.bad', { timeout: 5000 }).catch(async (e) => { throw new Error(e.message + ' | ' + (await g.page.innerText('main')).slice(0, 400)); });
       assert.match(await text(g, 'main'), /stimmt nicht/);
       await w2.check('Konto-Formular');
       noErrors(g);
-      await g.ctx.close();
+      await g.page.goto(`${app.base}/play`); await g.page.waitForSelector('#hud .hud-id');
     });
   });
 });
