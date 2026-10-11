@@ -11,7 +11,7 @@ const A = { username: 'alice_e2e', email: 'alice@e2e.test', password: 'alice-pas
 const B = { username: 'bob_e2e', email: 'bob@e2e.test', password: 'bob-pass-12345' };
 const XSS = '<img src=x onerror="window.__xss=1">';
 
-let app; let browser; let a; let b;
+let app; let browser; let a; let b; let adminState = null; // Anmeldung des Admins wird wiederverwendet (die Anmelde-Bremse je Adresse zählt jeden Versuch)
 const noErrors = (...pls) => { for (const p of pls) assert.deepEqual(p.errors, [], `Fehler im Browser von ${p.label}:\n${p.errors.join('\n')}\n--- Server-Log ---\n${app.log().split('\n').filter((l) => /\[error\]|Error/.test(l)).slice(-12).join('\n')}`); };
 const text = (pl, sel = '#page') => pl.page.innerText(sel);
 const confirmYes = (pl) => pl.page.click('.modal [data-close=yes]');
@@ -756,6 +756,7 @@ describe('E2E Turning Point', { concurrency: false }, () => {
       await ad.page.goto(`${app.base}/admin/court`);
       assert.match(await text(ad, 'body'), /Aktive Sanktionen/);
       assert.match(await text(ad, 'body'), /Haft/);
+      adminState = await ad.ctx.storageState();
       await ad.ctx.close();
     });
   });
@@ -830,7 +831,7 @@ describe('E2E Turning Point', { concurrency: false }, () => {
     });
 
     it('Verein gründen: Art, Name und Beitrag im Dialog; Gebühr abgebucht; der Verein steht in der Liste und in der Übersicht', async () => {
-      await L.nav(v, 'society');
+      await L.nav(v, 'society'); await closeAll(v);
       await v.page.waitForSelector('#civicBox [data-club-found]:not([disabled])');
       assert.match(await text(v, '#civicBox'), /Vereine, Gemeinde, Stiftung & Titel/i);
       await v.page.click('#civicBox [data-club-found]');
@@ -850,7 +851,7 @@ describe('E2E Turning Point', { concurrency: false }, () => {
     });
 
     it('Beitreten: Bernd sieht den Verein im Verzeichnis, bestätigt, zahlt den ersten Beitrag – die Kasse füllt sich; zweimal geht nicht', async () => {
-      await L.reloadGame(w); await L.nav(w, 'society');
+      await L.reloadGame(w); await L.nav(w, 'society'); await closeAll(w);
       await w.page.waitForSelector(`#civicBox [data-club-join="${clubId}"]`);
       const m0 = (await app.sql("SELECT money FROM characters WHERE user_id = ? AND status = 'alive'", [wid]))[0].money;
       await w.page.click(`#civicBox [data-club-join="${clubId}"]`);
@@ -882,7 +883,7 @@ describe('E2E Turning Point', { concurrency: false }, () => {
       const [{ id: sid }] = await app.sql("SELECT id FROM users WHERE username = 'statist_e2e'");
       await app.sql("INSERT INTO club_members (club_id, user_id, role, joined_ms, paid_until) VALUES (?,?, 'member', ?, ?)", [clubId, sid, Date.now() - 1000, Date.now() + 86400000]);
       await app.sql('UPDATE clubs SET treasury_real = 50000 WHERE id = ?', [clubId]);
-      await L.reloadGame(v); await L.nav(v, 'society');
+      await L.reloadGame(v); await L.nav(v, 'society'); await closeAll(v);
       await v.page.waitForSelector(`#civicBox [data-club-open="${clubId}"]`);
       await v.page.click(`#civicBox [data-club-open="${clubId}"]`);
       await v.page.waitForSelector('.civic-modal [data-cd=event]');
@@ -899,7 +900,7 @@ describe('E2E Turning Point', { concurrency: false }, () => {
     });
 
     it('Gemeinde: beitreten, spenden, Gemeinde-Ansehen; Notgabe ist ohne Not und Ansehen begründet gesperrt', async () => {
-      await L.nav(v, 'society');
+      await L.nav(v, 'society'); await closeAll(v);
       await v.page.waitForSelector('#civicBox [data-ctab=parish]');
       await v.page.click('#civicBox [data-ctab=parish]');
       await v.page.waitForSelector('#civicBox [data-parish-join="evangelisch"]:not([disabled])');
@@ -918,7 +919,7 @@ describe('E2E Turning Point', { concurrency: false }, () => {
 
     it('Feiern mit der Familie: Trauerfeier für einen Angehörigen (aus dem Spielstand), Gebühr in die Kasse, Eintrag in der Familienchronik', async () => {
       await app.sql("UPDATE characters SET state = JSON_SET(state, '$.flags.civic', JSON_OBJECT('funerals', JSON_ARRAY(JSON_OBJECT('id', 1, 'name', 'Opa Willi', 'day', 5)), 'will', 0, 'nextId', 1)) WHERE user_id = ? AND status = 'alive'", [vid]);
-      await L.reloadGame(v); await L.nav(v, 'society');
+      await L.reloadGame(v); await L.nav(v, 'society'); await closeAll(v);
       await v.page.click('#civicBox [data-ctab=parish]');
       await v.page.waitForSelector('#civicBox [data-parish-cer="funeral"]');
       await v.page.click('#civicBox [data-parish-cer="funeral"]'); await confirmYes(v);
@@ -929,14 +930,14 @@ describe('E2E Turning Point', { concurrency: false }, () => {
     });
 
     it('Stiftung: ohne Ansehen gesperrt, mit gutem Ruf gründen – das Vermögen ist gebunden, der Titel „Stifter“ erscheint', async () => {
-      await L.nav(v, 'society');
+      await L.nav(v, 'society'); await closeAll(v);
       await v.page.click('#civicBox [data-ctab=foundation]');
       await v.page.waitForSelector('#civicBox [data-fd-found]');
       assert.equal(await v.page.locator('#civicBox [data-fd-found]').isDisabled(), true, 'Ansehen reicht noch nicht');
       assert.match(await text(v, '#civicBox'), /Ansehen/);
       await app.sql('INSERT INTO reputation (user_id, rel, trade, civic, office, scandal, score, lvl, decay_day, updated_at) VALUES (?, 60, 40, 40, 30, 0, 45, 2, ?, ?) ON DUPLICATE KEY UPDATE rel = 60, trade = 40, civic = 40, office = 30, scandal = 0, score = 45, lvl = 2, decay_day = VALUES(decay_day), updated_at = VALUES(updated_at)', [vid, Math.floor(Date.now() / 86400000), Date.now()]);
       await L.setMoney(app, 'alice_e2e', 5000000);
-      await L.reloadGame(v); await L.nav(v, 'society');
+      await L.reloadGame(v); await L.nav(v, 'society'); await closeAll(v);
       await v.page.click('#civicBox [data-ctab=foundation]');
       await v.page.waitForSelector('#civicBox [data-fd-found]:not([disabled])');
       await v.page.fill('#fd-name', 'Bürgerstiftung E2E');
@@ -973,7 +974,7 @@ describe('E2E Turning Point', { concurrency: false }, () => {
     it('Englische Oberfläche: Reiter, Beschriftungen und Fehlermeldungen sind übersetzt', async () => {
       await v.page.goto(`${app.base}/lang/en?next=/play`);
       await v.page.waitForSelector('#hud .hud-id');
-      await L.nav(v, 'society');
+      await L.nav(v, 'society'); await closeAll(v);
       await v.page.waitForSelector('#civicBox [data-ctab=clubs]');
       const German = /\b(Mitglied|Spende|Kasse|Beitrag|Notgabe|Vorsitz|Verein|Gemeinde|Titel|Gründ|Ausschüttung|Vermögen|Zustift|Voraussetzung|Stimmengewicht|Wahl)\w*/;
       const seen = async (tab, re) => {
@@ -994,7 +995,7 @@ describe('E2E Turning Point', { concurrency: false }, () => {
 
     it('Admin: Seite „Gesellschaft“ zeigt Vereine, Gemeinden, Stiftungen und Titel; Einstellungsgruppe lädt', async () => {
       const ad = await L.newPlayer(browser, app, 'admin2');
-      await L.login(ad, { login: 'e2eadmin', password: 'e2e-admin-pass-1' });
+      if (adminState) { await ad.ctx.close(); ad.ctx = await browser.newContext({ storageState: adminState }); ad.page = await ad.ctx.newPage(); ad.page.setDefaultTimeout(8000); } else await L.login(ad, { login: 'e2eadmin', password: 'e2e-admin-pass-1' });
       const r = await ad.page.goto(`${app.base}/admin/civic`); assert.equal(r.status(), 200);
       const body = await text(ad, 'body');
       assert.match(body, /Chor Frohsinn E2E/); assert.match(body, /Bürgerstiftung E2E/); assert.match(body, /Evangelische Gemeinde/); assert.match(body, /Stifter/);
@@ -1003,7 +1004,7 @@ describe('E2E Turning Point', { concurrency: false }, () => {
       await ad.ctx.close();
     });
 
-    async function closeAll(pl) { await L.closeModals(pl); }
+    async function closeAll(pl) { await L.closeModals(pl); } // der Vereinsdialog öffnet sich nach jeder Aktion neu: darum vor jedem Schritt aufräumen
   });
 
   describe('Englische Oberfläche', () => {
