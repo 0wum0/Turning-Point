@@ -372,8 +372,10 @@ function arrive(ctx, route, c) {
 /** Tagesablauf aller Routen (aus der Engine, nach den Betrieben). */
 function daily(ctx) {
   const { world, state } = ctx;
-  const t = state.trade; if (!t || !t.routes || !t.routes.length) return;
+  const t = state.trade; if (!t) return;
   if (!T.C().on || T.C().trade.enabled === false) return;
+  if (!ctx.offline && state.day % 30 === 11 && !protectedNow(state)) hintUpdate(world, state);
+  if (!t.routes || !t.routes.length) return;
   const tr = T.C().trade; const idx = world.idx(yearOf(state.day, state.startYear));
   for (const route of t.routes) {
     const c = (state.companies || []).find((x) => x.id === route.firm);
@@ -392,6 +394,17 @@ function daily(ctx) {
       depart(ctx, route, c);
     }
   }
+}
+
+/** „Was jetzt?“: etwa einmal im Spielmonat nachsehen, ob sich für einen Betrieb ohne Route gerade ein Preisunterschied nebenan lohnt. */
+function hintUpdate(world, state) {
+  const t = ensure(state); delete t.hint;
+  if (t.routes.length) return;
+  const c = tradeFirms(world, state).filter((x) => x.cash > 0)[0]; if (!c) return;
+  try {
+    const s = suggest(world, state, c, { budget: c.cash * 0.6, maxKm: 400, limit: 1 })[0];
+    if (s && s.net > 0) t.hint = { day: state.day, firm: c.id, good: s.good, goodName: s.goodName, from: s.from, fromName: s.fromName, to: s.to, toName: s.toName, gapPct: s.gapPct, net: s.net, qty: s.qty };
+  } catch (_) { /* ohne Hinweis */ }
 }
 
 /* ------------------------------------------------------------------ Beste Route finden ------------------------------------------------------------------ */
@@ -468,7 +481,7 @@ function view(world, state) {
         made: { trips: r.made.trips, lost: r.made.lost, profit: r.made.profit, last: r.made.last },
       };
     }),
-    log: t.log.slice(0, 20), stats: t.stats,
+    log: t.log.slice(0, 20), stats: t.stats, hint: t.hint && state.day - t.hint.day < 60 ? t.hint : null,
   };
 }
 

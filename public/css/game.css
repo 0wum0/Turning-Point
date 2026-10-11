@@ -550,3 +550,21 @@ html { scroll-padding-top: calc(var(--hud-h, 62px) + 10px); }
 @media (max-width: 700px) { .epi-actions { grid-template-columns: 1fr; } }
 .season-card .btn[data-season-guide] { white-space: nowrap; flex: none; }
 [data-harvest-chip] { white-space: normal !important; display: inline-block; line-height: 1.5; }
+
+/* Handel & Transport */
+.route .tl { display: flex; align-items: center; gap: .6rem; }
+.route .tl-step { display: inline-flex; flex-direction: column; align-items: center; gap: .15rem; font-size: .72rem; color: var(--text-dim); min-width: 3.4rem; }
+.route .tl-step.on { color: var(--accent-2); }
+.route .tl-bar { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .2rem; align-items: center; }
+.route .tl-bar .bar { width: 100%; }
+.rt-pick .btn.on { border-color: var(--accent); color: var(--accent-2); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.rt-places { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.mm { width: 100%; max-height: 300px; display: block; border-radius: 14px; background: color-mix(in srgb, var(--surface-2) 70%, transparent); border: 1px solid var(--border); cursor: crosshair; touch-action: manipulation; }
+.mm-land { fill: color-mix(in srgb, var(--accent) 14%, transparent); stroke: color-mix(in srgb, var(--accent) 45%, transparent); stroke-width: 1.2; }
+.mm-pt circle { fill: var(--text-dim); opacity: .55; }
+.mm-line { stroke: var(--accent-2); stroke-width: 2.4; stroke-dasharray: 6 4; }
+.mm-a circle { fill: var(--good); stroke: var(--surface); stroke-width: 2; } .mm-b circle { fill: var(--bad); stroke: var(--surface); stroke-width: 2; }
+.mm-a text, .mm-b text { fill: var(--text); font-size: 12px; font-weight: 700; paint-order: stroke; stroke: var(--surface); stroke-width: 3px; }
+.chips { display: flex; flex-wrap: wrap; gap: .35rem; }
+#trPol .pol { border: 1px solid var(--border); border-radius: 14px; padding: .65rem .8rem; background: color-mix(in srgb, var(--surface-2) 70%, transparent); }
+@media (max-width: 520px) { .route .tl-step span { display: none; } .route .tl-step { min-width: 1.6rem; } }

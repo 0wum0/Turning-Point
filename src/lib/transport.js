@@ -246,7 +246,7 @@ function trimEval(e, world, state) {
     options: q.options.map((o) => ({ key: o.key, name: o.name, icon: o.icon, ok: o.ok, why: o.why, days: o.days, speed: o.speed, perUnit: Math.round(o.perUnit.total * e.idx * 100) / 100, note: o.note })),
     buyPrice: e.buyPrice, sellPrice: e.sellPrice, unitBuy: e.unitBuy, unitSell: e.unitSell, gapPct: e.gapPct, impA: e.impA, impB: e.impB,
     money: { cargo: e.cargo, freight: e.freight, toll: e.toll, port: e.port, duty: e.duty, insurance: e.insurance, costs: e.costs, revenueRaw: e.revenueRaw, revenue: e.revenue, margin: e.margin, marginRaw: e.marginRaw, squeeze: e.squeeze, capMargin: e.capMargin, overhead: e.overhead, expLoss: e.expLoss, net: e.net, perDay: e.perDay, saved: e.saved },
-    roiYear: e.roiYear, risks: e.riskView, env: q.env, tariffPct: m.tariffPct, tollPct: m.tollPct,
+    roiYear: e.roiYear, risks: e.riskView, env: q.env, tariffPct: m.tariffPct, tollPct: m.tollPct, canSmuggle: m.perUnit.evadable > 0, evadable: Math.round(m.perUnit.evadable * e.idx * e.units), protectedNow: TR.protectedNow(state),
   };
 }
 

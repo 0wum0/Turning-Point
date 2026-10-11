@@ -27,7 +27,7 @@ router.get('/mine', wrap(async (req, res) => res.json({ ok: true, ...(await supp
 router.get('/partners', wrap(async (req, res) => res.json({ ok: true, ...(await supply.partners(uid(req), int(req.query.companyId), String(req.query.good || ''), req.query.side === 'buyer' ? 'buyer' : 'supplier')) })));
 router.post('/offer', wrap(async (req, res) => {
   const b = req.body || {};
-  const id = await supply.offer(uid(req), { role: b.role, myCompany: b.myCompany, otherUser: b.otherUser, otherCompany: b.otherCompany, good: String(b.good || ''), qty: b.qty, pricePct: b.pricePct, termDays: b.termDays, auto: !!b.auto });
+  const id = await supply.offer(uid(req), { role: b.role, myCompany: b.myCompany, otherUser: b.otherUser, otherCompany: b.otherCompany, good: String(b.good || ''), qty: b.qty, pricePct: b.pricePct, termDays: b.termDays, auto: !!b.auto, freightMode: b.freightMode === 'seller' ? 'seller' : 'buyer', carrierOffer: b.carrierOffer ? int(b.carrierOffer) : 0 });
   res.json({ ok: true, id });
 }));
 router.post('/respond', wrap(async (req, res) => { const r = await supply.respond(uid(req), int(req.body.id), !!req.body.accept); await fresh(req, res, r); }));

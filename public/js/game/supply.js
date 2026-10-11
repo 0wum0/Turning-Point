@@ -31,6 +31,10 @@ function needRow(n, c, v) {
   if (n.byContract > 0.005) chips.push(html`<span class="chip accent" title="Geliefert nach Liefervertrag">${icon('handshake')} Vertrag</span>`);
   if (n.byWholesale > 0.005) chips.push(html`<span class="chip" title="Beim Großhandel gekauft (etwas teurer)">${icon('store')} Großhandel</span>`);
   if (n.missing > 0.005) chips.push(html`<span class="chip bad" title="Diese Menge fehlt, die Leistung sinkt">${icon('circle-alert')} fehlt</span>`);
+  for (const dl of ((c.deals && c.deals.buys) || []).filter((b) => b.good === n.good && b.km > 0)) {
+    if (dl.lag > 0) chips.push(html`<span class="chip warn" title="Die erste Lieferung ist noch unterwegs">${icon('truck')} <span>unterwegs</span> <b>${dl.lag}</b> <span>${dl.lag === 1 ? 'Tag' : 'Tage'}</span></span>`);
+    else chips.push(html`<span class="chip" title="Fracht je Einheit (${dl.fmode === 'seller' ? 'frei Haus: der Verkäufer zahlt' : 'ab Werk: du zahlst'})">${icon('truck')} <span>Fracht</span> <b>${dl.fmode === 'seller' ? '0' : price({ view: v }, dl.freight)}</b> <span>· ${dl.km} km</span></span>`);
+  }
   return html`<div class="sup-need">
     <div class="sup-need-top"><span class="nm">${icon(n.icon || 'package')} <b>${n.name}</b></span><span class="q">${qty(n.need, n.unit)} <span class="dim">pro Tag</span></span></div>
     <div class="sup-need-bot"><span class="chips">${chips}</span><span class="cost mono">${n.cost > 0 ? money(n.cost, v.currency) : '–'}</span>
@@ -40,11 +44,17 @@ function needRow(n, c, v) {
 
 const daysLeft = (d) => Math.max(0, Math.round(d.daysLeft == null ? d.term || 0 : d.daysLeft));
 /** Eine Vertragszeile: wer liefert wem was. buy = ich kaufe. */
+/** Fracht eines Vertrags über mehrere Städte: Entfernung, Fracht je Einheit, wer zahlt, Lieferzeit. */
+function freightLine(x, ctx) {
+  const km = x.km || 0; if (!(km > 0)) return '';
+  const fr = x.freight != null ? x.freight : x.freightReal || 0; const fm = x.fmode || x.freightMode || 'buyer'; const lag = x.lag != null ? x.lag : x.lagLeft || 0; const days = x.lagDays || 0;
+  return html`<div class="dim">${icon('truck')} <b>${km}</b> <span>km</span>${days ? html` · <span>Lieferzeit</span> <b>${days}</b> <span>${days === 1 ? 'Tag' : 'Tage'}</span>` : ''}${fr > 0 ? html` · <span>Fracht</span> <b>${price(ctx, fr)}</b> <span>je</span> <span>${x.unit}</span>` : ''} · <span>${fm === 'seller' ? 'frei Haus (Verkäufer zahlt)' : 'ab Werk (Käufer zahlt)'}</span>${x.carrier ? html` · <span>Frachtführer</span> <span data-i18n-skip>${x.carrier.name}</span>` : ''}${lag > 0 ? html` · <span class="chip warn">${icon('truck')} <span>noch unterwegs:</span> <b>${lag}</b> <span>${lag === 1 ? 'Tag' : 'Tage'}</span></span>` : ''}</div>`;
+}
 function dealLine(x, buy, ctx) {
   const who = x.other || x.otherName || 'Spieler';
   const firm = x.otherFirm;
   return html`<div class="grow small"><div><b>${buy ? 'Du kaufst' : 'Du verkaufst'}</b> ${qty(x.qty, x.unit)} <b>${x.name || x.goodName}</b> <span>pro Tag ${buy ? 'von' : 'an'}</span> <span data-i18n-skip>${who}${firm ? ` (${firm})` : ''}</span> ${repBadge(x.otherUser || x.sellerId)}</div>
-    <div class="dim"><span>${price(ctx, x.priceReal)}</span> <span>je</span> <span>${x.unit}</span> · ${x.status === 'offer' ? html`<span>${`${x.term} Tage`}</span>` : (x.daysLeft != null || x.term) ? html`<span>${`noch ${daysLeft(x)} Tage`}</span>` : ''}${x.auto ? html` · <span>verlängert sich</span>` : ''}${x.fill != null && x.fill < 0.98 && x.status !== 'offer' ? html` · <span>${`liefert zu ${Math.round(x.fill * 100)} %`}</span>` : ''}</div></div>`;
+    <div class="dim"><span>${price(ctx, x.priceReal)}</span> <span>je</span> <span>${x.unit}</span> · ${x.status === 'offer' ? html`<span>${`${x.term} Tage`}</span>` : (x.daysLeft != null || x.term) ? html`<span>${`noch ${daysLeft(x)} Tage`}</span>` : ''}${x.auto ? html` · <span>verlängert sich</span>` : ''}${x.fill != null && x.fill < 0.98 && x.status !== 'offer' ? html` · <span>${`liefert zu ${Math.round(x.fill * 100)} %`}</span>` : ''}</div>${freightLine(x, ctx)}</div>`;
 }
 const dealRow = (d, buy, ctx) => html`<div class="firm sup-deal">${dealLine(d, buy, ctx)}<span class="deal-st">${statusChip(d)}</span><button class="btn sm ghost" data-contract-cancel="${d.id}" title="Vertrag kündigen">${icon('x')}</button></div>`;
 
@@ -81,7 +91,7 @@ function tradeOptions(c, v) {
   const services = goodsOn && s ? s.outputs.filter((o) => o.service) : [];
   return { goodsOn, needs, sellable, services };
 }
-const statusChip = (d) => (d.fill != null && d.fill < 0.98 ? html`<span class="chip warn">liefert zu ${Math.round(d.fill * 100)} %</span>` : html`<span class="chip good">${icon('circle-check')} läuft</span>`);
+const statusChip = (d) => (d.lag > 0 ? html`<span class="chip warn">${icon('truck')} <span>unterwegs</span></span>` : d.fill != null && d.fill < 0.98 ? html`<span class="chip warn">liefert zu ${Math.round(d.fill * 100)} %</span>` : html`<span class="chip good">${icon('circle-check')} läuft</span>`);
 
 export function contractsSection(c, v, ctx) {
   const deals = c.deals || { buys: [], sells: [] };
@@ -171,7 +181,8 @@ async function openPartners(ctx, companyId, good, side, after) {
   body.innerHTML = html`<p class="small"><b>${d.good}</b>: <span>${supplier ? 'Diese Betriebe stellen die Ware her.' : 'Diese Betriebe brauchen die Ware.'}</span> <span>Im Vertrag legt ihr Menge, Preis und Laufzeit fest.</span> <span>Richtpreis:</span> <b class="mono">${price(ctx, d.baseReal)}</b> <span>je</span> <span>${d.unit}</span></p>
     <div class="stack" style="--gap:.5rem">${d.list.length ? d.list.map((p, i) => html`<div class="firm" style="align-items:flex-start"><div class="grow small"><b data-i18n-skip>${p.firm}</b> ${p.sameCity ? html`<span class="chip good">in deiner Stadt</span>` : ''}
       <div class="dim"><span data-i18n-skip>${p.city} · ${p.owner}</span> ${repBadge(p.userId)}</div>
-      <div class="dim"><span>${supplier ? 'Kann etwa liefern:' : 'Braucht etwa:'}</span> ${qty(p.units, d.unit)} <span>pro Tag</span>${p.deals ? html` · <span>${p.deals} Verträge bisher</span>` : html` · <span>neu am Markt</span>`}${p.linked ? html` · <span>Vertrag besteht</span>` : ''}</div></div>
+      <div class="dim"><span>${supplier ? 'Kann etwa liefern:' : 'Braucht etwa:'}</span> ${qty(p.units, d.unit)} <span>pro Tag</span>${p.deals ? html` · <span>${p.deals} Verträge bisher</span>` : html` · <span>neu am Markt</span>`}${p.linked ? html` · <span>Vertrag besteht</span>` : ''}</div>
+      ${p.km > 0 ? html`<div class="dim">${icon('truck')} <b>${p.km}</b> <span>km</span> · <span>Lieferzeit</span> <b>${p.days}</b> <span>${p.days === 1 ? 'Tag' : 'Tage'}</span> · <span>Fracht</span> <b>${price(ctx, p.freight)}</b> <span>je ${d.unit}</span>${p.shipMode ? html` · ${p.shipMode}` : ''}</div>` : ''}</div>
       <button class="btn sm primary" data-pick="${i}" ${p.linked ? 'disabled' : ''}>Vertrag anbieten</button></div>`) : html`<div class="alert info small">${icon('info')}<div>${d.note || 'Gerade bietet niemand in deiner Region diese Ware an. Der Großhandel springt ein, solange „Automatisch einkaufen“ an ist.'}</div></div>`}</div>`.__raw;
   on(dlg.el, 'click', '[data-pick]', (e, t) => { const p = d.list[Number(t.dataset.pick)]; dlg.close(); openOffer(ctx, c, p, d, supplier, need, after); });
 }
@@ -185,19 +196,26 @@ function openOffer(ctx, c, p, d, supplier, need, after) {
     <div class="field"><label for="of-p">Preis: <b id="of-pv"></b></label><input id="of-p" type="range" min="${d.min}" max="${d.max}" step="1" value="100"></div>
     <div class="small dim" id="of-sum"></div>
     ${d.band && d.band.pad ? html`<div class="small dim mt">${icon('badge-check')} <span>Dein Ansehen</span> „${d.band.name}“ <span>${d.band.pad > 0 ? 'weitet den erlaubten Preisrahmen' : 'verengt den erlaubten Preisrahmen'}:</span> ${d.min}–${d.max} %</div>` : ''}
+    ${p.km > 0 ? html`<div class="card flat mt small" id="of-fr"><div>${icon('truck')} <b>${p.km}</b> <span>km</span> · <span>Lieferzeit</span> <b>${p.days}</b> <span>${p.days === 1 ? 'Tag' : 'Tage'}</span> · ${term('Fracht')} <b>${price(ctx, p.freight)}</b> <span>je ${d.unit}</span></div>
+      <div class="field mt"><label for="of-fm">Wer zahlt die Fracht?</label><select id="of-fm"><option value="buyer">Der Käufer (ab Werk)</option><option value="seller">Der Verkäufer (frei Haus)</option></select></div>
+      ${(d.carriers || []).length ? html`<div class="field"><label for="of-car">Frachtführer</label><select id="of-car"><option value="">Standardtarif</option>${d.carriers.map((c) => html`<option value="${c.id}" data-pct="${c.pct}">${c.firm} · ${c.city} · ${c.pct} %</option>`)}</select></div>` : ''}
+      <div class="dim mt"><span>Die Fracht wird beim Abschluss festgelegt. Die erste Lieferung kommt nach der Lieferzeit an.</span></div></div>` : ''}
     <label class="sup-auto mt"><input type="checkbox" id="of-a" checked><span><b>Automatisch verlängern</b><br><span class="dim small">Der Vertrag läuft nach Ablauf von selbst weiter, bis jemand kündigt.</span></span></label>
     <div class="row end mt"><button class="btn ghost" data-close="no">Abbrechen</button><button class="btn primary" id="of-go">Angebot senden</button></div>`);
   const q = dlg.el.querySelector('#of-q'); const pr = dlg.el.querySelector('#of-p');
   const upd = () => {
     const pct = Number(pr.value); const real = d.baseReal * pct / 100; const amount = Number(q.value) || 0;
     dlg.el.querySelector('#of-pv').textContent = `${pct} % = ${price(ctx, real)}`;
-    const wh = d.baseReal * (supplier ? 1.25 : 0.8); const save = (supplier ? wh - real : real - wh) * amount * k(ctx);
+    const fm = dlg.el.querySelector('#of-fm'); const car = dlg.el.querySelector('#of-car');
+    const disc = car && car.value ? Number(car.selectedOptions[0].dataset.pct) / 100 : 1;
+    const fr = (p.km > 0 ? p.freight * disc : 0); const buyerPays = !fm || fm.value === 'buyer';
+    const wh = d.baseReal * (supplier ? 1.25 : 0.8); const save = (supplier ? wh - real - (buyerPays ? fr : 0) : real - (buyerPays ? 0 : fr) - wh) * amount * k(ctx);
     dlg.el.querySelector('#of-sum').innerHTML = html`<span>${supplier ? 'Im Großhandel zahlst du etwa' : 'Der Großhandel zahlt dir nur etwa'}</span> <b class="mono">${price(ctx, wh)}</b> <span>je</span> <span>${d.unit}</span>. ${save > 0 ? html`<span>${supplier ? 'Mit dem Vertrag sparst du' : 'Mit dem Vertrag verdienst du'}</span> <b class="pos">${money(save, ctx.view.currency)}</b> <span>pro Tag mehr.</span>` : html`<span class="neg">Dieser Preis ist schlechter als der Großhandel.</span>`}`.__raw;
   };
   dlg.el.addEventListener('input', upd); upd();
   dlg.el.querySelector('#of-go').onclick = async () => {
     try {
-      await api('POST', '/api/supply/offer', { role: supplier ? 'buy' : 'sell', myCompany: c.id, otherUser: p.userId, otherCompany: p.companyId, good: d.key, qty: Number(q.value), pricePct: Number(pr.value), termDays: Number(dlg.el.querySelector('#of-t').value), auto: dlg.el.querySelector('#of-a').checked });
+      await api('POST', '/api/supply/offer', { role: supplier ? 'buy' : 'sell', myCompany: c.id, otherUser: p.userId, otherCompany: p.companyId, good: d.key, qty: Number(q.value), pricePct: Number(pr.value), termDays: Number(dlg.el.querySelector('#of-t').value), auto: dlg.el.querySelector('#of-a').checked, freightMode: (dlg.el.querySelector('#of-fm') || {}).value || 'buyer', carrierOffer: Number((dlg.el.querySelector('#of-car') || {}).value) || 0 });
       toast('Das Angebot ist unterwegs. Du bekommst Post, sobald geantwortet wird.'); dlg.close(); if (after) after();
     } catch (e) { toast(e.message, 'bad'); }
   };

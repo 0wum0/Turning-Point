@@ -190,6 +190,7 @@ function present(world, state, user, now) {
       };
     }),
     goods: goodsView(world, state, year),
+    trade: require('./trade').view(world, state),
     found: biz.foundOptions(world, state),
     econ: econView(world, state, year, flows),
     politics: (() => {

@@ -12,5 +12,6 @@ export const OUTLINE = [
 const LON0 = 5.6; const LAT1 = 55.3; const K = 62; // 1° Breite = 62 px, Länge × cos(51°)
 const COS = Math.cos((51 * Math.PI) / 180);
 export const project = (lon, lat) => [(lon - LON0) * COS * K, (LAT1 - lat) * K];
+export const unproject = (x, y) => [x / (COS * K) + LON0, LAT1 - y / K];
 export const VIEW = { w: Math.round((15.2 - LON0) * COS * K), h: Math.round((LAT1 - 47.1) * K) };
 export const outlinePath = () => OUTLINE.map((p, i) => `${i ? 'L' : 'M'}${project(p[0], p[1]).map((v) => v.toFixed(1)).join(' ')}`).join('') + 'Z';

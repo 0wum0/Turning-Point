@@ -7,7 +7,7 @@
  */
 
 /** Marken, die die Oberfläche melden darf (Seitenbesuche und Aktionen, die der Spielstand nicht selbst festhält). */
-const SEEN_KEYS = ['newspaper', 'map', 'friend', 'marketOffer', 'vote', 'glossary', 'prices', 'court', 'season'];
+const SEEN_KEYS = ['newspaper', 'map', 'friend', 'marketOffer', 'vote', 'glossary', 'prices', 'court', 'season', 'trade', 'route'];
 /** Nach so vielen Spieljahren öffnet sich alles von selbst (wer so lange spielt, kennt das Spiel). */
 const OPEN_AFTER_YEARS = 6;
 
@@ -53,6 +53,7 @@ const QUESTS = [
   { id: 'market', title: 'Ein erstes Angebot auf dem Markt einstellen', why: 'Auf dem Markt handelst du mit anderen echten Spielern – Häuser, Firmen, Gelegenheiten.', tab: 'social', spot: 'market', reward: { efs: 6 }, done: (s, q) => !!q.seen.marketOffer },
   { id: 'vote', title: 'Bei einer Wahl abstimmen oder kandidieren', why: 'Bürgermeister, Landrat, Kanzler: Ämter werden von den Spielern gewählt. Du kannst mitentscheiden.', tab: 'social', spot: 'elections', reward: { coins: 1 }, done: (s, q) => !!q.seen.vote || !!(s.politics && (s.politics.term || Object.values(s.politics.completed || {}).some((n) => n > 0))) },
   { id: 'winter', title: 'Bereite dich auf den Winter vor', why: 'Die Jahreszeiten bestimmen Heizkosten, Krankheiten und Geschäfte. Wirf einen Blick auf den Jahreszeiten-Check und halte ein Polster in Höhe deines Startgelds bereit – so überstehst du auch einen harten Winter oder eine Seuche.', tab: 'overview', spot: 'season', reward: { efs: 5 }, done: (s, q, k) => !!q.seen.season && s.money >= (k.startMoney || 4000) },
+  { id: 'route', title: 'Richte deine erste Handelsroute ein', why: 'Waren sind nicht überall gleich teuer. Eine Handelsroute kauft sie dort, wo sie billig sind, und verkauft sie dort, wo sie mehr bringen – automatisch. „Beste Route finden“ rechnet dir vorher alles vor.', tab: 'trade', spot: 'trade', reward: { efs: 6 }, done: (s, q) => !!(s.trade && ((s.trade.routes || []).length || (s.trade.stats && s.trade.stats.trips))) || !!q.seen.route },
   { id: 'court', title: 'Lerne das Gericht kennen', why: 'Wer dir schadet, hinterlässt Spuren. Im Bereich „Recht & Gericht“ siehst du, wie Beweise, Anzeige, Vergleich und Strafen funktionieren – bevor du sie brauchst.', tab: 'society', spot: 'court', reward: { efs: 6 }, done: (s, q) => !!q.seen.court },
 ];
 const QUEST_IDS = QUESTS.map((x) => x.id);
@@ -190,6 +191,10 @@ function advise(v, nextQuest, opts) {
       cta: vac ? { kind: 'act', label: `Impfen (${dm(pr.vaccine.cost, cur)})`, name: 'epiProtect', input: { what: 'vaccine' } } : { kind: 'act', label: `Hygienepaket (${dm(pr.hygiene.cost, cur)})`, name: 'epiProtect', input: { what: 'hygiene' } } });
   }
   if (se && se.on && se.key === 'herbst' && v.status === 'alive' && v.housing && v.housing.type !== 'street' && v.flows && v.money < v.flows.expense * 30 && v.flows.expense > 0) add(48, { id: 'winter-prep', level: 'info', icon: 'cloud-hail', title: 'Der Winter naht – leg ein Polster an', why: 'Im Winter kostet Heizen mehr und Erkältungen häufen sich. Rücklagen für etwa 30 Tage Fixkosten machen dich sicher.', cta: { kind: 'go', label: 'Jahreszeiten-Check', tab: 'overview', spot: 'season' } });
+  const th = v.trade && v.trade.hint;
+  if (th && v.status === 'alive' && !(v.trade.routes || []).length) add(31, { id: 'trade-gap', level: 'good', icon: 'route', title: `${th.goodName} ist in ${th.toName} viel teurer als in ${th.fromName}`, why: `Der Preisunterschied beträgt rund ${Math.round(th.gapPct)} %. Eine Handelsroute zwischen beiden Städten brächte nach Fracht und Gebühren etwa ${dm(th.net, cur)} Gewinn je Fahrt.`, cta: { kind: 'go', label: 'Route ansehen', tab: 'trade', spot: 'trade' } });
+  const idleRoute = (v.trade && v.trade.routes || []).find((r) => r.status === 'stopped' && !r.locked && !r.trip);
+  if (idleRoute && v.status === 'alive') add(29, { id: 'trade-idle', level: 'info', icon: 'truck', title: `Deine Route ${idleRoute.goodName} steht still`, why: `Die Fahrzeuge von ${idleRoute.fromName} nach ${idleRoute.toName} sind angehalten und bringen nichts ein. Starte die Route wieder oder lösche sie.`, cta: { kind: 'go', label: 'Zu den Routen', tab: 'trade', spot: 'trade' } });
   const kids = (v.children || []).filter((k) => k.pendingSchool || k.pendingPath || k.status === 'runaway');
   if (kids.length) add(75, { id: 'kids', level: 'warn', icon: 'baby', title: kids.length === 1 ? `Bei ${kids[0].name} steht eine Entscheidung an` : 'Bei deinen Kindern stehen Entscheidungen an', why: 'Schule und Ausbildung deiner Kinder entscheiden, was später aus ihnen wird.', cta: { kind: 'go', label: 'Zur Familie', tab: 'family' } });
   const short = (v.companies || []).filter((c) => !c.abandoned && c.supply && c.supply.status && c.supply.status !== 'ok' && c.supply.status !== 'none').sort((a, b) => a.supply.ratio - b.supply.ratio)[0];
