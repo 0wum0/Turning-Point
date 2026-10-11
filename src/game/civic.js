@@ -221,12 +221,14 @@ function titleFx(titles) {
   }
   return { vote: r2(clamp(out.vote * s, 0, num(T.maxVotePct, 4))), fee: r2(clamp(out.fee * s, 0, num(T.maxFeeDiscPct, 25))), rev: r2(clamp(out.rev * s, 0, 3)), slots: Math.min(2, Math.floor(out.slots)) };
 }
-/** Anzeigename des höchsten Titels (Rangstufe zuerst, bei Gleichstand die Reihenfolge der Liste von hinten). */
+/** Ansehen der Titelarten bei gleichem Rang (aufsteigend): welcher Titel steht hinter dem Namen? */
+const PRESTIGE = ['maezen', 'ehrenvorsitz', 'stifter', 'ehrenbuerger', 'kommerzienrat', 'altamt'];
+/** Anzeigename des höchsten Titels: erst die Rangstufe, bei Gleichstand das Ansehen der Titelart (unbekannte Titel zuletzt). */
 function bestTitle(titles) {
-  const list = titleList(); let best = null; let score = -1;
+  let best = null; let score = -1;
   for (const t of titles || []) {
-    const i = list.findIndex((d) => d.key === t.key); if (i < 0) continue;
-    const sc = num(t.rank, 1) * 100 + i;
+    if (!titleDef(t.key)) continue;
+    const sc = num(t.rank, 1) * 100 + PRESTIGE.indexOf(t.key) + 1;
     if (sc > score) { score = sc; best = t; }
   }
   return best ? titleName(best.key, best.rank) : null;

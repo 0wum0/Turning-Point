@@ -95,7 +95,7 @@ module.exports = {
     ledgerKeep: 100, ledgerDays: 120,
   },
   pot: { fx: { bildung: { kids: 0.2 }, gesundheit: { health: 1.2 }, kultur: { wellbeing: 1 }, armut: { aid: 1 } } },
-  titles: { enabled: true, list: TITLES, maxVotePct: 4, maxFeeDiscPct: 25, checkMinutes: 10, repOnGrant: 3 },
+  titles: { enabled: true, list: TITLES, maxVotePct: 4, maxFeeDiscPct: 25, checkMinutes: 10, repOnGrant: 3, revokeFromLevel: 4 },
   elections: { maxBoostPct: 6 },
   effects: { strength: 1 },
   bots: { enabled: true, join: 0.05, found: 0.012, donate: 0.03, event: 0.05, parish: 0.04, foundation: 0.004, embezzle: 0.002 },

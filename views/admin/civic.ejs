@@ -1,0 +1,48 @@
+<%- include('_top', { actions: '<a class="btn sm" href="/admin/settings/gesellschaft">Einstellungen</a>' }) %>
+<% var csrf = '<input type="hidden" name="_csrf" value="' + csrfToken + '">'; var f1 = function (n) { return (Math.round(n) / 100).toLocaleString('de-DE', { maximumFractionDigits: 0 }); }; %>
+<div class="kpis">
+  <div class="kpi"><span class="ico"><%- icon('users') %></span><label>Vereine</label><b><%= stats.clubs %></b></div>
+  <div class="kpi"><span class="ico"><%- icon('user') %></span><label>Mitgliedschaften</label><b><%= stats.members %></b></div>
+  <div class="kpi info"><span class="ico"><%- icon('piggy-bank') %></span><label>Vereinskassen (1945)</label><b><%= f1(stats.clubTreasury) %></b></div>
+  <div class="kpi <%= stats.embezzled ? 'bad' : '' %>"><span class="ico"><%- icon('skull') %></span><label>Entnommen (1945)</label><b><%= f1(stats.embezzled) %></b></div>
+  <div class="kpi"><span class="ico"><%- icon('landmark') %></span><label>Gemeinden</label><b><%= stats.parishes %></b></div>
+  <div class="kpi info"><span class="ico"><%- icon('hand-coins') %></span><label>Gemeindekassen (1945)</label><b><%= f1(stats.parishFund) %></b></div>
+  <div class="kpi good"><span class="ico"><%- icon('crown') %></span><label>Stiftungen</label><b><%= stats.foundations %></b></div>
+  <div class="kpi good"><span class="ico"><%- icon('banknote') %></span><label>Stiftungskapital (1945)</label><b><%= f1(stats.capital) %></b></div>
+  <div class="kpi"><span class="ico"><%- icon('badge-check') %></span><label>Titel</label><b><%= stats.titles %></b></div>
+</div>
+<form class="card stack mt" method="post" action="/admin/civic/enabled"><%- csrf %>
+  <div class="card-title"><%- icon('landmark') %> Gesellschaft</div>
+  <label class="check"><input type="radio" name="enabled" value="1" <%= cfg.enabled !== false ? 'checked' : '' %>> <b>An</b></label>
+  <label class="check"><input type="radio" name="enabled" value="0" <%= cfg.enabled === false ? 'checked' : '' %>> <b>Aus</b> – keine Beiträge, keine neuen Handlungen, keine Wirkungen (Bestände bleiben erhalten).</label>
+  <div class="row end"><button class="btn primary"><%- icon('check') %> Speichern</button></div>
+</form>
+<h3 class="mt">Vereine</h3>
+<div class="table-wrap"><table class="table small"><thead><tr><th>Name</th><th>Art</th><th>Stadt</th><th>Vorsitz</th><th>Mitglieder</th><th>Beitrag</th><th>Kasse</th><th>Entnommen</th><th>Feste</th><th></th></tr></thead><tbody>
+<% clubs.forEach(function(c){ %><tr><td><%= c.name %></td><td><%= c.kind %></td><td><%= c.cityName %></td><td><%= c.president || '–' %></td><td class="num"><%= c.members %></td><td class="num"><%= f1(c.fee_real) %></td><td class="num"><%= f1(c.treasury_real) %></td><td class="num <%= c.embezzled_real > 0 ? 'neg' : '' %>"><%= f1(c.embezzled_real) %></td><td class="num"><%= c.events_n %></td>
+<td class="num"><form method="post" action="/admin/civic/club/<%= c.id %>/president" class="inline"><%- csrf %><input type="number" name="user" placeholder="Konto-Nr." style="width:90px"> <button class="btn sm">Vorsitz</button></form>
+<form method="post" action="/admin/civic/club/<%= c.id %>/dissolve" class="inline"><%- csrf %><input type="text" name="note" placeholder="Grund" maxlength="160" style="width:110px"> <button class="btn sm danger" data-confirm="Verein auflösen? Das Vermögen fällt an die Stadt.">Auflösen</button></form></td></tr>
+<% }) %><% if (!clubs.length) { %><tr><td colspan="10" class="dim">Noch keine Vereine.</td></tr><% } %></tbody></table></div>
+<h3 class="mt">Gemeinden</h3>
+<div class="table-wrap"><table class="table small"><thead><tr><th>Gemeinde</th><th>Stadt</th><th>Mitglieder</th><th>Kasse (1945)</th><th></th></tr></thead><tbody>
+<% parishes.forEach(function(p){ %><tr><td><%= p.faithName %></td><td><%= p.cityName %></td><td class="num"><%= p.members %></td><td class="num"><%= f1(p.fund_real) %></td>
+<td class="num"><form method="post" action="/admin/civic/parish/<%= p.id %>/fund" class="inline"><%- csrf %><input type="number" name="delta" step="1" placeholder="± (1945)" style="width:100px"> <button class="btn sm" data-confirm="Gemeindekasse anpassen?">Anpassen</button></form></td></tr>
+<% }) %><% if (!parishes.length) { %><tr><td colspan="5" class="dim">Noch keine Gemeinden.</td></tr><% } %></tbody></table></div>
+<h3 class="mt">Stiftungen</h3>
+<div class="table-wrap"><table class="table small"><thead><tr><th>Name</th><th>Besitzer</th><th>Zweck</th><th>Stadt</th><th>Kapital (1945)</th><th>Eingebracht</th><th>Ausgeschüttet</th><th>Satz</th><th>Generation</th><th></th></tr></thead><tbody>
+<% foundations.forEach(function(f){ %><tr><td><%= f.name %></td><td><%= f.owner %></td><td><%= f.purposeName %></td><td><%= f.cityName %></td><td class="num"><%= f1(f.capital_real) %></td><td class="num"><%= f1(f.contributed_real) %></td><td class="num"><%= f1(f.paid_real) %></td><td class="num"><%= f.payout_pct %> %</td><td class="num"><%= f.generation %></td>
+<td class="num"><form method="post" action="/admin/civic/foundation/<%= f.id %>/dissolve" class="inline"><%- csrf %><input type="text" name="note" placeholder="Grund" maxlength="160" style="width:110px"> <button class="btn sm danger" data-confirm="Stiftung auflösen? Das Vermögen geht an den Besitzer zurück.">Auflösen</button></form></td></tr>
+<% }) %><% if (!foundations.length) { %><tr><td colspan="10" class="dim">Noch keine Stiftungen.</td></tr><% } %></tbody></table></div>
+<h3 class="mt">Titel</h3>
+<form class="card stack mt" method="post" action="/admin/civic" data-uid-path="/admin/civic/user/{uid}/title/{mode}"><%- csrf %>
+  <div class="row" style="flex-wrap:wrap;gap:.5rem"><input type="number" name="uid" placeholder="Konto-Nr." required style="width:110px">
+    <select name="key"><% titleDefs.forEach(function(d){ %><option value="<%= d.key %>"><%= d.name %></option><% }) %></select>
+    <input type="number" name="rank" value="1" min="1" max="3" style="width:70px" title="Rang">
+    <select name="mode"><option value="grant">verleihen</option><option value="revoke">entziehen</option></select>
+    <button class="btn primary">Ausführen</button></div>
+  <div class="dim small">Von der Spielleitung entzogene Titel werden nicht automatisch neu vergeben.</div>
+</form>
+<div class="table-wrap"><table class="table small"><thead><tr><th>Konto</th><th>Titel</th><th>Rang</th><th>Gilt für</th><th>Stadt</th><th>Stand</th><th>Vermerk</th></tr></thead><tbody>
+<% titles.forEach(function(t){ %><tr><td><%= t.username %> <span class="dim">(<%= t.user_id %>)</span></td><td><%= t.name %></td><td class="num"><%= t.rnk %></td><td><%= t.scope === 'family' ? 'Familie' : 'Person' %></td><td><%= t.cityName || '–' %></td><td><%= t.active ? 'aktiv' : 'inaktiv' %></td><td class="dim"><%= t.ref || '' %></td></tr>
+<% }) %><% if (!titles.length) { %><tr><td colspan="7" class="dim">Noch keine Titel.</td></tr><% } %></tbody></table></div>
+<%- include('_bottom') %>

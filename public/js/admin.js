@@ -47,3 +47,11 @@ document.addEventListener('change', function (e) {
   document.querySelectorAll('[data-pv]').forEach(function (e) { e.addEventListener('input', function () { page = 0; upd(); }); e.addEventListener('change', upd); });
   upd();
 })();
+
+/* Formulare, deren Pfad die Konto-Nummer enthält (Rechteprüfung der Spielleitung): data-uid-path="/admin/civic/user/{uid}/title/{mode}" */
+document.addEventListener('submit', function (e) {
+  var f = e.target.closest ? e.target.closest('form[data-uid-path]') : null; if (!f) return;
+  var uid = f.elements.uid ? String(f.elements.uid.value).replace(/\D/g, '') : ''; var mode = f.elements.mode ? f.elements.mode.value : '';
+  if (!uid) { e.preventDefault(); return; }
+  f.action = f.getAttribute('data-uid-path').replace('{uid}', uid).replace('{mode}', /^[a-z]+$/.test(mode) ? mode : '');
+});

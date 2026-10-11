@@ -463,16 +463,6 @@ function start() {
   setInterval(() => { tick().catch((e) => log.warn(`[gesellschaft] ${e.message}`)); }, 10 * 60000).unref();
 }
 
-/** Aufräumen für maintenance.js (zählt gelöschte Zeilen). */
-async function maintenance(days) {
-  let n = 0;
-  const cut = (d) => Math.max(7, Number(d) || 120);
-  for (const [t, d] of [['club_log', days.clubLogDays], ['parish_log', days.parishLogDays], ['foundation_log', days.foundationLogDays]]) {
-    const r = await db.query(`DELETE FROM ${t} WHERE created_at < NOW() - INTERVAL ? DAY LIMIT 5000`, [cut(d)]); n += r.affectedRows || 0;
-  }
-  return n;
-}
-
 /* ================================================================================================================================================
    Admin
    ================================================================================================================================================ */
@@ -534,7 +524,7 @@ async function adminDissolveFoundation(id, note) {
 }
 
 module.exports = {
-  reconcile, refresh, snapshot, checkTitles, publicOf, overview, clubDetail, evaluateTitles, grantTitle, revokeTitle, voteFactors, feeDiscount, onVerdict, beforeHeir, previewWill, afterHeir, afterRestart, tick, start, prune, maintenance,
+  reconcile, refresh, snapshot, checkTitles, publicOf, overview, clubDetail, evaluateTitles, grantTitle, revokeTitle, voteFactors, feeDiscount, onVerdict, beforeHeir, previewWill, afterHeir, afterRestart, tick, start, prune,
   adminStats, adminList, adminDissolveClub, adminSetPresident, adminParishFund, adminDissolveFoundation, gatherFacts,
   Clubs, Parish, Found, K, restitution: Clubs.restitution,
 };

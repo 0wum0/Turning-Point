@@ -33,6 +33,7 @@ const bcrypt = require('bcryptjs');
       exchange: { minGameDays: 0, minValueReal: 100 },
       goods: { contracts: { minAccountHours: 0, blockSameIp: false } },
       transport: { contracts: { blockSameIp: false } },
+      gesellschaft: { minAccountHours: 0, blockSameIp: false, minGameDays: 0, clubs: { foundMinGameDays: 0, rejoinHours: 0 }, parish: { minGameDays: 0, changeCooldownHours: 0 }, foundation: { minGameDays: 0 }, bots: { enabled: false } }, // Testkonten sind brandneu und teilen die Adresse
       elections: { minAccountHours: 0 },
       gericht: { minAccountHours: 0, blockSameIp: false, minGameDays: 0 },
       ruf: { minAccountHours: 0, blockSameIp: false, minIpo: -1 }, // Ansehen: Testkonten sind brandneu und teilen die Adresse; Börsengang ohne Mindestansehen
