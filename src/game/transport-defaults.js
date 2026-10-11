@@ -74,7 +74,7 @@ module.exports = {
     customs: { p: 0.05, delay: 1, smuggleP: 0.16, fineMult: 2, seizePct: 25 },
     strike: { p: 0.02, delayMin: 2, delayMax: 6 },
   },
-  contracts: { crossRegion: true, maxKm: 450, maxFreightSharePct: 50, carrierMinPct: 70, carrierMaxPct: 100, offerLimit: 4 },
+  contracts: { blockSameIp: true, crossRegion: true, maxKm: 450, maxFreightSharePct: 50, carrierMinPct: 70, carrierMaxPct: 100, offerLimit: 4 },
   bots: { enabled: true, routes: 2 },
   labels: { fracht: 'Fracht', spedition: 'Spedition', zoll: 'Zoll', maut: 'Maut' },
 };

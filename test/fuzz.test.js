@@ -5,7 +5,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert');
-const { runScenario, runTradeScenario, runSupplyScenario, runCityEconScenario, runRepScenario, runCourtScenario } = require('./fuzz-lib');
+const { runTransportScenario, runScenario, runTradeScenario, runSupplyScenario, runCityEconScenario, runRepScenario, runCourtScenario } = require('./fuzz-lib');
 
 const report = (failures) => failures.map((f) => `Seed ${f.seed}: ${f.msg}\n  Spur: ${(f.trace || []).slice(-6).join(' | ')}`).join('\n');
 
@@ -74,5 +74,15 @@ test('Fuzz: Gericht – Spuren, Urteile, Sanktionen, Geld und Sperren bleiben in
   for (const seed of [71, 72, 73, 74]) {
     const failures = runCourtScenario(seed, 300);
     assert.deepStrictEqual(failures, [], report(failures));
+  }
+});
+
+test('Fuzz: Handelsrouten – Kasse stimmt auf den Cent, Gewinn unter dem Rendite-Deckel, Fahrten wohlgeformt, deterministisch', () => {
+  for (const seed of [81, 82, 83]) {
+    const a = runTransportScenario(seed, 10);
+    assert.deepStrictEqual(a.failures, [], report(a.failures));
+    const b = runTransportScenario(seed, 10);
+    assert.deepStrictEqual(a.digest, b.digest, 'gleicher Seed, gleicher Verlauf');
+    assert.ok(a.digest.length >= 30);
   }
 });

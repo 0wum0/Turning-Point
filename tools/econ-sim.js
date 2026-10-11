@@ -23,6 +23,7 @@ const arg = (k, d) => { const i = argv.indexOf(`--${k}`); return i >= 0 ? argv[i
 const YEARS = Number(arg('years', 85));
 const SEED = Number(arg('seed', 7));
 const ONLY = String(arg('only', 'employee,landlord0,landlord,owner,mixed')).split(',');
+if (arg('trade', 'on') === 'off') require('../src/settings').DEFAULTS.transport.trade.enabled = false; // --trade off: ohne Handelsrouten (Vergleichswert)
 const JSON_OUT = argv.includes('--json');
 // Stadtwirtschaft: off = ohne Stadtindizes (wie vor Schritt 2), era = nur deterministischer Epochenfaktor, live = Indizes folgen Nachfrage/Angebot der Simulation
 const CITY = String(arg('city', 'live'));
@@ -126,7 +127,7 @@ function makeRun(name, pkey, policy) {
     }
   }
   const year = yearOf(s.day, s.startYear);
-  rows.push({ ...snap(year), final: true, status: s.status, reason: s.death && s.death.reason });
+  { const st = s.trade && s.trade.stats; const idxE = w.idx(year); rows.push({ ...snap(year), final: true, status: s.status, reason: s.death && s.death.reason, trips: st ? st.trips : 0, tradeProfit: st ? st.profit / idxE / 100 : 0, tradeOver: st ? (st.over || 0) / idxE / 100 : 0, tradeLost: st ? st.lost : 0 }); }
   return { name, rows, state: s, repLog };
 }
 
@@ -202,7 +203,48 @@ function runBiz(c, { maxFirms }) {
   if (s.companies.length && !s.occupation) act('bizWork', { id: s.companies[0].id });
 }
 
+/** Handel & Transport: freie Mittel des Handelsbetriebs in Routen anlegen (die besten Vorschläge der Umgebung), nur Überschüsse über der Ladung abholen. */
+function runTrade(c, { collect = true } = {}) {
+  const { s, act, w: W, year, idx } = c;
+  const TRD = require('../src/game/trade');
+  const firms = TRD.tradeFirms(W, s);
+  for (const f of firms) {
+    const mine = (s.trade.routes || []).filter((r) => r.firm === f.id);
+    if (mine.length < TRD.routesPerFirm(W, f) && f.cash > 400 * idx && s.day % 91 === 0) {
+      const sug = TRD.suggest(W, s, f, { budget: f.cash * 0.6, limit: 3 }).filter((x) => !mine.some((r) => r.good === x.good && r.from === x.from && r.to === x.to));
+      if (sug[0]) TRD.create(W, s, { firm: f.id, good: sug[0].good, from: sug[0].from, to: sug[0].to, qty: sug[0].qty, interval: sug[0].interval, insured: true });
+    }
+    // Routen, die dauerhaft Verlust bringen, aufgeben
+    for (const r of mine) if (r.made.trips >= 6 && r.made.profit < 0) { r.active = false; if (!r.trip) s.trade.routes = s.trade.routes.filter((x) => x.id !== r.id); }
+    const tied = (s.trade.routes || []).filter((r) => r.firm === f.id).reduce((a, r) => a + (r.trip ? r.trip.cargo : 0), 0);
+    if (collect && f.cash > 20 * 500 * idx + 2 * tied) act('bizCollect', { id: f.id });
+  }
+  void year;
+}
+function runTradeBiz(c, { routes }) {
+  const { s, act, w: W, edition: ed, idx } = c;
+  const E = ed(W, s, s.cityId);
+  if (s.companies.length < 2) {
+    const b = (E.biz || []).filter((x) => x.qualified && s.money > x.price * 1.12).sort((a, d) => d.price - a.price)[0];
+    if (b) act('buyBiz', { listingId: b.id });
+  }
+  for (const co of s.companies) {
+    if (co.abandoned) { act('bizReactivate', { id: co.id }); continue; }
+    const need = biz.staffNeeded(W, co);
+    if (co.staff < need && s.money > 40 * 500 * idx) act('bizHire', { id: co.id, delta: 1 });
+    if (!co.manager && s.money > 60 * 600 * idx) act('bizManager', { id: co.id, on: true });
+    const t = biz.tiersOf(W)[co.tier];
+    if (co.rooms < t.maxRooms && s.money > t.roomPrice * idx * 2.5 && co.lastProfit > 0) act('bizExpand', { id: co.id });
+    if (co.tier < 2 && s.money > (biz.tiersOf(W)[co.tier + 1].price) * idx * 2) act('bizUpgrade', { id: co.id });
+    if (!routes && co.cash > 20 * 500 * idx) act('bizCollect', { id: co.id });
+  }
+  if (routes) runTrade(c);
+  if (s.companies.length && !s.occupation) act('bizWork', { id: s.companies[0].id });
+}
+
 const POLICIES = {
+  trader0: { pkey: 'einzelhandelsverkaeufer', fn: (c) => { ensureHome(c); if (!c.s.companies.length) ensureJob(c); runTradeBiz(c, { routes: false }); } },
+  trader: { pkey: 'einzelhandelsverkaeufer', fn: (c) => { ensureHome(c); if (!c.s.companies.length) ensureJob(c); runTradeBiz(c, { routes: true }); } },
   employee: { pkey: 'baecker', fn: (c) => { ensureHome(c); ensureJob(c); } },
   landlord0: { pkey: 'baecker', fn: (c) => { ensureHome(c); ensureJob(c); buyLet(c, { loans: false, maxProps: 12 }); } },
   landlord: { pkey: 'baecker', fn: (c) => { ensureHome(c); ensureJob(c); earlyRepay(c); buyLet(c, { loans: true, maxProps: 12 }); } },
@@ -318,7 +360,7 @@ for (const name of ONLY) {
   console.log(`\n=== ${name} (${P.pkey}) – Werte in DM von 1945 (Preisindex bereinigt); Flüsse = Jahreswerte im Schnitt des Jahrzehnts ===`);
   console.log(['Jahr', 'Geld', 'Immo', 'Firmen', 'Schuld', 'Netto', 'Immos', 'Firmen#', 'Lohn', 'Miete', 'Steuer', 'Kreditrate', 'Betr.Gewinn', 'Betr.Lohn', 'Waren'].map((x) => x.padStart(10)).join(''));
   for (const r of res.rows) {
-    if (r.final) { console.log(`Ende ${r.year}: ${r.status}${r.reason ? ' (' + r.reason + ')' : ''}  Netto ${f0(r.net)}${REP && res.repLog.length ? `  · Ansehen: ${res.repLog.map((x) => `${x.year}:${x.s}`).join(' ')}` : ''}`); continue; }
+    if (r.final) { console.log(`Ende ${r.year}: ${r.status}${r.reason ? ' (' + r.reason + ')' : ''}  Netto ${f0(r.net)}${r.trips ? `  · Routen: ${r.trips} Fahrten (${r.tradeLost} mit Verlust), Gewinn ${f0(r.tradeProfit)} DM, Bürokosten ${f0(r.tradeOver)} DM (Wert 1945)` : ''}${REP && res.repLog.length ? `  · Ansehen: ${res.repLog.map((x) => `${x.year}:${x.s}`).join(' ')}` : ''}`); continue; }
     console.log([r.year, f0(r.money), f0(r.props), f0(r.firms), f0(r.debt), f0(r.net), r.nProps, r.nFirms, f0(r.wage), f0(r.rent), f0(r.tax), f0(r.loan), f0(r.bizProfit), f0(r.bizWages), f0(r.bizInputs)].map((x) => String(x).padStart(10)).join(''));
   }
 }

@@ -45,7 +45,7 @@ function ensure(state) {
   if (!Array.isArray(t.routes)) t.routes = [];
   if (!Number.isInteger(t.nextId)) t.nextId = 1;
   if (!Array.isArray(t.log)) t.log = [];
-  if (!t.stats || typeof t.stats !== 'object') t.stats = { trips: 0, profit: 0, lost: 0 };
+  if (!t.stats || typeof t.stats !== 'object') t.stats = { trips: 0, profit: 0, lost: 0, over: 0 };
   return t;
 }
 
@@ -385,7 +385,7 @@ function daily(ctx) {
     }
     if (route.active || route.trip) {
       const over = Math.min(c.cash, Math.round(num(tr.overheadReal, 3, 0, 1e6) * idx));
-      if (over > 0) c.cash -= over;
+      if (over > 0) { c.cash -= over; t.stats.over = (t.stats.over || 0) + over; }
     }
     if (route.trip && state.day >= route.trip.arrive) { arrive(ctx, route, c); }
     else if (route.active && !route.trip && state.day >= route.next) {

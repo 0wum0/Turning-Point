@@ -1,0 +1,28 @@
+<%- include('_top', { actions: '<a class="btn sm" href="/admin/settings/transport">Einstellungen</a>' }) %>
+<% var csrf = '<input type="hidden" name="_csrf" value="' + csrfToken + '">'; %>
+<div class="kpis">
+  <div class="kpi"><span class="ico"><%- icon('route') %></span><label>Routen</label><b><%= stats.routes %></b></div>
+  <div class="kpi good"><span class="ico"><%- icon('truck') %></span><label>Aktiv</label><b><%= stats.active %></b></div>
+  <div class="kpi <%= stats.cancelled ? 'bad' : '' %>"><span class="ico"><%- icon('ban') %></span><label>Angehalten</label><b><%= stats.cancelled %></b></div>
+  <div class="kpi info"><span class="ico"><%- icon('handshake') %></span><label>Frachtangebote</label><b><%= stats.offers %></b></div>
+  <div class="kpi"><span class="ico"><%- icon('package') %></span><label>Verträge über Städte</label><b><%= stats.contracts %></b></div>
+</div>
+<form class="card stack mt" method="post" action="/admin/transport/enabled"><%- csrf %>
+  <div class="card-title"><%- icon('route') %> Handel &amp; Transport</div>
+  <label class="check"><input type="radio" name="enabled" value="1" <%= cfg.enabled !== false ? 'checked' : '' %>> <b>An</b></label>
+  <label class="check"><input type="radio" name="enabled" value="0" <%= cfg.enabled === false ? 'checked' : '' %>> <b>Aus</b> – keine neuen Fahrten, Lieferverträge ohne Fracht, Verträge nur im Bundesland.</label>
+  <div class="row end"><button class="btn primary"><%- icon('check') %> Speichern</button></div>
+</form>
+<h3 class="mt">Routen</h3>
+<div class="table-wrap"><table class="table small"><thead><tr><th>Besitzer</th><th>Betrieb</th><th>Ware</th><th>Strecke</th><th>Menge</th><th>Alle (Tage)</th><th>Stand</th><th>Fahrten</th><th>Gewinn (1945)</th><th></th></tr></thead><tbody>
+<% routes.forEach(function(r){ %><tr><td><%= r.username %></td><td><%= r.firm || '–' %></td><td><%= r.goodName %></td><td><%= r.fromName %> → <%= r.toName %></td><td class="num"><%= r.qty %></td><td class="num"><%= r.interval_days %></td>
+<td><%= r.cancelled ? 'angehalten (Spielleitung)' : (r.active ? r.status : 'gestoppt') %><% if (r.cancel_note) { %> <span class="dim">(<%= r.cancel_note %>)</span><% } %></td><td class="num"><%= r.trips %></td><td class="num"><%= Math.round(r.profit_real) / 100 %></td>
+<td class="num"><% if (r.cancelled) { %><form method="post" action="/admin/transport/user/<%= r.user_id %>/route/<%= r.route_id %>/restore" class="inline"><%- csrf %><button class="btn sm">Freigeben</button></form>
+<% } else { %><form method="post" action="/admin/transport/user/<%= r.user_id %>/route/<%= r.route_id %>/cancel" class="inline"><%- csrf %><input type="text" name="note" placeholder="Grund" maxlength="160" style="width:120px"> <button class="btn sm danger" data-confirm="Route anhalten? Der Besitzer sieht das beim nächsten Laden.">Anhalten</button></form><% } %></td></tr>
+<% }) %><% if (!routes.length) { %><tr><td colspan="10" class="dim">Noch keine Routen.</td></tr><% } %></tbody></table></div>
+<h3 class="mt">Offene Frachtangebote</h3>
+<div class="table-wrap"><table class="table small"><thead><tr><th>Spedition</th><th>Besitzer</th><th>Preis (% des Tarifs)</th><th>Kapazität (kg/Tag)</th><th></th></tr></thead><tbody>
+<% offers.forEach(function(o){ %><tr><td><%= o.firm || '–' %></td><td><%= o.username %></td><td class="num"><%= o.pct %></td><td class="num"><%= o.cap_kg_day %></td>
+<td class="num"><form method="post" action="/admin/transport/user/<%= o.user_id %>/offer/<%= o.id %>/close" class="inline"><%- csrf %><button class="btn sm danger" data-confirm="Frachtangebot schließen?">Schließen</button></form></td></tr>
+<% }) %><% if (!offers.length) { %><tr><td colspan="5" class="dim">Keine offenen Angebote.</td></tr><% } %></tbody></table></div>
+<%- include('_bottom') %>

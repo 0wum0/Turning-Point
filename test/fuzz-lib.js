@@ -143,6 +143,23 @@ function invariants(s, prev) {
       }
     }
   }
+  { // Handelsrouten: Liste sauber, Fahrten wohlgeformt, Vormerkungen gültig
+    const t = s.trade;
+    need(t && typeof t === 'object' && Array.isArray(t.routes) && Array.isArray(t.log) && Number.isInteger(t.nextId), 'trade fehlt');
+    if (t && Array.isArray(t.routes)) {
+      need(dupIds(t.routes) == null, 'doppelte Routen-Id');
+      need(t.routes.length <= 50, `zu viele Routen ${t.routes.length}`);
+      for (const r of t.routes) {
+        need(Number.isInteger(r.id) && r.id < t.nextId, `Routen-Id ${r.id}`);
+        need(Number.isFinite(r.qty) && r.qty >= 1 && Number.isInteger(r.interval) && r.interval >= 1 && r.interval <= 3650, `Route Menge/Intervall ${r.qty}/${r.interval}`);
+        need(Number.isFinite(r.made.profit) && Number.isInteger(r.made.trips) && r.made.trips >= 0, 'Route Bilanz');
+        if (r.trip) need(Number.isInteger(r.trip.units) && r.trip.units >= 1 && r.trip.arrive >= r.trip.depart && r.trip.loss >= 0 && r.trip.loss <= 0.61 && Number.isFinite(r.trip.costs) && r.trip.costs >= 0, `Fahrt ${JSON.stringify({ u: r.trip.units, a: r.trip.arrive, d: r.trip.depart, l: r.trip.loss })}`);
+      }
+      need(t.log.length <= 200, 'Fahrtenprotokoll zu lang');
+    }
+    for (const e of (s.pending && s.pending.freight) || []) need(Number.isFinite(e.real) && e.real >= 0 && Number.isInteger(e.userId), `Fracht-Vormerkung ${JSON.stringify(e)}`);
+    for (const e of (s.pending && s.pending.tradeEv) || []) need(['theft', 'smuggle'].includes(e.kind) && Number.isFinite(e.damageReal), `Spur-Vormerkung ${JSON.stringify(e)}`);
+  }
   const h = s.housing;
   if (h.type === 'own') need(s.properties.some((p) => p.id === h.propertyId), 'Wohnsitz ohne Immobilie');
   if (s.occupation && s.occupation.ownCompanyId) need(s.companies.some((c) => c.id === s.occupation.ownCompanyId), 'Beruf ohne Firma');
@@ -598,4 +615,68 @@ function runCourtScenario(seed, rounds = 300) {
   return failures;
 }
 
-module.exports = { runCourtScenario, runRepScenario, world, runScenario, runTradeScenario, runSupplyScenario, runCityEconScenario, invariants, inputFor, JUNK, clone };
+
+/** Handelsrouten (Spielstand): zufällige Strecken, Waren, Epochen, Risiken, Fracht und Politik – Kasse ohne Verlust von Geld ins Nichts, Rendite-Deckel, Fahrten wohlgeformt, deterministisch. */
+function runTransportScenario(seed, rounds = 14) {
+  const realRandom = Math.random; Math.random = mulberry32(seed ^ 13);
+  const r = mulberry32(seed + 5); const failures = [];
+  const T = require('../src/game/transport'); const TR = require('../src/game/trade'); const goods = require('../src/game/goods'); const biz = require('../src/game/business');
+  const seedW = require('../src/db/seed-data'); const { buildWorld } = require('../src/game/world');
+  const extra = seedW.ERA_PROFESSIONS.map((p, i) => ({ id: 1000 + i, pkey: p[0], name: p[1], category: p[2], icon: p[3], era_from: p[4], era_to: p[5], base_wage: p[6], training_days: p[7], tuition_day: p[8], academic: p[9], replaces: p[10], lodging: p[11], unlocks: p[12], description: p[13], active: 1 }));
+  const W = buildWorld(world.cityList, [...world.professions.values(), ...extra]);
+  const tradePk = ['kraftfahrer', 'fuhrmann', 'einzelhandelsverkaeufer', 'kohlenhaendler', 'online_haendler', 'logistiker', 'apotheker'];
+  const digest = [];
+  try {
+    for (let i = 0; i < rounds; i++) {
+      T.setPolicy(null); TR.setLoad(new Map()); goods.setScarcity(new Map());
+      const year = 1946 + Math.floor(r() * 150);
+      const u = { meta: {}, coins: 50, efs_pool: 0 };
+      const s = createCharacter(W, { gender: 'm', firstName: 'A', lastName: 'B', birthCityId: pickOf(r, W.cityList).id, professionKey: 'baecker', fatherName: 'a', motherName: 'b' }, u);
+      s.seed = 100 + i + seed * 7; s.day = (year - 1945) * 365 + Math.floor(r() * 300); s.person.birthDay = s.day - 30 * 365; s.housing = { type: 'rent', cityId: s.cityId, base: 3000, rooms: 1 }; s.money = 1e9;
+      const pk = pickOf(r, tradePk.filter((k) => W.prof(k) && (W.prof(k).era_from <= year && year <= W.prof(k).era_to)).concat(['einzelhandelsverkaeufer']));
+      const t0 = biz.tiersOf(W)[Math.floor(r() * 3)];
+      const c = { id: 1, pkey: pk, tier: Math.min(2, Math.floor(r() * 3)), name: 'Fuzz-Handel', cityId: s.cityId, rooms: t0.rooms, staff: 0, manager: true, cash: Math.round(1e5 * (1 + r() * 400)), base: 1e6, since: 0, abandoned: null, lastProfit: 0 };
+      c.staff = biz.staffNeeded(W, c); s.companies = [c]; s.nextCompanyId = 2;
+      // Preisgefälle und Politik zufällig
+      const sc = new Map(); for (let k = 0; k < 8; k++) sc.set(`${pickOf(r, W.cityList).id}|${pickOf(r, Object.keys(goods.GOODS).filter((g) => !goods.GOODS[g].service))}`, 0.8 + r() * 0.7);
+      goods.setScarcity(sc);
+      if (r() < 0.5) { const pol = T.noPolicy(); pol.nation.net = Math.floor(r() * 4); if (r() < 0.5) pol.city.set(s.cityId, { toll: pickOf(r, [-4, -2, 0, 2, 4, 6]), hub: { rail: Math.floor(r() * 3) } }); T.setPolicy(pol); }
+      const n = 1 + Math.floor(r() * 3);
+      for (let k = 0; k < n; k++) {
+        const keys = Object.values(goods.GOODS).filter((g) => T.shippable(g.key, year)).map((g) => g.key);
+        const A = pickOf(r, W.cityList); const B = pickOf(r, W.cityList);
+        const res = TR.create(W, s, { firm: 1, good: pickOf(r, keys.concat(['strom', 'nichts', 5])), from: r() < 0.7 ? A.id : pickOf(r, JUNK), to: B.id, qty: pickOf(r, [1, 10, 100, 500, 5000, -3, 1e12, 'x']), interval: pickOf(r, [undefined, 3, 8, 20, 90]), mode: pickOf(r, ['auto', 'auto', 'lkw', 'bahn', 'container', 'luft', 'x']), insured: r() < 0.5, smuggle: r() < 0.3,
+          carrier: r() < 0.25 ? { offer: 9, user: 99, firm: 1, pct: 70 + Math.floor(r() * 30), name: 'Fuzz-Spedition' } : null });
+        void res;
+      }
+      const cash0 = c.cash; const stat0 = { profit: s.trade.stats.profit, over: s.trade.stats.over || 0 };
+      const days = 60 + Math.floor(r() * 300);
+      for (let d = 0; d < days; d++) {
+        const before = s.trade.routes.map((x) => (x.trip ? { id: x.id, trip: x.trip, trips: x.made.trips } : null));
+        s.day++; if (r() < 0.02) s.court = { r: [{ k: 'haft', until: Date.now() + 1e6 }] }; else if (r() < 0.05) s.court = null;
+        TR.daily({ world: W, state: s, offline: r() < 0.1 });
+        s.notices = []; s.interrupts = [];
+        for (const b of before) {
+          if (!b) continue;
+          const x = s.trade.routes.find((q) => q.id === b.id);
+          if (x && !x.trip && x.made.trips > b.trips) { // angekommen: Ergebnis bleibt unter Deckel + Versicherungsauszahlung
+            const net = x.made.last.net;
+            if (!(net <= b.trip.capMargin + Math.ceil(b.trip.cargo * 0.71) + 2)) failures.push({ seed, msg: `Gewinn ${net} über Deckel ${b.trip.capMargin}` });
+            if (!b.trip.events.some((e) => e.key === 'smuggle' || e.loss) && !(net <= b.trip.capMargin + 2)) failures.push({ seed, msg: `Gewinn ${net} ohne Unfall über Deckel ${b.trip.capMargin}` });
+          }
+        }
+        if (!Number.isInteger(c.cash) || c.cash < 0) failures.push({ seed, msg: `Kasse ${c.cash} (Tag ${d})` });
+        if (d % 37 === 0) s.pending.freight = (s.pending.freight || []).filter(() => false);
+      }
+      // Geld: Kassenänderung = Σ Fahrtenergebnisse − unterwegs gebundene Kosten − Bürokosten − (geflushte Frachtvormerkungen sind Teil der Kosten)
+      const inflight = s.trade.routes.reduce((a, x) => a + (x.trip ? x.trip.costs : 0), 0);
+      const dProfit = s.trade.stats.profit - stat0.profit; const dOver = (s.trade.stats.over || 0) - stat0.over;
+      if (c.cash - cash0 !== dProfit - inflight - dOver) failures.push({ seed, msg: `Geld nicht erhalten (Runde ${i}, ${year}): Kasse ${c.cash - cash0} erwartet ${dProfit - inflight - dOver}` });
+      for (const bad of invariants(s, null).filter((m) => /Route|Fahrt|trade|Fracht|Spur|Firmenkasse|nicht endlich/.test(m))) failures.push({ seed, msg: bad });
+      digest.push(s.trade.stats.trips, s.trade.stats.profit, c.cash);
+    }
+  } catch (e) { failures.push({ seed, msg: `Transportlauf: ${e.stack}` }); } finally { Math.random = realRandom; T.setPolicy(null); TR.setLoad(new Map()); goods.setScarcity(new Map()); }
+  return { failures, digest };
+}
+
+module.exports = { runTransportScenario, runCourtScenario, runRepScenario, world, runScenario, runTradeScenario, runSupplyScenario, runCityEconScenario, invariants, inputFor, JUNK, clone };

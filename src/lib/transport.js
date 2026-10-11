@@ -28,7 +28,7 @@ const r2 = (x) => Math.round(x * 100) / 100;
 let FLOWS = [];
 async function refresh() {
   try {
-    const rows = await db.query('SELECT from_city, to_city, good, flow_real FROM transport_routes WHERE active = 1 AND cancelled = 0 AND flow_real > 0');
+    const rows = await db.query("SELECT r.from_city, r.to_city, r.good, r.flow_real FROM transport_routes r JOIN player_stats ps ON ps.user_id = r.user_id AND ps.status = 'alive' WHERE r.active = 1 AND r.cancelled = 0 AND r.flow_real > 0");
     const m = new Map(); const list = [];
     for (const r of rows) {
       const a = `${r.to_city}|${r.good}`; const b = `${r.from_city}|${r.good}`;
@@ -96,6 +96,11 @@ async function flush(conn, user, state, world) {
       } catch (e) { log.warn(`[transport] Spur: ${e.message}`); }
     }
   }
+  if (state.status !== 'alive') { // gestorbener oder insolventer Charakter: Routen und Frachtangebote enden
+    await conn.query('DELETE FROM transport_routes WHERE user_id = ?', [user.id]);
+    await conn.query("UPDATE freight_offers SET status = 'closed', closed_at = NOW() WHERE user_id = ? AND status = 'open'", [user.id]);
+    return;
+  }
   // Spiegel
   const t = state.trade;
   if (!t || !Array.isArray(t.routes)) return;
@@ -142,7 +147,7 @@ async function attach(offerId, userId, need, ignore = {}) {
   const o = await offerRow(offerId);
   if (!o || o.status !== 'open' || o.abandoned || o.pstatus !== 'alive' || o.banned) fail('Dieses Frachtangebot gibt es nicht mehr.');
   if (o.user_id === userId) fail('Du kannst nicht bei dir selbst Fracht bestellen.');
-  if (await require('./social').sameIp(userId, o.user_id)) fail('Zwischen Konten mit derselben Internetverbindung sind keine Frachtverträge erlaubt.');
+  if (T.C().contracts.blockSameIp !== false && await require('./social').sameIp(userId, o.user_id)) fail('Zwischen Konten mit derselben Internetverbindung sind keine Frachtverträge erlaubt.');
   const used = await capacityUsed(o.id, ignore);
   if (used + need > o.cap_kg_day + 1e-6) fail(`Die Spedition ist ausgelastet (noch ${Math.max(0, Math.floor(o.cap_kg_day - used))} kg pro Tag frei).`);
   return { offer: o.id, user: o.user_id, firm: o.company_id, pct: o.pct, name: `${o.firm}`, owner: o.owner };
