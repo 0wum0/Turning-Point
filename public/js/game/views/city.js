@@ -2,15 +2,20 @@ import { html, raw, icon, infoBtn, api, on, mount, toast, esc } from '../ui.js';
 import { isV2 } from '../design.js';
 import { createCityCamera } from '../city-camera.js';
 import { buildAerial } from '../aerial.js';
+import { gameHour, seasonAt, dayPhaseLabel, MONTHS_DE } from '../atmosphere.js';
 import { directorySkeleton, bindDirectory } from '../directory.js';
 import { econSkeleton, bindEcon } from '../economy.js';
+
+// Prüfhilfe: <html data-city-hour="13" data-city-doy="200"> friert Tageszeit/Jahreszeit der 3D-Stadt und der Innenräume für Tests ein.
+const testNum = (name) => { const o = document.documentElement.dataset[name]; return o !== undefined && o !== '' && Number.isFinite(Number(o)) ? Number(o) : null; };
+const cityHour = (ctx) => testNum('cityHour') ?? gameHour(ctx.view.clock, ctx.__viewAt);
 
 export default {
   id: 'city', label: 'Stadt', icon: 'building-2',
   async load(ctx) { return api('GET', `/api/city?cityId=${ctx.ui.cityId || ctx.view.city.id}`); },
   render(ctx, data) {
     const v = ctx.view; const c = data.city;
-    const a = buildAerial({ cityId: c.id, name: c.name, tier: c.tier, era: v.date.eraKey, buildings: data.buildings, aerial: c.aerial, selected: ctx.ui.cityBuilding });
+    const a = buildAerial({ cityId: c.id, name: c.name, tier: c.tier, era: v.date.eraKey, buildings: data.buildings, aerial: c.aerial, selected: ctx.ui.cityBuilding, ...(isV2() ? { hour: Math.floor(cityHour(ctx)) } : {}) });
     ctx.ui._aerial = a;
     const own = data.buildings.filter((b) => b.own); const pub = data.buildings.filter((b) => !b.own);
     const row = (b) => html`<button class="bl-item ${b.own ? 'own' : ''}" data-focus="${b.key}"><span class="bl-ic">${icon(b.icon || 'landmark')}</span><span class="grow">${b.name}</span>${b.tasks.some((t) => t.ready) ? html`<i class="rdy" title="Aufgabe verfügbar"></i>` : ''}</button>`;
@@ -20,7 +25,7 @@ export default {
       ${infoBtn(['Das ist deine Stadt aus der Vogelperspektive. Öffentliche Orte wie Rathaus, Markthalle oder Bahnhof sind immer da – dazu alles, was dir selbst gehört.', 'In jedem Gebäude findest du Aufgaben und Möglichkeiten. Aufgaben bringen zusätzliche EFS und kleine Vorteile. Interaktionen sind nur in der Stadt möglich, in der du wohnst.', 'Klicke ein Gebäude an, schau dich um (ziehen zum Drehen) und klicke auf leuchtende Dinge.'], 'Stadtansicht')}</div></div>
     ${data.here ? '' : html`<div class="alert info">${icon('info')}<div>Du siehst ${c.name} nur von oben. Aufgaben und Einkäufe sind nur in deinem Wohnort möglich – ziehe dafür um (Karte).</div></div>`}
     <div class="city-layout">
-      <section class="card aerial-card"><div class="map-tools"><button class="btn sm" id="azin" aria-label="Vergrößern">${icon('plus')}</button><button class="btn sm" id="azout" aria-label="Verkleinern">${icon('minus')}</button><button class="btn sm" id="azreset" aria-label="Zentrieren">${icon('refresh-cw')}</button></div>
+      <section class="card aerial-card"><div class="map-tools"><button class="btn sm" id="azin" aria-label="Vergrößern">${icon('plus')}</button><button class="btn sm" id="azout" aria-label="Verkleinern">${icon('minus')}</button><button class="btn sm" id="azreset" aria-label="Zentrieren">${icon('refresh-cw')}</button><button class="btn sm sim-city-only" id="azfull" aria-pressed="false" aria-label="Vollbild" title="Vollbild">${icon('maximize')}</button></div>
         <div class="sim-city-only city-view-mode" role="group" aria-label="Stadtdarstellung"><button data-city-view="2d" aria-pressed="true">2D-Karte</button><button data-city-view="3d" aria-pressed="false">3D-Stadt</button></div><div id="city3dHost" hidden></div><div id="citySceneStatus" role="status" hidden></div><div id="aerialHost">${raw(a.svg)}</div>
         <div class="aerial-hint small dim">${icon('hand-coins')} Goldene Umrandung = dein Besitz</div></section>
       <aside class="card bl-panel">
@@ -47,19 +52,31 @@ export default {
     root.querySelector('#azin').onclick = () => scene3d ? scene3d.zoom(.8) : camera.zoom(.8);
     root.querySelector('#azout').onclick = () => scene3d ? scene3d.zoom(1.25) : camera.zoom(1.25);
     root.querySelector('#azreset').onclick = () => { if (scene3d) { scene3d.reset(); return; } if (own && spots[own.key]) centerOn(spots[own.key].x,spots[own.key].y,2.1); };
+    const stage = root.querySelector('.aerial-card'), fullBtn = root.querySelector('#azfull'); let full = false;
+    const setFull = (on) => { full = on; stage.classList.toggle('is-full', on); document.body.classList.toggle('city-fullscreen', on); fullBtn.setAttribute('aria-pressed', String(on)); fullBtn.setAttribute('aria-label', on ? 'Vollbild beenden' : 'Vollbild'); fullBtn.title = on ? 'Vollbild beenden (Esc)' : 'Vollbild'; fullBtn.innerHTML = icon(on ? 'minimize' : 'maximize').__raw; };
+    fullBtn.onclick = () => { setFull(!full); (scene3d ? root.querySelector('#city3dHost canvas') : null)?.focus({ preventScroll:true }); };
+    const onFullKey = (e) => { if (full && e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); setFull(false); fullBtn.focus({ preventScroll:true }); } };
+    document.addEventListener('keydown', onFullKey, true);
     const media = matchMedia('(prefers-reduced-motion: reduce)');
     const vis = () => { if (document.hidden || media.matches || document.documentElement.dataset.motion === 'off') svg.pauseAnimations?.(); else svg.unpauseAnimations?.(); };
     document.addEventListener('visibilitychange', vis); media.addEventListener('change',vis);
     const motion = new MutationObserver(vis); motion.observe(document.documentElement,{attributes:true,attributeFilter:['data-motion']}); vis();
-    root.__dispose = () => { disposed=true; sceneVersion++; scene3d?.dispose(); designObserver.disconnect(); camera.dispose(); motion.disconnect(); media.removeEventListener('change',vis); document.removeEventListener('visibilitychange',vis); };
-    let entering = false;
+    root.__dispose = () => { disposed=true; document.removeEventListener('keydown', onFullKey, true); document.body.classList.remove('city-fullscreen'); sceneVersion++; scene3d?.dispose(); designObserver.disconnect(); camera.dispose(); motion.disconnect(); media.removeEventListener('change',vis); document.removeEventListener('visibilitychange',vis); };
+    const hourOf = () => cityHour(ctx), testDoy = () => testNum('cityDoy');
+    let entering = false; const host3d = root.querySelector('#city3dHost');
+    const KIND = { rathaus:'Ämter, Wahlen & Umzug', bahnhof:'Reisen & Umzug', markt:'Lebensmittel & Handel', arzt:'Gesundheit & Vorsorge', schule:'Schule & Kinder', zeitung:'Nachrichten, Stellen & Wohnungen', lotto:'Lotto', pension:'Wohnen auf Zeit', spielbank:'Spielbank', home:'Wohnen', biz:'Dein Betrieb', work:'Dein Arbeitsplatz' };
+    const describe = (key) => { const b = data.buildings.find(x => x.key === key); if (!b) return null; const ready = b.tasks.filter(t => t.ready && !t.blocked).length; return { title:b.name, kind:b.own ? 'DEIN BESITZ' : 'ÖFFENTLICHER ORT', lines:[KIND[b.type] || '', !data.here ? 'Du bist nicht in dieser Stadt: nur ansehen.' : ready ? `${ready} Aufgabe${ready === 1 ? '' : 'n'} bereit` : 'Keine Aufgabe bereit', 'Klicken = auswählen · Doppelklick = betreten'].filter(Boolean) }; };
     const enter = async (key) => {
       const b = data.buildings.find((x) => x.key === key); if (!b) return;
       ctx.ui.cityBuilding = key;
       if (entering || document.querySelector('.interior')) return;
       entering = true;
-      try { const { openInterior } = await import('../interior.js'); if (root.isConnected) await openInterior(ctx, b, data); }
-      catch (e) { toast(e.message, 'bad'); } finally { entering = false; }
+      try {
+        const loading = import('../interior.js');
+        if (scene3d) { host3d.classList.add('city-entering'); await Promise.all([scene3d.flyTo(key), loading]); }
+        const { openInterior } = await loading; if (root.isConnected) await openInterior(ctx, b, data);
+      }
+      catch (e) { toast(e.message, 'bad'); } finally { entering = false; host3d.classList.remove('city-entering'); }
     };
     const select = (key) => {
       if (!isV2()) return enter(key);
@@ -86,7 +103,7 @@ export default {
       try {
         const {createCity3D}=await import('../city-3d.js');
         if(disposed || version!==sceneVersion)return;
-        created=await createCity3D(host,ctx.ui._aerial,{onSelect:select,selected:ctx.ui.cityBuilding,reduced:()=>media.matches || document.documentElement.dataset.motion==='off'});
+        created=await createCity3D(host,ctx.ui._aerial,{onSelect:select,onEnter:enter,describe,selected:ctx.ui.cityBuilding,reduced:()=>media.matches || document.documentElement.dataset.motion==='off',getHour:hourOf,era:ctx.view.date.eraKey,doy:testDoy() ?? ctx.view.date.doy,cityId:data.city.id});
         if(disposed || version!==sceneVersion){created?.dispose();return;}
         scene3d=created;status.hidden=true;
       } catch(e) { if(disposed || version!==sceneVersion)return; await switchScene('2d');status.textContent=e.message;status.hidden=false; }

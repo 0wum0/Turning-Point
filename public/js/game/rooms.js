@@ -7,7 +7,24 @@ const PAL = {
   5: { wall: 0xdfeaef, trim: 0x9fb4be, floor: 0xcfd8dc, floor2: 0xbec9ce, accent: 0x35e0d0, light: 0xe6fbff, bg: 0x0a141b, kind: 'tiles' },
 };
 import { makeTextures } from './textures.js';
+import { signTexture } from './signs.js';
 const hex = (n) => `#${n.toString(16).padStart(6, '0')}`;
+
+/** Aktionsleiste im Raum: [Gegenstand-ID, Verb, Symbol, optionaler Filter auf die echten Aktionen]. Ruft ausschließlich vorhandene Spielaktionen auf. */
+const BAR = {
+  home: [['bed', 'Ausruhen', 'bed'], ['fridge', 'Vorrat kaufen', 'shopping-basket'], ['stove', 'Kochen', 'flame'], ['leisure', 'Entspannen', 'smile'], ['tidy', 'Aufräumen', 'sparkles'], ['desk', 'Finanzen', 'wallet'], ['family', 'Familie', 'heart'], ['shelf', 'Chronik', 'book-open'], ['mail', 'Post', 'mail']],
+  pension: [['bed', 'Ausruhen', 'bed'], ['reception', 'Wohnungsmarkt', 'house']],
+  rathaus: [['amt', 'Arbeiten', 'briefcase'], ['wahl', 'Wahlen', 'landmark'], ['plan', 'Umziehen', 'map']],
+  bahnhof: [['ticket', 'Fahrkarte kaufen', 'ticket'], ['train', 'Reisen', 'train-front']],
+  markt: [['stall0', 'Kaufen & Verkaufen', 'shopping-basket'], ['stall1', 'Kaufen', 'shopping-basket'], ['stall2', 'Kaufen', 'shopping-basket'], ['sort', 'Arbeiten', 'hammer']],
+  arzt: [['exam', 'Vorsorge', 'stethoscope'], ['cabinet', 'Kaufen', 'credit-card']],
+  schule: [['board', 'Helfen', 'school']],
+  zeitung: [['press', 'Lesen', 'newspaper'], ['proof', 'Arbeiten', 'hammer']],
+  lotto: [['counter', 'Tippen', 'ticket']],
+  spielbank: [['roulette', 'Spielen', 'dices']],
+  biz: [['cash', 'Kasse leeren', 'coins'], ['tables', 'Arbeiten', 'hammer'], ['office', 'Einstellen & Verwalten', 'users', /Betrieb verwalten/], ['office', 'Selbst arbeiten', 'briefcase', /Selbst|arbeitest/]],
+  work: [['bench', 'Arbeiten', 'hammer'], ['boss', 'Karriere', 'briefcase'], ['cot', 'Schlafen', 'bed']],
+};
 
 export function buildRoom(T, b, ctx, { enhanced=false, hour=new Date().getHours() } = {}) {
   const v = new Proxy({}, { get: (_, k) => ctx.view[k] }); const era = ctx.view.date.eraKey; const pal = PAL[era] || PAL[1];
@@ -48,6 +65,14 @@ export function buildRoom(T, b, ctx, { enhanced=false, hour=new Date().getHours(
   const night = hour < 6 || hour >= 21; const dusk = !night && (hour < 8 || hour >= 18);
   const glowMat = new T.MeshBasicMaterial({ color: night ? 0x22345f : dusk ? 0xffb070 : pal.light });
   if (night) scene.background = new T.Color(0x05070d);
+  if (enhanced) { // Blick nach draußen: Himmelsverlauf, Hügel, Bäume, Sonne/Mond/Sterne
+    const cv = document.createElement('canvas'); cv.width = 64; cv.height = 96; const g2 = cv.getContext('2d'); const sk = g2.createLinearGradient(0, 0, 0, 96);
+    const [c0, c1] = night ? ['#070d24', '#27386a'] : dusk ? ['#3d5190', '#f6a76a'] : ['#5b9bdc', '#d6eaf6']; sk.addColorStop(0, c0); sk.addColorStop(.75, c1); g2.fillStyle = sk; g2.fillRect(0, 0, 64, 96);
+    if (night) { g2.fillStyle = '#fff'; for (let i = 0; i < 14; i++) g2.fillRect((i * 37) % 64, (i * 23) % 50, 1, 1); g2.fillStyle = '#e8eeff'; g2.beginPath(); g2.arc(48, 18, 5, 0, 7); g2.fill(); } else { g2.fillStyle = dusk ? '#ffd9a0' : '#fff8d8'; g2.beginPath(); g2.arc(46, dusk ? 62 : 20, 6, 0, 7); g2.fill(); g2.fillStyle = 'rgba(255,255,255,.7)'; g2.fillRect(8, 26, 18, 4); g2.fillRect(14, 22, 14, 4); }
+    g2.fillStyle = night ? '#0d1a14' : dusk ? '#3c4a2c' : '#5e8a4e'; g2.beginPath(); g2.moveTo(0, 78); g2.quadraticCurveTo(22, 62, 40, 74); g2.quadraticCurveTo(54, 80, 64, 70); g2.lineTo(64, 96); g2.lineTo(0, 96); g2.fill();
+    g2.fillStyle = night ? '#08120d' : '#3b6a35'; for (const [tx, ty] of [[12, 76], [24, 80], [52, 76]]) { g2.beginPath(); g2.arc(tx, ty, 6, 0, 7); g2.fill(); g2.fillRect(tx - 1, ty, 2, 8); }
+    const wt = new T.CanvasTexture(cv); wt.colorSpace = T.SRGBColorSpace; glowMat.map = wt; glowMat.color.set(0xffffff);
+  }
   const windowAt = (x, y, wall = 'back') => { const m = new T.Mesh(new T.BoxGeometry(1.8, 1.5, 0.1), glowMat); if (wall === 'back') m.position.set(x, y, -d / 2 + 0.08); else { m.position.set(-w / 2 + 0.08, y, x); m.rotation.y = Math.PI / 2; } scene.add(m); const fr = new T.Mesh(new T.BoxGeometry(2.0, 1.7, 0.08), mat(pal.trim)); fr.position.copy(m.position); fr.rotation.copy(m.rotation); fr.position.z += wall === 'back' ? -0.03 : 0; scene.add(fr); };
   for (let i = -1; i <= 1; i += 2) windowAt((w / 4) * i, 1.9);
   windowAt(0, 1.9, 'left');
@@ -68,7 +93,7 @@ export function buildRoom(T, b, ctx, { enhanced=false, hour=new Date().getHours(
   }
 
   // ---- Licht
-  scene.add(new T.HemisphereLight(0xffffff, 0x554433, night ? 0.32 : 0.75));
+  scene.add(new T.HemisphereLight(0xffffff, 0x554433, night ? (enhanced ? 0.55 : 0.32) : 0.75));
   const sun = new T.DirectionalLight(night ? 0x8fa8ff : pal.light, night ? 0.35 : dusk ? 0.8 : 1.15); sun.position.set(w * 0.4, 9, d * 0.6); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
   const sc = sun.shadow.camera; sc.left = -w; sc.right = w; sc.top = d; sc.bottom = -d; sc.near = 1; sc.far = 30; scene.add(sun);
   const lamp = new T.PointLight(pal.light, night ? 34 : 18, 18); lamp.position.set(0, ht - 0.5, 0); scene.add(lamp);
@@ -88,11 +113,19 @@ export function buildRoom(T, b, ctx, { enhanced=false, hour=new Date().getHours(
   const counter = (x, z, len = 4, rot = 0, col = 0x7a5535, top = 0xd8d2c0) => { const g = group(x, z, rot); box(len, 1.1, 0.9, col, 0, 0, 0, g); box(len + 0.2, 0.1, 1.1, top, 0, 1.1, 0, g); return g; };
   const desk = (x, z, rot = 0) => { const g = group(x, z, rot); box(2.0, 0.1, 1.0, 0x7a5535, 0, 1.0, 0, g); box(0.1, 1.0, 0.9, 0x5a3d22, -0.9, 0, 0, g); box(0.1, 1.0, 0.9, 0x5a3d22, 0.9, 0, 0, g); box(0.6, 0.02, 0.45, 0xffffff, -0.4, 1.1, 0.1, g); box(0.5, 0.02, 0.35, 0xe8e0c8, 0.4, 1.1, -0.1, g); if (era >= 3) { box(0.7, 0.45, 0.06, 0x222222, 0.3, 1.1, -0.25, g); box(0.2, 0.05, 0.2, 0x222222, 0.3, 1.1, -0.2, g); } box(0.7, 0.1, 0.6, 0x4a3a2a, 0, 0.55, 1.0, g); box(0.7, 0.8, 0.1, 0x4a3a2a, 0, 0.6, 1.3, g); return g; };
   const plant = (x, z) => { const g = group(x, z); cyl(0.3, 0.25, 0.5, 0xb4623a, 0, 0, 0, g); sph(0.55, 0x3f7a35, 0, 1.0, 0, g); sph(0.4, 0x4f8f40, 0.25, 1.4, 0.1, g); return g; };
-  const person = (x, z, col = 0x3a5a8a, rot = 0, skin = 0xe0b896) => { const g = group(x, z, rot); if(enhanced){
+  const people = [], walkers = [];
+  const HAIR = [0x2a1d14, 0x5a3a20, 0x8a6a3a, 0x1a1a1a, 0xb8a070, 0x6a2a1a];
+  const person = (x, z, col = 0x3a5a8a, rot = 0, skin = 0xe0b896, hat = '') => { const g = group(x, z, rot); if(enhanced){
     box(.43,.6,.28,col,0,.66,0,g);cyl(.09,.08,.6,0x343b40,-.13,.08,0,g);cyl(.09,.08,.6,0x343b40,.13,.08,0,g);
     cyl(.09,.075,.52,col,-.3,.68,0,g,{rot:[0,0,-.12]});cyl(.09,.075,.52,col,.3,.68,0,g,{rot:[0,0,.12]});
     sph(.09,skin,-.33,.68,0,g);sph(.09,skin,.33,.68,0,g);box(.19,.1,.34,0x302b26,-.13,0,.06,g);box(.19,.1,.34,0x302b26,.13,0,.06,g);
-    }else cyl(0.28, 0.32, 1.1, col, 0, 0.0, 0, g); sph(0.26, skin, 0, 1.38, 0, g); box(0.5, 0.12, 0.3, 0x2a2a2a, 0, 0, 0.06, g, { noShadow: true }); return g; };
+    sph(.275, HAIR[Math.abs(Math.round(x * 7 + z * 13)) % HAIR.length], 0, 1.43, -.03, g, { noShadow: true });
+    if (hat === 'chef') { cyl(.24, .22, .34, 0xffffff, 0, 1.58, 0, g, { noShadow: true }); sph(.3, 0xffffff, 0, 1.98, 0, g, { noShadow: true }); box(.46, .42, .06, 0xffffff, 0, .35, .15, g, { noShadow: true }); }
+    else if (hat === 'cap') { box(.5, .1, .5, 0x3a3a46, 0, 1.6, .02, g, { noShadow: true }); box(.4, .05, .24, 0x2a2a32, 0, 1.58, .3, g, { noShadow: true }); }
+    else if (hat === 'apron') { box(.46, .42, .06, 0xe9e2cf, 0, .34, .15, g, { noShadow: true }); }
+    }else cyl(0.28, 0.32, 1.1, col, 0, 0.0, 0, g); sph(0.26, skin, 0, 1.38, 0, g); box(0.5, 0.12, 0.3, 0x2a2a2a, 0, 0, 0.06, g, { noShadow: true }); people.push({ g, base: rot, ph: (x * 3.1 + z * 1.7) % 6.28 }); return g; };
+  /** Passant/Kunde, der zwischen zwei Punkten hin und her läuft (nur mit Animationen). */
+  const customer = (x0, x1, z, col = 0x6a4a8a, speed = .45) => { if (!enhanced) return null; const g = person(x0, z, col, Math.PI / 2, [0xe8c4a0, 0xd9a77f, 0xb98260][Math.abs(Math.round(x0 + z)) % 3], 'apron'); people.pop(); walkers.push({ g, x0, x1, z, speed, ph: x0 * 1.3 + z }); return g; };
   const crate = (x, z, col = 0xb58a4f) => { const g = group(x, z, Math.random() * 0.5); box(0.9, 0.7, 0.9, col, 0, 0, 0, g); box(0.95, 0.08, 0.95, 0x8a6a3a, 0, 0.35, 0, g); return g; };
   const barrel = (x, z) => { const g = group(x, z); cyl(0.4, 0.4, 0.9, 0x8a5a2f, 0, 0, 0, g); cyl(0.42, 0.42, 0.06, 0x333333, 0, 0.2, 0, g); cyl(0.42, 0.42, 0.06, 0x333333, 0, 0.65, 0, g); return g; };
   const frame = (x, y, z, wall, c = 0xd8b46a, size = [0.9, 1.1]) => { const g = new T.Group(); box(size[0], size[1], 0.08, c, 0, 0, 0, g); box(size[0] - 0.16, size[1] - 0.16, 0.1, 0xe9dec8, 0, 0.08, 0, g); if (wall === 'back') g.position.set(x, y, -d / 2 + 0.1); else { g.position.set(-w / 2 + 0.1, y, z); g.rotation.y = Math.PI / 2; } props.add(g); return g; };
@@ -100,7 +133,7 @@ export function buildRoom(T, b, ctx, { enhanced=false, hour=new Date().getHours(
   const anyTasks = () => (b.tasks || []).some((t) => t.ready);
 
   // =====================  Raumtypen  =====================
-  const staffFigs = (n, area, cols = [0x3a5a8a, 0x8a3a3a, 0x3a7a5a, 0x7a5a2a]) => { for (let i = 0; i < Math.min(n, 8); i++) person(area[0] + (i % 4) * 1.4 - 2, area[1] + Math.floor(i / 4) * 1.6, cols[i % cols.length], Math.PI * 0.1 * i); };
+  const staffFigs = (n, area, cols = [0x3a5a8a, 0x8a3a3a, 0x3a7a5a, 0x7a5a2a], hat = '') => { for (let i = 0; i < Math.min(n, 8); i++) person(area[0] + (i % 4) * 1.4 - 2, area[1] + Math.floor(i / 4) * 1.6, cols[i % cols.length], Math.PI * 0.1 * i, undefined, hat); };
   const t = b.type;
   if (t === 'home' || (t === 'pension')) {
     const big = t === 'home';
@@ -186,7 +219,7 @@ export function buildRoom(T, b, ctx, { enhanced=false, hour=new Date().getHours(
     const tablesG = []; for (let i = 0; i < nT; i++) tablesG.push(table(-w / 2 + 2.2 + (i % 4) * 2.6, 0.6 + Math.floor(i / 4) * 2.8, 1.6, 1.0, 2, accent));
     spot(tablesG[0], 'tables', chain === 'wirt' ? 'Gästetische – bedienen' : 'Arbeitsfläche – anpacken', taskAct('serve'), 'Aufgabe: Betrieb betreuen');
     const off = desk(w / 2 - 1.6, d / 2 - 1.6, Math.PI * 0.8); spot(off, 'office', 'Büro – Unternehmen verwalten', () => { const c = live(); return (c ? [{ label: 'Betrieb verwalten (Mitarbeiter, Manager, Ausbau)', run: ({ go }) => go('business') }, { label: c.owner ? 'Du arbeitest hier bereits selbst' : 'Selbst im Betrieb arbeiten', disabled: c.owner || c.abandoned, run: ({ act }) => act('bizWork', { id: c.id }) }] : []); });
-    if (c) staffFigs(c.staff, [-1.5, 3.0]); if (c && (c.owner || b.own)) person(w / 4 + 1, -d / 2 + 2.6, 0x333333, 0.5);
+    if (c) staffFigs(c.staff, [-1.5, 3.0], undefined, chain === 'baecker' ? 'chef' : chain === 'wirt' ? 'apron' : 'cap'); if (c && (c.owner || b.own)) person(w / 4 + 1, -d / 2 + 2.6, 0x333333, 0.5);
     if (c && c.manager) person(w / 2 - 2.6, d / 2 - 2.6, 0x1a1a2a, -2.2);
     if ((b.tier || 0) >= 1) { chandelier(0, 0); plant(-w / 2 + 0.8, d / 2 - 1); }
     if (b.abandoned) { box(w, 0.4, 0.1, 0x6b5a3a, 0, 1.0, d / 2 - 0.5, props, { rot: [0, 0, 0.1] }); }
@@ -201,7 +234,20 @@ export function buildRoom(T, b, ctx, { enhanced=false, hour=new Date().getHours(
   // ---- Spielfiguren (Spieler selbst)
   person(-0.5, d / 2 - 2.2, pal.accent, 0.3, 0xf0c8a0);
 
-  return { scene, hotspots: hot, dims: { w, d, ht }, pal };
+  // ---- Namensschild, Kundschaft, Aktionsleiste
+  if (enhanced) {
+    const sw = Math.min(w * .42, 3.6), sg = new T.Mesh(new T.PlaneGeometry(sw, sw / 6.4), new T.MeshStandardMaterial({ map: signTexture(T, b.name, { bg: b.own ? '#6a4b17' : '#4d3320', fg: b.own ? '#ffe9a8' : '#f5ead1', border: b.own ? '#e3b94a' : '#2b1d12' }), roughness: .8 }));
+    sg.position.set(0, ht - .62, -d / 2 + .22); scene.add(sg);
+    const lane = { markt: [-w / 2 + 2.6, w / 2 - 4, d / 2 - 1.3], bahnhof: [-w / 2 + 2, w / 2 - 2, d / 2 - 2.5], rathaus: [-w / 2 + 2, w / 2 - 2, d / 2 - .7], arzt: [-w / 2 + 2.5, 0, d / 2 - .9], lotto: [-w / 2 + 1.5, w / 2 - 1.5, d / 2 - .7], spielbank: [-w / 2 + 2, w / 2 - 2, d / 2 - .8], biz: [-w / 2 + 2.5, w / 4, d / 2 - .8], zeitung: [-w / 4, w / 4, d / 2 - .8] }[t];
+    if (lane) { customer(lane[0], lane[1], lane[2], 0x6a4a8a, .5); if (['markt', 'bahnhof', 'rathaus', 'spielbank'].includes(t)) customer(lane[1], lane[0], lane[2] - .6, 0x3a7a5a, .38); }
+  }
+  const bar = (BAR[t] || []).map(([id, verb, icon, filter]) => ({ hot: hot.find((x) => x.id === id), verb, icon, filter })).filter((x) => x.hot);
+  const update = (time) => {
+    for (const p of people) { p.g.position.y = Math.abs(Math.sin(time * .0022 + p.ph)) * .018; p.g.rotation.y = p.base + Math.sin(time * .0008 + p.ph) * .14; }
+    for (const k of walkers) { const len = Math.abs(k.x1 - k.x0) || 1, s = (time * .001 * k.speed + k.ph) % (2 * len), q = s < len ? s / len : 2 - s / len, dir = (k.x1 - k.x0) * (s < len ? 1 : -1); k.g.position.set(k.x0 + (k.x1 - k.x0) * q, Math.abs(Math.sin(time * .007 + k.ph)) * .05, k.z); k.g.rotation.y = dir >= 0 ? Math.PI / 2 : -Math.PI / 2; }
+  };
+
+  return { scene, hotspots: hot, dims: { w, d, ht }, pal, bar, update, animated: people.length + walkers.length > 0 && enhanced };
 }
 
 /** Marken für das Minispiel (Positionsraster im Raum) */

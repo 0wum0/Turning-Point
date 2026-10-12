@@ -158,7 +158,7 @@ export function buildAerial({ cityId, name, tier, era, buildings, aerial, select
     const st = TYPE_STYLE[b.type] || TYPE_STYLE.home;
     const scale = b.type === 'home' && b.rooms ? 1 + Math.min(0.5, b.rooms / 30) : b.type === 'biz' ? 0.9 + (b.tier || 0) * 0.25 : 1;
     const ww = st.w * scale; const hh = st.h * scale; const x = s.x - ww / 2; const y = s.y - hh / 2;
-    landmarks.push({ key:b.key, name:b.name, own:!!b.own, type:b.type, x:s.x, y:s.y, w:ww, d:hh, roof:st.roof, height:st.tower ? 42 : st.rails ? 25 : 24 });
+    landmarks.push({ key:b.key, name:b.name, own:!!b.own, type:b.type, pkey:b.pkey, tier:b.tier || 0, rooms:b.rooms || 0, villa:!!b.villa, abandoned:!!b.abandoned, residence:!!b.residence, x:s.x, y:s.y, w:ww, d:hh, roof:st.roof, height:st.tower ? 42 : st.rails ? 25 : 24, block:{ x0:s.blk.x0, y0:s.blk.y0, x1:s.blk.x1, y1:s.blk.y1 } });
     const own = b.own; const sel = selected === b.key;
     let g = `<g class="bld ${own ? 'own' : ''} ${sel ? 'sel' : ''}" data-key="${esc(b.key)}" tabindex="0" role="button" aria-label="${esc(b.name)}">`;
     g += `<rect class="hit" x="${s.blk.x0}" y="${s.blk.y0}" width="${s.blk.x1 - s.blk.x0}" height="${s.blk.y1 - s.blk.y0}" fill="transparent"/>`;
@@ -216,5 +216,5 @@ export function buildAerial({ cityId, name, tier, era, buildings, aerial, select
     for (const b of buildings) { const s = spots[b.key]; if (s) tint += `<circle cx="${s.x}" cy="${s.y}" r="62" fill="url(#lamp)" style="mix-blend-mode:screen;pointer-events:none"/>`; }
   } else if (dusk) tint = `<rect width="${W}" height="${H}" fill="#ff8a3c" opacity=".16" style="mix-blend-mode:multiply;pointer-events:none"/>`;
   const svg = `<svg class="aerial" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice" role="application" aria-label="Luftansicht ${esc(name)}">${defs}<g id="avp">${out}<g class="life" style="pointer-events:none">${life}</g>${tint}${marks}</g></svg>`;
-  return { svg, hour, vegetation, roads:{xs,ys}, terrain: `<svg xmlns="http://www.w3.org/2000/svg" width="2000" height="1250" viewBox="0 0 2000 1250">${defs}${out}</svg>`, structures, landmarks, spots: Object.fromEntries(Object.entries(spots).map(([k, v]) => [k, { x: v.x, y: v.y }])) };
+  return { svg, hour, vegetation, roads:{xs,ys}, river:hasRiver ? river : [], parks:blocks.filter(b => b.park).map(b => ({ x0:b.x0, y0:b.y0, x1:b.x1, y1:b.y1 })), terrain: `<svg xmlns="http://www.w3.org/2000/svg" width="2000" height="1250" viewBox="0 0 2000 1250">${defs}${out}</svg>`, structures, landmarks, spots: Object.fromEntries(Object.entries(spots).map(([k, v]) => [k, { x: v.x, y: v.y }])) };
 }

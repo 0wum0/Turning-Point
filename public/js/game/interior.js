@@ -20,7 +20,7 @@ export async function openInterior(ctx, b, data) {
     sidebar.innerHTML = '<nav class="int-navigation" aria-label="Im Gebäude"><button data-room-tab="objects" aria-pressed="true">Gegenstände</button><button data-room-tab="tasks" aria-pressed="false">Aufgaben</button></nav><div class="int-objects"><div class="int-object-intro"><span class="city-eyebrow">ENTDECKEN & INTERAGIEREN</span><h2>Dein nächster Schritt</h2><p>Wähle einen Gegenstand im Raum oder hier in der Übersicht.</p></div><div class="int-object-list" aria-live="polite">Raum wird vorbereitet …</div></div>';
     sidebar.append(root.querySelector('.int-tasks'), root.querySelector('.int-panel'));
     root.append(stage, sidebar);
-    stage.insertAdjacentHTML('beforeend', '<div class="int-scene-selection" hidden></div><div class="int-camera" aria-label="Raumansicht"><button class="btn" data-camera="in" aria-label="Raum vergrößern">+</button><button class="btn" data-camera="out" aria-label="Raum verkleinern">−</button><button class="btn" data-camera="reset">Ansicht zurücksetzen</button></div><div class="int-stage-caption">Ziehen zum Umsehen · Gegenstände auswählen</div>');
+    stage.insertAdjacentHTML('beforeend', '<div class="int-scene-selection" hidden></div><nav class="int-actionbar" aria-label="Aktionen im Gebäude" hidden></nav><div class="int-camera" aria-label="Raumansicht"><button class="btn" data-camera="in" aria-label="Raum vergrößern">+</button><button class="btn" data-camera="out" aria-label="Raum verkleinern">−</button><button class="btn" data-camera="reset" aria-label="Ansicht zurücksetzen" title="Ansicht zurücksetzen">' + icon('refresh-cw').__raw + '</button></div><div class="int-stage-caption">Ziehen zum Umsehen · Gegenstände auswählen</div>');
   }
   document.body.appendChild(root); document.body.style.overflow = 'hidden'; if (app) app.inert = true;
   root.querySelector('#intBack').focus();
@@ -70,13 +70,13 @@ export async function openInterior(ctx, b, data) {
   };
 
   // ---- Aktionspanel
-  let currentHot = null;
+  let currentHot = null, currentFilter = null; let barEntries = [];
   const resolveActions = (h) => {
     let list = h.actions();
     const out = [];
     for (const a of list) {
       if (a.kind === 'food') {
-        for (const [i, tier] of ctx.view.food.tiers.entries()) out.push({ label: `Kühlschrank/Vorrat auffüllen – ${tier.name}`, sub: money(tier.cost, ctx.view.currency), disabled: ctx.view.meters.fridge >= 95 || ctx.view.money < tier.cost, run: ({ act }) => act('buyFood', { tier: i }) });
+        for (const [i, tier] of ctx.view.food.tiers.entries()) out.push({ label: `${h.id === 'fridge' ? 'Kühlschrank/Vorrat auffüllen' : 'Lebensmittel kaufen'} – ${tier.name}`, sub: h.id === 'fridge' ? money(tier.cost, ctx.view.currency) : `${money(tier.cost, ctx.view.currency)} · Vorrat auffüllen`, disabled: ctx.view.meters.fridge >= 95 || ctx.view.money < tier.cost, run: ({ act }) => act('buyFood', { tier: i }) });
       } else if (a.kind === 'task') {
         const t = a.task; const st = !here ? 'Du bist nicht in dieser Stadt.' : t.blocked || (!t.ready ? `Wieder verfügbar in ${t.cooldownLeft} Min.` : '');
         out.push({ label: `Aufgabe: ${t.name}`, sub: st || `${t.desc} (${rewardText(t.reward)})`, disabled: !t.ready || !here, run: () => runTask(t) });
@@ -84,16 +84,18 @@ export async function openInterior(ctx, b, data) {
     }
     return out;
   };
-  const showActions = (h) => {
+  const showActions = (h, filter) => {
     if (!alive) return;
+    if (filter !== undefined || h !== currentHot) currentFilter = filter || null;
     const previousHot = currentHot; currentHot = h;
+    root.querySelectorAll('[data-bar]').forEach((btn) => { const e = barEntries[Number(btn.dataset.bar)]; btn.setAttribute('aria-pressed', String(!!h && e.hot === h && (e.filter || null) === currentFilter)); });
     if(v2){
       root.querySelectorAll('[data-object]').forEach(btn=>btn.setAttribute('aria-pressed',String(room?.hotspots[Number(btn.dataset.object)]===h)));
       const badge=root.querySelector('.int-scene-selection');badge.hidden=!h;badge.textContent=h?.label || '';focusRoom(h);
     }
     if (v2) { switchTab('objects'); root.classList.toggle('has-selection', !!h); }
     if (!h) { panel.classList.add('hide'); if (v2 && previousHot && room) root.querySelector(`[data-object="${room.hotspots.indexOf(previousHot)}"]`)?.focus({ preventScroll:true }); return; }
-    const acts = resolveActions(h);
+    const acts = resolveActions(h).filter((a) => !currentFilter || currentFilter.test(a.label || ''));
     mount(panel, html`<div class="row spread"><b class="serif" style="font-size:1.15rem">${h.label}</b><button class="btn ghost sm" id="pClose" aria-label="Schließen">${icon('x')}</button></div>
       ${acts.length ? html`<div class="stack mt" style="--gap:.5rem">${acts.map((a, i) => html`<button class="btn block act" data-i="${i}" ${a.disabled || (!here && !a.allowAway) ? 'disabled' : ''}><span class="grow" style="text-align:left"><b>${a.label}</b>${a.sub ? html`<div class="dim small" style="font-weight:500;white-space:normal">${a.sub}</div>` : ''}</span></button>`)}</div>` : html`<div class="dim mt">Hier gibt es gerade nichts zu tun.</div>`}
       ${!here ? html`<div class="small dim mt">Du bist nicht in dieser Stadt – Aktionen sind nur vor Ort möglich.</div>` : ''}`);
@@ -118,6 +120,11 @@ export async function openInterior(ctx, b, data) {
     mount(list, html`${(room?.hotspots || []).map((h, i) => html`<button class="int-object" data-object="${i}"><span class="int-object-symbol">${icon('sparkles')}</span><span><b>${h.label}</b><small>${h.hint || 'Möglichkeiten ansehen'}</small></span><span aria-hidden="true">›</span></button>`)}`);
     list.querySelectorAll('[data-object]').forEach(btn => { btn.onclick = () => showActions(room.hotspots[Number(btn.dataset.object)]); });
   }
+  if (v2 && room?.bar?.length) {
+    barEntries = room.bar; const nav = root.querySelector('.int-actionbar'); nav.hidden = false;
+    mount(nav, html`${barEntries.map((e, i) => html`<button class="int-act-btn" data-bar="${i}" aria-pressed="false" title="${e.hot.label}"><span class="int-act-ic" aria-hidden="true">${icon(e.icon)}</span><span class="int-act-txt"><b>${e.verb}</b><small>${e.hot.label.split(' – ')[0]}</small></span><i class="int-act-rdy" aria-hidden="true"></i></button>`)}`);
+    nav.querySelectorAll('[data-bar]').forEach((btn) => { btn.onclick = () => { const e = barEntries[Number(btn.dataset.bar)]; const same = currentHot === e.hot && (e.filter || null) === currentFilter; showActions(same ? null : e.hot, same ? undefined : e.filter || null); }; });
+  }
   if (!renderer || !room) {
     root.classList.add('int-no-3d'); canvas.classList.add('hide');
     const fallback = document.createElement('div'); fallback.className = 'int-fallback-message';
@@ -136,7 +143,8 @@ export async function openInterior(ctx, b, data) {
   const cam = { az: 0.42, el: 0.78, dist: Math.max(dims.w, dims.d) * (v2 ? 1.5 : 1.35), target: new T.Vector3(0, 1.1, 0.4) };
   const minD = 5; const maxD = Math.max(dims.w, dims.d) * 2;
   const renderedTarget=cam.target.clone();
-  const renderedCam = { az:cam.az, el:cam.el, dist:cam.dist }; let cameraTime = 0;
+  const reducedNow = () => matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.dataset.motion === 'off';
+  const renderedCam = v2 && !reducedNow() ? { az:cam.az - .45, el:cam.el * .62, dist:cam.dist * 1.65 } : { az:cam.az, el:cam.el, dist:cam.dist }; let cameraTime = 0, roomTime = 0;
   const placeCam = () => { const ce = Math.cos(renderedCam.el), distance = renderedCam.dist * Math.max(1, .85 / camera.aspect); camera.position.set(renderedTarget.x + distance * ce * Math.sin(renderedCam.az), renderedTarget.y + distance * Math.sin(renderedCam.el), renderedTarget.z + distance * ce * Math.cos(renderedCam.az)); camera.lookAt(renderedTarget); };
   invalidate = () => { needs = true; if (!rafId) rafId = requestAnimationFrame(frame); };
   onResize = () => { const r = (root.querySelector('.int-stage') || root).getBoundingClientRect(); if (!r.width || !r.height) return; renderer.setSize(r.width, r.height, false); camera.aspect = r.width / r.height; camera.updateProjectionMatrix(); invalidate(); };
@@ -160,8 +168,10 @@ export async function openInterior(ctx, b, data) {
     for (const k of ['az','el','dist']) { const delta=cam[k]-renderedCam[k]; renderedCam[k] += delta * (movingAllowed ? 1-Math.exp(-dt/70) : 1); if (Math.abs(delta)>.0005) { moving=true; needs=true; } else renderedCam[k]=cam[k]; }
     if(renderedTarget.distanceTo(cam.target)>.001){ renderedTarget.lerp(cam.target,movingAllowed?1-Math.exp(-dt/100):1); moving=true;needs=true; }else renderedTarget.copy(cam.target);
     if (tokens.length && !matchMedia('(prefers-reduced-motion: reduce)').matches && document.documentElement.dataset.motion !== 'off') { tokens.forEach((k, i) => { k.mesh.position.y = k.y0 + Math.sin(t / 380 + i) * 0.12; k.mesh.rotation.y = t / 700 + i; }); needs = true; }
+    const lifeOn = movingAllowed && room.animated && !document.hidden;
+    if (lifeOn && t - roomTime >= 33) { roomTime = t; room.update(t); needs = true; }
     if (needs) { needs = false; placeCam(); renderer.render(scene, camera); }
-    if (moving || (tokens.length && movingAllowed)) rafId = requestAnimationFrame(frame); else cameraTime=0;
+    if (moving || (tokens.length && movingAllowed) || lifeOn) rafId = requestAnimationFrame(frame); else cameraTime=0;
   }
   onResize();
 
@@ -175,6 +185,7 @@ export async function openInterior(ctx, b, data) {
   hotspots.forEach((h) => { if (h.actions().some((a) => a.kind === 'task' && a.task.ready) && here) setEmissive(h, true); });
   markReady = () => {
     markers.splice(0).forEach((m) => { scene.remove(m); disposeObject(m); });
+    root.querySelectorAll('[data-bar]').forEach((btn) => { const e = barEntries[Number(btn.dataset.bar)]; btn.dataset.ready = String(!!here && e.hot.actions().some((a) => a.kind === 'task' && a.task.ready)); });
     hotspots.forEach((h) => {
       setEmissive(h, false);
       if (here && h.actions().some((a) => a.kind === 'task' && a.task.ready)) {

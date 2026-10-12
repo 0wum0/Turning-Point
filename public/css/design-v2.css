@@ -571,3 +571,53 @@
 .city3d-pin[aria-pressed="true"] strong,.city3d-pin:focus-visible strong { display:block; }
 .city3d-pin[hidden] { display:none; }
 @media(max-width:650px) { .city3d-pin { width:36px;height:36px; } .city3d-pin strong { max-width:180px; } }
+
+/* ---- 3D-Stadt: Hervorhebung, Infokarte, Vollbild, Kamerawechsel ---- */
+.city3d-pin span { pointer-events:none; }
+.city3d-pin[data-own="true"] strong,.city3d-pin[data-hover="true"] strong { display:block; }
+.city3d-pin[data-own="true"]:not([aria-pressed="true"]):not([data-hover="true"]) strong { opacity:.92; }
+.city3d-tip { position:absolute; z-index:6; display:grid; gap:2px; max-width:260px; padding:9px 12px; border:1px solid #d7efe08c; border-radius:10px; background:#142b24f2; color:#f4fff8; box-shadow:0 8px 26px #0006; pointer-events:none; font-size:12.5px; line-height:1.45; }
+.city3d-tip strong { font:700 14px var(--font-ui); } .city3d-tip span { color:#bfd7c8; }
+.city3d-card { position:absolute; z-index:5; left:16px; bottom:16px; display:grid; gap:4px; width:min(330px,calc(100% - 32px)); padding:14px 16px; border:1px solid #b3e6c98c; border-radius:14px; background:linear-gradient(145deg,#173a2eef,#102821f2); color:#f3fff7; box-shadow:0 14px 38px #0007; pointer-events:auto; animation:city-card-in .22s ease-out; }
+.city3d-card > span { font:700 10.5px var(--font-ui); letter-spacing:.12em; color:#9fd9b8; } .city3d-card > strong { font:700 19px/1.25 var(--font-ui); } .city3d-card > small { font-size:13px; color:#c4dccb; line-height:1.5; }
+.city3d-card > div { display:flex; gap:8px; margin-top:8px; } .city3d-card .btn { min-height:44px; } .city3d-card .btn.primary { flex:1; }
+@keyframes city-card-in { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+#city3dHost.city-entering::after { content:""; position:absolute; inset:0; z-index:7; background:#0b1a16; opacity:0; animation:city-fade-out .62s ease-in forwards; pointer-events:none; }
+@keyframes city-fade-out { 0%,45% { opacity:0; } 100% { opacity:1; } }
+:root[data-game-design="v2"] body.game .sim-window .aerial-card.is-full { position:fixed; inset:0; z-index:5000; border-radius:0; border:0; height:auto; min-height:0; width:auto; max-width:none; margin:0; }
+:root[data-game-design="v2"] body.game .sim-window .aerial-card.is-full #city3dHost,:root[data-game-design="v2"] body.game .sim-window .aerial-card.is-full #aerialHost { position:absolute; inset:0; height:100%; }
+:root[data-game-design="v2"] body.game .sim-window .aerial-card.is-full svg.aerial { min-height:0; }
+:root[data-game-design="v2"] body.game.city-fullscreen { overflow:hidden; }
+:root[data-game-design="v2"] body.game .sim-window .aerial-card.is-full .map-tools { top:16px; right:16px; }
+.city3d-card .btn:focus-visible,.city3d-pin:focus-visible,#azfull:focus-visible { outline:3px solid #ffe08a; outline-offset:2px; }
+@media (max-width:650px) { .city3d-card { left:10px; right:10px; bottom:10px; width:auto; padding:12px 14px; } .city3d-tip { display:none; } }
+@media (prefers-reduced-motion:reduce) { .city3d-card,#city3dHost.city-entering::after { animation:none !important; } #city3dHost.city-entering::after { opacity:0; } }
+:root[data-motion="off"] .city3d-card,:root[data-motion="off"] #city3dHost.city-entering::after { animation:none !important; }
+.city3d-card[hidden],.city3d-tip[hidden] { display:none; }
+
+/* ---- Innenraum: Aktionsleiste wie in der Gilde, Kamera-Knöpfe oben rechts ---- */
+.sim-interior .int-camera { top:16px; right:16px; bottom:auto; left:auto; }
+.sim-interior .int-camera .btn { min-width:44px; padding:8px 12px; }
+.sim-interior .int-stage-caption { bottom:92px; }
+.sim-interior .int-actionbar { position:absolute; z-index:3; left:50%; bottom:14px; transform:translateX(-50%); display:flex; gap:8px; max-width:calc(100% - 28px); padding:8px; overflow-x:auto; border:1px solid #a4dcbb5c; border-radius:18px; background:linear-gradient(#173229f2,#0f231cf4); box-shadow:0 14px 40px #0008; scrollbar-width:thin; }
+.sim-interior .int-actionbar[hidden] { display:none; }
+.int-act-btn { position:relative; flex:0 0 auto; display:flex; align-items:center; gap:9px; min-height:56px; padding:8px 14px 8px 10px; border:1px solid #b9dcc83a; border-radius:12px; background:linear-gradient(#ffffff12,#ffffff05); color:#f1f9f3; font:inherit; text-align:left; cursor:pointer; transition:background .15s,border-color .15s,transform .15s; }
+.int-act-btn:hover { border-color:#9aefba; background:#8fe7af26; transform:translateY(-1px); }
+.int-act-btn[aria-pressed="true"] { border-color:#9aefba; background:linear-gradient(#78dba233,#5cc08a1f); box-shadow:inset 0 0 0 1px #9aefba66; }
+.int-act-btn:focus-visible { outline:3px solid #ffe08a; outline-offset:2px; }
+.int-act-ic { display:grid; place-items:center; width:34px; height:34px; border-radius:10px; background:#e5cf8a1f; color:#f0dd9d; }
+.int-act-ic svg { width:20px; height:20px; }
+.int-act-txt { display:grid; line-height:1.25; } .int-act-txt b { font:700 14px var(--font-ui); white-space:nowrap; } .int-act-txt small { font-size:11.5px; color:#b6cdbe; white-space:nowrap; max-width:130px; overflow:hidden; text-overflow:ellipsis; }
+.int-act-rdy { display:none; position:absolute; top:5px; right:6px; width:10px; height:10px; border-radius:50%; background:#5fd6a4; box-shadow:0 0 0 3px #5fd6a455; }
+.int-act-btn[data-ready="true"] .int-act-rdy { display:block; }
+@media (max-width:650px) {
+ .sim-interior { grid-template-rows:auto minmax(230px,44svh) minmax(0,1fr); }
+ .sim-interior .int-camera { top:10px; right:10px; } .sim-interior .int-camera .btn { min-height:40px; }
+ .sim-interior .int-camera [data-camera="reset"] { font-size:12px; padding:6px 8px; }
+ .sim-interior .int-actionbar { bottom:8px; gap:6px; padding:6px; border-radius:14px; justify-content:flex-start; }
+ .int-act-btn { min-height:48px; padding:6px 10px 6px 8px; gap:7px; } .int-act-ic { width:30px; height:30px; } .int-act-txt small { display:none; }
+ .sim-interior .int-stage-caption { display:none; }
+}
+@media (prefers-reduced-motion:reduce) { .int-act-btn { transition:none; } .int-act-btn:hover { transform:none; } }
+@media (max-width:650px) { .sim-interior .int-scene-selection { max-width:calc(100% - 130px); font-size:12.5px; padding:7px 10px; } }
+.city3d-card { pointer-events:none; } .city3d-card .btn { pointer-events:auto; }
