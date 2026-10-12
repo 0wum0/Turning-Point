@@ -621,3 +621,14 @@
 @media (prefers-reduced-motion:reduce) { .int-act-btn { transition:none; } .int-act-btn:hover { transform:none; } }
 @media (max-width:650px) { .sim-interior .int-scene-selection { max-width:calc(100% - 130px); font-size:12.5px; padding:7px 10px; } }
 .city3d-card { pointer-events:none; } .city3d-card .btn { pointer-events:auto; }
+:root[data-game-design="v2"] body.game .sim-window .aerial-card.is-full { inset:var(--hud-h,40px) 0 0 0; }
+:root[data-game-design="v2"] body.game.city-fullscreen .side { display:none; }
+@media (max-width:650px) {
+ :root[data-game-design="v2"] body.game .aerial-card:not(.is-full) .city3d-card { grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:0 10px; padding:8px 10px; bottom:8px; }
+ :root[data-game-design="v2"] body.game .aerial-card:not(.is-full) .city3d-card > span,:root[data-game-design="v2"] body.game .aerial-card:not(.is-full) .city3d-card > small { display:none; }
+ :root[data-game-design="v2"] body.game .aerial-card:not(.is-full) .city3d-card > strong { font-size:15px; grid-column:1; }
+ :root[data-game-design="v2"] body.game .aerial-card:not(.is-full) .city3d-card > div { grid-column:2; grid-row:1; margin:0; }
+ :root[data-game-design="v2"] body.game .aerial-card:not(.is-full) .city3d-card .btn.ghost { display:none; }
+}
+/* Hochformat: Panorama so verschieben, dass der Kirchturm im Bild bleibt. */
+@media (max-aspect-ratio:1/1) { :root[data-game-design="v2"] body.game .sim-splash { background-position:0 0,31% 65%,0 0; } }

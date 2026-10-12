@@ -121,7 +121,7 @@ export async function createCity3D(host, aerial, opts) {
     transform.updateMatrix(); (pine ? pines : crowns).setMatrixAt(i, transform.matrix);
     if (pine) { transform.scale.setScalar(.0001); transform.updateMatrix(); crowns.setMatrixAt(i, transform.matrix); } else { transform.scale.setScalar(.0001); transform.updateMatrix(); pines.setMatrixAt(i, transform.matrix); }
     const v = (i * 37 % 11) / 11;
-    if (pine) col.setHSL(.38 + v * .03, .35, .2 + v * .06).lerp(whiteRoof, season.snow * .5); // Nadelbäume bleiben grün
+    if (pine) col.setHSL(.34 + v * .03, .45, .15 + v * .05).lerp(whiteRoof, season.snow * .5); // Nadelbäume bleiben grün
     else if (season.snow > .5) col.setHSL(.09, .12, .36 + v * .06).lerp(whiteRoof, season.snow * .45);
     else if (season.autumn > .1) col.setHSL(.27 - season.autumn * (.15 + v * .12), .4 + season.autumn * .3, .27 + v * .07);
     else if (season.blossom > .25 && v > .6) col.setHSL(.94, .5, .78 - v * .08); else col.setHSL(.27 + v * .03, .42, .24 + v * .08);
@@ -271,6 +271,7 @@ export async function createCity3D(host, aerial, opts) {
       for (const c of clouds) { c.position.x += c.userData.speed * dt * .0012; if (c.position.x > 260) c.position.x = -260; }
       if (river) river.material.map.offset.x = -(t * .00004 % 1);
     }
+    if (moving && (hoverKey || !tip.hidden)) clearHover();
     placeCamera(); renderer.render(scene, camera); paintPins();
     frames++; if (t - fpsT > 1000) { fps = Math.round(frames * 1000 / (t - fpsT)); frames = 0; fpsT = t; }
     if (moving || animated) invalidate(); else previous = 0;
@@ -284,6 +285,7 @@ export async function createCity3D(host, aerial, opts) {
   canvas.oncontextmenu = (e) => e.preventDefault();
   canvas.onpointerdown = (e) => { canvas.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]); if (pts.size === 1) drag = { x: e.clientX, y: e.clientY, az: target.az, el: target.el, tx: target.x, tz: target.z, moved: 0, pan: e.button === 2 || e.shiftKey || e.button === 1 }; else if (drag) drag.moved = 99; flight = null; };
   let hoverQueued = null;
+  const clearHover = () => { if (hoverKey) { highlight(hoverKey, false); hoverKey = null; hoverRing.visible = false; canvas.style.cursor = 'grab'; } tip.hidden = true; };
   const hover = () => { const e = hoverQueued; hoverQueued = null; if (!e || !alive) return; const key = pick(e.clientX, e.clientY); if (key !== hoverKey) { if (hoverKey) highlight(hoverKey, false); hoverKey = key; if (key) { highlight(key, true); placeRing(hoverRing, key, .9); } else hoverRing.visible = false; canvas.style.cursor = key ? 'pointer' : 'grab'; invalidate(); } showTip(key, e.clientX, e.clientY); };
   canvas.onpointermove = (e) => {
     if (!pts.has(e.pointerId) || !drag) { if (e.pointerType === 'mouse') { hoverQueued = e; requestAnimationFrame(hover); } return; }
@@ -298,7 +300,7 @@ export async function createCity3D(host, aerial, opts) {
     drag = null;
     if (click) { const key = pick(e.clientX, e.clientY); if (key) { const now = performance.now(); if (lastClick.key === key && now - lastClick.t < 380) { onEnter(key); lastClick = { key: null, t: 0 }; return; } lastClick = { key, t: now }; focus(key); onSelect(key); } else if (e.pointerType !== 'mouse') { card.hidden = true; } }
   };
-  canvas.onpointerup = end; canvas.onpointercancel = end; canvas.onpointerleave = () => { if (hoverKey) { highlight(hoverKey, false); hoverKey = null; hoverRing.visible = false; invalidate(); } tip.hidden = true; };
+  canvas.onpointerup = end; canvas.onpointercancel = end; canvas.onpointerleave = () => { clearHover(); invalidate(); };
   function zoom(f) { target.dist = Math.max(14, Math.min(190, target.dist * f)); invalidate(); }
   canvas.addEventListener('wheel', (e) => { e.preventDefault(); zoom(Math.exp(Math.max(-120, Math.min(120, e.deltaY * (e.deltaMode === 1 ? 16 : 1))) * .002)); }, { passive: false });
   canvas.onkeydown = (e) => {

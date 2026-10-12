@@ -105,7 +105,7 @@ export default {
         if(disposed || version!==sceneVersion)return;
         created=await createCity3D(host,ctx.ui._aerial,{onSelect:select,onEnter:enter,describe,selected:ctx.ui.cityBuilding,reduced:()=>media.matches || document.documentElement.dataset.motion==='off',getHour:hourOf,era:ctx.view.date.eraKey,doy:testDoy() ?? ctx.view.date.doy,cityId:data.city.id});
         if(disposed || version!==sceneVersion){created?.dispose();return;}
-        scene3d=created;status.hidden=true;
+        scene3d=created;status.hidden=true; host.__city3d = created; // Prüf-/Leistungshilfe: host.__city3d.stats()
       } catch(e) { if(disposed || version!==sceneVersion)return; await switchScene('2d');status.textContent=e.message;status.hidden=false; }
     };
     root.querySelectorAll('[data-city-view]').forEach(el=>{el.onclick=()=>switchScene(el.dataset.cityView);});

@@ -98,6 +98,31 @@ Deutschland bleibt der einzige spielbare Ortskatalog. Eine spätere Welt-Erweite
 benötigt einen eigenen Import und eine erweiterte Kartenprojektion; diese Änderung
 fügt noch keine anderen spielbaren Länder hinzu.
 
+## 3D-Stadt und Innenräume (Gilde-Stil)
+
+Die 3D-Stadt (Stadt → „3D-Stadt“) ist vollständig prozedural (keine Bild-/Modelldateien, keine externen Dienste):
+
+- **Wahrzeichen je Typ** (`city-buildings.js`): Rathaus mit Uhrenturm und Arkade, Bahnhof mit Tonnendach, Bahnsteig,
+  Gleisen und Zug (Dampflok bis ca. 1960), Markthalle mit Streifendach und Ständen, Arztpraxis mit Kreuz, Schule mit
+  Glockenturm und Zaun, Zeitungsverlag mit Sheddach und Schornstein, Lotto-Kiosk, Spielbank mit Kuppel, Fachwerk-Pension und
+  -Wirtshaus mit Auslegerschild, Schmiede mit Esse und Glut, Bäckerei, Werkstatt, Scheune/Silo, Gewächshaus, Läden.
+  Jedes Gebäude trägt ein Namensschild; eigene Gebäude haben goldenen Ring und Wimpel. Pro Gebäude wenige Meshes (Batching).
+- **Tageszeit nach Spieluhr** (`atmosphere.js`): ein Spieltag ≈ 4 Minuten (`game.clock_days_per_day`), daraus Sonnen-/Mondstand,
+  Himmel, Sterne, beleuchtete Fenster und Laternen. Bei reduzierter Bewegung/„Animationen aus“ bleibt die Zeit beim Laden stehen.
+- **Jahreszeit nach Spieldatum**: Winter mit Schnee auf Dächern/Boden, Frühling mit Blüten, Herbstlaub; flachere Wintersonne.
+- **Leben**: Passanten, Fuhrwerke (bis 1960er) bzw. Autos, Rauch aus Schornsteinen, Brunnen im Park, Fluss, Vögel, Wolken.
+- **Bedienung**: Hover hebt das Gebäude hervor (Tooltip mit Name, Art, bereiten Aufgaben), Klick wählt aus und zeigt eine Infokarte,
+  Doppelklick oder „Gebäude betreten“ fliegt die Kamera zur Tür und öffnet den Innenraum. Ziehen = drehen, Rechtsklick/Umschalt+Ziehen
+  oder W/A/S/D = verschieben, Rad/Pinch/+/− = zoomen, Home = Ansicht zurücksetzen. **Vollbild**-Knopf (Esc beendet).
+- **Innenräume**: Aktionsleiste am unteren Rand mit Verben (Arbeiten, Kaufen, Verkaufen, Einstellen & Verwalten, Ausruhen, Kochen,
+  Reisen …). Jeder Knopf wählt dieselben Gegenstände/Aktionen wie der Klick im Raum bzw. die Liste rechts – es gibt keine neuen
+  Spielaktionen. Punkt am Knopf = Aufgabe bereit. Personal mit Mützen/Schürzen, laufende Kundschaft, Fensterblick passend zur
+  Tageszeit, Namensschild an der Wand, sanfte Kamerafahrt beim Betreten.
+- Prüfhilfen: `document.documentElement.dataset.cityHour` (0–24) und `cityDoy` (0–364) frieren Tages-/Jahreszeit ein;
+  `#city3dHost.__city3d.stats()` liefert Draw-Calls, Dreiecke, Passanten usw. Das Renderer-Bundle wurde um einige three.js-Exporte
+  erweitert (siehe `public/vendor/three/README.md`).
+- Zeit-/Jahreszeit-Funktionen sind getestet (`test/atmosphere.test.js`), Browser-Verhalten in `test/e2e/design-gilde.test.js`.
+
 ## Prüfung
 
 - `npm test`: Spiellogik, statische UI-Prüfungen und Gruppierungs-/Kollisionstests
@@ -111,6 +136,7 @@ fügt noch keine anderen spielbaren Länder hinzu.
   Anhalten einer Route über den originalen Handler mit Aktualisierung der Karte.
   Die Funktionsauswahl respektiert unabhängig gesetzte `hidden`-Attribute der
   Spielmodule.
+- `design-gilde.test.js`: 3D-Stadt (Tages-/Jahreszeit, Draw-Call-Budget, Hover, Karte, Vollbild), Innenraum-Aktionsleiste auf Desktop und Handy (auch reduzierte Bewegung).
 - Zusätzlicher Browsertest: gestaffeltes Laden, Startfehler/Wiederholen,
   Koordinaten und Beschriftungs-IDs über drei Zoomstufen und vier Viewports,
   fortschreitende Frachtposition, ruhende Routen und reduzierte Bewegung.

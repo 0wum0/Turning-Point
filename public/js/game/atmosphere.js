@@ -10,7 +10,7 @@ export function gameHour(clock, sampledAt, now = Date.now()) {
   const perMs = Number(clock && clock.perMs) || 0;
   if (!perMs) return 12;
   const carry = Math.max(0, Number(clock.carry) || 0);
-  const elapsed = Math.max(0, now - (sampledAt || now));
+  const elapsed = Math.max(0, now - (Number.isFinite(sampledAt) ? sampledAt : now));
   const frac = (carry + elapsed * perMs) % 1;
   return (frac * 24 + 24) % 24;
 }

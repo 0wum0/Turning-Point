@@ -35,7 +35,9 @@ export function buildLandmark(T, b, env, shared) {
   const rnd = seeded(hashString(b.key));
   const B = createBatches(T, ['lit', 'on', 'off']);
   const chimneys = [], lights = [];
-  const roofCol = b.abandoned ? 0x625a50 : new T.Color(b.roof || '#a4503a').getHex();
+  const STYLE_ROOF = { bakery: 0xb4553a, inn: 0x8a4a38, forge: 0x4e545b, workshop: 0x8a5a3a, schule: 0x9a4f3a, press: 0x5d6870, barn: 0x4a4540 };
+  const SHOP_ROOFS = [0xb4553a, 0x7a5a45, 0x8a4a38, 0x4f6a7a];
+  const roofCol = b.abandoned ? 0x625a50 : (STYLE_ROOF[style] ?? (b.type === 'biz' ? SHOP_ROOFS[hashString(b.key) % SHOP_ROOFS.length] : new T.Color(b.roof || '#a4503a').getHex()));
   const trim = C.timber;
   let top = 0;
   const up = (y) => { if (y > top) top = y; };
@@ -104,14 +106,14 @@ export function buildLandmark(T, b, env, shared) {
       box(5.2, .25, 1.7, C.stone, 0, 2.75, D * .43 + .6); box(5.4, .12, 1.8, C.stoneDark, 0, 3.0, D * .43 + .6); box(5.4, .3, .06, C.stoneDark, 0, 3.0, D * .43 + 1.5);
       door(0, D * .43, C.door, 1.3, 2.0); box(6, .22, 1.4, C.stone, 0, 0, D * .43 + .9);
       // Uhrenturm
-      const tz = D * .1, tw = 2.5; box(tw, 5.3, tw, C.stone, 0, h1 - .6, tz); box(tw + .3, .25, tw + .3, C.stoneDark, 0, h1 + 4.6, tz);
+      const tz = D * .1, tw = 2.5; box(tw, 6.4, tw, C.stone, 0, h1 - .6, tz); box(tw + .3, .25, tw + .3, C.stoneDark, 0, h1 + 5.7, tz);
       for (const [fx, fz, ry] of [[0, tw / 2 + .06, 0], [0, -tw / 2 - .06, Math.PI], [tw / 2 + .06, 0, Math.PI / 2], [-tw / 2 - .06, 0, -Math.PI / 2]]) {
-        B.cyl('lit', .78, .1, C.plasterWhite, fx, h1 + 2.3, tz + fz, { rx: Math.PI / 2, ry, n: 18 });
+        B.cyl('lit', .78, .1, C.plasterWhite, fx, h1 + 3.2, tz + fz, { rx: Math.PI / 2, ry, n: 18 });
         // Rotation um X dreht die Zylinderachse nach z; für Seiten wird per Y gedreht
-        B.box('lit', .07, .55, .06, 0x1d1d1d, fx, h1 + 2.55, tz + fz + (ry === 0 ? .08 : 0), { ry }); B.box('lit', .45, .07, .06, 0x1d1d1d, fx, h1 + 2.3, tz + fz + (ry === 0 ? .08 : 0), { ry });
+        B.box('lit', .07, .55, .06, 0x1d1d1d, fx, h1 + 3.45, tz + fz + (ry === 0 ? .08 : 0), { ry }); B.box('lit', .45, .07, .06, 0x1d1d1d, fx, h1 + 3.2, tz + fz + (ry === 0 ? .08 : 0), { ry });
       }
-      for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) B.box('on', dz ? .7 : .12, .9, dz ? .12 : .7, 0xffc979, dx * (tw / 2 + .02) * 0 + dx * (tw / 2), h1 + 3.9, tz + dz * (tw / 2));
-      cone(2.0, 3.6, C.copper, 0, h1 + 4.85, tz, { n: 4, ry: Math.PI / 4 }); B.sphere('lit', .22, C.gold, 0, h1 + 8.6, tz); cyl(.04, .9, C.gold, 0, h1 + 8.6, tz, { n: 5 }); up(h1 + 9.5);
+      for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) B.box('on', dz ? .7 : .12, .9, dz ? .12 : .7, 0xffc979, dx * (tw / 2), h1 + 4.75, tz + dz * (tw / 2));
+      cone(2.0, 3.6, C.copper, 0, h1 + 5.95, tz, { n: 4, ry: Math.PI / 4 }); B.sphere('lit', .22, C.gold, 0, h1 + 9.7, tz); cyl(.04, .9, C.gold, 0, h1 + 9.7, tz, { n: 5 }); up(h1 + 10.6);
       mkFlag(-mw / 2 + .6, 7.8, D * .43 + .5); mkFlag(mw / 2 - .6, 7.8, D * .43 + .5, 0x1d1d1d);
       break;
     }
