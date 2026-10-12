@@ -72,10 +72,10 @@ async function perform(attackerId, targetId, companyId, action) {
     const idxA = idxOf(world, sA); const idxB = idxOf(world, sB);
     const cost = Math.round(A.cost * idxA); if (sA.money < cost) fail('Dafür reicht dein Geld nicht.');
     const year = yearOf(sB.day, sB.startYear);
-    const secure = !!c.security; const nameA = `${sA.person.first} ${sA.person.last}`;
+    const OPSM = require('../game/operations'); const secure = OPSM.level(c, 'schutz') > 0; const rivalMult = OPSM.rivalMult(c); const nameA = `${sA.person.first} ${sA.person.last}`;
     let success = true; let spyInfo = null; let effectTxt = ''; let damageReal = 0;
     if (action === 'poach' && (c.staff || 0) <= 0) fail('In diesem Betrieb gibt es keine Mitarbeiter zum Abwerben.');
-    if (action !== 'spy' && secure && Math.random() < R.successSecurity) success = false;
+    if (action !== 'spy' && secure && Math.random() < Math.min(0.95, R.successSecurity * rivalMult)) success = false; // Schutzstufe 1–3 verstärkt die Abwehr
     sA.money -= cost; sA.stats.spent = (sA.stats.spent || 0) + cost;
     if (action === 'spy') {
       const f = biz.companyFlows(world, sB, c, year);
@@ -91,7 +91,7 @@ async function perform(attackerId, targetId, companyId, action) {
       }
     }
     // Entdeckung
-    const pCaught = Math.min(0.95, Math.max(0.02, (R.caughtBase + (secure ? R.caughtSecurityBonus : 0) + require('./court-policy').effects(c.cityId).detect) * (DETECT[action] || 1) * require('../game/talents').detectMult(sB.talents))); // Polizeibudget der Stadt wirkt auf die Entdeckung
+    const pCaught = Math.min(0.95, Math.max(0.02, (R.caughtBase + (secure ? R.caughtSecurityBonus * rivalMult : 0) + require('./court-policy').effects(c.cityId).detect) * (DETECT[action] || 1) * require('../game/talents').detectMult(sB.talents))); // Polizeibudget der Stadt wirkt auf die Entdeckung
     const caught = !success ? true : Math.random() < pCaught;
     const fine = caught ? Math.min(Math.max(0, sA.money), Math.round(cost * R.finePct / 100)) : 0;
     sA.money -= fine; sA.stats.spent = (sA.stats.spent || 0) + fine;

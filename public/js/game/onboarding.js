@@ -119,6 +119,8 @@ export const SPOTS = {
   found: { sel: '[data-found]', text: 'Tippe auf „Unternehmen gründen“ und wähle deine Betriebsart.' },
   hire: { sel: '[data-b="bizHire"]', text: 'Tippe auf „+“, um jemanden einzustellen.' },
   talent: { sel: '[data-applicants]:not([disabled])', text: 'Tippe auf „Bewerber ansehen“ und wähle jemanden mit hoher Passung.' },
+  modules: { sel: '[data-ops-modules]', text: 'Hier baust du Module aus – beginne mit der kleinsten Stufe, etwa dem Brandschutz.' },
+  climate: { sel: '[data-ops-climate] [data-ops-lead="praise"]', text: 'Tippe auf „Lob für alle“ – das kostet nichts und hebt die Stimmung.' },
   talents: { sel: '#talCard', text: 'Hier siehst du deine Talente – und was sie bewirken.' },
   supply: { sel: '[data-supply-find], [data-contract-find]', text: 'Tippe bei einer Zutat auf „Lieferant suchen“.' },
   lease: { sel: '[data-lease="on"]', text: 'Tippe auf „Vermieten“.' },

@@ -22,7 +22,7 @@ const BAR = {
   zeitung: [['press', 'Lesen', 'newspaper'], ['proof', 'Arbeiten', 'hammer']],
   lotto: [['counter', 'Tippen', 'ticket']],
   spielbank: [['roulette', 'Spielen', 'dices']],
-  biz: [['cash', 'Kasse leeren', 'coins'], ['tables', 'Arbeiten', 'hammer'], ['office', 'Einstellen & Verwalten', 'users', /Betrieb verwalten/], ['office', 'Selbst arbeiten', 'briefcase', /Selbst|arbeitest/]],
+  biz: [['cash', 'Kasse leeren', 'coins'], ['tables', 'Arbeiten', 'hammer'], ['office', 'Einstellen & Verwalten', 'users', /Betrieb verwalten/], ['office', 'Selbst arbeiten', 'briefcase', /Selbst|arbeitest/], ['stock', 'Lager', 'package'], ['safety', 'Schutz & Brand', 'shield'], ['board', 'Betriebsklima', 'smile']],
   work: [['bench', 'Arbeiten', 'hammer'], ['boss', 'Karriere', 'briefcase'], ['cot', 'Schlafen', 'bed']],
 };
 
@@ -219,6 +219,36 @@ export function buildRoom(T, b, ctx, { enhanced=false, hour=new Date().getHours(
     const tablesG = []; for (let i = 0; i < nT; i++) tablesG.push(table(-w / 2 + 2.2 + (i % 4) * 2.6, 0.6 + Math.floor(i / 4) * 2.8, 1.6, 1.0, 2, accent));
     spot(tablesG[0], 'tables', chain === 'wirt' ? 'Gästetische – bedienen' : 'Arbeitsfläche – anpacken', taskAct('serve'), 'Aufgabe: Betrieb betreuen');
     const off = desk(w / 2 - 1.6, d / 2 - 1.6, Math.PI * 0.8); spot(off, 'office', 'Büro – Unternehmen verwalten', () => { const c = live(); return (c ? [{ label: 'Betrieb verwalten (Mitarbeiter, Manager, Ausbau)', run: ({ go }) => go('business') }, { label: c.owner ? 'Du arbeitest hier bereits selbst' : 'Selbst im Betrieb arbeiten', disabled: c.owner || c.abandoned, run: ({ act }) => act('bizWork', { id: c.id }) }] : []); });
+    // ---- Betrieb 2.0: Lager (Regale mit Füllstand), Schutz & Brand (Feuerlöscher, Alarmtafel, Kamera), Aushang Betriebsklima
+    if (c && c.ops && c.ops.on && !b.abandoned) {
+      const fm = (cents) => `${(cents / 100).toFixed(2).replace('.', ',')} ${v.currency === 'EUR' ? '€' : 'DM'}`;
+      const buildAct = (key, label) => () => { const k = live(); const m = k && k.ops && k.ops.modules[key]; if (!m) return []; return m.next ? [{ label: `${label} ausbauen: ${m.next.name}`, sub: `${fm(m.next.cost)} · ${m.next.text}${m.next.ok ? '' : m.next.why === 'era' ? ` (gibt es erst ab ${m.next.from})` : m.next.why === 'noinputs' ? ' (braucht keine Zutaten)' : ' (Geld reicht nicht)'}`, disabled: !m.next.ok, run: ({ act }) => act('opsBuild', { id: k.id, mod: key }) }] : [{ label: `${label}: höchste Stufe erreicht`, sub: m.cur ? m.cur.name : '', disabled: true }]; };
+      // Lager: Regal an der linken Wand, Kisten nach Füllstand
+      const lagerL = c.ops.modules.lager.lv; const st = c.ops.stock; const fill = st && st.cap ? st.days / st.cap : 0;
+      const shelfG = group(-w / 2 + 0.5, d / 4 + 0.7, Math.PI / 2);
+      for (const y of [0.05, 0.95, 1.85]) box(2.6, 0.08, 0.7, 0x6a4526, 0, y, 0, shelfG);
+      for (const x of [-1.25, 1.25]) box(0.08, 2.4, 0.7, 0x5a3d22, x, 0, 0, shelfG);
+      const slots = []; for (let r = 0; r < 3; r++) for (let k2 = 0; k2 < 4; k2++) slots.push([-0.95 + k2 * 0.63, 0.13 + r * 0.9]);
+      const filled = lagerL ? Math.round(fill * slots.length) : 0;
+      slots.forEach(([sx, sy], i) => { if (i < filled) box(0.5, 0.5, 0.5, i % 2 ? 0xb58a4f : 0xc9a56a, sx, sy, 0, shelfG, { noShadow: true }); });
+      spot(shelfG, 'stock', lagerL ? 'Lager – Vorrat und Ausbau' : 'Lagerregal – noch kein Lager', () => { const k = live(); const stk = k && k.ops && k.ops.stock; return [{ label: stk ? `Vorrat: ${stk.days.toString().replace('.', ',')} von ${stk.cap} Tagen` : 'Noch kein Lager gebaut', sub: stk ? 'Überbrückt Lieferausfälle und nutzt günstige Einkaufspreise' : 'Ein Lager hält Zutaten für einige Tage vor', disabled: true }].concat(buildAct('lager', 'Lager')()); }, 'Vorrat, Lager ausbauen');
+      // Schutz und Brand: Alarmtafel an der Rückwand, Feuerlöscher am Boden, Kamera ab Schutzstufe 2
+      const brandL = c.ops.modules.brand.lv; const schutzL = c.ops.modules.schutz.lv;
+      const safeG = new T.Group(); safeG.position.set(w / 2 - 0.9, 1.55, -d / 2 + 0.12); props.add(safeG);
+      box(0.9, 0.7, 0.08, 0x3b4048, 0, -0.35, 0, safeG);
+      sph(0.07, schutzL ? 0x5fd6a4 : 0x777777, -0.25, 0.1, 0.06, safeG, { m: new T.MeshBasicMaterial({ color: schutzL ? 0x5fd6a4 : 0x777777 }), noShadow: true });
+      sph(0.07, brandL ? 0x5fd6a4 : 0x777777, 0.05, 0.1, 0.06, safeG, { m: new T.MeshBasicMaterial({ color: brandL ? 0x5fd6a4 : 0x777777 }), noShadow: true });
+      sph(0.07, 0xd9534f, 0.3, 0.1, 0.06, safeG, { m: new T.MeshBasicMaterial({ color: brandL >= 2 ? 0xd9534f : 0x777777 }), noShadow: true });
+      const ext = group(w / 2 - 0.55, -d / 2 + 0.55); cyl(0.12, 0.12, 0.62, brandL ? 0xc0392b : 0x8a8a8a, 0, 0, 0, ext, { noShadow: true }); cyl(0.04, 0.04, 0.12, 0x222222, 0, 0.62, 0, ext, { noShadow: true });
+      if (brandL >= 3) { const pipe = box(w * 0.8, 0.07, 0.07, 0xb0b4b8, 0, ht - 0.35, -d / 2 + 0.5, props, { noShadow: true }); void pipe; for (let i = -2; i <= 2; i++) sph(0.07, 0xd0d4d8, i * (w * 0.18), ht - 0.42, -d / 2 + 0.5, props, { noShadow: true }); }
+      if (schutzL >= 2) { const cam = group(-w / 2 + 0.5, -d / 2 + 0.5); box(0.22, 0.16, 0.38, 0x2a2d33, 0, ht - 0.7, 0, cam, { noShadow: true }); sph(0.06, 0xff4040, 0.1, ht - 0.62, 0.18, cam, { m: new T.MeshBasicMaterial({ color: 0xff4040 }), noShadow: true }); }
+      spot(safeG, 'safety', 'Alarmtafel & Feuerlöscher – Schutz und Brandschutz', () => { const k = live(); const ops = k && k.ops; if (!ops) return []; return [{ label: `Brandrisiko: ca. ${ops.fire.yearPct.toString().replace('.', ',')} % pro Jahr`, sub: ops.insurance.on ? 'Betriebsversicherung aktiv' : 'Ohne Betriebsversicherung trägst du den Schaden selbst', disabled: true }].concat(buildAct('brand', 'Brandschutz')(), buildAct('schutz', 'Schutz')(), ops.insurance.on ? [] : [{ label: 'Betriebsversicherung abschließen', sub: `${fm(ops.insurance.premiumDay)} pro Tag`, run: ({ act }) => act('insurance', { key: 'betrieb', on: true }) }]); }, 'Brandschutz, Schutz, Versicherung');
+      // Aushang Betriebsklima (Stimmung des Teams auf einen Blick)
+      const cl = c.ops.climate; const tone = { great: 0x5fd6a4, good: 0x5fd6a4, ok: 0xf2d24b, low: 0xe68a3c, bad: 0xd9534f, none: 0x999999 }[cl.band];
+      const bdG = frame(0, 1.75, 0, 'back', 0x7a5535, [1.9, 1.2]); sph(0.2, tone, 0, 0.78, 0.1, bdG, { m: new T.MeshBasicMaterial({ color: tone }), noShadow: true });
+      cl.members.slice(0, 7).forEach((m2, i2) => { const col = m2.band === 'bad' ? 0xd9534f : m2.band === 'low' ? 0xe68a3c : m2.band === 'ok' ? 0xf2d24b : 0x5fd6a4; box(0.14, 0.06 + 0.3 * m2.mood / 100, 0.04, col, -0.66 + i2 * 0.22, 0.16, 0.1, bdG, { noShadow: true }); });
+      spot(bdG, 'board', 'Aushang – Betriebsklima', () => { const k = live(); const ops = k && k.ops; if (!ops) return []; const c2 = ops.climate; const A = ops.actions; const out = [{ label: c2.avg == null ? 'Keine Mitarbeiter' : `Betriebsklima: ${c2.name} (${Math.round(c2.avg)})`, sub: c2.avg == null ? 'Stelle Mitarbeiter ein – dann siehst du hier ihre Stimmung' : `Wirkung auf den Umsatz: ${c2.effectPct > 0 ? '+' : c2.effectPct < 0 ? '−' : '±'}${Math.abs(c2.effectPct).toString().replace('.', ',')} %`, disabled: true }]; if (!A || c2.avg == null) return out; return out.concat([{ label: 'Team loben', sub: A.praise.cd ? `Wieder möglich in ${A.praise.cd} Tagen` : 'Kostet nichts', disabled: !A.praise.ok, run: ({ act }) => act('bizPraise', { id: k.id, mid: 'all' }) }, { label: 'Prämie für das Team', sub: fm(A.bonus.perHead * c2.members.length), disabled: A.bonus.cd > 0, run: ({ act }) => act('bizBonus', { id: k.id, mid: 'all' }) }, { label: A.party.christmas ? 'Weihnachtsfeier' : 'Betriebsfest', sub: A.party.cd ? `Wieder möglich in ${A.party.cd} Tagen` : fm(A.party.cost), disabled: A.party.cd > 0, run: ({ act }) => act('bizParty', { id: k.id }) }, { label: 'Mitarbeiter einzeln führen …', sub: 'Lob, Geschenk, Prämie', run: ({ go }) => go('business') }]); }, 'Lob, Prämie, Betriebsfest');
+    }
     if (c) staffFigs(c.staff, [-1.5, 3.0], undefined, chain === 'baecker' ? 'chef' : chain === 'wirt' ? 'apron' : 'cap'); if (c && (c.owner || b.own)) person(w / 4 + 1, -d / 2 + 2.6, 0x333333, 0.5);
     if (c && c.manager) person(w / 2 - 2.6, d / 2 - 2.6, 0x1a1a2a, -2.2);
     if ((b.tier || 0) >= 1) { chandelier(0, 0); plant(-w / 2 + 0.8, d / 2 - 1); }

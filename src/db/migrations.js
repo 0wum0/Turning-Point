@@ -1159,7 +1159,7 @@ const MIGRATIONS = [
       const r = await db.query("SELECT value FROM settings WHERE `key` = 'economy'"); if (!r.length) return;
       let o = null; try { o = JSON.parse(r[0].value); } catch (_) { o = null; }
       if (!o || !o.insurance || o.insurance.betrieb) return;
-      o.insurance.betrieb = { name: 'Betriebsversicherung', yearPctOfCompanies: 0.3, covers: ['fire', 'burglary', 'interruption'] };
+      o.insurance.betrieb = { name: 'Betriebsversicherung', yearPctOfCompanies: 0.2, covers: ['fire', 'burglary', 'interruption'] };
       await db.query("UPDATE settings SET value = ? WHERE `key` = 'economy'", [JSON.stringify(o)]);
     },
   ] },

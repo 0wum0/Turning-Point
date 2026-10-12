@@ -3,6 +3,7 @@ const { yearOf } = require('./calendar');
 const { scale } = require('./economy');
 const { clamp, notice, residenceProperty } = require('./core');
 const biz = require('./business');
+const OPS = require('./operations');
 
 /** Gebäude einer Stadt: öffentliche Orte + alles, was dem Spieler dort gehört oder dient. */
 function buildingsFor(world, state, cityId) {
@@ -30,7 +31,7 @@ function buildingsFor(world, state, cityId) {
     list.push({ key: `prop:${p.id}`, type: 'home', name: p.name, icon: p.kind === 'villa' ? 'castle' : 'house', own: true, ref: p.id, rooms: p.rooms, villa: p.kind === 'villa', residence: state.housing.propertyId === p.id, condition: Math.round(p.condition) });
   }
   for (const c of (state.companies || []).filter((x) => x.cityId === cityId)) {
-    list.push({ key: `biz:${c.id}`, type: 'biz', name: c.name, icon: 'store', own: true, ref: c.id, pkey: c.pkey, tier: c.tier, rooms: c.rooms, abandoned: !!c.abandoned });
+    list.push({ key: `biz:${c.id}`, type: 'biz', name: c.name, icon: 'store', own: true, ref: c.id, pkey: c.pkey, tier: c.tier, rooms: c.rooms, abandoned: !!c.abandoned, mods: { lager: OPS.level(c, 'lager'), brand: OPS.level(c, 'brand'), schutz: OPS.level(c, 'schutz'), arbeit: OPS.level(c, 'arbeit') }, burning: !!(c.ops && c.ops.fire && c.outageUntil && state.day < c.outageUntil && c.ops.fire.until === c.outageUntil), mood: OPS.avgMood(c) == null ? null : Math.round(OPS.avgMood(c)) });
   }
   const o = state.occupation;
   if (o && o.cityId === cityId && o.kind !== 'study' && !o.ownCompanyId) {

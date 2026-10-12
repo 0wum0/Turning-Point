@@ -579,3 +579,21 @@ html { scroll-padding-top: calc(var(--hud-h, 62px) + 10px); }
 .civic-modal details[open] > summary { margin-bottom: .4rem; }
 #civicMini .chips { display: flex; flex-wrap: wrap; gap: .35rem; }
 @media (max-width: 560px) { #civicBox .row.nowrap { flex-wrap: wrap; } #civicBox .firm.small { flex-wrap: wrap; } }
+
+/* ---- Betrieb 2.0: Ausbaumodule und Betriebsklima ---- */
+.ops-box { border-top: 1px dashed var(--border); padding-top: .6rem; }
+.ops-mods { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+.ops-mod { padding: .55rem .65rem; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); min-width: 0; }
+.ops-mod-t { display: inline-flex; align-items: center; gap: .35rem; min-width: 0; } .ops-mod-t .i { color: var(--accent-2); }
+.ops-pips { display: inline-flex; gap: 3px; align-items: center; }
+.ops-pips i { width: .62rem; height: .62rem; border-radius: 50%; border: 1px solid var(--border); background: var(--surface-2); display: block; }
+.ops-pips i.on { background: var(--accent); border-color: var(--accent); }
+.ops-mod .btn { white-space: normal; text-align: left; }
+.ops-clim { border-top: 1px dashed var(--border); padding-top: .6rem; }
+.ops-lvs { list-style: none; padding: 0; margin: .6rem 0; display: grid; gap: .5rem; }
+.ops-lv { padding: .5rem .65rem; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.ops-lv.built { border-color: var(--good); } .ops-lv.next { border-color: var(--accent); }
+.ops-member { border-top: 1px dashed var(--border); padding-top: .5rem; }
+.ops-fire .chip, .ops-box .chip { white-space: nowrap; }
+.ops-lock .i { width: 1rem; height: 1rem; vertical-align: -.15em; }
+@media (max-width: 560px) { .ops-mods { grid-template-columns: 1fr; } }

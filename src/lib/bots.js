@@ -151,6 +151,7 @@ function decide(ctx, P) {
     if (!s.occupation || (s.occupation && !s.occupation.ownCompanyId && chance(0.3))) tryAct(ctx, 'bizWork', { id: c.id });
   }
   talentDecisions(ctx, P, idx);
+  opsDecisions(ctx, P, idx);
   seasonDecisions(ctx, P, idx);
   // Immobilien: kaufen und vermieten
   if (s.properties.length < P.maxProps) {
@@ -164,6 +165,25 @@ function decide(ctx, P) {
   // Politik & Glück
   if (ageOfPerson(s) >= 28 && !s.politics.term && P.ambition > 0.55 && chance(0.04)) tryAct(ctx, 'runOffice', { idx: 0 });
   if (s.money > 3000 * idx && chance(0.03)) tryAct(ctx, 'lotto', { tickets: 1 });
+}
+/** Betrieb 2.0: Bots bauen selten kleine Module aus, versichern ihre Betriebe und loben ihr Team (nur milde Führung, keine Abmahnungen). */
+function opsDecisions(ctx, P, idx) {
+  const { world: w, state: s } = ctx; const OPS = require('../game/operations'); if (!OPS.enabled()) return;
+  const B = OPS.C().bots || {}; const firms = (s.companies || []).filter((c) => !c.abandoned);
+  if (!firms.length) return;
+  if (!s.insurance.betrieb && s.money > 20000 * idx && chance(0.15)) tryAct(ctx, 'insurance', { key: 'betrieb', on: true });
+  const year = yrOf(s);
+  for (const c of firms) {
+    if (chance(Number(B.build) || 0)) {
+      const key = pick(['brand', 'schutz', 'lager', 'arbeit']); const lv = OPS.level(c, key);
+      if (lv < 2 && OPS.eraOk(key, lv + 1, year) && s.money > OPS.upgradeCost(w, s, c, key, lv + 1, year) * 12) tryAct(ctx, 'opsBuild', { id: c.id, mod: key });
+    }
+    if ((c.team || []).length && chance(Number(B.lead) || 0)) {
+      const avg = OPS.avgMood(c);
+      if (avg != null && avg < 45 && s.money > 40 * OPS.wageDay(w, year) * (c.team || []).length) tryAct(ctx, 'bizBonus', { id: c.id, mid: 'all' });
+      else tryAct(ctx, 'bizPraise', { id: c.id, mid: 'all' });
+    }
+  }
 }
 /** Jahreszeiten und Seuchen: Bots schützen sich wie Spieler (Hygienepaket, Impfung, Schutzkonzept), sparen vor dem Winter und versichern sich. */
 function seasonDecisions(ctx, P, idx) {

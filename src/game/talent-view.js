@@ -57,7 +57,7 @@ function memberView(world, state, c, m, idx, year) {
     lehr: m.lehr ? { daysLeft: Math.max(0, m.lehr.end - state.day), total: lc.days } : null,
     course: m.course ? { key: m.course.key, daysLeft: Math.max(0, m.course.end - state.day) } : null,
     mood: Math.round(require('./operations').moodOf(m)), moodBand: require('./operations').bandOf(require('./operations').moodOf(m)),
-    ask: m.ask ? { pct: Math.round((m.ask.w / Math.max(0.01, m.w) - 1) * 100), daysLeft: Math.max(0, m.ask.until - state.day), wage: Math.round(sw * idx * m.ask.w) } : null,
+    ask: m.ask ? { pct: Math.round((m.ask.w / Math.max(0.01, m.w) - 1) * 100), daysLeft: Math.max(0, m.ask.until - state.day), unhappy: !!m.ask.mood, wage: Math.round(sw * idx * m.ask.w) } : null,
   };
 }
 

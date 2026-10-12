@@ -16,7 +16,7 @@ const config = require('../config');
 const anticheat = require('../lib/anticheat');
 const social = require('../lib/social');
 const { baseUrl } = require('../lib/security');
-const { ttlCache } = require('../lib/limits');
+const { ttlCache, userLimit } = require('../lib/limits');
 
 const router = express.Router();
 const wrap = (fn) => (req, res, next) => fn(req, res, next).catch((e) => {
@@ -71,7 +71,10 @@ router.post('/create', wrap(async (req, res) => {
   res.json({ ok: true, view: r.view });
 }));
 
-router.post('/action/:name', wrap(async (req, res) => {
+// Betrieb 2.0: Führungsaktionen und Ausbau sind keine Schnellklick-Aktionen (Abkühlzeiten gelten im Spiel, zusätzlich eine Bremse je Spieler)
+const OPS_ACTIONS = new Set(require('../game/operations-actions').ACTIONS);
+const opsLimit = userLimit(45, 'Zu viele Führungsaktionen – bitte kurz warten.');
+router.post('/action/:name', (req, res, next) => (OPS_ACTIONS.has(req.params.name) ? opsLimit(req, res, next) : next()), wrap(async (req, res) => {
   // Nur echte Aktionsnamen (A ist ein einfaches Objekt: „constructor“, „__proto__“ & Co. dürfen nicht als Handler laufen)
   if (!actions.ACTIONS.includes(req.params.name)) throw new actions.ActionError('Unbekannte Aktion.');
   let r;

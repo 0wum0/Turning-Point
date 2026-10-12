@@ -158,7 +158,7 @@ export function buildAerial({ cityId, name, tier, era, buildings, aerial, select
     const st = TYPE_STYLE[b.type] || TYPE_STYLE.home;
     const scale = b.type === 'home' && b.rooms ? 1 + Math.min(0.5, b.rooms / 30) : b.type === 'biz' ? 0.9 + (b.tier || 0) * 0.25 : 1;
     const ww = st.w * scale; const hh = st.h * scale; const x = s.x - ww / 2; const y = s.y - hh / 2;
-    landmarks.push({ key:b.key, name:b.name, own:!!b.own, type:b.type, pkey:b.pkey, tier:b.tier || 0, rooms:b.rooms || 0, villa:!!b.villa, abandoned:!!b.abandoned, residence:!!b.residence, x:s.x, y:s.y, w:ww, d:hh, roof:st.roof, height:st.tower ? 42 : st.rails ? 25 : 24, block:{ x0:s.blk.x0, y0:s.blk.y0, x1:s.blk.x1, y1:s.blk.y1 } });
+    landmarks.push({ key:b.key, name:b.name, own:!!b.own, type:b.type, pkey:b.pkey, tier:b.tier || 0, rooms:b.rooms || 0, villa:!!b.villa, abandoned:!!b.abandoned, residence:!!b.residence, mods:b.mods || null, burning:!!b.burning, x:s.x, y:s.y, w:ww, d:hh, roof:st.roof, height:st.tower ? 42 : st.rails ? 25 : 24, block:{ x0:s.blk.x0, y0:s.blk.y0, x1:s.blk.x1, y1:s.blk.y1 } });
     const own = b.own; const sel = selected === b.key;
     let g = `<g class="bld ${own ? 'own' : ''} ${sel ? 'sel' : ''}" data-key="${esc(b.key)}" tabindex="0" role="button" aria-label="${esc(b.name)}">`;
     g += `<rect class="hit" x="${s.blk.x0}" y="${s.blk.y0}" width="${s.blk.x1 - s.blk.x0}" height="${s.blk.y1 - s.blk.y0}" fill="transparent"/>`;

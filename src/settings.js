@@ -360,7 +360,7 @@ const DEFAULTS = {
       hausrat: { name: 'Hausratversicherung', perDay: 12, covers: ['burglary'] },
       gebaeude: { name: 'Gebäudeversicherung', yearPctOfValue: 0.3, covers: ['fire', 'storm'] },
       gesundheit: { name: 'Krankenzusatz', perDay: 20, covers: ['illness'] },
-      betrieb: { name: 'Betriebsversicherung', yearPctOfCompanies: 0.3, covers: ['fire', 'burglary', 'interruption'] },
+      betrieb: { name: 'Betriebsversicherung', yearPctOfCompanies: 0.2, covers: ['fire', 'burglary', 'interruption'] },
     },
     politics: {
       minAge: 25, termDays: 1460,

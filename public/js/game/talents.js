@@ -1,6 +1,7 @@
 /* Talente (Oberfläche): sechs Balken, Karte „Deine Talente“, Begabung der Kinder mit Empfehlung und Fördern, Team und Bewerber der Betriebe.
  * Daten kommen fertig vom Server (view.talents, children[].tal, companies[].talent). Zahlen stehen in eigenen Elementen (für die englische Oberfläche). */
 import { html, icon, money, infoBtn, bar, on, modal, term } from './ui.js';
+import { memberLead, runLead } from './ops.js';
 
 const BAND_PCT = [22, 48, 70, 92];
 const dec = (x, d = 1) => (Math.round(x * 10 ** d) / 10 ** d).toLocaleString(document.documentElement.lang === 'en' ? 'en-US' : 'de-DE', { maximumFractionDigits: d });
@@ -166,6 +167,7 @@ export function openTeam(ctx, id) {
       <p class="small dim"><span>Kurse kosten</span> ${money(t.course.fee, cur)} <span>und dauern</span> ${t.course.days} <span>Tage. Das Talent steigt um</span> ${t.course.pts} <span>Punkte – bis zur Grenze der Anlage.${t.course.disc ? ' Das Bildungsprogramm des Landes spart ' + t.course.disc + ' %.' : ''}</span></p>
       <div class="grid auto" style="--gap:.7rem;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))">${t.team.map((x) => memberCard(x, html`
         <div class="small mt">${money(x.wage, cur)} <span>/ Tag</span> · ${x.years} <span>Jahre dabei</span>${x.lehr ? html` · <span class="chip small">${icon('graduation-cap')} <span>Lehrling, noch</span> ${Math.ceil(x.lehr.daysLeft / 365 * 10) / 10} <span>Jahre</span></span>` : ''}</div>
+        ${memberLead(c, x, cur)}
         ${x.ask ? html`<div class="alert warn small mt">${icon('triangle-alert')}<div><b>${x.name.split(' ')[0]}</b> <span>verlangt</span> ${x.ask.pct} <span>% mehr Lohn (noch</span> ${x.ask.daysLeft} <span>Tage).</span><div class="row mt"><button class="btn sm primary" data-raise="${x.id}"><span>Lohn erhöhen</span></button></div></div></div>` : ''}
         ${x.course ? html`<div class="small dim mt">${icon('graduation-cap')} <span>Im Kurs, noch</span> ${x.course.daysLeft} <span>Tage</span></div>`
           : x.lehr ? '' : html`<div class="row mt"><select data-trainkey="${x.id}" aria-label="Talent wählen">${x.bars.map((b) => html`<option value="${b.key}" ${b.v >= b.cap ? 'disabled' : ''}>${b.label} (${b.v})</option>`)}</select><button class="btn sm" data-train="${x.id}"><span>Kurs</span></button></div>`}
@@ -174,9 +176,10 @@ export function openTeam(ctx, id) {
   };
   paint();
   m.el.addEventListener('click', async (e) => {
-    const b = e.target.closest('[data-train], [data-raise], [data-fire]'); if (!b || b.disabled) return;
+    const b = e.target.closest('[data-train], [data-raise], [data-fire], [data-lead]'); if (!b || b.disabled) return;
     try {
-      if (b.dataset.train) { const sel = m.el.querySelector(`[data-trainkey="${b.dataset.train}"]`); await ctx.act('bizTrain', { id: Number(id), mid: Number(b.dataset.train), key: sel.value }); }
+      if (b.dataset.lead) { if (!(await runLead(ctx, Number(id), b.dataset.lead, Number(b.dataset.mid)))) return; }
+      else if (b.dataset.train) { const sel = m.el.querySelector(`[data-trainkey="${b.dataset.train}"]`); await ctx.act('bizTrain', { id: Number(id), mid: Number(b.dataset.train), key: sel.value }); }
       else if (b.dataset.raise) await ctx.act('bizRaise', { id: Number(id), mid: Number(b.dataset.raise) });
       else if (b.dataset.fire) { if (!(await ctx.confirm({ title: 'Mitarbeiter entlassen?', text: 'Die Stelle wird frei; gute Leute findest du nicht immer sofort wieder.', ok: 'Entlassen', danger: true }))) return; await ctx.act('bizFire', { id: Number(id), mid: Number(b.dataset.fire) }); }
       paint();

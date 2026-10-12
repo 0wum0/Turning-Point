@@ -29,6 +29,9 @@ const JSON_OUT = argv.includes('--json');
 const CITY = String(arg('city', 'live'));
 const REP = arg('rep', 'on') !== 'off'; // Ruf und Ansehen (src/game/reputation.js) mitrechnen: --rep off für die Werte ohne Ansehen
 const CIVIC = arg('civic', 'on') !== 'off'; // Gesellschaft (src/game/civic.js): Verein(e), Gemeinde und Spenden mitrechnen: --civic off für die Werte ohne Gesellschaft
+// Betrieb 2.0 (src/game/operations.js): off = ohne Module, Klima und Betriebsbrand (Vergleichswert) · on = Regeln aktiv, die Politik nutzt aber keine Module (Nichtnutzer) · full = Betriebsinhaber bauen alle Module aus, versichern sich und führen ihr Team (Vollausbau)
+const BETRIEB = String(arg('betrieb', 'on'));
+if (BETRIEB === 'off') require('../src/settings').DEFAULTS.betrieb.enabled = false;
 const OTHERS = Number(arg('others', 12)); // andere lebende Charaktere in der Stadt des Spielers
 if (arg('seasons', 'on') === 'off') require('../src/settings').DEFAULTS.jahreszeiten.enabled = false; // --seasons off: ohne Jahreszeiten, Ernte und Seuchen (Vergleichswert)
 const cityecon = require('../src/game/cityecon');
@@ -137,6 +140,7 @@ function makeRun(name, pkey, policy) {
       for (const k of Object.keys(acc)) acc[k] = 0; acc.days = 0; acc.idxSum = 0;
     }
   }
+  if (process.env.DBG_OPS) { const OPS = require('../src/game/operations'); console.log('OPS', name, JSON.stringify((s.companies || []).map((c) => ({ n: c.name, mods: c.mods, avg: OPS.avgMood(c) && Math.round(OPS.avgMood(c)), staff: c.staff, hist: (c.ops && c.ops.hist || []).map((h) => h.k + h.d), mood: (c.team || []).map((m) => Math.round(m.mood)) })))); }
   const year = yearOf(s.day, s.startYear);
   { const st = s.trade && s.trade.stats; const idxE = w.idx(year); rows.push({ ...snap(year), final: true, status: s.status, reason: s.death && s.death.reason, trips: st ? st.trips : 0, tradeProfit: st ? st.profit / idxE / 100 : 0, tradeOver: st ? (st.over || 0) / idxE / 100 : 0, tradeLost: st ? st.lost : 0 }); }
   return { name, rows, state: s, repLog };
@@ -193,6 +197,23 @@ function earlyRepay(c) {
   const { s, act } = c;
   for (const l of s.loans || []) if (s.money > l.left * 1.5 + 100000) act('loanRepay', { id: l.id, all: true });
 }
+/** Vollausbau (Betrieb 2.0): alle Module, sobald der Betrieb alle Räume seiner Stufe hat und das Geld mindestens das Sechsfache der Kosten beträgt, Betriebsversicherung, Lob alle zwei Wochen, Prämie bei schlechter Stimmung, Betriebsfest im Dezember. */
+function betriebFull(c, co) {
+  const { s, act, w: W, year } = c; const OPS = require('../src/game/operations');
+  if (!s.insurance.betrieb) act('insurance', { key: 'betrieb', on: true });
+  const t = biz.tiersOf(W)[co.tier];
+  if (co.rooms < t.maxRooms) return; // erst ausbauen, dann veredeln: Räume und Stufen haben Vorrang vor Modulen
+  for (const key of ['brand', 'schutz', 'arbeit', 'lager']) {
+    const lv = OPS.level(co, key);
+    if (lv < 3 && OPS.eraOk(key, lv + 1, year) && s.money > 6 * OPS.upgradeCost(W, s, co, key, lv + 1, year)) act('opsBuild', { id: co.id, mod: key });
+  }
+  if ((co.team || []).length) {
+    act('bizPraise', { id: co.id, mid: 'all' });
+    const avg = OPS.avgMood(co);
+    if (avg != null && avg < 45 && s.money > 50 * 500 * c.idx) act('bizBonus', { id: co.id, mid: 'all' });
+    const doy = s.day % 365; if (doy >= 334 && s.money > 50 * 500 * c.idx) act('bizParty', { id: co.id });
+  }
+}
 function runBiz(c, { maxFirms }) {
   const { s, act, w: W, edition: ed, idx, year } = c;
   const E = ed(W, s, s.cityId);
@@ -206,6 +227,7 @@ function runBiz(c, { maxFirms }) {
     if (co.staff < need && s.money > 40 * 500 * idx) act('bizHire', { id: co.id, delta: 1 });
     if (!co.manager && s.money > 60 * 600 * idx) act('bizManager', { id: co.id, on: true });
     if (co.cash > 20 * 500 * idx) act('bizCollect', { id: co.id });
+    if (BETRIEB === 'full') betriebFull(c, co);
     // Ausbau: Räume, dann Stufe
     const t = biz.tiersOf(W)[co.tier];
     if (co.rooms < t.maxRooms && s.money > t.roomPrice * idx * 2.5 && co.lastProfit > 0) act('bizExpand', { id: co.id });

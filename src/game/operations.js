@@ -212,7 +212,7 @@ function premiumFactor(c) {
 }
 /** Tagesprämie (Cent) der Betriebsversicherung für alle aktiven Betriebe. */
 function premiumDay(world, state, year) {
-  const rate = num(((world.econ.insurance || {}).betrieb || {}).yearPctOfCompanies, 0.3);
+  const rate = num(((world.econ.insurance || {}).betrieb || {}).yearPctOfCompanies, 0.2);
   const biz = require('./business');
   let v = 0;
   for (const c of state.companies || []) if (!c.abandoned) v += biz.companyValue(world, state, c, year) * premiumFactor(c);
@@ -325,6 +325,11 @@ function theftStock(c) {
   const lost = Math.round(st * num((C().theft || D.theft).stockLossPct, 10) / 100 * 100) / 100;
   ops(c).stock = Math.max(0, st - lost);
   return lost;
+}
+/** Abwehr im Wettbewerb: Faktor auf Abwehr- und Entdeckungschance des Schutzes (Stufe 1 = 1, ohne Schutz 0). */
+function rivalMult(c) {
+  const L = LV('schutz', level(c, 'schutz')); if (!L || !enabled()) return level(c, 'schutz') ? 1 : 0;
+  return scaleMult(L.rival);
 }
 /** Streikdrohung wird bei guter Stimmung abgewendet: false = der Streik findet nicht statt. */
 function strikeHolds(c, state) {
@@ -467,6 +472,6 @@ function firmView(world, state, c, idx, year, f) {
 
 module.exports = {
   KEYS, C, D, enabled, strength, level, setLevel, normalize, ops, eraOk, levelName, LV, MOD, moduleCost, upgradeCost, upkeepDay, lagerCap, stockOf, lagerPlan,
-  moodOf, avgMood, bandOf, BAND_NAME, firmEffects, revFactor, sickEff, moodTarget, fearPts, fireRisk, insured, premiumFactor, premiumDay, weekly, fire, theft, theftStock, strikeHolds, daily,
+  moodOf, avgMood, bandOf, BAND_NAME, firmEffects, revFactor, sickEff, moodTarget, fearPts, fireRisk, insured, premiumFactor, premiumDay, weekly, fire, theft, theftStock, rivalMult, strikeHolds, daily,
   bump, wageDay, leadSkill, askAdj, afterDismiss, maxStaff, firmView, modulesView, histPush, queueLog, LEAD, K, norm, clamp, r2, num,
 };

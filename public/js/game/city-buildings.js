@@ -279,6 +279,17 @@ export function buildLandmark(T, b, env, shared) {
   }
 
   // Namensschild an der Fassade (außer wenn eigenes Dach-/Zeichenkonzept)
+  // Betrieb 2.0: eigene Betriebe zeigen ihre Module dezent am Haus (Feuerlöscher, Sprinklerleitung, Kamera, Lagerkisten); nach einem Brand glimmt es
+  if (b.type === 'biz' && b.own && b.mods && !b.abandoned) {
+    const mw = W * .8, md = D * .78;
+    if (b.mods.brand >= 1) box(.18, .5, .14, 0xc0392b, mw / 2 - .45, .45, md / 2 + .09);
+    if (b.mods.brand >= 3) B.box('lit', mw * .8, .06, .06, 0xb0b4b8, 0, 2.95, md / 2 + .08);
+    if (b.mods.schutz >= 2) { box(.34, .2, .34, 0x2a2d33, mw / 2 - .1, 2.75, md / 2 + .12); B.box('on', .07, .07, .07, 0xff4040, mw / 2 + .06, 2.75, md / 2 + .3); }
+    if (b.mods.schutz >= 1) box(.12, 1.0, .12, 0x6b7077, -mw / 2 - .15, .3, md / 2 + .25);
+    for (let k = 0; k < (b.mods.lager || 0); k++) box(.62, .5, .5, k % 2 ? 0xb58a4f : 0xc9a56a, -mw / 2 - .75, k * .5, -md * .1 + k * .06, { ry: .2 * k });
+    if (b.mods.arbeit >= 1) box(.9, .08, .6, 0x7a5d3a, mw / 2 + .55, .45, md * .1);
+  }
+  if (b.burning) { lights.push({ x: 0, y: 2.4, z: D * .5, color: 0xff6a2a }); lights.push({ x: W * .3, y: 3.2, z: -D * .1, color: 0xff8a3a }); }
   const group = new T.Group(); group.userData.key = b.key;
   const litGeo = B.build('lit'), onGeo = B.build('on'), offGeo = B.build('off');
   const litMat = new T.MeshStandardMaterial({ vertexColors: true, roughness: .86, metalness: .02, side: T.DoubleSide });

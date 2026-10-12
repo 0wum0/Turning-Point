@@ -32,8 +32,8 @@ export default {
     <section class="card mt">
       <div class="card-title">${icon('shield')} Versicherungen ${infoBtn(['Versicherungen ersetzen Schäden durch Einbruch, Feuer, Sturm oder Krankheit.', 'Sie verhindern aber nicht die Ausfallzeit – ein vom Blitz getroffenes Haus bleibt trotzdem für eine Weile unbenutzbar.', 'Die Zeitung warnt vor Unwettern und Einbruchserien.'], 'Versicherung')}</div>
       <div class="grid c3" style="--gap:.8rem">${v.insurance.map((i) => html`<div class="card flat stack" style="--gap:.4rem"><div class="row spread nowrap"><b>${i.name}</b><span class="chip ${i.on ? 'good' : ''}">${i.on ? 'aktiv' : 'aus'}</span></div>
-        <div class="dim small">schützt vor: ${i.covers.map((c) => ({ burglary: 'Einbruch', fire: 'Feuer', storm: 'Sturm/Blitz', illness: 'Arztkosten' }[c] || c)).join(', ')}</div>
-        <div class="mono small">${i.perDay ? money(i.perDay, cur) + ' / Tag' : 'nur mit Immobilie'}</div>
+        <div class="dim small">schützt vor: ${i.covers.map((c) => ({ burglary: 'Einbruch', fire: 'Feuer', storm: 'Sturm/Blitz', illness: 'Arztkosten', interruption: 'Betriebsunterbrechung' }[c] || c)).join(', ')}</div>
+        <div class="mono small">${i.perDay ? money(i.perDay, cur) + ' / Tag' : (i.key === 'betrieb' ? 'nur mit Betrieb' : 'nur mit Immobilie')}</div>
         <button class="btn sm ${i.on ? 'danger' : 'primary'}" data-ins="${i.key}" data-on="${i.on ? 0 : 1}">${i.on ? 'Kündigen' : 'Abschließen'}</button></div>`)}</div>
     </section>
 

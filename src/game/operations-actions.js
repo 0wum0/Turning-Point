@@ -40,7 +40,7 @@ function install(A, fail, { yr, pay }) {
     pay(state, cost);
     const idx = Math.max(0.0001, world.idx(year));
     OPS.setLevel(c, key, nl);
-    c.base += Math.round(cost / idx * 0.6); // Module steigern den Wert des Betriebs
+    c.base += Math.round(cost / idx * 0.8); // Module steigern den Wert des Betriebs
     if (key === 'lager') OPS.ops(c).stock = OPS.lagerCap(c); // der Preis enthält die erste Befüllung
     try { require('./contractors').order(state, user, world, c.cityId, cost, `Ausbau ${c.name}: ${OPS.levelName(key, nl)}`); } catch (_) { /* optional */ }
     const nm = OPS.MOD(key).name;
