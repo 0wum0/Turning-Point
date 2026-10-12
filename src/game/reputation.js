@@ -65,6 +65,8 @@ const REASONS = {
   tax_paid: { kind: 'civic', d: 0.3, cap: 3, label: 'Steuern gezahlt', why: 'Du hast deine Steuern gezahlt – das finanziert die Stadt.' },
   hire: { kind: 'civic', d: 2, cap: 6, label: 'Mitarbeiter eingestellt', why: 'Du hast einem Mitspieler einen Arbeitsplatz gegeben.' },
   staff_kept: { kind: 'civic', d: 0.4, cap: 3, label: 'Mitarbeiter beschäftigt', why: 'Dein Betrieb beschäftigt Mitarbeiter. Arbeitsplätze zählen fürs Gemeinwohl.' },
+  staff_fair: { kind: 'civic', d: 0.15, cap: 2, label: 'Fairer Arbeitgeber', why: 'Die Mitarbeiter deines Betriebs fühlen sich wohl: faire Löhne, Anerkennung, gutes Klima. Solche Arbeitgeber sind ein Gewinn für die Stadt.' },
+  staff_pressure: { kind: 'scandal', d: 1.5, cap: 4, label: 'Druck auf Mitarbeiter', why: 'Du hast Mitarbeiter wiederholt abgemahnt und die Stimmung im Betrieb ist schlecht. Das spricht sich herum.' },
   fire_unfair: { kind: 'civic', d: -4, cap: 8, label: 'Mitarbeiter kurz nach der Einstellung entlassen', why: 'Ein Mitarbeiter wurde kurz nach der Einstellung wieder entlassen. Das gilt als unfair.' },
   visit: { kind: 'civic', d: 0.4, cap: 2, label: 'Betrieb eines Mitspielers besucht', why: 'Du hast den Betrieb eines Mitspielers besucht und dort Geld gelassen.' },
   honor: { kind: 'civic', d: 8, cap: 8, label: 'Ehrenbürgerwürde erhalten', why: 'Der Bürgermeister hat dir die Ehrenbürgerwürde verliehen.' },

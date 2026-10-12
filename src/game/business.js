@@ -58,37 +58,39 @@ function companyFlows(world, state, c, year) {
   if (c.abandoned) return { income: 0, wages: 0, upkeep: 0, profit: 0, efficiency: 0, needed: 0, inputs: 0, vat: 0, contractIncome: 0, profitAll: 0 };
   TL.syncTeam(world, state, c); // Talente: benannte Mitarbeiter passend zur Kopfzahl (deterministisch aus dem Spielstand-Samen)
   const needed = staffNeeded(world, c);
+  const OPS = require('./operations'); const ox = OPS.firmEffects(c, needed, state.day); // Betrieb 2.0: Klima, Zusatzstellen, Arbeitsschutz
   const ownerHere = state.occupation && state.occupation.ownCompanyId === c.id ? 1 : 0;
   const ps = c.playerStaff || [];
   const goods = require('./goods'); const gw = goods.W(); const ef = goods.effectsFor(world, c.cityId);
   const sfx = require('./seasonfx').firmFactor(world, state, c, year, ef); // Jahreszeit, Feste, Ernte und Seuchen: Umsatzfaktor (rev) und Leistung durch kranke Mitarbeiter (eff)
-  const eff = Math.max(0.2, Math.min(1, (c.staff + ps.length + ownerHere) / needed)) * (c.manager || c.playerManager || ownerHere ? 1 : 0.6) * sfx.eff;
+  const eff = Math.max(0.2, Math.min(1, (c.staff + ps.length + ownerHere) / needed)) * (c.manager || c.playerManager || ownerHere ? 1 : 0.6) * OPS.sickEff(sfx.eff, ox);
   const strike = c.strikeUntil && state.day < c.strikeUntil ? 0 : 1;
   const comp = require('./competition').info(world, c.cityId, c.pkey, c.rooms);
   const hit = c.hit && state.day < c.hit.until ? c.hit.factor : 1; const outage = c.outageUntil && state.day < c.outageUntil ? 0 : 1;
   const ce = require('./cityecon'); // Stadtwirtschaft: Sektor-Index (Umsatz, abgeschwächt) und örtliches Lohnniveau; ohne Stadtindizes = 1
   const tfx = TL.firmEffects(world, state, c, ef.edu); // Talente: Teamqualität → Umsatz (±12 %), Lieferverlässlichkeit, Lohnsumme
-  const raw = tfx.rev * c.rooms * t.incomePerRoom * idx * cityMult(world.city(c.cityId)) * eff * marketPhase(year).factor * strike * comp.factor * hit * outage * ce.revenueMult(world, c.cityId, c.pkey, year) * sfx.rev * require('./civic').revMult(state);
+  const raw = OPS.revFactor(tfx.rev, ox) * c.rooms * t.incomePerRoom * idx * cityMult(world.city(c.cityId)) * eff * marketPhase(year).factor * strike * comp.factor * hit * outage * ce.revenueMult(world, c.cityId, c.pkey, year) * sfx.rev * require('./civic').revMult(state);
   // Warenkreislauf: Rezept, Versorgung, Verträge, Politik (siehe goods.js). Ohne Rezeptzutaten/aus: identisch zur früheren Rechnung.
   const ar = goods.activeRecipe(world, c.pkey, year, c.cityId);
   const rPot = Math.round(raw * ar.mult * goods.outputFactor(ar, year, ef));
   const buy = goods.buyPlan(world, state, c, year, rPot, ar, gw);
-  const rAct = Math.round(rPot * buy.factor);
+  const lg = OPS.lagerPlan(c, buy, gw); // Betrieb 2.0: Lager überbrückt Lücken und nutzt Preisfenster (ohne Lager identisch zu buy)
+  const rAct = Math.round(rPot * lg.factor);
   const sell = goods.sellPlan(world, state, c, year, rAct, ar, gw, tfx.rel);
   const income = Math.round(rAct * sell.npcShare);
   const wages = Math.round(((tfx.wageUnits == null ? c.staff : tfx.wageUnits) * econ.staffWage * idx + (c.manager ? econ.managerWage * idx : 0)) * ce.wageMult(c.cityId, year) + ps.reduce((s, x) => s + x.wage * idx, 0) + (c.playerManager ? c.playerManager.wage * idx : 0));
-  const upkeep = Math.round((companyValue(world, state, c, year) * econ.upkeepYearPct) / 100 / 365) + (c.security ? Math.round(c.rooms * t.incomePerRoom * idx * 0.04) : 0);
-  const inputs = buy.cost;
+  const upkeep = Math.round((companyValue(world, state, c, year) * econ.upkeepYearPct) / 100 / 365) + OPS.upkeepDay(world, state, c, year); // Module (Lager, Brandschutz, Schutz, Arbeitsplätze)
+  const inputs = lg.cost;
   const vat = Math.round((ef.vat / 100) * Math.max(0, income - inputs));
   const pretax = income - wages - upkeep - inputs - vat;
   const taxer = require('./tax');
   const tax = pretax > 0 ? Math.max(0, taxer.corporateTax(pretax) + Math.round((pretax * (ef.surcharge + ef.levy)) / 100)) : 0;
   const profit = pretax - tax;
   return {
-    income, wages, upkeep, tax, pretax, profit, efficiency: eff, sfx, needed, comp, inputs, vat, contractIncome: sell.contractIncome, profitAll: profit + sell.contractIncome,
+    income, wages, upkeep, tax, pretax, profit, efficiency: eff, sfx, needed, comp, inputs, ox, lager: lg, vat, contractIncome: sell.contractIncome, profitAll: profit + sell.contractIncome,
     supply: {
       on: gw.on, primary: ar.primary, status: buy.status, ratio: buy.ratio, factor: buy.factor, auto: buy.auto, needs: buy.needs, pays: buy.pays, outputs: sell.outputs, fills: sell.fills,
-      costContract: buy.costContract, costWholesale: buy.costWholesale, subsidy: buy.subsidy, cost: buy.cost, contractIncome: sell.contractIncome,
+      costContract: buy.costContract, costWholesale: buy.costWholesale, subsidy: buy.subsidy, cost: lg.cost, contractIncome: sell.contractIncome,
       policy: { surcharge: ef.surcharge, levy: Math.round(ef.levy * 10) / 10, vat: ef.vat, tariff: ef.tariff },
     },
   };
@@ -113,6 +115,7 @@ function bizEvents(ctx, c, year) {
   }
   if (state.day % 7 !== c.id % 7) return;
   const B = { ...EVD.business, ...((world.econ.events && world.econ.events.business) || {}) };
+  const OPS = require('./operations');
   const r = rngFor('bizev', state.seed || 0, c.id, Math.floor(state.day / 7));
   if (!chance(r, B.chance)) return;
   const idx = world.idx(year);
@@ -129,7 +132,7 @@ function bizEvents(ctx, c, year) {
       c.cash -= fine; rep.queue(state, 'scandal', 2, 'fine', `insp${c.id}`);
       notice(state, { level: 'warn', title: `Inspektion bei ${c.name}`, tab: 'business', text: `Zu wenig Personal oder keine Leitung: ${formatMoney(fine, cur)} Strafe aus der Firmenkasse.`, info: ['Ämter prüfen Hygiene, Arbeitsschutz und Besetzung.', 'Mit genug Personal und einem Manager passiert dir das nicht.', 'Stelle Mitarbeiter ein oder setze einen Manager ein.'] });
     }
-  } else if (kind === 'strike' && c.staff >= B.strikeMinStaff) {
+  } else if (kind === 'strike' && c.staff >= B.strikeMinStaff && OPS.strikeHolds(c, state)) {
     c.strikeUntil = state.day + int(r, B.strikeMinDays, B.strikeMaxDays);
     notice(state, { level: 'warn', title: `Streik bei ${c.name}`, tab: 'business', text: 'Die Belegschaft legt die Arbeit nieder. Während des Streiks gibt es keinen Umsatz.', info: ['Streiks dauern wenige Tage.', 'Löhne und Unterhalt laufen weiter.', 'Ein Manager schlichtet; mehr Lohn beruhigt langfristig die Stimmung.'] });
   } else if (kind === 'praise') {
@@ -137,9 +140,17 @@ function bizEvents(ctx, c, year) {
     c.cash += bonus;
     notice(state, { level: 'good', title: `Gästelob für ${c.name}`, tab: 'business', text: `Eine begeisterte Kritik bringt Zulauf: ${formatMoney(bonus, cur)} zusätzlicher Umsatz.` });
   } else if (kind === 'theft') {
-    const loss = scale(B.theftLoss, idx);
-    c.cash -= loss;
-    notice(state, { level: 'warn', title: `Diebstahl in ${c.name}`, tab: 'business', text: `Aus dem Betrieb wurde Ware im Wert von ${formatMoney(loss, cur)} gestohlen.` });
+    const g = OPS.theft(ctx, c); // Betrieb 2.0: Schutzstufe kann den Diebstahl abwehren
+    if (g.repelled) {
+      notice(state, { level: 'good', title: `Einbruchsversuch bei ${c.name} abgewehrt`, tab: 'business', text: 'Die Sicherung des Betriebs hat den Diebstahl verhindert. Es ist nichts abhandengekommen.' });
+    } else {
+      const base = scale(B.theftLoss, idx);
+      const ins = OPS.insured(state);
+      const loss = ins ? Math.round(base * 0.1) : base; // Betriebsversicherung: Einbruch gedeckt (Selbstbeteiligung)
+      c.cash -= loss;
+      const lostDays = OPS.theftStock(c);
+      notice(state, { level: 'warn', title: `Diebstahl in ${c.name}`, tab: 'business', text: ins ? `Aus dem Betrieb wurde Ware gestohlen; die Betriebsversicherung ersetzt den Schaden bis auf ${formatMoney(loss, cur)}.` : `Aus dem Betrieb wurde Ware im Wert von ${formatMoney(loss, cur)} gestohlen.${lostDays > 0 ? ' Auch aus dem Lager fehlt etwas.' : ''}` });
+    }
   }
 }
 
@@ -167,11 +178,12 @@ function businessDaily(ctx) {
     }
     if (c.abandoned) continue;
     for (const n of TL.firmDaily(world, state, c, { offline: ctx.offline })) notice(state, { tab: 'business', ...n });
-    if (!ctx.offline) bizEvents(ctx, c, year);
+    if (!ctx.offline) { bizEvents(ctx, c, year); require('./operations').weekly(ctx, c, year); } // Betrieb 2.0: Brand, Klima-Folgen
     const f = companyFlows(world, state, c, year);
     c.cash += f.profit;
     c.lastProfit = f.profit;
     settleContracts(state, c, f, world.idx(year));
+    require('./operations').daily(ctx, c, f); // Betrieb 2.0: Stimmung, Lagerbestand, Abmahnungsdruck, Ansehen
     if (c.staff > 0) rep.queue(state, 'civic', Math.min(0.5, 0.1 * c.staff), 'staff_kept'); // Arbeitsplätze zählen fürs Gemeinwohl
     if (c.stock) require('../lib/exchange').dividend(ctx, c, f.profit);
     if (c.cash < 0) {

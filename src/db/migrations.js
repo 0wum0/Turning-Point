@@ -1135,6 +1135,34 @@ const MIGRATIONS = [
     let ch = false; for (const k of Object.keys(cap)) if (typeof t[k] === 'number' && t[k] > cap[k]) { t[k] = cap[k]; ch = true; }
     if (ch) await db.query("UPDATE settings SET value = ? WHERE `key` = 'economy'", [JSON.stringify(o)]);
   }] },
+  { id: '034_operations', up: [
+    // Betrieb 2.0: Protokoll der Betriebsvorfälle (Brand, abgewehrter Einbruch …), geschrieben genau einmal aus dem Spielstand (src/lib/operations.js)
+    `CREATE TABLE IF NOT EXISTS ops_log (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      user_id INT UNSIGNED NOT NULL,
+      company_id INT NOT NULL DEFAULT 0,
+      city_id INT UNSIGNED NOT NULL DEFAULT 0,
+      kind VARCHAR(12) NOT NULL,
+      real_amount BIGINT NOT NULL DEFAULT 0,
+      insured TINYINT NOT NULL DEFAULT 0,
+      days INT NOT NULL DEFAULT 0,
+      name VARCHAR(120) NOT NULL DEFAULT '',
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      KEY idx_ops_user (user_id, id),
+      KEY idx_ops_time (created_at),
+      CONSTRAINT fk_ops_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    // Betriebsklima (0–100) im Stadtverzeichnis und bei Stellenangeboten: ein fairer Arbeitgeber wird sichtbar
+    'ALTER TABLE player_firms ADD COLUMN climate TINYINT NULL',
+    // Betriebsversicherung in gespeicherten Wirtschaftsdaten ergänzen (neue Standardwerte würden ohnehin zusammengeführt; so steht sie auch im Admin-Formular)
+    async (db) => {
+      const r = await db.query("SELECT value FROM settings WHERE `key` = 'economy'"); if (!r.length) return;
+      let o = null; try { o = JSON.parse(r[0].value); } catch (_) { o = null; }
+      if (!o || !o.insurance || o.insurance.betrieb) return;
+      o.insurance.betrieb = { name: 'Betriebsversicherung', yearPctOfCompanies: 0.3, covers: ['fire', 'burglary', 'interruption'] };
+      await db.query("UPDATE settings SET value = ? WHERE `key` = 'economy'", [JSON.stringify(o)]);
+    },
+  ] },
 ];
 
 async function ensureTable(db) {

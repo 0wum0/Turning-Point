@@ -58,8 +58,9 @@ async function upsertStats(conn, user, charRow, state, world) {
     for (const c of (state.companies || [])) {
       const f = biz.companyFlows(world, state, c, year);
       const distress = c.abandoned ? 1 : (f.profit < 0 && c.cash < Math.abs(f.profit) * 30) || (c.strikeUntil && state.day < c.strikeUntil) ? 1 : 0;
-      await conn.query('INSERT INTO player_firms (user_id, company_id, city_id, name, pkey, tier, rooms, value_real, cash_real, profit_real, staff, distress, abandoned, ask_real) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
-        [user.id, c.id, c.cityId, c.name, c.pkey, c.tier, c.rooms, Math.round(biz.companyValue(world, state, c, year) / idx), Math.round((c.cash || 0) / idx), Math.round(f.profit / idx), (c.staff || 0) + (c.playerStaff || []).length, distress, c.abandoned ? 1 : 0, askF.get(c.id) || null]);
+      const clim = f.ox && f.ox.avg != null && !c.abandoned ? Math.round(f.ox.avg) : null; // Betriebsklima (Betrieb 2.0): öffentlich als „Arbeitsklima“
+      await conn.query('INSERT INTO player_firms (user_id, company_id, city_id, name, pkey, tier, rooms, value_real, cash_real, profit_real, staff, distress, abandoned, ask_real, climate) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+        [user.id, c.id, c.cityId, c.name, c.pkey, c.tier, c.rooms, Math.round(biz.companyValue(world, state, c, year) / idx), Math.round((c.cash || 0) / idx), Math.round(f.profit / idx), (c.staff || 0) + (c.playerStaff || []).length, distress, c.abandoned ? 1 : 0, askF.get(c.id) || null, clim]);
     }
     try { await conn.query('UPDATE player_stats SET talents = ? WHERE user_id = ?', [require('../game/talents').pack(state.talents), user.id]); } catch (e) { log.warn(`[social] Talente: ${e.message}`); }
     await conn.query('DELETE FROM player_props WHERE user_id = ?', [user.id]);
@@ -115,7 +116,7 @@ async function directory(userId, { cityId, tab = 'people', q = '', page = 1 }) {
     const w = `f.city_id = ? AND ${vis}${hasQ ? ' AND (f.name LIKE ? OR ps.name LIKE ? OR ps.username LIKE ?)' : ''}`; const prm = hasQ ? [cityId, like, like, like] : [cityId];
     const total = (await db.one(`SELECT COUNT(*) n FROM player_firms f JOIN users u ON u.id = f.user_id JOIN player_stats ps ON ps.user_id = f.user_id WHERE ${w}`, prm)).n;
     const rows = await db.query(`SELECT f.*, ps.name owner, ps.username, u.role, u.rivalry FROM player_firms f JOIN users u ON u.id = f.user_id JOIN player_stats ps ON ps.user_id = f.user_id WHERE ${w} ORDER BY f.value_real DESC LIMIT ? OFFSET ?`, [...prm, per, off]);
-    return { tab, total, page: Math.max(1, int(page, 1)), pages: Math.max(1, Math.ceil(total / per)), items: rows.map((r) => ({ userId: r.user_id, id: r.company_id, owner: r.owner, username: r.username, role: r.role !== 'player' ? r.role : undefined, name: r.name, pkey: r.pkey, tier: r.tier, rooms: r.rooms, staff: r.staff, value: Number(r.value_real), profit: Number(r.profit_real), distress: !!r.distress, abandoned: !!r.abandoned, rival: !r.abandoned && (settings.get('rivalry').mode === 'all' || !!r.rivalry) && settings.get('rivalry').mode !== 'off', ask: r.ask_real == null ? null : Number(r.ask_real), mine: r.user_id === userId })) };
+    return { tab, total, page: Math.max(1, int(page, 1)), pages: Math.max(1, Math.ceil(total / per)), items: rows.map((r) => ({ userId: r.user_id, id: r.company_id, owner: r.owner, username: r.username, role: r.role !== 'player' ? r.role : undefined, name: r.name, pkey: r.pkey, tier: r.tier, rooms: r.rooms, staff: r.staff, climate: r.climate == null ? null : Number(r.climate), value: Number(r.value_real), profit: Number(r.profit_real), distress: !!r.distress, abandoned: !!r.abandoned, rival: !r.abandoned && (settings.get('rivalry').mode === 'all' || !!r.rivalry) && settings.get('rivalry').mode !== 'off', ask: r.ask_real == null ? null : Number(r.ask_real), mine: r.user_id === userId })) };
   }
   const w = `ps.city_id = ? AND ${VISIBLE}${hasQ ? ' AND (ps.name LIKE ? OR ps.username LIKE ?)' : ''}`; const prm = hasQ ? [cityId, like, like] : [cityId];
   const total = (await db.one(`SELECT COUNT(*) n FROM player_stats ps JOIN users u ON u.id = ps.user_id WHERE ${w}`, prm)).n;

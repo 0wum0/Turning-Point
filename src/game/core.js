@@ -145,6 +145,7 @@ function dailyFlows(world, state) {
     if (!on || !econ.insurance[k]) continue;
     const ins = econ.insurance[k];
     if (ins.perDay) exp.insurance += scale(ins.perDay, idx);
+    else if (ins.yearPctOfCompanies != null) exp.insurance += require('./operations').premiumDay(world, state, year); // Betriebsversicherung (Betrieb 2.0)
     else if (ins.yearPctOfValue) {
       const total = state.properties.reduce((s, p) => s + propertyValue(world, state, p, year), 0);
       exp.insurance += Math.round((total * ins.yearPctOfValue) / 100 / 365);

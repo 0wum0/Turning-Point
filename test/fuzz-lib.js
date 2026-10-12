@@ -165,7 +165,7 @@ function invariants(s, prev) {
   if (s.occupation && s.occupation.ownCompanyId) need(s.companies.some((c) => c.id === s.occupation.ownCompanyId), 'Beruf ohne Firma');
   if (s.status === 'alive') need(!s.death, 'lebend mit death');
   if (s.status !== 'alive') need(!!s.death, 'tot ohne death');
-  for (const k of Object.keys(s.insurance)) need(['hausrat', 'gebaeude', 'gesundheit'].includes(k) && typeof s.insurance[k] === 'boolean', `insurance.${k}`);
+  for (const k of Object.keys(s.insurance)) need(['hausrat', 'gebaeude', 'gesundheit', 'betrieb'].includes(k) && typeof s.insurance[k] === 'boolean', `insurance.${k}`);
   need(isInt(s.life.extraDays), `extraDays ${s.life.extraDays}`);
   return bad;
 }
@@ -200,7 +200,7 @@ function inputFor0(name, s, r, user) {
     case 'autoMaintain': case 'tutorial': case 'butler': case 'bizSecurity': case 'bizManager': return { on: r() < 0.5, id: maybe(comp()) };
     case 'buyFood': return { tier: maybe(Math.floor(r() * 5) - 1) };
     case 'buyCards': return { count: maybe(1 + Math.floor(r() * 25)), pay: r() < 0.5 ? 'coins' : 'money' };
-    case 'insurance': return { key: maybe(pickOf(r, ['hausrat', 'gebaeude', 'gesundheit', 'x'])), on: r() < 0.6 };
+    case 'insurance': return { key: maybe(pickOf(r, ['hausrat', 'gebaeude', 'gesundheit', 'betrieb', 'x'])), on: r() < 0.6 };
     case 'move': return { cityId: maybe(pickOf(r, world.cityList).id) };
     case 'collect': return { key: maybe(actions.pickups(world, user.now)[0] ? actions.pickups(world, user.now)[0].key : 'x') };
     case 'plan': return { target: maybe(Math.floor(r() * 8)) };

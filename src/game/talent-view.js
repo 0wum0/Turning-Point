@@ -56,6 +56,7 @@ function memberView(world, state, c, m, idx, year) {
     bars: barsOf(m, false), fit: TL.fit(m, w), wage: unit, wageMult: m.lehr ? lc.wagePct : m.w, years: Math.max(0, Math.floor((state.day - (m.since || state.day)) / 365)),
     lehr: m.lehr ? { daysLeft: Math.max(0, m.lehr.end - state.day), total: lc.days } : null,
     course: m.course ? { key: m.course.key, daysLeft: Math.max(0, m.course.end - state.day) } : null,
+    mood: Math.round(require('./operations').moodOf(m)), moodBand: require('./operations').bandOf(require('./operations').moodOf(m)),
     ask: m.ask ? { pct: Math.round((m.ask.w / Math.max(0.01, m.w) - 1) * 100), daysLeft: Math.max(0, m.ask.until - state.day), wage: Math.round(sw * idx * m.ask.w) } : null,
   };
 }
@@ -68,7 +69,7 @@ function firmView(world, state, c, idx, year, needed) {
   const lc = TL.lehrCfg();
   const pool = TL.applicants(world, state, c);
   const sw = world.econ.companies.staffWage;
-  const full = (c.staff || 0) >= needed + 2;
+  const full = (c.staff || 0) >= require('./operations').maxStaff(world, c);
   const lehrNow = (c.team || []).filter((m) => m.lehr).length;
   const card = (x) => ({
     id: x.id, name: x.name, g: x.g, age: x.age, bars: barsOf(x, false), fit: x.fit, wage: Math.round(sw * idx * (x.lehr ? lc.wagePct : x.w)), taken: !!x.taken, best: !!x.best, lehr: !!x.lehr,

@@ -8,7 +8,7 @@ const settings = require('../settings');
 const log = require('./log');
 
 const DAY = 86400000;
-const DEFAULT_DAYS = { chatDays: 30, lettersReadDays: 180, newsDays: 90, worldEventsDays: 60, marketDays: 30, ordersDays: 30, tradesDays: 180, leasesDays: 90, anonSessionDays: 2, clubLogDays: 120, parishLogDays: 120, foundationLogDays: 120, clubsClosedDays: 30 };
+const DEFAULT_DAYS = { chatDays: 30, lettersReadDays: 180, newsDays: 90, worldEventsDays: 60, marketDays: 30, ordersDays: 30, tradesDays: 180, leasesDays: 90, anonSessionDays: 2, clubLogDays: 120, parishLogDays: 120, foundationLogDays: 120, clubsClosedDays: 30, opsLogDays: 120 };
 
 /** Reine Funktion: Aufbewahrungstage → Grenzzeitpunkte (Date). Ungültige/0-Werte fallen auf den Standard zurück. */
 function cutoffs(cfg = {}, now = Date.now()) {
@@ -49,6 +49,8 @@ const TASKS = [
   ['parishLog', 'DELETE FROM parish_log WHERE created_at < ?', 'parishLogDays'],
   ['foundationLog', 'DELETE FROM foundation_log WHERE created_at < ?', 'foundationLogDays'],
   ['clubsClosed', "DELETE FROM clubs WHERE status <> 'active' AND closed_at < ?", 'clubsClosedDays'],
+  // Betrieb 2.0: Protokoll der Betriebsvorfälle
+  ['opsLog', 'DELETE FROM ops_log WHERE created_at < ?', 'opsLogDays'],
 ];
 
 async function run(now = Date.now()) {

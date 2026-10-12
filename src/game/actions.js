@@ -540,11 +540,6 @@ A.bizWork = ({ world, state, input }) => {
   if (state.housing.type === 'workplace') state.housing = { type: 'street', cityId: state.cityId };
   return { msg: `Du arbeitest jetzt selbst in ${c.name}.` };
 };
-A.bizSecurity = ({ state, input }) => {
-  const c = company(state, input.id); needActive(c);
-  c.security = !!input.on;
-  return { msg: c.security ? 'Ein Sicherheitsdienst bewacht den Betrieb (kostet täglich etwas, wehrt Angriffe häufiger ab).' : 'Der Sicherheitsdienst wurde abbestellt.' };
-};
 A.bizManager = ({ state, input }) => {
   const c = company(state, input.id); needActive(c);
   c.manager = !!input.on;
@@ -623,6 +618,7 @@ A.bizReactivate = ({ world, state, input }) => {
 require('./society').install(A, fail, { yr, pay });
 require('./career').install(A, fail, { yr, pay });
 require('./talent-actions').install(A, fail, { yr, pay }); // Talente: Bewerberpool, Kurse, Lohnforderungen, Kinder fördern (ersetzt das einfache „+/− Mitarbeiter“)
+require('./operations-actions').install(A, fail, { yr, pay }); // Betrieb 2.0: Module bauen, Mitarbeiter führen (ersetzt den einfachen Sicherheitsdienst-Schalter)
 require('./season-actions').install(A, fail, { yr, pay }); // Seuchen: Schutz mit einem Klick
 require('./places').install(A, fail, { yr, pay, settings });
 

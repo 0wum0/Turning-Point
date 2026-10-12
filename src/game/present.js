@@ -16,6 +16,7 @@ const onboarding = require('./onboarding');
 const cityecon = require('./cityecon');
 const TV = require('./talent-view');
 const TLN = require('./talents');
+const OPS = require('./operations');
 
 const round = (n) => Math.round(n);
 
@@ -180,7 +181,7 @@ function present(world, state, user, now) {
       return {
         id: c.id, name: c.name, pkey: c.pkey, profession: (world.prof(c.pkey) || {}).name, tier: c.tier, tierName: biz.tierName(world, c), cityId: c.cityId, city: city && city.name,
         rooms: c.rooms, maxRooms: t.maxRooms, staff: c.staff, needed: f.needed || biz.staffNeeded(world, c), manager: c.manager, cash: c.cash, abandoned: !!c.abandoned,
-        value: biz.companyValue(world, state, c, year), flows: f, comp: f.comp, security: !!c.security, stock: c.stock ? { id: c.stock.id, div: c.stock.divPct, outside: c.stock.outside || 0 } : null, hit: c.hit && state.day < c.hit.until ? { days: c.hit.until - state.day, pct: Math.round((1 - c.hit.factor) * 100) } : null, outage: c.outageUntil && state.day < c.outageUntil ? c.outageUntil - state.day : 0, owner: !!(state.occupation && state.occupation.ownCompanyId === c.id),
+        value: biz.companyValue(world, state, c, year), flows: f, comp: f.comp, security: !!c.security, mods: { lager: OPS.level(c, 'lager'), brand: OPS.level(c, 'brand'), schutz: OPS.level(c, 'schutz'), arbeit: OPS.level(c, 'arbeit') }, ops: OPS.firmView(world, state, c, idx, year, f), stock: c.stock ? { id: c.stock.id, div: c.stock.divPct, outside: c.stock.outside || 0 } : null, hit: c.hit && state.day < c.hit.until ? { days: c.hit.until - state.day, pct: Math.round((1 - c.hit.factor) * 100) } : null, outage: c.outageUntil && state.day < c.outageUntil ? c.outageUntil - state.day : 0, owner: !!(state.occupation && state.occupation.ownCompanyId === c.id),
         roomCost, roomCoins: biz.tiersOf(world)[c.tier].roomCoins, roomStep: state.discounts[`room:${c.id}`] || 0,
         qualified: biz.qualification(world, state, c.pkey, c.tier).ok,
         next: nt ? { name: biz.chainNames(world, c.pkey)[c.tier + 1], cost: Math.max(0, Math.round((nt.price - t.price) * idx * (city ? city.price_factor : 1) * cityecon.buildMult(c.cityId, year))), minLevel: nt.minLevel, qualified: biz.qualification(world, state, c.pkey, c.tier + 1).ok } : null,
@@ -205,7 +206,7 @@ function present(world, state, user, now) {
     gambling: { ticket: scale(econ.gambling.ticket, idx), casino: year >= econ.gambling.casinoFromYear && age >= econ.gambling.casinoMinAge, casinoFrom: econ.gambling.casinoFromYear, minAge: econ.gambling.casinoMinAge, lost: state.stats.gambled || 0 },
     insurance: Object.entries(econ.insurance).map(([k, v]) => ({
       key: k, name: v.name, on: !!state.insurance[k], covers: v.covers,
-      perDay: v.perDay ? scale(v.perDay, idx) : round((state.properties.reduce((s, p) => s + propertyValue(world, state, p, year), 0) * v.yearPctOfValue) / 100 / 365),
+      perDay: v.perDay ? scale(v.perDay, idx) : v.yearPctOfCompanies != null ? OPS.premiumDay(world, state, year) : round((state.properties.reduce((s, p) => s + propertyValue(world, state, p, year), 0) * v.yearPctOfValue) / 100 / 365),
     })),
     cards: { health: state.cards.health, available: year >= 1960, price: scale(4000, idx), coinPrice: 2 },
     butler: state.butler ? { perDay: scale(state.butler.perDay, idx) } : null,

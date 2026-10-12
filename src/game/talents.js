@@ -372,7 +372,7 @@ function yearly(world, state) {
       if (!m.lehr) for (const k of topKeys(w).slice(0, 2)) if (rnd('f', c.id, m.id, k) < num(tr.yearPct, 50) / 100) grow(m, k, num(tr.yearPts, 1));
       if (!m.lehr && !m.ask) {
         const mk = marketWage(world, c, m);
-        if (mk > num(m.w, 1) + num((cf.raise || {}).margin, 0.06)) { m.ask = { w: mk, until: state.day + Math.round(num((cf.raise || {}).askDays, 30)) }; const pct = Math.round((mk / Math.max(0.01, m.w) - 1) * 100); const askDays = Math.round(num((cf.raise || {}).askDays, 30)); out.push({ level: 'warn', title: `${m.name} verlangt mehr Lohn`, text: `${c.name}: ${m.name} ist besser geworden und fordert ${pct} % mehr. Du hast ${askDays} Tage Zeit.`, tab: 'business' }); }
+        if (mk > num(m.w, 1) + num((cf.raise || {}).margin, 0.06) - require('./operations').askAdj(m)) { m.ask = { w: mk, until: state.day + Math.round(num((cf.raise || {}).askDays, 30)) }; const pct = Math.round((mk / Math.max(0.01, m.w) - 1) * 100); const askDays = Math.round(num((cf.raise || {}).askDays, 30)); out.push({ level: 'warn', title: `${m.name} verlangt mehr Lohn`, text: `${c.name}: ${m.name} ist besser geworden und fordert ${pct} % mehr. Du hast ${askDays} Tage Zeit.`, tab: 'business' }); }
       }
     }
   }

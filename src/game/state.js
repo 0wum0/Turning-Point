@@ -58,7 +58,7 @@ function createCharacter(world, input, user, { cycle = 1 } = {}) {
     occupation: null,
     skills: { learned: [], days: {} },
     properties: [], nextPropId: 1, companies: [], nextCompanyId: 1, politics: { term: null, completed: {} }, career: { applied: {}, hire: null, lastRaise: -9999, courses: {}, course: null, benefit: null },
-    insurance: { hausrat: false, gebaeude: false, gesundheit: false },
+    insurance: { hausrat: false, gebaeude: false, gesundheit: false, betrieb: false },
     cards: { health: 0 }, butler: null,
     partner: null, plan: { target: 3 }, children: [], nextChildId: 1,
     tree: newTree(),
@@ -115,6 +115,8 @@ function upgradeState(s) {
   require('./epidemics').ensure(s); // Seuchen: Schutz und Krankheit (leer bei Altständen)
   T.ensureAll(s); // Talente: Altstände bekommen feste, aus dem Spielstand-Samen abgeleitete Profile (idempotent)
   require('./trade').ensure(s); // Handelsrouten: leere Liste bei Altständen
+  if (s.insurance && s.insurance.betrieb == null) s.insurance.betrieb = false; // Betrieb 2.0: Betriebsversicherung
+  for (const c of s.companies) require('./operations').normalize(c); // Betrieb 2.0: alter Sicherheitsdienst-Schalter → Schutz Stufe 1 (idempotent)
   onboarding.ensure(s); // Altstände: Einsteiger-Aufgaben werden beim nächsten Abgleich still nachgeführt (kein Belohnungsregen)
   return s;
 }

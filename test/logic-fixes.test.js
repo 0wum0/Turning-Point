@@ -22,7 +22,7 @@ const rejects = (fn, re) => assert.throws(fn, (e) => e instanceof actions.Action
 test('Versicherung: Prototyp-Schlüssel („constructor“, „toString“) sind keine Versicherung', () => {
   const s = mk();
   for (const key of ['constructor', 'toString', '__proto__', 'hasOwnProperty']) rejects(() => act(s, 'insurance', { key, on: true }), /Unbekannte Versicherung/);
-  assert.deepStrictEqual(Object.keys(s.insurance).sort(), ['gebaeude', 'gesundheit', 'hausrat']);
+  assert.deepStrictEqual(Object.keys(s.insurance).sort(), ['betrieb', 'gebaeude', 'gesundheit', 'hausrat']);
 });
 
 test('Kredite: Restschuld bleibt ganzzahlig (auch über die Euro-Umstellung), NaN-Rückzahlung bucht kein NaN', () => {

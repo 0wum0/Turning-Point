@@ -69,11 +69,11 @@ async function market(world, userId) {
   const ps = await stat(userId); if (!ps) return { offers: [], mine: null };
   const idx = idxOfStat(world, ps); const cur = curOf(world, ps.year);
   const rows = await db.query(
-    `SELECT j.*, f.name firm, f.tier, f.rooms, o.name owner, o.username, (SELECT COUNT(*) FROM employments e WHERE e.offer_id = j.id AND e.status = 'active') taken,
+    `SELECT j.*, f.name firm, f.tier, f.rooms, f.climate, o.name owner, o.username, (SELECT COUNT(*) FROM employments e WHERE e.offer_id = j.id AND e.status = 'active') taken,
        (SELECT a.status FROM job_apps a WHERE a.offer_id = j.id AND a.user_id = ?) mystatus, (SELECT a.kind FROM job_apps a WHERE a.offer_id = j.id AND a.user_id = ?) mykind, (SELECT a.id FROM job_apps a WHERE a.offer_id = j.id AND a.user_id = ?) myapp
      FROM player_jobs j JOIN player_firms f ON f.user_id = j.owner_id AND f.company_id = j.company_id JOIN player_stats o ON o.user_id = j.owner_id JOIN users u ON u.id = j.owner_id
      WHERE j.status = 'open' AND j.city_id = ? AND j.owner_id <> ? AND u.banned = 0 AND u.social_public = 1 ORDER BY j.id DESC LIMIT 40`, [userId, userId, userId, ps.city_id, userId]);
-  const offers = rows.filter((r) => r.taken < r.slots).map((r) => ({ id: r.id, ownerId: r.owner_id, owner: r.owner, username: r.username, firm: r.firm, tier: r.tier, rooms: r.rooms, title: r.title, role: r.role, roleName: ROLE[r.role], wage: Math.round(r.wage * idx), slotsLeft: r.slots - r.taken, text: r.text, myStatus: r.mystatus, myKind: r.mykind, myApp: r.myapp }));
+  const offers = rows.filter((r) => r.taken < r.slots).map((r) => ({ id: r.id, ownerId: r.owner_id, owner: r.owner, username: r.username, firm: r.firm, tier: r.tier, rooms: r.rooms, climate: r.climate == null ? null : Number(r.climate), title: r.title, role: r.role, roleName: ROLE[r.role], wage: Math.round(r.wage * idx), slotsLeft: r.slots - r.taken, text: r.text, myStatus: r.mystatus, myKind: r.mykind, myApp: r.myapp }));
   return { offers, currency: cur };
 }
 

@@ -15,8 +15,9 @@ function install(A, fail, { yr, pay }) {
   const cur = (world, state) => world.currency(yr(state));
   const lab = (k) => (TL.C().labels || {})[k] || TL.META[k].label;
 
-  /** Platz im Betrieb: Mitarbeiterzahl höchstens Bedarf + 2 (wie bisher). */
-  const room = (world, c) => { if ((c.staff || 0) >= biz.staffNeeded(world, c) + 2) fail('Mehr Mitarbeiter braucht der Betrieb nicht.'); };
+  /** Platz im Betrieb: Mitarbeiterzahl höchstens Bedarf + 2 (plus Zusatzstellen durch das Modul „Arbeitsplätze“). */
+  const OPS = require('./operations');
+  const room = (world, c) => { if ((c.staff || 0) >= OPS.maxStaff(world, c)) fail('Mehr Mitarbeiter braucht der Betrieb nicht.'); };
 
   /** Beste Wahl (Passung, bei Gleichstand der günstigere Lohn) aus dem Pool einstellen. Einfacher Knopf für Einsteiger. */
   const hireBest = (world, state, c) => {
@@ -47,6 +48,7 @@ function install(A, fail, { yr, pay }) {
     const worst = c.team.slice().sort((a, b) => (TL.fit(a, w) - TL.fit(b, w)))[0];
     if (worst) { c.team = c.team.filter((x) => x !== worst); }
     c.staff = Math.max(0, c.staff - 1);
+    OPS.afterDismiss(c);
     return { msg: worst ? `${worst.name} wurde entlassen.` : 'Mitarbeiter entlassen.' };
   };
 
@@ -70,6 +72,7 @@ function install(A, fail, { yr, pay }) {
     TL.syncTeam(world, state, c);
     const m = member(c, input.mid);
     c.team = c.team.filter((x) => x !== m); c.staff = Math.max(0, (c.staff || 0) - 1);
+    OPS.afterDismiss(c);
     return { msg: `${m.name} wurde entlassen.`, level: 'warn' };
   };
 
@@ -97,6 +100,7 @@ function install(A, fail, { yr, pay }) {
     const m = member(c, input.mid);
     if (!m.ask) fail('Es liegt keine Lohnforderung vor.');
     m.w = m.ask.w; m.ask = null;
+    OPS.bump(m, 6); // Wertschätzung: die Stimmung steigt
     return { msg: `${m.name} bekommt mehr Lohn und bleibt.`, level: 'good' };
   };
 

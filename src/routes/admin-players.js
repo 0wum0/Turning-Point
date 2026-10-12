@@ -37,7 +37,7 @@ const FIELD_GROUPS = [
   { title: 'Lebensdauer & Familienplanung', fields: [
     ['life.baseYears', 'Basis-Lebensjahre', 'float'], ['life.extraDays', 'Zusatz-Lebenstage', 'int'], ['life.rare', 'Seltene Lebensdauer', 'bool'],
     ['plan.target', 'Kinderwunsch (Zielzahl)', 'int'], ['flags.autoMaintain', 'Automatische Instandhaltung', 'bool'], ['flags.tutorial', 'Tutorial aktiv', 'bool'], ['flags.foodTier', 'Essensstufe', 'int'],
-    ['insurance.hausrat', 'Hausratversicherung', 'bool'], ['insurance.gebaeude', 'Gebäudeversicherung', 'bool'], ['insurance.gesundheit', 'Kranken-Zusatz', 'bool'],
+    ['insurance.hausrat', 'Hausratversicherung', 'bool'], ['insurance.gebaeude', 'Gebäudeversicherung', 'bool'], ['insurance.gesundheit', 'Kranken-Zusatz', 'bool'], ['insurance.betrieb', 'Betriebsversicherung', 'bool'],
   ] },
 ];
 /** Verschachtelte Bereiche, die im Baum-Editor bearbeitet werden. */
