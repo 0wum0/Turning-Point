@@ -101,7 +101,7 @@ module.exports = {
         what: 'Eine Dienstleistung, kein Gegenstand: Ein Wachdienst achtet auf dein Zuhause, später begleitet dich Personenschutz. Beides senkt das Risiko von Einbrüchen. (Waffen gibt es im Spiel nicht.)',
         levels: [
           { names: [[1945, 'Wachdienst für das Zuhause'], [1990, 'Alarmanlage mit Wachdienst']], dayDays: 0.08, look: 0, burglaryMult: 0.6, from: 1945, text: 'Nachts schaut ein Wachdienst nach dem Rechten.' },
-          { names: [[1945, 'Personenschutz'], [1990, 'Personenschutz und Hausüberwachung']], dayDays: 0.4, look: 4, burglaryMult: 0.35, from: 1960, text: 'Ein Sicherheitsunternehmen schützt dich und dein Zuhause.' },
+          { names: [[1945, 'Personenschutz'], [1990, 'Personenschutz und Hausüberwachung']], dayDays: 0.4, look: 0, burglaryMult: 0.35, from: 1960, text: 'Ein Sicherheitsunternehmen schützt dich und dein Zuhause.' },
         ],
       },
     },

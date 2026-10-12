@@ -162,7 +162,7 @@ async function leaderboard(userId, { cat = 'wealth', scope = 'all', cityId = 0 }
   return { cat, scope, label: C.label, unit: C.unit, hint: C.hint, total, rows: out, me, cats: Object.entries(CATS).map(([k, v]) => ({ key: k, label: v.label })) };
 }
 function pub(r) {
-  return { userId: r.user_id, role: r.role && r.role !== 'player' ? r.role : undefined, username: r.username, name: r.name, cityId: r.city_id, year: r.year, status: r.status, wealth: Number(r.wealth), bizValue: Number(r.biz_value), companies: r.companies, properties: r.properties, children: r.children, generation: r.generation, cycle: r.cycle, influence: r.influence, office: r.office, days: r.days, occupation: r.occupation, title: r.title || null, rank: r.rank_lv == null ? null : Number(r.rank_lv) };
+  return { userId: r.user_id, role: r.role && r.role !== 'player' ? r.role : undefined, username: r.username, name: r.name, cityId: r.city_id, year: r.year, status: r.status, wealth: Number(r.wealth), bizValue: Number(r.biz_value), companies: r.companies, properties: r.properties, children: r.children, generation: r.generation, cycle: r.cycle, influence: r.influence, office: r.office, days: r.days, occupation: r.occupation, title: r.title || null, rank: r.rank_lv == null ? null : Number(r.rank_lv), rankName: r.rank_lv == null ? null : ((require('../game/character').rankLevels()[Math.min(7, Math.max(1, Number(r.rank_lv))) - 1]) || {}).name || null };
 }
 
 /* =============================== Profile & Beziehungen =============================== */

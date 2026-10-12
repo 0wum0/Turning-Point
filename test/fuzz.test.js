@@ -5,7 +5,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert');
-const { runOpsScenario, runTransportScenario, runScenario, runTradeScenario, runSupplyScenario, runCityEconScenario, runRepScenario, runCourtScenario, runCivicScenario } = require('./fuzz-lib');
+const { runCharScenario, runOpsScenario, runTransportScenario, runScenario, runTradeScenario, runSupplyScenario, runCityEconScenario, runRepScenario, runCourtScenario, runCivicScenario } = require('./fuzz-lib');
 
 const report = (failures) => failures.map((f) => `Seed ${f.seed}: ${f.msg}\n  Spur: ${(f.trace || []).slice(-6).join(' | ')}`).join('\n');
 
@@ -97,6 +97,13 @@ test('Fuzz: Handelsrouten – Kasse stimmt auf den Cent, Gewinn unter dem Rendit
 test('Fuzz: Betrieb 2.0 – Module, Klima und Brände halten Geld, Stimmung, Lager und Wirkungsgrenzen ein', () => {
   for (const seed of [91, 92, 93, 94, 95, 96]) {
     const failures = runOpsScenario(seed, 40);
+    assert.deepStrictEqual(failures, [], report(failures));
+  }
+});
+
+test('Fuzz: Charakterblatt – Erfahrung, Ausstattung, Dienste und Erbe halten Geld, Grenzen und Deckel ein', () => {
+  for (const seed of [111, 112, 113, 114, 115, 116]) {
+    const failures = runCharScenario(seed, 40);
     assert.deepStrictEqual(failures, [], report(failures));
   }
 });

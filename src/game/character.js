@@ -59,12 +59,12 @@ function ensure(state) {
   for (const k of Object.keys(c.gear)) {
     const g = c.gear[k];
     if (!SLOTS.includes(k) || !isObj(g) || isService(k) || !Number.isInteger(g.lv) || g.lv < 1 || g.lv > 3) { delete c.gear[k]; continue; }
-    g.paid = Math.max(0, Math.round(num(g.paid, 0))); g.cond = r1(clamp(num(g.cond, 100), 0, 100)); g.day = Math.floor(num(g.day, 0)); g.y = Math.floor(num(g.y, 1945));
+    g.paid = Math.max(0, Math.round(num(g.paid, 0))); g.cond = r3(clamp(num(g.cond, 100), 0, 100)); g.day = Math.floor(num(g.day, 0)); g.y = Math.floor(num(g.y, 1945));
   }
   if (!isObj(c.svc)) c.svc = {};
   for (const k of Object.keys(c.svc)) { if (!isService(k) || !Number.isInteger(c.svc[k]) || c.svc[k] < 1 || c.svc[k] > 2) delete c.svc[k]; }
   if (!Array.isArray(c.heir)) c.heir = [];
-  c.heir = c.heir.filter((h) => isObj(h) && ['uhr', 'schmuck'].includes(h.slot) && Number.isInteger(h.lv) && h.lv >= 1 && h.lv <= 3).map((h) => ({ slot: h.slot, lv: h.lv, cond: r1(clamp(num(h.cond, 90), 0, 100)), gen: Math.max(1, Math.floor(num(h.gen, 1))) }));
+  c.heir = c.heir.filter((h) => isObj(h) && ['uhr', 'schmuck'].includes(h.slot) && Number.isInteger(h.lv) && h.lv >= 1 && h.lv <= 3).map((h) => ({ slot: h.slot, lv: h.lv, cond: r3(clamp(num(h.cond, 90), 0, 100)), gen: Math.max(1, Math.floor(num(h.gen, 1))) }));
   const seen = new Set(); c.heir = c.heir.filter((h) => (seen.has(h.slot) ? false : seen.add(h.slot)));
   if (!isObj(c.rank)) c.rank = { lv: 1, sc: 0, best: 1, since: 0 };
   c.rank.lv = clamp(Math.floor(num(c.rank.lv, 1)), 1, 7); c.rank.sc = r1(clamp(num(c.rank.sc, 0), 0, 100)); c.rank.best = clamp(Math.floor(num(c.rank.best, c.rank.lv)), c.rank.lv, 7); c.rank.since = Math.floor(num(c.rank.since, 0));
@@ -350,9 +350,9 @@ function daily(ctx) {
   for (const k of SLOTS) {
     const g = own(state, k); if (!g) continue;
     const life = Math.max(1, num(slotCfg(k).lifeYears, 10)) * 365;
-    g.cond = r1(Math.max(0, g.cond - 100 / life));
+    g.cond = r3(Math.max(0, g.cond - 100 / life));
   }
-  const h = state.char.heir; for (const e of h) { const life = Math.max(1, num(slotCfg(e.slot).lifeYears, 40)) * 365; e.cond = r1(Math.max(0, e.cond - 50 / life)); }
+  const h = state.char.heir; for (const e of h) { const life = Math.max(1, num(slotCfg(e.slot).lifeYears, 40)) * 365; e.cond = r3(Math.max(0, e.cond - 50 / life)); }
   // Laufende Kosten: nie in die Insolvenz. Reicht das Geld nicht für drei Tage, enden die Dienstleistungen; der Rest wird nur bezahlt, soweit Geld da ist.
   let cost = upkeepDay(world, state);
   if (cost > 0) {
@@ -444,7 +444,7 @@ function slotView(world, state, slot) {
     const net = svc ? 0 : pr - resale;
     let why = null;
     if (!enabled()) why = 'off'; else if (!era) why = 'era'; else if (svc ? false : (state.money < Math.max(0, net))) why = 'money'; else if (svc && lv !== lvSvc && state.money < dc * 30) why = 'money';
-    return { lv, name: levelName(slot, lv, year), text: L.text, look: num(L.look, 0), price: pr, net, dayCost: dc, from: num(L.from, 1945), eraOk: era, current: lv === cur, ok: !why && lv !== cur, why, risk: L.risk != null ? num(L.burglaryMult, 1) : null, comfort: L.comfort != null ? num(L.comfort, 0) : null };
+    return { lv, name: levelName(slot, lv, year), text: L.text, look: num(L.look, 0), price: pr, net, dayCost: dc, from: num(L.from, 1945), eraOk: era, current: lv === cur, ok: !why && lv !== cur, why, burglaryMult: L.burglaryMult != null ? num(L.burglaryMult, 1) : null, comfort: L.comfort != null ? num(L.comfort, 0) : null };
   });
   const dated = !svc && g ? isDated(slot, { y: g.y }, year) : false;
   return {

@@ -13,7 +13,7 @@ const hex = (n) => `#${n.toString(16).padStart(6, '0')}`;
 
 /** Aktionsleiste im Raum: [Gegenstand-ID, Verb, Symbol, optionaler Filter auf die echten Aktionen]. Ruft ausschließlich vorhandene Spielaktionen auf. */
 const BAR = {
-  home: [['bed', 'Ausruhen', 'bed'], ['fridge', 'Vorrat kaufen', 'shopping-basket'], ['stove', 'Kochen', 'flame'], ['leisure', 'Entspannen', 'smile'], ['tidy', 'Aufräumen', 'sparkles'], ['desk', 'Finanzen', 'wallet'], ['family', 'Familie', 'heart'], ['shelf', 'Chronik', 'book-open'], ['mail', 'Post', 'mail']],
+  home: [['bed', 'Ausruhen', 'bed'], ['fridge', 'Vorrat kaufen', 'shopping-basket'], ['stove', 'Kochen', 'flame'], ['leisure', 'Entspannen', 'smile'], ['tidy', 'Aufräumen', 'sparkles'], ['desk', 'Finanzen', 'wallet'], ['family', 'Familie', 'heart'], ['shelf', 'Chronik', 'book-open'], ['wardrobe', 'Garderobe', 'shirt'], ['mail', 'Post', 'mail']],
   pension: [['bed', 'Ausruhen', 'bed'], ['reception', 'Wohnungsmarkt', 'house']],
   rathaus: [['amt', 'Arbeiten', 'briefcase'], ['wahl', 'Wahlen', 'landmark'], ['plan', 'Umziehen', 'map']],
   bahnhof: [['ticket', 'Fahrkarte kaufen', 'ticket'], ['train', 'Reisen', 'train-front']],
@@ -139,7 +139,7 @@ export function buildRoom(T, b, ctx, { enhanced=false, hour=new Date().getHours(
   if (t === 'home' || (t === 'pension')) {
     const big = t === 'home';
     const bd = bed(w / 2 - 2, -d / 2 + 1.2, 0); spot(bd, 'bed', 'Bett', taskAct('rest', 'chat'), 'Ausruhen');
-    wardrobe(w / 2 - 4.2, -d / 2 + 0.6); plant(w / 2 - 0.8, d / 2 - 1);
+    { const wd = wardrobe(w / 2 - 4.2, -d / 2 + 0.6); if (t === 'home') spot(wd, 'wardrobe', 'Garderobe – Charakterblatt', goAct('Charakterblatt öffnen', 'character', 'Talente, Ausstattung und gesellschaftlicher Rang')); } plant(w / 2 - 0.8, d / 2 - 1);
     if (big) {
       const fr = fridge(-w / 2 + 0.9, -d / 2 + 0.9); spot(fr, 'fridge', 'Kühlschrank', () => [{ kind: 'food' }], 'Lebensmittel');
       const st = group(-w / 2 + 2.3, -d / 2 + 0.8); box(1.4, 1.0, 0.9, 0x555555, 0, 0, 0, st); cyl(0.2, 0.2, 0.05, 0x222222, -0.3, 1.0, 0, st, { noShadow: true }); cyl(0.2, 0.2, 0.05, 0x222222, 0.3, 1.0, 0, st, { noShadow: true }); spot(st, 'stove', 'Herd – Kochen', taskAct('cook'), 'Aufgabe: Kochen'); table(-1.0, 0.5, 2.6, 1.5, 4);

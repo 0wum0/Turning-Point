@@ -32,7 +32,7 @@ export function openDesignSettings(onChange) {
 }
 
 export const DESIGN_GROUPS = [
-  { label: ['Hauptquartier', 'Headquarters'], art: 'overview', ids: ['overview', 'housing', 'household', 'family', 'legacy'] },
+  { label: ['Hauptquartier', 'Headquarters'], art: 'overview', ids: ['overview', 'character', 'housing', 'household', 'family', 'legacy'] },
   { label: ['Spielwelt', 'World'], art: 'map', ids: ['city', 'newspaper', 'map'] },
   { label: ['Wirtschaft', 'Economy'], art: 'work', ids: ['business', 'work', 'trade'] },
   { label: ['Gesellschaft', 'Community'], art: 'society', ids: ['society', 'social'] },

@@ -538,3 +538,4 @@ router.get('/audit', wrap(async (req, res) => {
 }));
 
 module.exports = router;
+module.exports.validateJson = validateJson; // für Tests der Einstellungsprüfung

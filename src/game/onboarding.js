@@ -259,10 +259,10 @@ function advise(v, nextQuest, opts) {
   // Charakterblatt: Erfahrung verteilen, Auftreten, abgenutzte Stücke
   const ch = v.char;
   if (ch && ch.on && ch.xp && v.status === 'alive') {
-    const can = ch.xp.buys.filter((b) => b.ok);
-    if (can.length && !ch.xp.auto) add(ch.xp.bal >= 8 ? 44 : 38, { id: 'xp', level: 'good', icon: 'sparkles', title: `Du hast ${String(Math.floor(ch.xp.bal * 10) / 10).replace('.', ',')} Erfahrungspunkte – verteile sie`, why: 'Erfahrung bleibt ungenutzt liegen, bis du sie in ein Talent steckst. Die Beste Wahl nimmt das Talent, das zu deiner Tätigkeit passt.', cta: { kind: 'act', label: 'Beste Wahl verteilen', name: 'chTrain', input: { key: 'best' } } });
-    const cl = ch.gear.find((g) => g.key === 'kleidung');
-    if (cl && !cl.lv && cl.levels[0].ok && v.money > cl.levels[0].price * 12 && v.occupation) add(28, { id: 'gear', level: 'info', icon: 'shirt', title: 'Ein gepflegtes Auftreten zahlt sich aus', why: `Ein ${cl.levels[0].name} kostet nur ${dm(cl.levels[0].price, cur)} und hilft bei Gehaltsgesprächen, Bewerbungen und Wahlen ein wenig.`, cta: { kind: 'go', label: 'Zum Charakterblatt', tab: 'character', spot: 'gear' } });
+    const can = ch.xp.buys.filter((b) => b.ok); const ep = String(Math.floor(ch.xp.bal * 10) / 10).replace('.', ',');
+    if (can.length && !ch.xp.auto) add(ch.xp.bal >= 8 ? 44 : 38, { id: 'xp', level: 'good', icon: 'sparkles', title: `Du hast ${ep} Erfahrungspunkte – verteile sie`, why: 'Erfahrung bleibt ungenutzt liegen, bis du sie in ein Talent steckst. Die Beste Wahl nimmt das Talent, das zu deiner Tätigkeit passt.', cta: { kind: 'act', label: 'Beste Wahl verteilen', name: 'chTrain', input: { key: 'best' } } });
+    const cl = ch.gear.find((g) => g.key === 'kleidung'); const cn1 = cl ? cl.levels[0].name : ''; const pr1 = cl ? dm(cl.levels[0].price, cur) : '';
+    if (cl && !cl.lv && cl.levels[0].ok && v.money > cl.levels[0].price * 12 && v.occupation) add(28, { id: 'gear', level: 'info', icon: 'shirt', title: 'Ein gepflegtes Auftreten zahlt sich aus', why: `Ein ${cn1} kostet nur ${pr1} und hilft bei Gehaltsgesprächen, Bewerbungen und Wahlen ein wenig.`, cta: { kind: 'go', label: 'Zum Charakterblatt', tab: 'character', spot: 'gear' } });
     const worn = ch.gear.find((g) => g.kind === 'item' && g.cond != null && g.cond < 40 && g.repair > 0 && v.money > g.repair * 6);
     if (worn) add(26, { id: 'gear-worn', level: 'info', icon: 'wrench', title: `${worn.name_cur} ist abgenutzt`, why: 'Abgenutzte Stücke wirken schwächer. Aufarbeiten kostet nur einen Teil des Neupreises.', cta: { kind: 'act', label: `Aufarbeiten (${dm(worn.repair, cur)})`, name: 'chRepair', input: { slot: worn.key } } });
   }

@@ -97,3 +97,28 @@ test('3D-Stadt zeigt Module am eigenen Betrieb (Brandschutz, Schutz, Lager, Sozi
   assert.ok(s.calls<260,`Draw-Calls im Budget (${s.calls})`);assert.ok(s.triangles<450000,`Dreiecke im Budget (${s.triangles})`);assert.deepEqual(errors,[]);
  }finally{await browser?.close();server.closeAllConnections();await new Promise(r=>server.close(r));}
 });
+test('Charakterblatt in Design V2: Garderobe im Wohnhaus öffnet die Seite, alle Bereiche im Verwaltungsfenster, kein Überlauf auf dem Handy',{timeout:180000},async()=>{
+ const {state}=require('./design-fixture');state.housing={type:'rent',cityId:state.cityId,base:70,rooms:3};
+ const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));let browser;
+ try{
+  browser=await launch();const port=server.address().port;
+  for(const cfg of [{viewport:{width:1280,height:850}},{viewport:{width:412,height:915},reducedMotion:'reduce'}]){
+   const {page,errors}=await open(browser,port,cfg);
+   const key=await page.evaluate(async()=>{const b=(await (await fetch('/api/city')).json()).buildings.find(x=>x.type==='home');return b&&b.key;});
+   assert.ok(key,'ein eigenes Wohnhaus in der Stadt');
+   await page.locator(`.city3d-pin[data-city-key="${key}"]`).click();await page.waitForTimeout(800);
+   await page.locator('.city3d-card .btn.primary').click();await page.waitForSelector('.interior [data-bar]');
+   const verbs=await page.locator('.interior [data-bar] b').allInnerTexts();assert.ok(verbs.includes('Garderobe'),`Garderobe fehlt: ${verbs.join('|')}`);
+   await page.locator('.interior [data-bar]').filter({hasText:'Garderobe'}).first().click();
+   const panel=await page.locator('.int-panel').innerText();assert.ok(panel.includes('Charakterblatt öffnen'),panel);
+   await page.locator('.int-panel .act').filter({hasText:'Charakterblatt öffnen'}).first().click();
+   await page.waitForFunction(()=>document.getElementById('page')&&document.getElementById('page').dataset.route==='character'&&document.querySelector('[data-ch-slot]'));
+   const t=await page.locator('#page').innerText();for(const w of ['Charakterblatt','Erfahrungspunkte','Ausstattung','Gesellschaftlicher Rang','Kurz-Lebenslauf'])assert.ok(t.includes(w),`${w} fehlt`);
+   assert.equal(await page.locator('[data-ch-slot]').count(),7);
+   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'kein horizontaler Überlauf');
+   assert.ok(await page.locator('.sim-dock-link[aria-current="true"]').innerText().then(x=>/Hauptquartier/.test(x)),'liegt im Dock unter Hauptquartier');
+   assert.ok((await page.locator('#sim-tabs .nav[data-nav="character"]').count())>=1,'Reiter im Fenster');
+   assert.deepEqual(errors,[]);await page.close();
+  }
+ }finally{await browser?.close();server.closeAllConnections();await new Promise(r=>server.close(r));}
+});

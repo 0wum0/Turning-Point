@@ -32,6 +32,9 @@ const CIVIC = arg('civic', 'on') !== 'off'; // Gesellschaft (src/game/civic.js):
 // Betrieb 2.0 (src/game/operations.js): off = ohne Module, Klima und Betriebsbrand (Vergleichswert) · on = Regeln aktiv, die Politik nutzt aber keine Module (Nichtnutzer) · full = Betriebsinhaber bauen alle Module aus, versichern sich und führen ihr Team (Vollausbau)
 const BETRIEB = String(arg('betrieb', 'on'));
 if (BETRIEB === 'off') require('../src/settings').DEFAULTS.betrieb.enabled = false;
+// Charakterblatt (src/game/character.js): off = ohne Erfahrung, Ausstattung und Rang (Vergleichswert) · on = Regeln aktiv, die Politik nutzt aber nichts davon (der Rang wirkt trotzdem) · full = der Spieler verteilt Erfahrung und kauft Ausstattung, sobald das Geld locker sitzt (Vollausstattung)
+const CHARAKTER = String(arg('charakter', 'on'));
+if (CHARAKTER === 'off') require('../src/settings').DEFAULTS.charakter.enabled = false;
 const OTHERS = Number(arg('others', 12)); // andere lebende Charaktere in der Stadt des Spielers
 if (arg('seasons', 'on') === 'off') require('../src/settings').DEFAULTS.jahreszeiten.enabled = false; // --seasons off: ohne Jahreszeiten, Ernte und Seuchen (Vergleichswert)
 const cityecon = require('../src/game/cityecon');
@@ -90,6 +93,7 @@ function makeRun(name, pkey, policy) {
     s.civic = { fx: CV.combineFx({ clubs, parishLevel: 2, pot: null, titles: [] }), clubs: clubs.length, due: 0 };
     return Math.round((clubs.length * CVG.clubs.feeDefaultReal + 600) * idxY);
   };
+  const gearAcc = { buy: 0, upkeep: 0, income: 0, days: 0 }; // Ausstattung: Kosten und Jahreseinkommen für die Auswertung
   const rstate = { c: RP.blank(), caps: null, pts: 0, day: 0, seen: {} }; const repLog = [];
   const repDay = () => {
     const q = s.pending.rep || []; s.pending.rep = [];
@@ -115,7 +119,7 @@ function makeRun(name, pkey, policy) {
     const year = yearOf(s.day, s.startYear); const idx = w.idx(year);
     if (d % 365 === 0) cityLive(s, d / 365);
     if (CIVIC && d % 365 === 0) { const cost = civicYear(year); if (cost) s.money -= Math.min(cost, Math.max(0, s.money)); }
-    if (d % 14 === 0) { policy({ s, act, year, idx, w, edition }); supply(s); }
+    if (d % 14 === 0) { policy({ s, act, year, idx, w, edition }); supply(s); if (CHARAKTER === 'full') charFull({ s, act, year, idx, w }, gearAcc); }
     s.meters.fridge = 100; s.meters.rest = Math.max(s.meters.rest, 60); s.meters.health = Math.max(s.meters.health, 80);
     const f = core.dailyFlows(w, s);
     const m0 = s.money;
@@ -125,6 +129,8 @@ function makeRun(name, pkey, policy) {
       if (d % 365 === 364) { repDay(); rstate.day++; rstate.c = RP.decay(rstate.c, 1, RC); rstate.pts *= 0.985; s.rep = RP.makeSnap(rstate.c, rstate.pts, RC); if ((rstate.day) % 10 === 0) repLog.push({ year: yearOf(s.day, s.startYear), s: s.rep.s, lv: s.rep.lv, c: s.rep.c }); }
     } else s.pending.rep = [];
     // Flüsse (aufgelaufen laut dailyFlows) in Cent heutiger Preise → durch idx später normiert
+    gearAcc.upkeep += f.exp.gear; gearAcc.days++; gearAcc.income += f.inc.wage + f.inc.rent + f.inc.office;
+    for (const c of s.companies || []) if (!c.abandoned && CHARAKTER !== 'off') gearAcc.income += Math.max(0, biz.companyFlows(w, s, c, year).profit);
     acc.wage += f.inc.wage; acc.rent += f.inc.rent; acc.tax += f.exp.tax; acc.loan += f.exp.loan; acc.upkeep += f.exp.upkeep;
     for (const c of s.companies || []) if (!c.abandoned) { const cf = biz.companyFlows(w, s, c, year); acc.bizProfit += cf.profit; acc.bizTax += cf.tax; acc.bizWages += cf.wages; acc.bizInputs += cf.inputs || 0; }
     acc.spent += 0; acc.days++; acc.idxSum += idx / acc.days * acc.days; // idxSum approximiert unten
@@ -143,7 +149,7 @@ function makeRun(name, pkey, policy) {
   if (process.env.DBG_OPS) { const OPS = require('../src/game/operations'); console.log('OPS', name, JSON.stringify((s.companies || []).map((c) => ({ n: c.name, mods: c.mods, avg: OPS.avgMood(c) && Math.round(OPS.avgMood(c)), staff: c.staff, hist: (c.ops && c.ops.hist || []).map((h) => h.k + h.d), mood: (c.team || []).map((m) => Math.round(m.mood)) })))); }
   const year = yearOf(s.day, s.startYear);
   { const st = s.trade && s.trade.stats; const idxE = w.idx(year); rows.push({ ...snap(year), final: true, status: s.status, reason: s.death && s.death.reason, trips: st ? st.trips : 0, tradeProfit: st ? st.profit / idxE / 100 : 0, tradeOver: st ? (st.over || 0) / idxE / 100 : 0, tradeLost: st ? st.lost : 0 }); }
-  return { name, rows, state: s, repLog };
+  return { name, rows, state: s, repLog, gear: { buy: gearAcc.buy / Math.max(1, gearAcc.income), upkeep: gearAcc.upkeep / Math.max(1, gearAcc.income), rank: s.char ? s.char.rank.lv : 0, look: s.char ? require('../src/game/character').look(s, yearOf(s.day, s.startYear)) : 0, spent: s.talents && s.talents.xp ? s.talents.xp.spent : 0, items: Object.values((s.char && s.char.gear) || {}).length } };
 }
 
 /* ---------- Politik der Archetypen ---------- */
@@ -213,6 +219,20 @@ function betriebFull(c, co) {
     if (avg != null && avg < 45 && s.money > 50 * 500 * c.idx) act('bizBonus', { id: co.id, mid: 'all' });
     const doy = s.day % 365; if (doy >= 334 && s.money > 50 * 500 * c.idx) act('bizParty', { id: co.id });
   }
+}
+/** Vollausstattung (Charakterblatt): Erfahrung verteilen und die jeweils nächste Stufe kaufen, wenn der Preis höchstens 1/40 des Geldes ausmacht; Pflege (Stufe 1) ab dem Hundertfachen des Jahressatzes; abgenutzte Stücke aufarbeiten. */
+function charFull(c, gacc) {
+  const { s, act, w: W, year } = c; const CH = require('../src/game/character');
+  if (s.talents && s.talents.xp && s.talents.xp.bal >= 2) act('chTrain', { key: 'all' });
+  const buy = (slot) => {
+    const g = CH.own(s, slot); const lv = (g ? g.lv : 0) + 1; if (lv > 3 || !CH.eraOk(slot, lv, year)) return;
+    const price = CH.price(W, s, slot, lv, year); if (s.money < price * 40) return;
+    const m0 = s.money; if (act('chBuy', { slot, level: lv })) gacc.buy += m0 - s.money;
+  };
+  for (const slot of ['kleidung', 'mittel', 'uhr', 'fahrzeug', 'schmuck']) buy(slot);
+  const g = CH.own(s, 'kleidung'); if (g && g.cond < 55) { const m0 = s.money; if (act('chRepair', { slot: 'kleidung' })) gacc.buy += m0 - s.money; }
+  const v = CH.own(s, 'fahrzeug'); if (v && v.cond < 40) { const m0 = s.money; if (act('chRepair', { slot: 'fahrzeug' })) gacc.buy += m0 - s.money; }
+  if (!s.char.svc.pflege && s.money > CH.dayCost(W, s, 'pflege', 1, year) * 365 * 100) act('chService', { slot: 'pflege', level: 1 });
 }
 function runBiz(c, { maxFirms }) {
   const { s, act, w: W, edition: ed, idx, year } = c;
@@ -390,6 +410,7 @@ for (const name of ONLY) {
   const res = makeRun(name, P.pkey, P.fn);
   out.push(res);
   if (JSON_OUT) continue;
+  if (CHARAKTER !== 'off' && res.gear) console.log(`Charakterblatt (${name}): Rang ${res.gear.rank}, Auftreten ${Math.round(res.gear.look)}, ${res.gear.items} Stücke, ${res.gear.spent} Steigerungen; Kosten je Jahr: Käufe ${(res.gear.buy * 100).toFixed(1)} % + Unterhalt ${(res.gear.upkeep * 100).toFixed(1)} % des Einkommens`);
   console.log(`\n=== ${name} (${P.pkey}) – Werte in DM von 1945 (Preisindex bereinigt); Flüsse = Jahreswerte im Schnitt des Jahrzehnts ===`);
   console.log(['Jahr', 'Geld', 'Immo', 'Firmen', 'Schuld', 'Netto', 'Immos', 'Firmen#', 'Lohn', 'Miete', 'Steuer', 'Kreditrate', 'Betr.Gewinn', 'Betr.Lohn', 'Waren'].map((x) => x.padStart(10)).join(''));
   for (const r of res.rows) {
@@ -397,4 +418,4 @@ for (const name of ONLY) {
     console.log([r.year, f0(r.money), f0(r.props), f0(r.firms), f0(r.debt), f0(r.net), r.nProps, r.nFirms, f0(r.wage), f0(r.rent), f0(r.tax), f0(r.loan), f0(r.bizProfit), f0(r.bizWages), f0(r.bizInputs)].map((x) => String(x).padStart(10)).join(''));
   }
 }
-if (JSON_OUT) console.log(JSON.stringify(out.map((o) => ({ name: o.name, rows: o.rows })), null, 1));
+if (JSON_OUT) console.log(JSON.stringify(out.map((o) => ({ name: o.name, rows: o.rows, gear: o.gear })), null, 1));

@@ -5,6 +5,7 @@ import { standingCard, bindStanding } from '../reputation.js';
 import { civicMini } from '../civic.js';
 import { courtBanner } from '../court.js';
 import { talentCard, bindTalents } from '../talents.js';
+import { charMini } from '../char.js';
 import { seasonCard, epiBanner, bindSeasons, heatChip } from '../seasons.js';
 
 const LEVEL_ICON = { good: 'circle-check', warn: 'triangle-alert', bad: 'circle-alert', info: 'info' };
@@ -50,6 +51,7 @@ export default {
     ${standingCard(ctx)}
     ${civicMini(ctx)}
     ${talentCard(ctx)}
+    ${charMini(ctx)}
     ${courtBanner(ctx)}
     ${ctx.social && ctx.social.rank ? html`<div class="soc-strip mt"><button class="chip accent" data-go="social">${icon('crown')} Platz ${ctx.social.rank.wealth} von ${ctx.social.rank.total} · Vermögen</button><button class="chip" data-go="social">${icon('users')} ${ctx.social.rank.onlineHere} Spieler online in ${v.city.name}</button>${ctx.social.unread ? html`<button class="chip bad" data-go="social">${icon('mail')} ${ctx.social.unread} neue${ctx.social.unread === 1 ? 'r Brief' : ' Briefe'}</button>` : ''}${ctx.social.requests ? html`<button class="chip warn" data-go="social">${icon('users')} ${ctx.social.requests} Freundschaftsanfrage${ctx.social.requests === 1 ? '' : 'n'}</button>` : ''}</div>` : ''}
 

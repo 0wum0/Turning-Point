@@ -65,7 +65,7 @@ function housingCard(h, v, here) {
     const afford = v.money >= h.price;
     return html`<article class="listing">
       <div class="lic">${icon(h.kind === 'villa' ? 'castle' : 'house', 'lg')}</div>
-      <div class="grow"><div class="row nowrap spread"><h4>${h.name}</h4><span class="chip accent">Kauf</span></div>
+      <div class="grow"><div class="row nowrap spread"><h4>${h.name}</h4><span class="row nowrap">${h.vip ? html`<span class="chip gold" title="Ein Vorab-Angebot für Persönlichkeiten mit hohem gesellschaftlichem Rang">${icon('crown')} <span>Vorab-Angebot</span></span>` : ''}<span class="chip accent">Kauf</span></span></div>
         <div class="dim small">${h.rooms} Zimmer · Zustand ${h.condition} %${h.rentPerDay ? ' · Miete möglich: ca. ' + money(h.rentPerDay, cur) + ' / Tag' : ''}</div>${bar(h.condition, h.condition < 50 ? 'bad' : 'good')}
         <div class="row small" style="margin-top:.4rem"><b class="mono">${money(h.price, cur)}</b>${!afford ? html`<span class="chip bad">${money(h.price - v.money, cur)} fehlen</span>` : ''}</div></div>
       <button class="btn primary sm" data-act="buy" data-id="${h.id}" ${!afford ? 'disabled' : ''}>Kaufen</button></article>`;

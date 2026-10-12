@@ -552,6 +552,84 @@ describe('E2E Turning Point', { concurrency: false }, () => {
       }
     });
 
+    it('Charakterblatt: Erfahrung verteilen, Ausstattung kaufen, wechseln und verkaufen (Geld auf den Cent, Uhr angehalten), Rang sichtbar, Protokoll genau einmal, Aufgaben erledigt', async () => {
+      const sql1 = async (q) => (await app.sql(q, [fId]))[0];
+      const money = async () => Number((await sql1("SELECT money FROM characters WHERE user_id = ? AND status = 'alive'")).money);
+      const xp = async () => L.json((await sql1("SELECT JSON_EXTRACT(state, '$.talents') s FROM characters WHERE user_id = ? AND status = 'alive'")).s);
+      const freeze = () => app.sql('UPDATE users SET efs_accrued_at = ?, efs_carry = 0 WHERE id = ?', [Date.now() + 3600000, fId]); // die Uhr steht: nichts läuft nebenbei, die Beträge stimmen auf den Cent
+      await app.sql("UPDATE characters SET state = JSON_SET(state, '$.money', 60000000, '$.talents.xp.bal', 12), money = 60000000 WHERE user_id = ? AND status = 'alive'", [fId]);
+      await freeze(); await L.reloadGame(f); await freeze();
+      const view = async () => (await L.api(f, 'GET', '/api/state')).json.view;
+      await L.navOpen(f, 'character');
+      await f.page.waitForSelector('[data-ch-rank] .char-rank-chip');
+      const T0 = await text(f, '#page');
+      assert.match(T0, /Charakterblatt/); assert.match(T0, /Rang\s*\d/); assert.match(T0, /Erfahrungspunkte/); assert.match(T0, /Ausstattung/); assert.match(T0, /Kurz-Lebenslauf/);
+      assert.equal(await f.page.locator('[data-ch-slot]').count(), 7); assert.equal(await f.page.locator('[data-ch-train]').count(), 6);
+      // Erfahrung: „Beste Wahl“
+      const t0 = await xp(); const bal0 = t0.xp.bal; assert.ok(bal0 >= 12 - 1e-9);
+      const tr = f.page.waitForResponse((r) => /\/api\/action\/chTrain$/.test(r.url()));
+      await f.page.click('[data-ch-best]'); assert.equal((await tr).status(), 200);
+      const t1 = await xp(); assert.equal(t1.xp.spent, 1); assert.equal(t1.v.reduce((a, b) => a + b, 0) - t0.v.reduce((a, b) => a + b, 0), 1, 'genau ein Talentpunkt');
+      assert.ok(bal0 - t1.xp.bal >= 2 - 1e-9 && bal0 - t1.xp.bal <= 10, `Kosten ${bal0 - t1.xp.bal}`);
+      await f.page.waitForFunction(() => document.querySelector('[data-ch-train]:not([disabled])') !== null && /Pause/.test([...document.querySelectorAll('[data-ch-train][disabled]')].map((b) => b.title).join(' ')));
+      // Ausstattung: Kleidung Stufe 2 kaufen (Dialog), dann zu Stufe 3 wechseln, dann verkaufen
+      let v = await view(); let k = v.char.gear.find((g) => g.key === 'kleidung'); const price2 = k.levels[1].price;
+      const m0 = await money(); const by = f.page.waitForResponse((r) => /\/api\/action\/chBuy$/.test(r.url()));
+      await f.page.click('[data-ch-buy="kleidung:2"]'); await f.page.waitForSelector('.modal [data-close=yes]'); await confirmYes(f);
+      assert.equal((await by).status(), 200);
+      assert.equal(m0 - (await money()), price2, 'Kauf auf den Cent genau einmal');
+      assert.equal((await xp()).v.length, 6); const st = L.json((await sql1("SELECT JSON_EXTRACT(state, '$.char') s FROM characters WHERE user_id = ? AND status = 'alive'")).s); assert.equal(st.gear.kleidung.lv, 2);
+      await f.page.waitForSelector('[data-ch-slot="kleidung"] .ch-lv.cur');
+      v = await view(); k = v.char.gear.find((g) => g.key === 'kleidung'); const net3 = k.levels[2].net; assert.ok(net3 < k.levels[2].price, 'altes Stück angerechnet'); assert.equal(k.levels[1].current, true);
+      const m1 = await money(); const by2 = f.page.waitForResponse((r) => /\/api\/action\/chBuy$/.test(r.url()));
+      await f.page.click('[data-ch-buy="kleidung:3"]'); await f.page.waitForSelector('.modal [data-close=yes]'); await confirmYes(f); assert.equal((await by2).status(), 200);
+      assert.equal(m1 - (await money()), net3, 'Wechsel: Preis minus Anrechnung, auf den Cent');
+      v = await view(); k = v.char.gear.find((g) => g.key === 'kleidung'); const resale = k.resale; assert.ok(resale > 0 && resale < k.levels[2].price);
+      const m2 = await money(); const sl = f.page.waitForResponse((r) => /\/api\/action\/chSell$/.test(r.url()));
+      await f.page.click('[data-ch-sell="kleidung"]'); await f.page.waitForSelector('.modal [data-close=yes]'); await confirmYes(f); assert.equal((await sl).status(), 200);
+      assert.equal((await money()) - m2, resale, 'Verkauf auf den Cent');
+      // Eine Uhr und ein Sicherheitsdienst; Dienst kostet täglich (in der Tagesrechnung), Auftreten wächst
+      const wb = f.page.waitForResponse((r) => /\/api\/action\/chBuy$/.test(r.url())); await f.page.click('[data-ch-buy="uhr:2"]'); await f.page.waitForSelector('.modal [data-close=yes]'); await confirmYes(f); assert.equal((await wb).status(), 200);
+      const sv = f.page.waitForResponse((r) => /\/api\/action\/chService$/.test(r.url())); await f.page.click('[data-ch-svc="pflege:1"]'); assert.equal((await sv).status(), 200);
+      v = await view(); assert.ok(v.char.look > 4 && v.char.upkeepDay > 0 && v.flows.exp.gear === v.char.upkeepDay, 'Auftreten und Tageskosten');
+      await f.page.waitForFunction(() => /Auftreten/.test(document.querySelector('#page').innerText) && document.querySelector('[data-ch-svc="pflege:0"]'));
+      // Rang: mit viel Geld und gutem Ruf steigt er beim nächsten Kauf; Anzeige und Protokoll folgen
+      await app.sql("UPDATE characters SET state = JSON_SET(state, '$.money', 90000000000, '$.rep', JSON_OBJECT('s', 70, 'l', 70, 'lv', 4, 'll', 4, 'c', JSON_ARRAY(30, 30, 30, 30, 0))), money = 90000000000 WHERE user_id = ? AND status = 'alive'", [fId]);
+      await freeze(); await L.reloadGame(f); await freeze(); await L.navOpen(f, 'character');
+      const rk = f.page.waitForResponse((r) => /\/api\/action\/chBuy$/.test(r.url())); await f.page.click('[data-ch-buy="mittel:1"]'); await f.page.waitForSelector('.modal [data-close=yes]'); await confirmYes(f); assert.equal((await rk).status(), 200);
+      v = await view(); assert.ok(v.char.rank.lv >= 3, `Rang ${v.char.rank.lv}`);
+      await f.page.waitForFunction((n) => new RegExp(`Rang\\s*${n}`).test(document.querySelector('.char-rank-chip').innerText), v.char.rank.lv);
+      assert.ok(await f.page.locator('[data-ch-ladder] .ch-ladder li.now').count());
+      await L.until(async () => (await app.sql("SELECT COUNT(*) n FROM char_log WHERE user_id = ?", [fId]))[0].n >= 7, { what: 'Protokoll' });
+      const kinds = await app.sql('SELECT kind, COUNT(*) n FROM char_log WHERE user_id = ? GROUP BY kind', [fId]); const by3 = Object.fromEntries(kinds.map((r) => [r.kind, Number(r.n)]));
+      assert.equal(by3.buy, 5, JSON.stringify(by3)); assert.equal(by3.sell, 1); assert.equal(by3.svc, 1); assert.ok(by3.rank >= 1);
+      await L.reloadGame(f); await L.reloadGame(f); assert.equal((await app.sql("SELECT COUNT(*) n FROM char_log WHERE user_id = ? AND kind = 'buy'", [fId]))[0].n, 5, 'genau einmal');
+      assert.equal((await app.sql('SELECT rank_lv FROM player_stats WHERE user_id = ?', [fId]))[0].rank_lv, v.char.rank.lv, 'Rang im öffentlichen Profil');
+      const q = (await view()).onboarding.quests.filter((x) => x.done).map((x) => x.id); assert.ok(q.includes('xp') && q.includes('gear'), `Aufgaben: ${q.join(', ')}`);
+      // Übersicht zeigt die kleine Karte; Zeitung bietet ab Rang 4 ein Vorab-Angebot
+      await L.nav(f, 'overview'); await f.page.waitForSelector('[data-ch-mini]'); assert.match(await text(f, '[data-ch-mini]'), /Rang/);
+      noErrors(f);
+    });
+
+    it('Charakterblatt: Rang einer anderen Spielerin im Profil; Englische Oberfläche ohne deutsche Reste', async () => {
+      await app.sql('UPDATE users SET efs_accrued_at = ?, efs_carry = 0 WHERE id = ?', [Date.now() + 3600000, fId]);
+      const prof = await L.api(c, 'GET', `/api/social/profile/${fId}`); assert.equal(prof.status, 200);
+      assert.ok(prof.json.profile.stats && prof.json.profile.stats.rank >= 3 && prof.json.profile.stats.rankName, JSON.stringify(prof.json.profile.stats));
+      await f.page.goto(`${app.base}/lang/en?next=/play`); await f.page.waitForSelector('#hud .hud-id', { state: 'attached' });
+      try {
+        await L.navOpen(f, 'character'); await f.page.waitForSelector('[data-ch-slot]');
+        const T = await text(f, '#page');
+        assert.match(T, /Character sheet/); assert.match(T, /Experience points/i); assert.match(T, /Equipment/); assert.match(T, /Short CV/);
+        assert.doesNotMatch(T, /\b(Erfahrung|Ausstattung|Kaufen|Wechseln|Verkaufen|Aufarbeiten|Auftreten|Talente|Weiche Vorteile|Laufende Kosten|Lebenslauf|Zustand|Dienstleistung|Sonntagsanzug|Maßanzug|Aktentasche|Wachdienst)\w*/, `Deutscher Rest:\n${T}`);
+        await f.page.click('[data-ch-info="fahrzeug"]'); await f.page.waitForSelector('.modal .ops-lvs');
+        const M = await text(f, '.modal'); assert.match(M, /Vehicle/); assert.doesNotMatch(M, /\b(Stufen|Fahrzeug|Kleinwagen|Motorroller|Verständnis)\w*/, `Deutscher Rest:\n${M}`);
+        await L.closeModals(f);
+        noErrors(f);
+      } finally {
+        await f.page.goto(`${app.base}/lang/de?next=/play`); await f.page.waitForSelector('#hud .hud-id', { state: 'attached' });
+      }
+    });
+
     it('Jahreszeiten & Seuchen: Jahreszeit-Karte und Check, Seuchenhinweis, Schutz mit einem Klick, Beschluss des Kanzlers mit Vorschau', async () => {
       // Spieldatum: 11. Dezember 1957 – Winter, die Asiatische Grippe zieht gerade durch Berlin
       const day = (1957 - 1945) * 365 + 345;

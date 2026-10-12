@@ -147,6 +147,31 @@ function invariants(s, prev) {
     { const q = s.pending && s.pending.ops; if (q !== undefined) { need(Array.isArray(q) && q.length <= 20, 'Vorfall-Warteschlange'); for (const e of q || []) need(['fire'].includes(e.k) && Number.isFinite(e.real) && e.real >= 0 && Number.isInteger(e.c) && Number.isInteger(e.city), `Vorfall ${JSON.stringify(e)}`); } }
     need(typeof s.insurance.betrieb === 'boolean' || s.insurance.betrieb === undefined, 'Betriebsversicherung');
   }
+  { // Charakterblatt: Erfahrungskonto, Ausstattung, Rang – gültige Werte, Wirkungen im Deckel, Vormerkungen klein und sauber
+    const CHX = require('../src/game/character'); const CD = CHX.D;
+    const x = s.talents && s.talents.xp;
+    if (x !== undefined) {
+      need(x && Number.isFinite(x.bal) && x.bal >= 0 && x.bal <= CHX.XP().balMax + 1e-9 && Number.isFinite(x.tot) && x.tot >= 0 && Number.isInteger(x.spent) && x.spent >= 0, `Erfahrungskonto ${JSON.stringify(x && { b: x.bal, t: x.tot, s: x.spent })}`);
+      need(Array.isArray(x.buys) && x.buys.length <= 40 && x.buys.every((b) => Array.isArray(b) && Number.isInteger(b[1]) && b[1] >= 0 && b[1] < 6), 'Steigerungen');
+      need(Array.isArray(x.last) && x.last.length <= 8, 'Erfahrung zuletzt');
+      for (const [k, e] of Object.entries(x.src || {})) need(CD.xp.sources[k] && Array.isArray(e) && e[1] >= 0 && e[1] <= CD.xp.sources[k].capEp + 1e-6, `Quelle ${k} über dem Deckel: ${JSON.stringify(e)}`);
+    }
+    const ch = s.char;
+    if (ch !== undefined) {
+      need(ch && typeof ch === 'object' && ch.gear && ch.svc && Array.isArray(ch.heir) && ch.rank, 'char unvollständig');
+      for (const [k, g] of Object.entries(ch.gear || {})) need(CHX.SLOTS.includes(k) && !CHX.isService(k) && Number.isInteger(g.lv) && g.lv >= 1 && g.lv <= 3 && g.cond >= 0 && g.cond <= 100 && Number.isInteger(g.paid) && g.paid >= 0, `Stück ${k} ${JSON.stringify(g)}`);
+      for (const [k, lv] of Object.entries(ch.svc || {})) need(CHX.isService(k) && (lv === 1 || lv === 2), `Dienst ${k}=${lv}`);
+      need(new Set((ch.heir || []).map((h) => h.slot)).size === (ch.heir || []).length && (ch.heir || []).every((h) => ['uhr', 'schmuck'].includes(h.slot) && h.lv >= 1 && h.lv <= 3), 'Erbstücke');
+      need(Number.isInteger(ch.rank.lv) && ch.rank.lv >= 1 && ch.rank.lv <= 7 && ch.rank.best >= ch.rank.lv && ch.rank.best <= 7, `Rang ${JSON.stringify(ch.rank)}`);
+      if (s.status === 'alive') {
+        const yr0 = yearOf(s.day, s.startYear); const L = CHX.look(s, yr0); const wk = CHX.wirkungen(s);
+        need(L >= 0 && L <= 100, `Auftreten ${L}`);
+        need(wk.repGain >= 1 && wk.repGain <= 1 + CD.effects.repGainPct / 100 * 2 + 1e-9 && wk.raise >= 0 && wk.raise <= CD.effects.raisePct / 100 * 2 + 1e-9 && wk.vote >= 1 && wk.vote <= 1 + CD.effects.votePct / 100 * 2 + 1e-9 && wk.court >= 0 && wk.court <= CD.effects.courtPts * 2 + 1e-9 && wk.burglary >= 0.2 && wk.burglary <= 1, `Wirkung ${JSON.stringify(wk)}`);
+        need(CHX.upkeepDay(world, s) >= 0 && Number.isInteger(CHX.upkeepDay(world, s)), 'Unterhalt');
+      }
+      const q = s.pending && s.pending.char; if (q !== undefined) { need(Array.isArray(q) && q.length <= 20, 'Charakter-Vormerkungen'); for (const e of q || []) need(['buy', 'sell', 'repair', 'svc', 'rank'].includes(e.k), `Vormerkung ${JSON.stringify(e)}`); }
+    }
+  }
   { // Jahreszeiten, Ernte, Seuchen: Zustand sauber, alle Faktoren endlich und begrenzt
     const e = s.epi;
     need(e && typeof e === 'object', 'epi fehlt');
@@ -252,6 +277,10 @@ function inputFor0(name, s, r, user) {
     case 'lotto': return { tickets: maybe(1 + Math.floor(r() * 25)) };
     case 'casino': return { bet: maybe(Math.floor(r() * 1e5)) };
     case 'taskStart': case 'taskFinish': return { building: maybe(pickOf(r, ['rathaus', 'markt', 'home', 'arzt', 'work', 'prop:1', 'biz:1'])), task: maybe(pickOf(r, ['a', 'b', 'c', 'rest'])) };
+    case 'chTrain': return { key: maybe(pickOf(r, ['best', 'all', 'handwerk', 'handel', 'fuehrung', 'bildung', 'charme', 'kondition', 'x', '__proto__'])) };
+    case 'chAuto': return { on: maybe(r() < 0.5) };
+    case 'chBuy': case 'chService': return { slot: maybe(pickOf(r, ['kleidung', 'uhr', 'schmuck', 'fahrzeug', 'mittel', 'pflege', 'schutz', 'x', '__proto__'])), level: maybe(Math.floor(r() * 5)) };
+    case 'chSell': case 'chRepair': return { slot: maybe(pickOf(r, ['kleidung', 'uhr', 'schmuck', 'fahrzeug', 'mittel', 'pflege', 'schutz', 'x'])) };
     case 'readNotices': return { ids: r() < 0.5 ? null : [1, 2, junk()] };
     default: return r() < 0.3 ? {} : { a: junk() };
   }
@@ -563,6 +592,61 @@ function runOpsScenario(seed, rounds = 40) {
 }
 
 /**
+ * Charakterblatt – Erfahrung, Ausstattung und Rang über viele Spieltage mit zufälligen und unsinnigen Eingaben: Geld bleibt ganzzahlig und wird genau einmal gebucht
+ * (Kauf = −Preis + Anrechnung, Verkauf = +Erlös), Talente bleiben unter der Grenze der Anlage, Erfahrung nie über Deckel und Höchstguthaben, Auftreten 0–100, Dienste nie in die Insolvenz,
+ * Erbe: kein Doppel der Erfahrung, Erbstücke unverkäuflich, Vormerkungen werden beim „Speichern“ geleert.
+ */
+function runCharScenario(seed, rounds = 60) {
+  const realRandom = Math.random; Math.random = mulberry32(seed ^ 77);
+  const r = mulberry32(seed + 5); const failures = []; const CHX = require('../src/game/character'); const TLN = require('../src/game/talents');
+  const bad = (m) => failures.push({ seed, msg: `Charakterblatt: ${m}` });
+  try {
+    const u = () => ({ meta: {}, coins: 50, efs_pool: 0 });
+    let s = createCharacter(world, { gender: 'f', firstName: 'Anna', lastName: 'Tester', birthCityId: pickOf(r, world.cityList).id, professionKey: 'baecker', fatherName: 'a', motherName: 'b' }, u());
+    s.life.baseYears = 900; s.life.rare = false; s.day = 100 + Math.floor(r() * 40000); s.person.birthDay = s.day - 30 * 365;
+    s.money = 5e9; s.housing = { type: 'rent', cityId: s.cityId, base: 70, rooms: 4 }; s.skills.days.baecker = 4000; s.occupation = { kind: 'work', pkey: 'baecker', employer: 'X', cityId: s.cityId, factor: 1, since: s.day };
+    const run = (n, i) => { try { return actions.run(n, { world, state: s, input: i, user: u(), now: 1 }); } catch (e) { if (!(e instanceof actions.ActionError)) throw e; return null; } };
+    for (let i = 0; i < rounds && s.status === 'alive'; i++) {
+      s.meters.fridge = 100; s.meters.health = 100; s.meters.rest = 100;
+      const yr0 = yearOf(s.day, s.startYear); const pick = r(); const m0 = s.money;
+      if (pick < 0.3) {
+        const slot = pickOf(r, CHX.SLOTS.filter((k) => !CHX.isService(k))); const lv = 1 + Math.floor(r() * 3); const was = CHX.own(s, slot);
+        const cost = CHX.price(world, s, slot, lv, yr0); const back = was ? CHX.resaleValue(world, s, slot, was) : 0;
+        if (run('chBuy', { slot, level: lv })) { if (m0 - s.money !== cost - back) bad(`Kauf bucht ${m0 - s.money} statt ${cost - back}`); }
+        else if (s.money !== m0) bad('Fehlschlag verändert das Geld');
+      } else if (pick < 0.4) {
+        const slot = pickOf(r, CHX.SLOTS.filter((k) => !CHX.isService(k))); const g = CHX.own(s, slot); const v = g ? CHX.resaleValue(world, s, slot, g) : 0;
+        if (run('chSell', { slot })) { if (s.money - m0 !== v) bad(`Verkauf bucht ${s.money - m0} statt ${v}`); if (CHX.own(s, slot)) bad('Verkauftes Stück noch da'); } else if (s.money !== m0) bad('Fehlschlag (Verkauf) verändert das Geld');
+      } else if (pick < 0.5) run('chRepair', { slot: pickOf(r, ['kleidung', 'uhr', 'fahrzeug', 'mittel']) });
+      else if (pick < 0.6) run('chService', { slot: pickOf(r, ['pflege', 'schutz']), level: Math.floor(r() * 3) });
+      else if (pick < 0.8) { const x0 = CHX.xpOf(s).bal; const sp0 = CHX.xpOf(s).spent; run('chTrain', { key: pickOf(r, ['best', 'all', ...TLN.KEYS]) }); if (CHX.xpOf(s).bal > x0 + 1e-9) bad('Steigern erhöht das Guthaben'); if (CHX.xpOf(s).spent < sp0) bad('Steigerungen sinken'); }
+      else if (pick < 0.85) run('chAuto', { on: r() < 0.5 });
+      else if (pick < 0.9) { s.money = Math.max(1, Math.floor(r() * 1e4)); }
+      const days = 3 + Math.floor(r() * 400);
+      for (let d = 0; d < days && s.status === 'alive'; d++) { advance(world, s, 1); s.interrupts = []; if (s.money < 1) s.money = 1; }
+      if (r() < 0.5) s.money = Math.max(s.money, 1e9);
+      for (const b of invariants(s, null)) bad(b);
+      const q = s.pending.char || []; s.pending.char = []; for (const e of q) if (!(e.k && Number.isFinite(e.real || 0))) bad(`Vormerkung ${JSON.stringify(e)}`);
+      s.talents.v.forEach((v, k) => { if (v > TLN.capAt(s.talents, k)) bad('Talent über der Grenze'); });
+      if (s.char.svc.pflege || s.char.svc.schutz) { if (s.money < 0) bad('Dienste führen in die Schulden'); }
+    }
+    // Erbe
+    if (s.status === 'alive') {
+      s.talents.xp.tot = Math.floor(r() * 400); s.talents.xp.bal = Math.floor(r() * 50);
+      const fam = require('../src/game/family'); fam.bornChild({ world, state: s, idx: 1 }, mulberry32(seed)); const k = s.children[0]; if (k) {
+        k.born = s.day - 20 * 365; const was = JSON.parse(JSON.stringify(s));
+        const { state: h } = createHeirState(world, was, k.id, []);
+        for (const b of invariants(h, null)) bad(`Erbe: ${b}`);
+        if (h.talents.xp.bal > CHX.XP().inherit.max) bad(`Erbe beginnt mit ${h.talents.xp.bal} EP`); if (h.talents.xp.tot !== 0) bad('Erbe übernimmt die Gesamterfahrung');
+        if (Object.keys(h.char.gear).length) bad('Erbe übernimmt eigene Stücke'); for (const e of h.char.heir) if (CHX.own(h, e.slot)) bad('Erbstück als eigenes Stück');
+        const before = h.money; try { actions.run('chSell', { world, state: h, input: { slot: 'uhr' }, user: u(), now: 1 }); bad('Erbstück verkauft'); } catch (e) { if (!(e instanceof actions.ActionError)) throw e; } if (h.money !== before) bad('Erbstück verkaufen verändert Geld');
+      }
+    }
+  } catch (e) { failures.push({ seed, msg: `Charakterlauf: ${e.stack}` }); } finally { Math.random = realRandom; }
+  return failures;
+}
+
+/**
  * Lieferverträge zwischen zwei Spielern in verschiedenen Epochen: Was der Käufer zahlt, wird in Realwert genau einmal vorgemerkt
  * und – nach dem Verbuchen (Liste leeren) – nie ein zweites Mal; Gutschriften sind nie negativ; der Verkäufer verliert nie Ware ohne Gegenwert.
  * Geld entsteht nicht: Σ vorgemerkter Realwert = Σ Zahlungen des Käufers ÷ Index (je Tag exakt).
@@ -809,4 +893,4 @@ function runTransportScenario(seed, rounds = 14) {
   return { failures, digest };
 }
 
-module.exports = { runOpsScenario, runCivicScenario, runTransportScenario, runCourtScenario, runRepScenario, world, runScenario, runTradeScenario, runSupplyScenario, runCityEconScenario, invariants, inputFor, JUNK, clone };
+module.exports = { runCharScenario, runOpsScenario, runCivicScenario, runTransportScenario, runCourtScenario, runRepScenario, world, runScenario, runTradeScenario, runSupplyScenario, runCityEconScenario, invariants, inputFor, JUNK, clone };

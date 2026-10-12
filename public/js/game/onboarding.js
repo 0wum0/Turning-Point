@@ -122,6 +122,9 @@ export const SPOTS = {
   modules: { sel: '[data-ops-modules]', text: 'Hier baust du Module aus – beginne mit der kleinsten Stufe, etwa dem Brandschutz.' },
   climate: { sel: '[data-ops-climate] [data-ops-lead="praise"]', text: 'Tippe auf „Lob für alle“ – das kostet nichts und hebt die Stimmung.' },
   talents: { sel: '#talCard', text: 'Hier siehst du deine Talente – und was sie bewirken.' },
+  xp: { sel: '[data-ch-best]:not([disabled]), [data-ch-train]:not([disabled])', text: 'Tippe auf „Beste Wahl“ – so steckst du deine Erfahrung in das Talent, das zu deiner Tätigkeit passt.' },
+  gear: { sel: '[data-ch-slot="kleidung"] [data-ch-buy]:not([disabled])', text: 'Tippe bei der Kleidung auf „Kaufen“ – ein Sonntagsanzug macht schon einen guten Eindruck.' },
+  rank: { sel: '[data-ch-ladder]', text: 'Hier siehst du, woraus sich dein Rang zusammensetzt und was dir zum nächsten fehlt.' },
   supply: { sel: '[data-supply-find], [data-contract-find]', text: 'Tippe bei einer Zutat auf „Lieferant suchen“.' },
   lease: { sel: '[data-lease="on"]', text: 'Tippe auf „Vermieten“.' },
   market: { pre: (ctx) => soc(ctx, 'market'), sel: '.soc-tabs [data-tab="market"]', text: 'Im Stadtverzeichnis kannst du Eigentümern ein Angebot machen.' },
@@ -286,6 +289,7 @@ const INTROS = {
   housing: ['Dein Zuhause entscheidet über Erholung und Gesundheit. Hier siehst du, wo du wohnst, und kannst Immobilien kaufen oder vermieten.', 'primary', 'Zeig mir den wichtigsten Knopf'],
   household: ['Hier füllst du den Kühlschrank, schließt Versicherungen ab und sorgst für deine Gesundheit.', 'food', 'Zeig mir, wo ich Essen kaufe'],
   family: ['Partner, Kinder und Erben: Sie sind die Zukunft deines Lebenswerks.', 'primary', 'Zeig mir den wichtigsten Knopf'],
+  character: ['Dein Charakterblatt: Hier steckst du Erfahrung in Talente, wählst Kleidung, Uhr und Fahrzeug und siehst deinen gesellschaftlichen Rang. Alles ist freiwillig und wirkt nur ein wenig.', 'xp', 'Zeig mir die Erfahrung'],
   legacy: ['Dein Stammbaum und die Geschichte deiner Familie über alle Generationen. Hier gibt es nichts zu erledigen.', null, ''],
   shop: ['Freiwillig: Coins und EFS-Pakete. Das Spiel ist ohne Kauf komplett spielbar.', null, ''],
 };

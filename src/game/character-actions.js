@@ -10,13 +10,13 @@ const TL = require('./talents');
 const { formatMoney } = require('./economy');
 const { chronicle } = require('./core');
 
-const intOf = (x) => (typeof x === 'number' || (typeof x === 'string' && /^\d{1,9}$/.test(x)) ? Math.floor(Number(x)) : NaN);
+const intOf = (x) => (typeof x === 'number' && Number.isInteger(x)) || (typeof x === 'string' && /^\d{1,9}$/.test(x)) ? Number(x) : NaN;
 
 function install(A, fail, { yr, pay }) {
   const on = () => { if (!CH.enabled()) fail('Das Charakterblatt ist gerade ausgeschaltet.'); };
   const cur = (world, state) => world.currency(yr(state));
   const money = (world, state, cents) => formatMoney(cents, cur(world, state));
-  const slotOf = (input) => { const k = String(input.slot == null ? '' : input.slot); if (!CH.SLOTS.includes(k)) fail('Unbekannter Platz.'); return k; };
+  const slotOf = (input) => { const k = typeof input.slot === 'string' ? input.slot : ''; if (!CH.SLOTS.includes(k)) fail('Unbekannter Platz.'); return k; };
   const real = (world, state, cents) => Math.round(cents / Math.max(0.0001, world.idx(yr(state))));
 
   /* ---------------------------------------------------------------- Erfahrungspunkte ---------------------------------------------------------------- */
@@ -29,7 +29,7 @@ function install(A, fail, { yr, pay }) {
       if (!done.length) { const first = CH.canTrain(state, CH.recommend(world, state)[0]); fail(first.why || 'Es lässt sich gerade nichts verteilen.'); }
       chronicle(state, `${state.person.first} entwickelt sich weiter (${done.length} Talente).`, 'talent');
       const cost = done.reduce((a, d) => a + d.cost, 0);
-      return { msg: `Erfahrung verteilt: ${done.length} Talent${done.length === 1 ? '' : 'e'} gesteigert (${cost} EP).`, level: 'good' };
+      return { msg: done.length === 1 ? `Erfahrung verteilt: 1 Talent gesteigert (${cost} EP).` : `Erfahrung verteilt: ${done.length} Talente gesteigert (${cost} EP).`, level: 'good' };
     }
     const k = key === 'best' ? (CH.recommend(world, state).find((x) => CH.canTrain(state, x).ok) || CH.recommend(world, state)[0]) : key;
     if (!k || !Object.prototype.hasOwnProperty.call(TL.IDX, k)) fail('Dieses Talent gibt es nicht.');

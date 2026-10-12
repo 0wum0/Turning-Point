@@ -34,7 +34,8 @@ export async function openProfile(ctx, userId) {
         <div><small>Beruf</small><b>${s.occupation || '–'}</b></div><div><small>Generation</small><b>${s.generation}</b></div>
         <div><small>Vermögen</small><b>${num(s.wealth / 100)} <span class="dim small">'45</span></b></div><div><small>Kinder</small><b>${s.children}</b></div>
         <div><small>Betriebe</small><b>${s.companies}</b></div><div><small>Immobilien</small><b>${s.properties}</b></div>
-        <div><small>Einfluss</small><b>${s.influence}${s.office ? ' · ' + s.office : ''}</b></div><div><small>Platz Vermögen</small><b>#${p.ranks.wealth}</b></div></div>
+        <div><small>Einfluss</small><b>${s.influence}${s.office ? ' · ' + s.office : ''}</b></div><div><small>Platz Vermögen</small><b>#${p.ranks.wealth}</b></div>
+        ${s.rankName ? html`<div><small>Rang</small><b>${s.rankName}</b></div>` : ''}</div>
       ${p.firms.length ? html`<div class="card-title mt">${icon('store')} Betriebe</div><div class="stack" style="--gap:.4rem">${p.firms.map((f) => html`<div class="row spread small"><span>${icon('store')} <span data-i18n-skip>${f.name}</span></span><span class="dim">${cityName(ctx, f.cityId)}</span></div>`)}</div>` : ''}`}
     ${me ? '' : html`<div class="row wrap mt" style="gap:.5rem">${rel}<button class="btn sm" data-a="letter">${icon('mail')} Brief schreiben</button>${p.visible && s ? html`<button class="btn sm" data-a="couple">${icon('heart')} Beziehung anfragen</button><button class="btn sm" data-a="invite">${icon('briefcase')} Zum Job einladen</button>` : ''}${p.visible && s ? html`<button class="btn sm" data-a="gift">${icon('gift')} Geschenk</button>` : ''}<button class="btn sm ghost" data-a="report" title="Spieler melden">${icon('flag')}</button>${p.relation === 'friend' || p.relation === 'none' ? html`<button class="btn sm ghost" data-a="block" title="Blockieren">${icon('ban')}</button>` : ''}</div>`}
   </div>`, {});

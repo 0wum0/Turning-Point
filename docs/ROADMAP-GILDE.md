@@ -1,6 +1,6 @@
 # Roadmap „Die Gilde“ – Bauschritte 9 bis 15
 
-Stand: Analyse des Codes nach Schritt 8 (Gesellschaft); **Schritt 9 (Betrieb 2.0) ist umgesetzt** (siehe Abschnitt „Schritt 9“ und README). Die Schritte 10 bis 15 sind weiter reine Planung.
+Stand: Analyse des Codes nach Schritt 8 (Gesellschaft); **Schritt 9 (Betrieb 2.0) und Schritt 10 (Charakterblatt) sind umgesetzt** (siehe die Abschnitte „Schritt 9“ und „Schritt 10“ sowie README). Die Schritte 11 bis 15 sind weiter reine Planung.
 Ergänzung Design V2: Ein Teil der Darstellung aus Schritt 15 ist vorgezogen: serverabhängige Arbeitsanimationen und Betriebsübersicht, direkter 3D-Stadteinstieg, lokaler Zeitungskontext und geführter Lebensweg. Siehe `DESIGN-V2.md`; Figurensteuerung und die übrigen Mechaniken der Schritte 10–15 bleiben offen.
 Die Schritte 0 bis 8 sind fertig (Warenkreislauf, Stadtwirtschaft, Ruf, Recht & Gericht, Talente, Jahreszeiten, Handel & Transport, Gesellschaft, dazu Einsteiger-Erlebnis, Börse, Wahlen/Karriere, Design V2). Dieses Dokument legt fest, was von den Mechaniken des Spiels „Die Gilde“ (2002) schon im Spiel steckt, was fehlt und wie die Lücken **realistisch in unserer Welt** (Deutschland ab 1945, keine Fantasy) geschlossen werden. Der ältere Konzeptstand steht in `docs/ROADMAP.md`, Design V2 in `docs/DESIGN-V2.md`, die Feature-Beschreibungen im `README.md`.
 
@@ -216,6 +216,14 @@ Reihenfolge nach Abhängigkeit und Nutzen. Jeder Schritt ist für sich lauffähi
 - Heir-Test: Erbstücke, keine EP-Verdoppelung.
 - Balance: `econ-sim --charakter on|off`, Ausstattungskosten höchstens 5 bis 8 % Jahreseinkommen bei Vollausstattung, Wirkungssumme unter 3 % Nettovermögen.
 - E2E: EP verteilen, Ausstattung kaufen, Rang ändert sich; i18n; UI-Static.
+
+**Status: umgesetzt.** Abweichungen und Festlegungen gegenüber dem Plan:
+- **Erfahrung** (`state.talents.xp`): sechs Quellen (Berufspraxis, Verhandeln und Handeln, Menschen führen, Lernen, Begegnungen, Sport) mit Deckel je Fenster von 365 Spieltagen, teils je Spieltag der Tätigkeit, teils je erfolgreicher Aktion (`xp.sources`, im Admin änderbar). Allgemeines Guthaben (nicht an die Quelle gebunden), Kosten 2 bis 10 EP je Punkt, 14 Tage Pause je Talent, höchstens 6 Steigerungen je Jahr, Höchstguthaben 60, Startguthaben 4 für neue Charaktere (Altstände und Erben 0). Steigern läuft ausschließlich über `talents.grow` und `capAt`. „Beste Wahl“, „Alles verteilen“ und eine Auto-Verteilung (Standard aus) sind der Einsteiger-Weg.
+- **Ausstattung:** fünf Gegenstände (Kleidung, Uhr, Schmuck, Fahrzeug, Arbeitsmittel) mit drei Stufen sowie zwei laufende **Dienstleistungen** (Pflege, Sicherheitsdienst) mit zwei Stufen; **Eheringe** folgen mit Schritt 11. Kein Gegenstand dient der Gewalt. Auftreten 0 bis 100 → Wirkungen (Ansehen +8 %, Gehaltsgespräch +4, Bewerbung +3, Wahl +3 %, Kandidatur +3, Gericht +2, Wohlbefinden +1; Sicherheitsdienst −40/−65 % Einbruchswahrscheinlichkeit); Abnutzung, Mode, Aufarbeiten, Wiederverkauf mit Abschlag; **Coins kaufen nichts** (es gibt keinen Coin-Preis). Fahrzeug- und Dienstkosten über `exp.gear`, nie bis in die Insolvenz.
+- **Rang** 1 bis 7 (Einwohner … Spitze der Gesellschaft) aus Ansehen, inflationsbereinigtem Vermögen, Titeln und Ämtern, Auftreten und Herkunft, mit Trägheit; weiche Vorteile: Immobilienpreis bis −3 %, wöchentliches Vorab-Angebot ab Rang 4, Beziehungen bei Bewerbungen, Kandidaturgebühr bis −15 %, bis zu 2 Vereinsplätze mehr. Gleichzeitig Test, dass keine Prüfung für Ämter, Wahl oder Kauf den Rang liest.
+- **Erbe:** kleiner Bildungsvorsprung (3 %, höchstens 5 EP), Uhr und Schmuck als nicht verkäufliche Erbstücke (bei mehreren Kindern eine Stufe weniger, ohne Geldwert im Nachlass), Herkunft (12 % des Rang-Werts, verblasst).
+- Migration `035_character`: Tabelle `char_log` (Käufe, Verkäufe, Dienste, Aufstiege, genau einmal aus dem Spielstand geschrieben, Aufräumen nach 120 Tagen), Spalten `player_stats.rank_lv` und `look` (öffentlich für Profil, Verzeichnis, Wahl- und Gerichtsgewicht).
+- Balance (siehe README, Abschnitt Charakterblatt, Seeds 7 bis 10): nichts genutzt 1,00 bis 1,02; Vollausstattung Angestellter 0,92, Vermieter 0,95 bis 0,99, Betriebsinhaber 0,95, Mischform 0,95; Kosten der Ausstattung beim Angestellten gut 6 % des Einkommens; alle Archetypen und alle Seeds innerhalb ±10 %.
 
 ---
 

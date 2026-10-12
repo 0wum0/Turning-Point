@@ -132,6 +132,10 @@ Die 3D-Stadt (Stadt → „3D-Stadt“) ist vollständig prozedural (keine Bild-
   erweitert (siehe `public/vendor/three/README.md`).
 - Zeit-/Jahreszeit-Funktionen sind getestet (`test/atmosphere.test.js`), Browser-Verhalten in `test/e2e/design-gilde.test.js`.
 
+## Charakterblatt (Schritt 10)
+
+Die Seite `character` (`public/js/game/char.js`, `views/character.js`) ist für beide Designs dieselbe: Talente mit Erfahrungspunkten, Rang, Ausstattung und Kurz-Lebenslauf. Design V2 trägt sie im Dock unter **Hauptquartier** ein (`DESIGN_GROUPS`, Reiter „Charakter“); das Verwaltungsfenster baut die Bereichsleiste („Gesamtübersicht“, „Erfahrungspunkte“, „Gesellschaftlicher Rang“, „Ausstattung“, „Kurz-Lebenslauf“) automatisch aus den Karten. Zusätzlich gibt es im **Wohnhaus-Innenraum** die **Garderobe** (der vorhandene Schrank wird Hotspot, Aktionsleiste „Garderobe“, Aktion „Charakterblatt öffnen“). Alle Knöpfe rufen dieselben Spielaktionen auf (`chTrain`, `chAuto`, `chBuy`, `chSell`, `chRepair`, `chService`); die Übersicht zeigt eine kleine Rang-Karte, die Zeitung ein „Vorab-Angebot“ für hohe Ränge. Der Test `design-gilde.test.js` prüft den Weg Stadt → Wohnhaus → Garderobe → Charakterblatt auf Desktop und Handy ohne Überlauf.
+
 ## Prüfung
 
 - `npm test`: Spiellogik, statische UI-Prüfungen und Gruppierungs-/Kollisionstests
@@ -145,7 +149,7 @@ Die 3D-Stadt (Stadt → „3D-Stadt“) ist vollständig prozedural (keine Bild-
   Anhalten einer Route über den originalen Handler mit Aktualisierung der Karte.
   Die Funktionsauswahl respektiert unabhängig gesetzte `hidden`-Attribute der
   Spielmodule.
-- `design-gilde.test.js`: 3D-Stadt (Tages-/Jahreszeit, Draw-Call-Budget, Hover, Karte, Vollbild), Innenraum-Aktionsleiste auf Desktop und Handy (auch reduzierte Bewegung), Betriebs-Innenraum (Lager, Schutz & Brand, Betriebsklima) und Modul-Details in der Stadt.
+- `design-gilde.test.js`: 3D-Stadt (Tages-/Jahreszeit, Draw-Call-Budget, Hover, Karte, Vollbild), Innenraum-Aktionsleiste auf Desktop und Handy (auch reduzierte Bewegung), Betriebs-Innenraum (Lager, Schutz & Brand, Betriebsklima), Modul-Details in der Stadt und das Charakterblatt über die Garderobe im Wohnhaus.
 - Zusätzlicher Browsertest: gestaffeltes Laden, Startfehler/Wiederholen,
   Koordinaten und Beschriftungs-IDs über drei Zoomstufen und vier Viewports,
   fortschreitende Frachtposition, ruhende Routen und reduzierte Bewegung.

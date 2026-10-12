@@ -18,14 +18,15 @@ import society from './views/society.js';
 import socialView from './views/social.js';
 import city from './views/city.js';
 import shop from './views/shop.js';
+import character from './views/character.js';
 import { renderCreate, renderHeir, renderGameOver } from './screens.js';
 import * as audio from './audio.js';
 import { maybeWelcome, openHelp, celebrateQuests, clearSpot, mountIntro, isOpen, lockCard, lockMark, lockHint, setShowAll } from './onboarding.js';
 
-const PAGES = [overview, newspaper, map, city, work, business, trade, society, socialView, housing, household, family, legacy, shop];
+const PAGES = [overview, newspaper, map, city, work, business, trade, society, socialView, housing, household, family, character, legacy, shop];
 const byId = Object.fromEntries(PAGES.map((p) => [p.id, p]));
 /* Reiter, die sich erst nach und nach freischalten (Schlüssel der Freischaltungen) */
-const GATES = { business: 'business', trade: 'business', society: 'society' };
+const GATES = { business: 'business', trade: 'business', society: 'society', character: 'character' };
 const gated = (id) => !!GATES[id] && !isOpen(ctx, GATES[id]);
 const app = document.getElementById('app');
 

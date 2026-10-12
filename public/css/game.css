@@ -597,3 +597,27 @@ html { scroll-padding-top: calc(var(--hud-h, 62px) + 10px); }
 .ops-fire .chip, .ops-box .chip { white-space: nowrap; }
 .ops-lock .i { width: 1rem; height: 1rem; vertical-align: -.15em; }
 @media (max-width: 560px) { .ops-mods { grid-template-columns: 1fr; } }
+
+/* ---------- Charakterblatt (Classic und Design V2 teilen sich die Seite) ---------- */
+.char-hero .char-avatar { width: 64px; height: 64px; font-size: 1.5rem; }
+.char-rank-chip { font-size: .9rem; padding: .25rem .75rem; }
+.ch-tal { display: grid; grid-template-columns: 1.3rem minmax(4.6rem, 6rem) 1fr 2.2rem auto; align-items: center; gap: .4rem; min-width: 0; }
+.ch-tal .tal-ic { color: var(--accent-2); display: inline-flex; } .ch-tal .tal-ic .i { width: 1.05rem; height: 1.05rem; }
+.ch-tal .tal-lb { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: .88rem; }
+.ch-tal .tal-v { text-align: right; font-variant-numeric: tabular-nums; }
+.ch-tal .btn { min-width: 3.6rem; justify-content: center; }
+.ch-src { border-top: 1px dashed var(--border); padding-top: .6rem; }
+.ch-srow, .ch-prow { display: grid; grid-template-columns: minmax(7rem, 12rem) 1fr auto; align-items: center; gap: .5rem; margin: .25rem 0; min-width: 0; }
+.ch-srow { grid-template-columns: 1.3rem minmax(0, 1fr) minmax(4rem, 8rem) auto; }
+.ch-srow .tal-ic { color: var(--accent-2); display: inline-flex; }
+.ch-ladder { list-style: none; padding: 0; margin: .6rem 0 0; display: grid; gap: .25rem; }
+.ch-ladder li { display: grid; grid-template-columns: 1.4rem 1fr auto; gap: .5rem; padding: .3rem .55rem; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); opacity: .75; }
+.ch-ladder li.done { opacity: 1; border-color: color-mix(in srgb, var(--good) 55%, var(--border)); } .ch-ladder li.now { opacity: 1; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-glow); font-weight: 650; }
+.ch-perks { list-style: none; padding: 0; margin: 0; display: grid; gap: .3rem; }
+.ch-perks li { display: grid; grid-template-columns: 1.3rem 1fr auto; gap: .5rem; align-items: center; font-size: .9rem; opacity: .65; } .ch-perks li.on { opacity: 1; } .ch-perks li.on .i { color: var(--good); }
+.ch-slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: .8rem; }
+.ch-slot { padding: .65rem .75rem; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); min-width: 0; }
+.ch-slot .btn { white-space: normal; text-align: left; } .ch-lvs { display: grid; gap: .35rem; } .ch-lv.cur { display: flex; align-items: center; gap: .5rem; min-height: 2rem; }
+.ch-fx { list-style: none; padding: 0; margin: 0; display: grid; gap: .2rem; } .ch-fx li { display: flex; flex-wrap: wrap; gap: .35rem; align-items: baseline; }
+.char-mini .bar { margin-top: .1rem; }
+@media (max-width: 560px) { .ch-tal { grid-template-columns: 1.3rem minmax(3.6rem, 5rem) 1fr 1.8rem auto; gap: .3rem; } .ch-prow { grid-template-columns: 1fr; gap: .15rem; } .ch-srow { grid-template-columns: 1.3rem minmax(0, 1fr) auto; } .ch-srow .bar { grid-column: 1 / -1; order: 5; } }

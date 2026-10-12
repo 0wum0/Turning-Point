@@ -130,3 +130,34 @@ test('Betrieb 2.0: Knöpfe sind verdrahtet, Aktionen existieren, Glossar/Spots v
   // Der Server liefert, was die Oberfläche braucht
   const { buildingsFor } = require('../src/game/places'); assert.ok(buildingsFor.toString().includes('mods:'));
 });
+
+test('Charakterblatt: Knöpfe sind verdrahtet, Aktionen existieren, Glossar/Spots vorhanden; Classic und Design V2 sind angebunden', () => {
+  const ch = fs.readFileSync(path.join(ROOT, 'public/js/game/char.js'), 'utf8');
+  const sels = new Set([...ch.matchAll(/on\(root, '(?:click|change)', '\[(data-[a-z-]+)\]'/g)].map((m) => m[1]));
+  assert.ok(sels.size >= 8, [...sels].join());
+  for (const a of sels) assert.ok(new RegExp(`${a}(=|[ >])`).test(ch), `Kein Knopf mit ${a}`);
+  const A = require('../src/game/actions').ACTIONS;
+  const used = new Set([...ch.matchAll(/run\('([A-Za-z]+)'/g)].map((m) => m[1]));
+  for (const n of used) assert.ok(A.includes(n), `Aktion ${n} fehlt im Server`);
+  for (const n of ['chTrain', 'chAuto', 'chBuy', 'chSell', 'chRepair', 'chService']) { assert.ok(A.includes(n), n); assert.ok(used.has(n), `Oberfläche ruft ${n} auf`); }
+  const gl = fs.readFileSync(path.join(ROOT, 'public/js/game/glossary-char.js'), 'utf8');
+  const keys = new Set([...gl.matchAll(/^\s*\['([^']+)'/gm)].map((m) => m[1]));
+  for (const m of ch.matchAll(/term\('([^']+)'/g)) assert.ok(keys.has(m[1]), `Glossar fehlt: ${m[1]}`);
+  assert.match(fs.readFileSync(path.join(ROOT, 'public/js/game/glossary.js'), 'utf8'), /GLOSSARY_CHAR/);
+  // Einsteiger-Spots zeigen auf vorhandene Elemente
+  const ob = fs.readFileSync(path.join(ROOT, 'public/js/game/onboarding.js'), 'utf8');
+  assert.match(ob, /xp: \{ sel: '\[data-ch-best\]/); assert.match(ob, /gear: \{ sel: '\[data-ch-slot="kleidung"\]/); assert.match(ob, /rank: \{ sel: '\[data-ch-ladder\]'/);
+  assert.match(ch, /data-ch-xp/); assert.match(ch, /data-ch-gear/); assert.match(ch, /data-ch-ladder/); assert.match(ch, /data-ch-slot="\$\{s\.key\}"/);
+  // Seite im Hauptmenü, im Dock von Design V2, in der Übersicht und im Live-Kanal
+  const main = fs.readFileSync(path.join(ROOT, 'public/js/game/main.js'), 'utf8');
+  assert.match(main, /import character from '\.\/views\/character\.js'/); assert.match(main, /family, character, legacy/); assert.match(main, /character: 'character'/);
+  assert.match(fs.readFileSync(path.join(ROOT, 'public/js/game/design.js'), 'utf8'), /'overview', 'character', 'housing'/);
+  assert.match(fs.readFileSync(path.join(ROOT, 'public/js/game/views/overview.js'), 'utf8'), /charMini\(ctx\)/);
+  assert.match(fs.readFileSync(path.join(ROOT, 'public/js/game/live.js'), 'utf8'), /character: \['character', 'overview'\]/);
+  // Design V2: Garderobe im Wohnhaus öffnet das Charakterblatt
+  const rooms = fs.readFileSync(path.join(ROOT, 'public/js/game/rooms.js'), 'utf8');
+  assert.match(rooms, /\['wardrobe', 'Garderobe', 'shirt'\]/); assert.match(rooms, /spot\(wd, 'wardrobe'[^;]+'character'/);
+  // Zeitung zeigt Vorab-Angebote; Profil zeigt den Rang
+  assert.match(fs.readFileSync(path.join(ROOT, 'public/js/game/views/newspaper.js'), 'utf8'), /h\.vip/); assert.match(fs.readFileSync(path.join(ROOT, 'public/js/game/views/social.js'), 'utf8'), /s\.rankName/);
+
+});
