@@ -33,7 +33,7 @@ export function buildAerial({ cityId, name, tier, era, buildings, aerial, select
   const r = rng(`aerial:${cityId}:${name}`);
   const p = PAL[era] || PAL[1];
   const { w: W, h: H } = WORLD;
-  let out = '';
+  let out = ''; const structures = [], landmarks = [], vegetation = [];
   const defs = `<defs><filter id="grain"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="${cityId}"/><feColorMatrix values="0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 .22 0"/></filter>
   <filter id="soft"><feGaussianBlur stdDeviation="3"/></filter>
   <linearGradient id="city-wall" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#ddd1af"/><stop offset="1" stop-color="#8d8871"/></linearGradient>
@@ -129,6 +129,7 @@ export function buildAerial({ cityId, name, tier, era, buildings, aerial, select
         const x = b.x0 + 5 + ci * cw + mg; const y = b.y0 + 5 + ri * ch + mg; const ww = cw - mg * 2; const hh = ch - mg * 2;
         if (ww < 8 || hh < 8) continue;
         const roof = industrial ? p.industrial : p.roofs[Math.floor(r() * p.roofs.length)];
+        structures.push({ x:x+ww/2, y:y+hh/2, w:ww, d:hh, roof, height:industrial ? 18 : dense ? 24 + (ci % 3)*7 : 15 + (ri % 2)*5 });
         out += shadow(x, y, ww, hh) + `<rect x="${x}" y="${y}" width="${ww}" height="${hh}" fill="${roof}"/>`;
         out += `<g class="city-depth"><path d="M${x} ${y+hh}h${ww}v7h${-ww}z" fill="url(#city-wall)"/><path d="M${x+ww} ${y}l5 7v${hh}l-5 -7z" fill="#6f7668"/>`;
         for (let k=4; k<ww-3; k+=10) out += `<rect x="${x+k}" y="${y+hh+2}" width="3" height="3.5" fill="#344444"/>`;
@@ -139,7 +140,7 @@ export function buildAerial({ cityId, name, tier, era, buildings, aerial, select
       }
     }
     // Bäume entlang der Straßen
-    for (let i = 0; i < 220; i++) { const onX = r() < 0.5; const px = onX ? xs[Math.floor(r() * xs.length)] + (r() < 0.5 ? -12 : 12) : r() * W; const py = onX ? r() * H : ys[Math.floor(r() * ys.length)] + (r() < 0.5 ? -12 : 12); if (hasRiver && nearRiver(river, px, py, 44)) continue; out += `<circle cx="${px}" cy="${py}" r="${3 + r() * 4}" fill="#2c5624" opacity=".75"/>`; }
+    for (let i = 0; i < 220; i++) { const onX = r() < 0.5; const px = onX ? xs[Math.floor(r() * xs.length)] + (r() < 0.5 ? -12 : 12) : r() * W; const py = onX ? r() * H : ys[Math.floor(r() * ys.length)] + (r() < 0.5 ? -12 : 12); if (hasRiver && nearRiver(river, px, py, 44)) continue; const tr=3+r()*4;vegetation.push({x:px,y:py,r:tr});out += `<circle cx="${px}" cy="${py}" r="${tr}" fill="#2c5624" opacity=".75"/>`; }
     const trees = rng(`canopy:${cityId}`);
     out += '<g class="city-depth" pointer-events="none">';
     for (const block of blocks.filter(b => b.park)) {
@@ -157,6 +158,7 @@ export function buildAerial({ cityId, name, tier, era, buildings, aerial, select
     const st = TYPE_STYLE[b.type] || TYPE_STYLE.home;
     const scale = b.type === 'home' && b.rooms ? 1 + Math.min(0.5, b.rooms / 30) : b.type === 'biz' ? 0.9 + (b.tier || 0) * 0.25 : 1;
     const ww = st.w * scale; const hh = st.h * scale; const x = s.x - ww / 2; const y = s.y - hh / 2;
+    landmarks.push({ key:b.key, name:b.name, own:!!b.own, type:b.type, x:s.x, y:s.y, w:ww, d:hh, roof:st.roof, height:st.tower ? 42 : st.rails ? 25 : 24 });
     const own = b.own; const sel = selected === b.key;
     let g = `<g class="bld ${own ? 'own' : ''} ${sel ? 'sel' : ''}" data-key="${esc(b.key)}" tabindex="0" role="button" aria-label="${esc(b.name)}">`;
     g += `<rect class="hit" x="${s.blk.x0}" y="${s.blk.y0}" width="${s.blk.x1 - s.blk.x0}" height="${s.blk.y1 - s.blk.y0}" fill="transparent"/>`;
@@ -214,5 +216,5 @@ export function buildAerial({ cityId, name, tier, era, buildings, aerial, select
     for (const b of buildings) { const s = spots[b.key]; if (s) tint += `<circle cx="${s.x}" cy="${s.y}" r="62" fill="url(#lamp)" style="mix-blend-mode:screen;pointer-events:none"/>`; }
   } else if (dusk) tint = `<rect width="${W}" height="${H}" fill="#ff8a3c" opacity=".16" style="mix-blend-mode:multiply;pointer-events:none"/>`;
   const svg = `<svg class="aerial" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice" role="application" aria-label="Luftansicht ${esc(name)}">${defs}<g id="avp">${out}<g class="life" style="pointer-events:none">${life}</g>${tint}${marks}</g></svg>`;
-  return { svg, spots: Object.fromEntries(Object.entries(spots).map(([k, v]) => [k, { x: v.x, y: v.y }])) };
+  return { svg, hour, vegetation, roads:{xs,ys}, terrain: `<svg xmlns="http://www.w3.org/2000/svg" width="2000" height="1250" viewBox="0 0 2000 1250">${defs}${out}</svg>`, structures, landmarks, spots: Object.fromEntries(Object.entries(spots).map(([k, v]) => [k, { x: v.x, y: v.y }])) };
 }

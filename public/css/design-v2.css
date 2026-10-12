@@ -547,3 +547,27 @@
 }
 /* Fine roof and ground patterns carry texture without a viewport-sized animated noise filter. */
 :root[data-game-design="v2"] body.game .aerial .city-grain { display:none; }
+/* Both city projections share the same buildings, selection and game actions. */
+:root[data-game-design="v2"] body.game .city-view-mode { position:absolute; z-index:3; top:16px; left:16px; display:flex; padding:4px; gap:3px; border:1px solid #adcbb551; border-radius:12px; background:#142d28ec; backdrop-filter:blur(12px); }
+:root[data-game-design="v2"] body.game .city-view-mode button { min-height:36px; padding:7px 12px; border:0; border-radius:8px; background:transparent; color:#c5d9ce; font:600 13px var(--font-ui); cursor:pointer; }
+:root[data-game-design="v2"] body.game .city-view-mode button[aria-pressed="true"] { color:#113524; background:linear-gradient(#b9f5d1,#75d6a1); box-shadow:0 2px 8px #0003; }
+#city3dHost { position:absolute; inset:0; }
+#city3dHost canvas { width:100%; height:100%; display:block; touch-action:none; cursor:grab; }
+#city3dHost canvas:active { cursor:grabbing; }
+#citySceneStatus { position:absolute; z-index:4; top:80px; left:20px; right:20px; padding:16px; border:1px solid #b1dbc366; border-radius:12px; background:#18372fef; color:#e7f8ee; font-size:15px; line-height:1.5; pointer-events:none; }
+:root[data-game-design="v2"] body.game .aerial-card .map-tools { z-index:3; }
+:root[data-game-design="v2"] body.game .aerial-card .aerial-hint { z-index:2; }
+@media(max-width:650px) { :root[data-game-design="v2"] body.game .city-view-mode { top:12px; left:12px; } :root[data-game-design="v2"] body.game .city-view-mode button { padding:7px 9px; font-size:12px; } :root[data-game-design="v2"] body.game .aerial-card .map-tools { top:66px; right:12px; } }
+.int-breadcrumb { color:#b8d4c3; font-size:11px; letter-spacing:.06em; font-weight:500; }
+.sim-interior .int-scene-selection { position:absolute; top:20px; left:20px; right:20px; width:fit-content; max-width:calc(100% - 40px); padding:12px 16px; border:1px solid #96eeb984; border-radius:12px; background:#163328e8; box-shadow:0 6px 30px #0003; color:#dcf8e7; font-size:15px; pointer-events:none; }
+.sim-interior .int-object[aria-pressed="true"] { border-color:#9aefba; background:#7bdfa11c; }
+:root[data-game-design="v2"] body.game .aerial-card[data-scene="3d"] .aerial-hint { display:none; }
+@media(max-width:650px) { .sim-interior .int-breadcrumb { font-size:10px; } .sim-interior .int-scene-selection { top:12px; left:12px; padding:8px 12px; font-size:13px; } }
+.city3d-labels { position:absolute; inset:0; pointer-events:none; overflow:hidden; }
+.city3d-pin { position:absolute; transform:translate(-50%,-50%); width:32px; height:32px; display:grid; place-items:center; border:1px solid #edf9e9; border-radius:50%; background:#234039e8; color:#aef2cd; box-shadow:0 3px 10px #0005; cursor:pointer; pointer-events:auto; font-size:14px; }
+.city3d-pin[data-own="true"] { color:#ffdf8f; border-color:#ffe7ae; background:#504225ec; }
+.city3d-pin[aria-pressed="true"] { background:#b4f4cc; color:#1b442a; box-shadow:0 0 0 4px #bdffd142,0 5px 16px #0005; z-index:2; }
+.city3d-pin strong { display:none; position:absolute; bottom:39px; padding:7px 11px; max-width:220px; width:max-content; border:1px solid #c3ead380; border-radius:8px; background:#203b31f5; color:#f2fff6; font:600 13px/1.4 var(--font-ui); pointer-events:none; }
+.city3d-pin[aria-pressed="true"] strong,.city3d-pin:focus-visible strong { display:block; }
+.city3d-pin[hidden] { display:none; }
+@media(max-width:650px) { .city3d-pin { width:36px;height:36px; } .city3d-pin strong { max-width:180px; } }

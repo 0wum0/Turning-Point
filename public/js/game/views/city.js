@@ -21,7 +21,7 @@ export default {
     ${data.here ? '' : html`<div class="alert info">${icon('info')}<div>Du siehst ${c.name} nur von oben. Aufgaben und Einkäufe sind nur in deinem Wohnort möglich – ziehe dafür um (Karte).</div></div>`}
     <div class="city-layout">
       <section class="card aerial-card"><div class="map-tools"><button class="btn sm" id="azin" aria-label="Vergrößern">${icon('plus')}</button><button class="btn sm" id="azout" aria-label="Verkleinern">${icon('minus')}</button><button class="btn sm" id="azreset" aria-label="Zentrieren">${icon('refresh-cw')}</button></div>
-        <div id="aerialHost">${raw(a.svg)}</div>
+        <div class="sim-city-only city-view-mode" role="group" aria-label="Stadtdarstellung"><button data-city-view="2d" aria-pressed="true">2D-Karte</button><button data-city-view="3d" aria-pressed="false">3D-Stadt</button></div><div id="city3dHost" hidden></div><div id="citySceneStatus" role="status" hidden></div><div id="aerialHost">${raw(a.svg)}</div>
         <div class="aerial-hint small dim">${icon('hand-coins')} Goldene Umrandung = dein Besitz</div></section>
       <aside class="card bl-panel">
         <div class="sim-city-only city-catalog-head"><span class="city-eyebrow">DEINE STADT</span><h3>Orte entdecken</h3><label class="sr" for="citySearch">Gebäude suchen</label><input id="citySearch" type="search" placeholder="Gebäude suchen …" autocomplete="off"></div>
@@ -36,21 +36,22 @@ export default {
     ${directorySkeleton(ctx, c.id)}`;
   },
   bind(root, ctx, data) {
-    ctx.ui.cityData = data;
+    data.visualHour = ctx.ui._aerial.hour; ctx.ui.cityData = data;
+    let scene3d=null, sceneVersion=0, disposed=false;
     const svg = root.querySelector('svg.aerial'); const spots = ctx.ui._aerial.spots;
     const saved = ctx.ui.cityBox?.id === data.city.id ? ctx.ui.cityBox.box : null;
     const camera = createCityCamera(svg, { saved, smooth: isV2, onChange: box => { ctx.ui.cityBox = { id:data.city.id, box }; } });
     const own = data.buildings.find(b => b.residence) || data.buildings.find(b => b.own && spots[b.key]) || data.buildings.find(b => b.type === 'rathaus');
     const centerOn = (x,y,level) => camera.center(x,y,level);
     if (!saved && own && spots[own.key]) camera.center(spots[own.key].x, spots[own.key].y, 2.1, true);
-    root.querySelector('#azin').onclick = () => camera.zoom(.8);
-    root.querySelector('#azout').onclick = () => camera.zoom(1.25);
-    root.querySelector('#azreset').onclick = () => { if (own && spots[own.key]) centerOn(spots[own.key].x,spots[own.key].y,2.1); };
+    root.querySelector('#azin').onclick = () => scene3d ? scene3d.zoom(.8) : camera.zoom(.8);
+    root.querySelector('#azout').onclick = () => scene3d ? scene3d.zoom(1.25) : camera.zoom(1.25);
+    root.querySelector('#azreset').onclick = () => { if (scene3d) { scene3d.reset(); return; } if (own && spots[own.key]) centerOn(spots[own.key].x,spots[own.key].y,2.1); };
     const media = matchMedia('(prefers-reduced-motion: reduce)');
     const vis = () => { if (document.hidden || media.matches || document.documentElement.dataset.motion === 'off') svg.pauseAnimations?.(); else svg.unpauseAnimations?.(); };
     document.addEventListener('visibilitychange', vis); media.addEventListener('change',vis);
     const motion = new MutationObserver(vis); motion.observe(document.documentElement,{attributes:true,attributeFilter:['data-motion']}); vis();
-    root.__dispose = () => { camera.dispose(); motion.disconnect(); media.removeEventListener('change',vis); document.removeEventListener('visibilitychange',vis); };
+    root.__dispose = () => { disposed=true; sceneVersion++; scene3d?.dispose(); designObserver.disconnect(); camera.dispose(); motion.disconnect(); media.removeEventListener('change',vis); document.removeEventListener('visibilitychange',vis); };
     let entering = false;
     const enter = async (key) => {
       const b = data.buildings.find((x) => x.key === key); if (!b) return;
@@ -64,6 +65,7 @@ export default {
       if (!isV2()) return enter(key);
       const b = data.buildings.find(x => x.key === key); if (!b) return;
       ctx.ui.cityBuilding = key;
+      scene3d?.focus(key);
       svg.querySelectorAll('.bld').forEach(el => el.classList.toggle('sel', el.dataset.key === key));
       root.querySelectorAll('[data-focus]').forEach(el => el.setAttribute('aria-pressed', String(el.dataset.focus === key)));
       const ready = b.tasks.filter(t => t.ready && !t.blocked).length;
@@ -72,6 +74,27 @@ export default {
       root.querySelector('.bl-panel').scrollTop = 0;
       if (matchMedia('(max-width:650px) and (orientation:portrait)').matches) root.querySelector('#citySelection').scrollIntoView({ block:'nearest', behavior:media.matches || document.documentElement.dataset.motion === 'off' ? 'instant' : 'smooth' });
     };
+    const switchScene = async (mode) => {
+      const version=++sceneVersion, host=root.querySelector('#city3dHost'), status=root.querySelector('#citySceneStatus');
+      scene3d?.dispose();scene3d=null;ctx.ui.cityScene=mode;
+      const three=mode==='3d' && isV2(); host.hidden=!three;root.querySelector('#aerialHost').hidden=three;
+      root.querySelector('.aerial-card').dataset.scene=three?'3d':'2d';
+      root.querySelector('.panel-head p').textContent = `${data.city.state} · ${three ? '3D-Stadt – ziehen zum Drehen, Mausrad zum Zoomen, Gebäude oder Marker auswählen.' : 'Luftansicht – ziehen zum Verschieben, Mausrad zum Zoomen, Gebäude auswählen und die Stadt entdecken.'}`;
+      root.querySelectorAll('[data-city-view]').forEach(el=>el.setAttribute('aria-pressed',String(el.dataset.cityView===(three?'3d':'2d'))));
+      status.hidden=!three;if(!three)return; status.textContent='Deine Stadt entsteht in 3D …';
+      let created;
+      try {
+        const {createCity3D}=await import('../city-3d.js');
+        if(disposed || version!==sceneVersion)return;
+        created=await createCity3D(host,ctx.ui._aerial,{onSelect:select,selected:ctx.ui.cityBuilding,reduced:()=>media.matches || document.documentElement.dataset.motion==='off'});
+        if(disposed || version!==sceneVersion){created?.dispose();return;}
+        scene3d=created;status.hidden=true;
+      } catch(e) { if(disposed || version!==sceneVersion)return; await switchScene('2d');status.textContent=e.message;status.hidden=false; }
+    };
+    root.querySelectorAll('[data-city-view]').forEach(el=>{el.onclick=()=>switchScene(el.dataset.cityView);});
+    const designObserver=new MutationObserver(()=>{if(!isV2())switchScene('2d');});designObserver.observe(document.documentElement,{attributes:true,attributeFilter:['data-game-design']});
+    if(isV2() && ctx.ui.cityScene==='3d')switchScene('3d');
+    if(isV2() && data.buildings.some(b=>b.key===ctx.ui.cityBuilding)) select(ctx.ui.cityBuilding);
     root.querySelector('#citySearch').oninput = e => {
       const q = e.target.value.trim().toLocaleLowerCase('de'); let count = 0;
       root.querySelectorAll('.bl-item').forEach(el => { el.hidden = !el.textContent.toLocaleLowerCase('de').includes(q); if (!el.hidden) count++; });

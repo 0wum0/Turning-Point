@@ -9,7 +9,7 @@ const PAL = {
 import { makeTextures } from './textures.js';
 const hex = (n) => `#${n.toString(16).padStart(6, '0')}`;
 
-export function buildRoom(T, b, ctx) {
+export function buildRoom(T, b, ctx, { enhanced=false, hour=new Date().getHours() } = {}) {
   const v = new Proxy({}, { get: (_, k) => ctx.view[k] }); const era = ctx.view.date.eraKey; const pal = PAL[era] || PAL[1];
   const scene = new T.Scene(); scene.background = new T.Color(pal.bg);
   const hot = []; const props = new T.Group(); scene.add(props);
@@ -45,13 +45,27 @@ export function buildRoom(T, b, ctx) {
   const wallBack = new T.Mesh(new T.BoxGeometry(w + 0.4, ht, 0.3), wallMat(w)); wallBack.position.set(0, ht / 2, -d / 2 - 0.15); wallBack.receiveShadow = true; scene.add(wallBack);
   const wallLeft = new T.Mesh(new T.BoxGeometry(0.3, ht, d + 0.4), wallMat(d)); wallLeft.position.set(-w / 2 - 0.15, ht / 2, 0); wallLeft.receiveShadow = true; scene.add(wallLeft);
   box(w, 0.35, 0.12, pal.trim, 0, 0, -d / 2 + 0.06, scene, { noShadow: true }); box(0.12, 0.35, d, pal.trim, -w / 2 + 0.06, 0, 0, scene, { noShadow: true });
-  const hour = new Date().getHours(); const night = hour < 6 || hour >= 20; const dusk = !night && (hour < 8 || hour >= 18);
+  const night = hour < 6 || hour >= 21; const dusk = !night && (hour < 8 || hour >= 18);
   const glowMat = new T.MeshBasicMaterial({ color: night ? 0x22345f : dusk ? 0xffb070 : pal.light });
   if (night) scene.background = new T.Color(0x05070d);
   const windowAt = (x, y, wall = 'back') => { const m = new T.Mesh(new T.BoxGeometry(1.8, 1.5, 0.1), glowMat); if (wall === 'back') m.position.set(x, y, -d / 2 + 0.08); else { m.position.set(-w / 2 + 0.08, y, x); m.rotation.y = Math.PI / 2; } scene.add(m); const fr = new T.Mesh(new T.BoxGeometry(2.0, 1.7, 0.08), mat(pal.trim)); fr.position.copy(m.position); fr.rotation.copy(m.rotation); fr.position.z += wall === 'back' ? -0.03 : 0; scene.add(fr); };
   for (let i = -1; i <= 1; i += 2) windowAt((w / 4) * i, 1.9);
   windowAt(0, 1.9, 'left');
   if (era === 5) { const strip = new T.Mesh(new T.BoxGeometry(w, 0.08, 0.08), new T.MeshBasicMaterial({ color: pal.accent })); strip.position.set(0, ht - 0.2, -d / 2 + 0.1); scene.add(strip); }
+
+  if (enhanced) {
+    // Real geometry at the room boundary: sill, window bars, cornice and floor edge.
+    box(w,.14,.17,pal.trim,0,ht-.14,-d/2+.08,scene,{noShadow:true});
+    box(.17,.14,d,pal.trim,-w/2+.08,ht-.14,0,scene,{noShadow:true});
+    box(w,.12,.12,pal.trim,0,-.02,d/2,scene,{noShadow:true});box(.12,.12,d,pal.trim,w/2,-.02,0,scene,{noShadow:true});
+    for(const x of [-w/4,w/4]) {
+      box(2.15,.12,.3,pal.trim,x,1.08,-d/2+.17,scene);box(.065,1.5,.14,pal.trim,x,1.15,-d/2+.14,scene,{noShadow:true});box(1.8,.065,.14,pal.trim,x,1.9,-d/2+.14,scene,{noShadow:true});
+      box(.12,.38,.22,0x7f6847,x,2.8,-d/2+.2,scene);
+    }
+    box(.3,.12,2.15,pal.trim,-w/2+.17,1.08,0,scene);box(.14,1.5,.065,pal.trim,-w/2+.14,1.15,0,scene,{noShadow:true});box(.14,.065,1.8,pal.trim,-w/2+.14,1.9,0,scene,{noShadow:true});
+    const shade=new T.Mesh(new T.ConeGeometry(.42,.35,24,1,true),new T.MeshStandardMaterial({color:0xc5a76f,side:T.DoubleSide,roughness:.65}));shade.position.set(0,ht-.45,0);scene.add(shade);
+    const bulb=new T.Mesh(new T.SphereGeometry(.12,12,8),new T.MeshBasicMaterial({color:pal.light}));bulb.position.set(0,ht-.58,0);scene.add(bulb);
+  }
 
   // ---- Licht
   scene.add(new T.HemisphereLight(0xffffff, 0x554433, night ? 0.32 : 0.75));
@@ -74,7 +88,11 @@ export function buildRoom(T, b, ctx) {
   const counter = (x, z, len = 4, rot = 0, col = 0x7a5535, top = 0xd8d2c0) => { const g = group(x, z, rot); box(len, 1.1, 0.9, col, 0, 0, 0, g); box(len + 0.2, 0.1, 1.1, top, 0, 1.1, 0, g); return g; };
   const desk = (x, z, rot = 0) => { const g = group(x, z, rot); box(2.0, 0.1, 1.0, 0x7a5535, 0, 1.0, 0, g); box(0.1, 1.0, 0.9, 0x5a3d22, -0.9, 0, 0, g); box(0.1, 1.0, 0.9, 0x5a3d22, 0.9, 0, 0, g); box(0.6, 0.02, 0.45, 0xffffff, -0.4, 1.1, 0.1, g); box(0.5, 0.02, 0.35, 0xe8e0c8, 0.4, 1.1, -0.1, g); if (era >= 3) { box(0.7, 0.45, 0.06, 0x222222, 0.3, 1.1, -0.25, g); box(0.2, 0.05, 0.2, 0x222222, 0.3, 1.1, -0.2, g); } box(0.7, 0.1, 0.6, 0x4a3a2a, 0, 0.55, 1.0, g); box(0.7, 0.8, 0.1, 0x4a3a2a, 0, 0.6, 1.3, g); return g; };
   const plant = (x, z) => { const g = group(x, z); cyl(0.3, 0.25, 0.5, 0xb4623a, 0, 0, 0, g); sph(0.55, 0x3f7a35, 0, 1.0, 0, g); sph(0.4, 0x4f8f40, 0.25, 1.4, 0.1, g); return g; };
-  const person = (x, z, col = 0x3a5a8a, rot = 0, skin = 0xe0b896) => { const g = group(x, z, rot); cyl(0.28, 0.32, 1.1, col, 0, 0.0, 0, g); sph(0.26, skin, 0, 1.38, 0, g); box(0.5, 0.12, 0.3, 0x2a2a2a, 0, 0, 0.06, g, { noShadow: true }); return g; };
+  const person = (x, z, col = 0x3a5a8a, rot = 0, skin = 0xe0b896) => { const g = group(x, z, rot); if(enhanced){
+    box(.43,.6,.28,col,0,.66,0,g);cyl(.09,.08,.6,0x343b40,-.13,.08,0,g);cyl(.09,.08,.6,0x343b40,.13,.08,0,g);
+    cyl(.09,.075,.52,col,-.3,.68,0,g,{rot:[0,0,-.12]});cyl(.09,.075,.52,col,.3,.68,0,g,{rot:[0,0,.12]});
+    sph(.09,skin,-.33,.68,0,g);sph(.09,skin,.33,.68,0,g);box(.19,.1,.34,0x302b26,-.13,0,.06,g);box(.19,.1,.34,0x302b26,.13,0,.06,g);
+    }else cyl(0.28, 0.32, 1.1, col, 0, 0.0, 0, g); sph(0.26, skin, 0, 1.38, 0, g); box(0.5, 0.12, 0.3, 0x2a2a2a, 0, 0, 0.06, g, { noShadow: true }); return g; };
   const crate = (x, z, col = 0xb58a4f) => { const g = group(x, z, Math.random() * 0.5); box(0.9, 0.7, 0.9, col, 0, 0, 0, g); box(0.95, 0.08, 0.95, 0x8a6a3a, 0, 0.35, 0, g); return g; };
   const barrel = (x, z) => { const g = group(x, z); cyl(0.4, 0.4, 0.9, 0x8a5a2f, 0, 0, 0, g); cyl(0.42, 0.42, 0.06, 0x333333, 0, 0.2, 0, g); cyl(0.42, 0.42, 0.06, 0x333333, 0, 0.65, 0, g); return g; };
   const frame = (x, y, z, wall, c = 0xd8b46a, size = [0.9, 1.1]) => { const g = new T.Group(); box(size[0], size[1], 0.08, c, 0, 0, 0, g); box(size[0] - 0.16, size[1] - 0.16, 0.1, 0xe9dec8, 0, 0.08, 0, g); if (wall === 'back') g.position.set(x, y, -d / 2 + 0.1); else { g.position.set(-w / 2 + 0.1, y, z); g.rotation.y = Math.PI / 2; } props.add(g); return g; };

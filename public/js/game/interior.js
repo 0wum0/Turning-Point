@@ -7,7 +7,7 @@ const REWARD_LABEL = { efs: (n) => `+${n} EFS`, rest: (n) => `${n > 0 ? '+' : ''
 const rewardText = (r) => Object.entries(r || {}).map(([k, n]) => (REWARD_LABEL[k] ? REWARD_LABEL[k](n) : '')).filter(Boolean).join(' · ');
 
 export async function openInterior(ctx, b, data) {
-  let T, room, onResize = () => {}, markReady = () => {}, invalidate = () => {};
+  let T, room, onResize = () => {}, markReady = () => {}, invalidate = () => {}, focusRoom = () => {};
   const v2 = isV2(); const previousFocus = document.activeElement; const previousOverflow = document.body.style.overflow;
   const app = document.getElementById('app'); const wasInert = app?.inert;
   const root = document.createElement('div'); root.className = `interior${v2 ? ' sim-interior' : ''}`; root.setAttribute('role', 'dialog'); root.setAttribute('aria-modal', 'true'); root.setAttribute('aria-label', b.name);
@@ -20,10 +20,11 @@ export async function openInterior(ctx, b, data) {
     sidebar.innerHTML = '<nav class="int-navigation" aria-label="Im Gebäude"><button data-room-tab="objects" aria-pressed="true">Gegenstände</button><button data-room-tab="tasks" aria-pressed="false">Aufgaben</button></nav><div class="int-objects"><div class="int-object-intro"><span class="city-eyebrow">ENTDECKEN & INTERAGIEREN</span><h2>Dein nächster Schritt</h2><p>Wähle einen Gegenstand im Raum oder hier in der Übersicht.</p></div><div class="int-object-list" aria-live="polite">Raum wird vorbereitet …</div></div>';
     sidebar.append(root.querySelector('.int-tasks'), root.querySelector('.int-panel'));
     root.append(stage, sidebar);
-    stage.insertAdjacentHTML('beforeend', '<div class="int-camera" aria-label="Raumansicht"><button class="btn" data-camera="in" aria-label="Raum vergrößern">+</button><button class="btn" data-camera="out" aria-label="Raum verkleinern">−</button><button class="btn" data-camera="reset">Ansicht zurücksetzen</button></div><div class="int-stage-caption">Ziehen zum Umsehen · Gegenstände auswählen</div>');
+    stage.insertAdjacentHTML('beforeend', '<div class="int-scene-selection" hidden></div><div class="int-camera" aria-label="Raumansicht"><button class="btn" data-camera="in" aria-label="Raum vergrößern">+</button><button class="btn" data-camera="out" aria-label="Raum verkleinern">−</button><button class="btn" data-camera="reset">Ansicht zurücksetzen</button></div><div class="int-stage-caption">Ziehen zum Umsehen · Gegenstände auswählen</div>');
   }
   document.body.appendChild(root); document.body.style.overflow = 'hidden'; if (app) app.inert = true;
   root.querySelector('#intBack').focus();
+  if(v2){const breadcrumb=document.createElement('div');breadcrumb.className='int-breadcrumb';breadcrumb.textContent=`${data.city.name} / ${b.name}`;root.querySelector('.int-title').prepend(breadcrumb);}
   const canvas = root.querySelector('canvas'); const tip = root.querySelector('.int-tip'); const panel = root.querySelector('.int-panel'); const mini = root.querySelector('.int-mini');
   let renderer; let alive = true; let rafId = 0; let needs = true; let minigame = null;
   let pendingTask = false; let roomReady = false; let resizeObserver;
@@ -86,6 +87,10 @@ export async function openInterior(ctx, b, data) {
   const showActions = (h) => {
     if (!alive) return;
     const previousHot = currentHot; currentHot = h;
+    if(v2){
+      root.querySelectorAll('[data-object]').forEach(btn=>btn.setAttribute('aria-pressed',String(room?.hotspots[Number(btn.dataset.object)]===h)));
+      const badge=root.querySelector('.int-scene-selection');badge.hidden=!h;badge.textContent=h?.label || '';focusRoom(h);
+    }
     if (v2) { switchTab('objects'); root.classList.toggle('has-selection', !!h); }
     if (!h) { panel.classList.add('hide'); if (v2 && previousHot && room) root.querySelector(`[data-object="${room.hotspots.indexOf(previousHot)}"]`)?.focus({ preventScroll:true }); return; }
     const acts = resolveActions(h);
@@ -103,7 +108,7 @@ export async function openInterior(ctx, b, data) {
   try { T = await import('/vendor/three/three.min.js'); } catch (_) { /* retry offered below */ }
   if (!alive) return;
   if (T) {
-    room = buildRoom(T, b, ctx);
+    room = buildRoom(T, b, ctx, { enhanced:v2, hour:data.visualHour });
     try { renderer = new T.WebGLRenderer({ canvas, antialias: true, alpha: false }); } catch (_) { renderer = null; }
   }
   roomReady = true; renderTasks();
@@ -130,13 +135,22 @@ export async function openInterior(ctx, b, data) {
   const camera = new T.PerspectiveCamera(42, 1, 0.1, 100);
   const cam = { az: 0.42, el: 0.78, dist: Math.max(dims.w, dims.d) * (v2 ? 1.5 : 1.35), target: new T.Vector3(0, 1.1, 0.4) };
   const minD = 5; const maxD = Math.max(dims.w, dims.d) * 2;
+  const renderedTarget=cam.target.clone();
   const renderedCam = { az:cam.az, el:cam.el, dist:cam.dist }; let cameraTime = 0;
-  const placeCam = () => { const ce = Math.cos(renderedCam.el), distance = renderedCam.dist * Math.max(1, .85 / camera.aspect); camera.position.set(cam.target.x + distance * ce * Math.sin(renderedCam.az), cam.target.y + distance * Math.sin(renderedCam.el), cam.target.z + distance * ce * Math.cos(renderedCam.az)); camera.lookAt(cam.target); };
+  const placeCam = () => { const ce = Math.cos(renderedCam.el), distance = renderedCam.dist * Math.max(1, .85 / camera.aspect); camera.position.set(renderedTarget.x + distance * ce * Math.sin(renderedCam.az), renderedTarget.y + distance * Math.sin(renderedCam.el), renderedTarget.z + distance * ce * Math.cos(renderedCam.az)); camera.lookAt(renderedTarget); };
   invalidate = () => { needs = true; if (!rafId) rafId = requestAnimationFrame(frame); };
   onResize = () => { const r = (root.querySelector('.int-stage') || root).getBoundingClientRect(); if (!r.width || !r.height) return; renderer.setSize(r.width, r.height, false); camera.aspect = r.width / r.height; camera.updateProjectionMatrix(); invalidate(); };
   window.addEventListener('resize', onResize);
   resizeObserver = new ResizeObserver(onResize); resizeObserver.observe(root.querySelector('.int-stage') || root);
-  root.querySelectorAll('[data-camera]').forEach(btn => { btn.onclick = () => { if (btn.dataset.camera === 'reset') { cam.az = .42; cam.el = .78; cam.dist = Math.max(dims.w, dims.d) * (v2 ? 1.5 : 1.35); } else cam.dist = Math.max(minD, Math.min(maxD, cam.dist * (btn.dataset.camera === 'in' ? .85 : 1.18))); invalidate(); }; });
+  root.querySelectorAll('[data-camera]').forEach(btn => { btn.onclick = () => { if (btn.dataset.camera === 'reset') { cam.az = .42; cam.el = .78; cam.target.set(0,1.1,.4); cam.dist = Math.max(dims.w, dims.d) * (v2 ? 1.5 : 1.35); } else cam.dist = Math.max(minD, Math.min(maxD, cam.dist * (btn.dataset.camera === 'in' ? .85 : 1.18))); invalidate(); }; });
+  const selectedRing = new T.Mesh(new T.RingGeometry(1,1.035,64),new T.MeshBasicMaterial({color:0x8effbf,side:T.DoubleSide,transparent:true,opacity:.85,depthWrite:false}));selectedRing.rotation.x=-Math.PI/2;selectedRing.visible=false;scene.add(selectedRing);
+  focusRoom = h => {
+    if(!v2)return;
+    selectedRing.visible=!!h;
+    if(h){scene.updateMatrixWorld(true);const bounds=new T.Box3().setFromObject(h.obj), center=bounds.getCenter(new T.Vector3()), size=bounds.getSize(new T.Vector3());selectedRing.position.set(center.x,.035,center.z);const radius=Math.max(.7,Math.hypot(size.x,size.z)*.55);selectedRing.scale.set(radius,radius,1);cam.target.set(center.x*.4,1.1,center.z*.4+.25);}
+    else cam.target.set(0,1.1,.4);
+    invalidate();
+  };
   const tokens = [];
   function frame(t) {
     rafId = 0; if (!alive) return;
@@ -144,6 +158,7 @@ export async function openInterior(ctx, b, data) {
     const dt = Math.max(1, cameraTime ? t-cameraTime : 16); cameraTime=t;
     let moving = false;
     for (const k of ['az','el','dist']) { const delta=cam[k]-renderedCam[k]; renderedCam[k] += delta * (movingAllowed ? 1-Math.exp(-dt/70) : 1); if (Math.abs(delta)>.0005) { moving=true; needs=true; } else renderedCam[k]=cam[k]; }
+    if(renderedTarget.distanceTo(cam.target)>.001){ renderedTarget.lerp(cam.target,movingAllowed?1-Math.exp(-dt/100):1); moving=true;needs=true; }else renderedTarget.copy(cam.target);
     if (tokens.length && !matchMedia('(prefers-reduced-motion: reduce)').matches && document.documentElement.dataset.motion !== 'off') { tokens.forEach((k, i) => { k.mesh.position.y = k.y0 + Math.sin(t / 380 + i) * 0.12; k.mesh.rotation.y = t / 700 + i; }); needs = true; }
     if (needs) { needs = false; placeCam(); renderer.render(scene, camera); }
     if (moving || (tokens.length && movingAllowed)) rafId = requestAnimationFrame(frame); else cameraTime=0;
