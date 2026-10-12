@@ -18,6 +18,7 @@ const rep = require('./reputation');
 const TL = require('./talents');
 const SFX = require('./seasonfx');
 const EPI = require('./epidemics');
+const CHR = require('./character');
 
 /** Lebenserwartung (Tage). Medizin wird ab ~1955 besser, gesunder Lebensstil gibt Jahre. */
 function lifespanDays(state, year) {
@@ -158,7 +159,7 @@ function dayStep(ctx) {
     + (state.partner ? 10 * (state.partner.sat / 100) * (state.partner.cohabit ? 1 : 0.4) : 0)
     + Math.min(6, state.children.filter((c) => c.status === 'home' && c.sat > 50).length * 1.5)
     - state.children.filter((c) => c.status === 'home' && c.sat < 30).length * 2
-    + (state.mods.wellBoost || 0) + bodyS.mood + civ.mood - (EPI.shieldOn(state) && !(state.companies || []).length ? 3 : 0);
+    + (state.mods.wellBoost || 0) + bodyS.mood + civ.mood + CHR.comfort(state) - (EPI.shieldOn(state) && !(state.companies || []).length ? 3 : 0);
   state.mods.wellBoost = (state.mods.wellBoost || 0) * 0.86;
   m.wellbeing = clamp(m.wellbeing + (clamp(wt, 0, 100) - m.wellbeing) * 0.18, 0, 100);
 
@@ -218,6 +219,7 @@ function dayStep(ctx) {
   require('./trade').daily(ctx); // Handelsrouten: Abfahrt, Ankunft, Erlös in die Firmenkasse
   society.politicsDaily(ctx);
   CIV.daily(ctx); // Gesellschaft: Bildungstöpfe der Stadt, verfallende Trauerfeiern
+  CHR.daily(ctx); // Charakterblatt: Abnutzung, laufende Kosten der Ausstattung, Erfahrung aus Tätigkeiten, Rang
   applyTownEvents(ctx);
   seasonalFestivals(ctx);
   rollPrivateEvent(ctx, flows);

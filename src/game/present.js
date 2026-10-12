@@ -17,6 +17,7 @@ const cityecon = require('./cityecon');
 const TV = require('./talent-view');
 const TLN = require('./talents');
 const OPS = require('./operations');
+const CHR = require('./character');
 
 const round = (n) => Math.round(n);
 
@@ -245,6 +246,7 @@ function present(world, state, user, now) {
     const sb = require('./seasonfx').brief(world, state);
     view.season = { ...sb.season, year: sb.year, doy: sb.doy, epi: sb.epi, harvest: sb.harvest, weather: sb.weather, heat: flows.heat };
   }
+  view.char = state.status === 'alive' ? CHR.view(world, state) : null; // Charakterblatt: Erfahrung, Ausstattung, Rang (Classic und Design V2 zeigen dieselben Daten)
   view.onboarding = onboarding.view(world, state, user, view);
 
   if (state.status === 'dead') {

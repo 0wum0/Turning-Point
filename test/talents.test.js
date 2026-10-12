@@ -166,7 +166,7 @@ test('Kinder: Anlagen von den Eltern, bis 6 Jahre nur grobe Stufen, Fördern kos
 test('Erbe behält die Talente; Adoptivkinder haben zufällige Anlagen', () => {
   const s = rich(mk()); const fam = require('../src/game/family'); const ctx = { world: w, state: s, idx: 1 };
   fam.bornChild(ctx, rngFor('b', 2)); const k = s.children[0]; k.born = s.day - 20 * 365; const tal = JSON.parse(JSON.stringify(k.tal));
-  const { state } = createHeirState(w, s, k.id, []); assert.deepStrictEqual(state.talents, tal);
+  const { state } = createHeirState(w, s, k.id, []); assert.deepStrictEqual({ v: state.talents.v, b: state.talents.b }, { v: tal.v, b: tal.b }); // das Profil bleibt; das Erfahrungskonto (xp) beginnt neu (Charakterblatt)
   fam.bornChild(ctx, rngFor('b', 3), { adopt: true }); assert.ok(T.validProfile(s.children[1].tal));
 });
 
@@ -174,7 +174,7 @@ test('Altspielstand: Talente werden aus dem Samen abgeleitet, stabil und idempot
   const s = rich(mk()); const orig = JSON.parse(JSON.stringify(s.talents));
   const old = JSON.parse(JSON.stringify(s)); delete old.talents; old.tree.persons.forEach((p) => delete p.tal);
   const once = upgradeState(JSON.parse(JSON.stringify(old))); const twice = upgradeState(JSON.parse(JSON.stringify(once)));
-  assert.deepStrictEqual(once.talents, orig, 'gleiche Werte wie bei der Erschaffung'); assert.deepStrictEqual(twice, once);
+  assert.deepStrictEqual({ v: once.talents.v, b: once.talents.b }, { v: orig.v, b: orig.b }, 'gleiche Werte wie bei der Erschaffung'); assert.strictEqual(once.talents.xp.bal, 0, 'Altstand: Erfahrungskonto leer, kein Startguthaben'); assert.deepStrictEqual(twice, once);
   const c = firm(rich(mk())); assert.ok(c);
 });
 

@@ -355,7 +355,7 @@ async function voteFactors(electionId, candidateIds) {
   return out;
 }
 /** Nachlass für die Kandidaturgebühr (Prozent), z. B. 10 = zehn Prozent weniger. */
-async function feeDiscount(conn, userId) { try { return M.titlesOn() ? (await K.titleFxOf(conn, userId)).fee : 0; } catch (_) { return 0; } }
+async function feeDiscount(conn, userId) { try { const t = M.titlesOn() ? (await K.titleFxOf(conn, userId)).fee : 0; const r = await require('./character').perkOf(conn, userId, 'feeDiscPct'); return Math.min(Number(M.C().titles && M.C().titles.maxFeeDiscPct) || 25, t + r); } catch (_) { return 0; } } // Titel und Rang (Charakterblatt) senken die Gebühr, zusammen höchstens bis zum Deckel
 
 /** Rechtskräftiges Urteil: Veruntreuung entzieht Vorstandsämter; schwere Urteile nehmen persönliche Titel. */
 async function onVerdict(c, defendantInfo) {

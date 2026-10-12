@@ -239,7 +239,7 @@ function queue(state, kind, delta, reason, ref, extra) {
   if (!state || !state.pending || !cfg().enabled) return;
   const R = REASONS[reason]; const k = isKind(kind) ? kind : R && R.kind; if (!k) return;
   let d = delta != null ? Number(delta) : R && R.d; if (!Number.isFinite(d) || d === 0) return;
-  if (d > 0 && state.talents) d *= require('./talents').repGain(state.talents); // Charme: Zuwächse an Ansehen um bis zu 15 % größer/kleiner
+  if (d > 0 && state.talents) d *= Math.min(1.2, require('./talents').repGain(state.talents) * require('./character').repGain(state)); // Charme (±15 %) und gepflegtes Auftreten (bis +8 %): Zuwächse an Ansehen, zusammen höchstens +20 %
   // Anfänger-Schutz: In den ersten Spieltagen kostet Pech (leeres Konto, verlorene Wohnung) noch kein Ansehen
   if (d < 0 && k !== 'scandal' && Number(state.day) < (Number(settings.get('game.newbie_protect_days')) || 0)) return;
   const q = state.pending.rep || (state.pending.rep = []);

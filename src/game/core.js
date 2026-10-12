@@ -106,7 +106,7 @@ function dailyFlows(world, state) {
   const idx = world.idx(year);
   const econ = world.econ;
   const inc = { wage: 0, kindergeld: 0, office: 0, rent: 0 };
-  const exp = { lodging: 0, insurance: 0, upkeep: 0, children: 0, support: 0, butler: 0, tuition: 0, tax: 0, loan: 0 };
+  const exp = { lodging: 0, insurance: 0, upkeep: 0, children: 0, support: 0, butler: 0, tuition: 0, tax: 0, loan: 0, gear: 0 };
   const occ = state.occupation;
   if (occ) {
     const p = world.prof(occ.pkey);
@@ -160,6 +160,7 @@ function dailyFlows(world, state) {
   if (h.type === 'pension' || h.type === 'rent') exp.lodging = Math.round(exp.lodging * heat.mult);
   else if (h.type === 'own') exp.upkeep = Math.round(exp.upkeep * (1 + heat.pct * 0.5));
   if (state.butler) exp.butler = scale(state.butler.perDay, idx);
+  exp.gear = require('./character').upkeepDay(world, state); // Ausstattung (Charakterblatt): Dienstleistungen und Unterhalt – bezahlt der Tageslauf des Charakterblatts, nie bis in die Insolvenz
   exp.loan = require('./credit').dailyPay(state);
   exp.tax = require('./tax').incomeTaxPerDay(idx, inc.wage + inc.office + inc.rent);
   const income = Object.values(inc).reduce((a, b) => a + b, 0);

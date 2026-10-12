@@ -40,12 +40,12 @@ function workerOcc(state) {
 /** Chance einer Bewerbung auf eine bessere Stelle (rein). */
 function applyChance(state, pkey) {
   const c = cfg();
-  const p = c.applyBasePct + c.applyPerLevelPct * levelIndex(state, pkey) + (state.meters.wellbeing - 50) / 5 + (state.partner ? 1 : 0) + TL.applyPts(state.talents);
+  const p = c.applyBasePct + c.applyPerLevelPct * levelIndex(state, pkey) + (state.meters.wellbeing - 50) / 5 + (state.partner ? 1 : 0) + TL.applyPts(state.talents) + require('./character').applyPts(state);
   return clamp(p, 10, 95) / 100;
 }
 function raiseChance(state, occ) {
   const tenure = Math.max(0, state.day - (occ.since || state.day));
-  const p = 0.2 + levelIndex(state, occ.pkey) * 0.05 + Math.min(0.2, tenure / 3650) + (state.meters.wellbeing - 50) / 400 + (state.meters.health - 70) / 600 + (state.meters.rest > 40 ? 0.04 : 0) + TL.raiseBonus(state.talents);
+  const p = 0.2 + levelIndex(state, occ.pkey) * 0.05 + Math.min(0.2, tenure / 3650) + (state.meters.wellbeing - 50) / 400 + (state.meters.health - 70) / 600 + (state.meters.rest > 40 ? 0.04 : 0) + TL.raiseBonus(state.talents) + require('./character').raiseAdd(state);
   return clamp(p, 0.08, 0.8);
 }
 

@@ -84,6 +84,8 @@ function createCharacter(world, input, user, { cycle = 1 } = {}) {
   learn(state, v.prof);
   for (const d of user.meta.degrees || []) learn(state, d);
   me.jobs.push(world.prof(v.prof).name);
+  require('./character').ensure(state); // Charakterblatt: Erfahrungskonto, Ausstattung, Rang (neutraler Zustand)
+  if (state.talents && state.talents.xp) state.talents.xp.bal = Number(require('./character').XP().startBal) || 0; // Startguthaben: zwei erste Steigerungen zum Ausprobieren
   onboarding.initFresh(state);
   require('./epidemics').ensure(state);
   require('./trade').ensure(state);
@@ -117,6 +119,7 @@ function upgradeState(s) {
   require('./trade').ensure(s); // Handelsrouten: leere Liste bei Altständen
   if (s.insurance && s.insurance.betrieb == null) s.insurance.betrieb = false; // Betrieb 2.0: Betriebsversicherung
   for (const c of s.companies) require('./operations').normalize(c); // Betrieb 2.0: alter Sicherheitsdienst-Schalter → Schutz Stufe 1 (idempotent)
+  require('./character').ensure(s); // Charakterblatt: xp = 0, keine Ausstattung, Rang 1 (idempotent; vorhandene Werte werden nur bereinigt)
   onboarding.ensure(s); // Altstände: Einsteiger-Aufgaben werden beim nächsten Abgleich still nachgeführt (kein Belohnungsregen)
   return s;
 }

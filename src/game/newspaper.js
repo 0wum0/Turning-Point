@@ -83,6 +83,7 @@ function housingListings(world, state, city, week) {
     out.rent.push({ id: `rent:${city.id}:${week}:${i}`, type: 'rent', name: `${rooms}-Zimmer-Wohnung, ${pick(r, txt(world).paper.streets)} ${int(r, 1, 60)}`, rooms, base, perDay: scale(base, idx), cityId: city.id });
   }
   const kinds = [['flat', 4], ['house_small', 3], ['house_large', 1.5], ['villa', 0.5]];
+  const CHR = require('./character'); const disc = CHR.perk(state, 'homeDiscPct'); // Rang (Charakterblatt): Beziehungen machen Immobilien bis 3 % günstiger – für alle bleibt jedes Angebot sichtbar und kaufbar
   for (let i = 0; i < 2 + (city.size_tier > 3 ? 1 : 0); i++) {
     let x = r() * kinds.reduce((s, k) => s + k[1], 0);
     let kind = 'flat';
@@ -90,9 +91,21 @@ function housingListings(world, state, city, week) {
     const def = econ.property[kind];
     const base = Math.round(def.price * pf * (0.85 + r() * 0.4));
     const condition = int(r, 45, 95);
-    const price = Math.round(base * idx * (0.2 + 0.8 * (condition / 100)) * require('./economy').realEstateFactor(year) * pm);
+    const price = Math.round(Math.round(base * idx * (0.2 + 0.8 * (condition / 100)) * require('./economy').realEstateFactor(year) * pm) * (1 - disc / 100));
     out.sale.push({
       id: `sale:${city.id}:${week}:${i}`, type: 'sale', kind, name: `${def.name}, ${pick(r, txt(world).paper.streets)} ${int(r, 1, 60)}`, rooms: def.rooms, base, condition, price, rest: def.rest, cityId: city.id,
+      rentPerDay: Math.round(scale(require('./landlord').marketBase({ base, kind, condition }), idx) * require('./landlord').cycleRent(year) * rm),
+    });
+  }
+  // Rang (Charakterblatt): Ab einem Rang kommt jede Woche ein Vorab-Angebot einer Premium-Wohnlage hinzu (zusätzlich – nichts wird weggenommen)
+  if (CHR.enabled() && state.char && state.char.rank.lv >= (CHR.RANK().perks || {}).offerFrom) {
+    const rv = rngFor('housing-vip', city.id, week);
+    const kind = rv() < 0.55 ? 'villa' : 'house_large'; const def = econ.property[kind];
+    const base = Math.round(def.price * pf * (0.95 + rv() * 0.2));
+    const condition = int(rv, 82, 97);
+    const price = Math.round(Math.round(base * idx * (0.2 + 0.8 * (condition / 100)) * require('./economy').realEstateFactor(year) * pm) * (1 - disc / 100));
+    out.sale.push({
+      id: `sale:${city.id}:${week}:9`, type: 'sale', kind, vip: true, name: `${def.name} in Bestlage, ${pick(rv, txt(world).paper.streets)} ${int(rv, 1, 60)}`, rooms: def.rooms, base, condition, price, rest: def.rest, cityId: city.id,
       rentPerDay: Math.round(scale(require('./landlord').marketBase({ base, kind, condition }), idx) * require('./landlord').cycleRent(year) * rm),
     });
   }

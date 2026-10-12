@@ -152,6 +152,7 @@ function decide(ctx, P) {
   }
   talentDecisions(ctx, P, idx);
   opsDecisions(ctx, P, idx);
+  charDecisions(ctx, P, idx);
   seasonDecisions(ctx, P, idx);
   // Immobilien: kaufen und vermieten
   if (s.properties.length < P.maxProps) {
@@ -184,6 +185,18 @@ function opsDecisions(ctx, P, idx) {
       else tryAct(ctx, 'bizPraise', { id: c.id, mid: 'all' });
     }
   }
+}
+/** Charakterblatt: Bots verteilen ihre Erfahrung gelegentlich auf die Talente ihrer Tätigkeit und kaufen selten ein Stück Ausstattung (nur milde Stufen, wenn das Geld locker sitzt). */
+function charDecisions(ctx, P, idx) {
+  const { world: w, state: s } = ctx; const CH = require('../game/character'); if (!CH.enabled() || !s.char) return;
+  const B = CH.C().bots || {}; const year = yearOf(s.day, s.startYear);
+  const x = CH.xpOf(s);
+  if (x && x.bal >= 2 && chance(Number(B.spend) || 0)) tryAct(ctx, 'chTrain', { key: 'best' });
+  if (chance((Number(B.buy) || 0) * (0.5 + P.ambition))) {
+    const slot = pick(['kleidung', 'kleidung', 'uhr', 'fahrzeug', 'mittel']); const g = CH.own(s, slot); const lv = g ? g.lv : 0;
+    if (lv < 2 && CH.eraOk(slot, lv + 1, year) && s.money > CH.price(w, s, slot, lv + 1, year) * 25) tryAct(ctx, 'chBuy', { slot, level: lv + 1 });
+  }
+  void idx;
 }
 /** Jahreszeiten und Seuchen: Bots schützen sich wie Spieler (Hygienepaket, Impfung, Schutzkonzept), sparen vor dem Winter und versichern sich. */
 function seasonDecisions(ctx, P, idx) {

@@ -1163,6 +1163,25 @@ const MIGRATIONS = [
       await db.query("UPDATE settings SET value = ? WHERE `key` = 'economy'", [JSON.stringify(o)]);
     },
   ] },
+  { id: '035_character', up: [
+    // Charakterblatt: Protokoll der Käufe, Verkäufe, Dienstleistungen und Rangaufstiege (geschrieben genau einmal aus dem Spielstand, src/lib/character.js)
+    `CREATE TABLE IF NOT EXISTS char_log (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      user_id INT UNSIGNED NOT NULL,
+      city_id INT UNSIGNED NOT NULL DEFAULT 0,
+      kind VARCHAR(8) NOT NULL,
+      slot VARCHAR(12) NOT NULL DEFAULT '',
+      lvl TINYINT NOT NULL DEFAULT 0,
+      real_amount BIGINT NOT NULL DEFAULT 0,
+      note VARCHAR(120) NOT NULL DEFAULT '',
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      KEY idx_char_user (user_id, id),
+      KEY idx_char_time (created_at),
+      CONSTRAINT fk_char_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    // gesellschaftlicher Rang (1–7) und Auftreten (0–100) im öffentlichen Profil und im Verzeichnis
+    'ALTER TABLE player_stats ADD COLUMN rank_lv TINYINT NOT NULL DEFAULT 1, ADD COLUMN look TINYINT NOT NULL DEFAULT 0',
+  ] },
 ];
 
 async function ensureTable(db) {

@@ -63,6 +63,7 @@ async function upsertStats(conn, user, charRow, state, world) {
         [user.id, c.id, c.cityId, c.name, c.pkey, c.tier, c.rooms, Math.round(biz.companyValue(world, state, c, year) / idx), Math.round((c.cash || 0) / idx), Math.round(f.profit / idx), (c.staff || 0) + (c.playerStaff || []).length, distress, c.abandoned ? 1 : 0, askF.get(c.id) || null, clim]);
     }
     try { await conn.query('UPDATE player_stats SET talents = ? WHERE user_id = ?', [require('../game/talents').pack(state.talents), user.id]); } catch (e) { log.warn(`[social] Talente: ${e.message}`); }
+    await require('./character').publish(conn, user, state); // Rang und Auftreten (Charakterblatt) fürs öffentliche Profil
     await conn.query('DELETE FROM player_props WHERE user_id = ?', [user.id]);
     const { propertyValue } = require('../game/core');
     for (const p of (state.properties || [])) {
@@ -161,7 +162,7 @@ async function leaderboard(userId, { cat = 'wealth', scope = 'all', cityId = 0 }
   return { cat, scope, label: C.label, unit: C.unit, hint: C.hint, total, rows: out, me, cats: Object.entries(CATS).map(([k, v]) => ({ key: k, label: v.label })) };
 }
 function pub(r) {
-  return { userId: r.user_id, role: r.role && r.role !== 'player' ? r.role : undefined, username: r.username, name: r.name, cityId: r.city_id, year: r.year, status: r.status, wealth: Number(r.wealth), bizValue: Number(r.biz_value), companies: r.companies, properties: r.properties, children: r.children, generation: r.generation, cycle: r.cycle, influence: r.influence, office: r.office, days: r.days, occupation: r.occupation, title: r.title || null };
+  return { userId: r.user_id, role: r.role && r.role !== 'player' ? r.role : undefined, username: r.username, name: r.name, cityId: r.city_id, year: r.year, status: r.status, wealth: Number(r.wealth), bizValue: Number(r.biz_value), companies: r.companies, properties: r.properties, children: r.children, generation: r.generation, cycle: r.cycle, influence: r.influence, office: r.office, days: r.days, occupation: r.occupation, title: r.title || null, rank: r.rank_lv == null ? null : Number(r.rank_lv) };
 }
 
 /* =============================== Profile & Beziehungen =============================== */

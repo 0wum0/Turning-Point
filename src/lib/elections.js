@@ -100,7 +100,7 @@ function voteBlock(ps, accountHours, el, candidateId, c) {
 
 async function candidatesOf(electionId, conn = db) {
   return conn.query(
-    `SELECT ec.user_id, ec.platform, COALESCE(ps.name, u.username) name, u.username, COALESCE(ps.influence, 0) influence, ps.city_id, ps.talents, ps.title
+    `SELECT ec.user_id, ec.platform, COALESCE(ps.name, u.username) name, u.username, COALESCE(ps.influence, 0) influence, ps.city_id, ps.talents, ps.title, ps.look
      FROM election_candidates ec JOIN users u ON u.id = ec.user_id LEFT JOIN player_stats ps ON ps.user_id = ec.user_id WHERE ec.election_id = ? ORDER BY ec.created_at, ec.user_id`, [electionId]);
 }
 
@@ -234,7 +234,7 @@ async function finish(electionId) {
   const incumbent = new Set();
   for (const x of cands) { try { const pk = await service.peek(x.user_id); const tm = pk && pk.state && pk.state.politics && pk.state.politics.term; if (tm && tm.idx === el.office_idx) incumbent.add(x.user_id); } catch (_) { /* ohne Amtsangabe */ } }
   const weightOf = (uid) => { const m = wmap.get(uid) || { s: 0, l: 0, scandal: 0 }; return RP.voteWeight(el.city_id ? m.l : m.s, m.scandal, incumbent.has(uid)); };
-  const talW = (x) => require('../game/talents').voteWeight(require('../game/talents').unpack(x.talents)); // Charme und Führung: Stimmen-Faktor höchstens ±6 %
+  const talW = (x) => require('../game/talents').voteWeight(require('../game/talents').unpack(x.talents)) * require('../game/character').voteOfLook(x.look); // Charme und Führung: Stimmen-Faktor höchstens ±6 %, gepflegtes Auftreten (Charakterblatt) bis +3 %
   const civicW = await require('./civic').voteFactors(electionId, cands.map((x) => x.user_id)); // Vereine und Titel (Gesellschaft): höchstens +6 % Stimmengewicht – sie unterstützen, ersetzen aber keine Stimmen
   const t = tally(cands.map((x) => ({ userId: x.user_id, influence: x.influence, weight: weightOf(x.user_id) * talW(x) * (civicW.get(x.user_id) || 1) })), human, bots);
   const nameOf = new Map(cands.map((x) => [x.user_id, x.name]));

@@ -82,6 +82,7 @@ function createHeirState(world, old, childId, bequestIds) {
     text: `${c.name} erbt ${plan.properties.concat(plan.companies).length ? plan.properties.concat(plan.companies).map((p) => p.name).join(', ') + ' und ' : ''}${formatMoney(plan.cash, world.currency(year))} in bar (Pflichtanteil 1/${plan.est.n}).`,
     info: ['Du spielst jetzt das Kind des Verstorbenen.', 'Das Erbe wird nach Pflichtanteil verteilt: Je mehr Kinder, desto kleiner der Anteil.', 'Suche dir Arbeit, halte die Familie zusammen und führe das Lebenswerk fort.'],
   });
+  require('./character').inherit(world, old, state, plan.est.n); // Charakterblatt: kleiner Bildungsvorsprung, Erbstücke (Uhr, Schmuck), Herkunft; Ausstattung und Rang selbst bleiben beim Verstorbenen
   require('./epidemics').ensure(state); require('./trade').ensure(state); // der Erbe hat sofort einen vollständigen Spielstand (nicht erst beim nächsten Laden)
   return { state, plan };
 }

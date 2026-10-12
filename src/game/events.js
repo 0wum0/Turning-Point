@@ -101,7 +101,7 @@ function applyTownEvents(ctx) {
             info: ['Ein Feuer hat dein Gebäude schwer beschädigt.', 'Versicherung ersetzt Kosten, aber nicht die Ausfallzeit.', 'Eine Gebäudeversicherung lohnt sich besonders bei teuren Häusern.'],
           });
         }
-      } else if (ev.type === 'burglary' && cid === state.cityId && state.housing.type !== 'street' && state.money > 0 && chance(r, T.burglaryChance)) {
+      } else if (ev.type === 'burglary' && cid === state.cityId && state.housing.type !== 'street' && state.money > 0 && chance(r, T.burglaryChance * require('./character').burglaryMult(state))) {
         press.story(world, state, 'burglary', { cityId: cid });
         const loss = Math.min(Math.round(state.money * T.burglaryLossPct / 100), scale(T.burglaryMax, idx));
         if (state.insurance.hausrat) {

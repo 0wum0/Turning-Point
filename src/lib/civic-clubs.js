@@ -32,7 +32,7 @@ async function clubRow(conn, id, lock = false) {
 const memberOf = (conn, clubId, userId, lock = false) => conn.one(`SELECT * FROM club_members WHERE club_id = ? AND user_id = ?${lock ? ' FOR UPDATE' : ''}`, [clubId, userId]);
 const isBoard = (m) => !!m && (m.role === 'president' || m.role === 'board');
 async function countMembers(conn, clubId) { return Number((await conn.one('SELECT COUNT(*) n FROM club_members WHERE club_id = ?', [clubId])).n); }
-async function slotsFor(conn, userId) { return num(cfg().maxMemberships, 4) + (await K.titleFxOf(conn, userId)).slots; }
+async function slotsFor(conn, userId) { return num(cfg().maxMemberships, 4) + Math.min(2, (await K.titleFxOf(conn, userId)).slots + (await require('./character').perkOf(conn, userId, 'clubSlots'))); } // Titel und Rang (Charakterblatt): zusammen höchstens zwei Plätze mehr
 
 /** Verein auflösen: Vermögen fällt an die Gemeinwohl-Kasse der Stadt (Topf „Kultur“), Mitglieder und Wahlempfehlungen verschwinden. Gibt die betroffenen Mitglieder zurück. */
 async function closeClub(conn, club, why) {
