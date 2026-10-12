@@ -43,7 +43,7 @@ function level(c, key) {
 function setLevel(c, key, lv) {
   if (!c.mods || typeof c.mods !== 'object') c.mods = {};
   c.mods[key] = clamp(Math.floor(lv), 0, 3);
-  if (key === 'schutz') c.security = c.mods.schutz >= 1; // alter Schalter bleibt für Wettbewerb und Anzeige im Takt
+  c.security = (num(c.mods.schutz, 0)) >= 1; // alter Schalter bleibt für Wettbewerb und Anzeige im Takt (immer gesetzt, damit upgradeState nichts mehr ändert)
   return c.mods[key];
 }
 /** Altspielstände: Schalter → Stufe (idempotent). */

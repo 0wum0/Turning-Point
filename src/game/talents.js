@@ -382,7 +382,7 @@ function yearly(world, state) {
 /* ------------------------------------------------------------ Kinder: Fördern ------------------------------------------------------------ */
 function fosterCost(world, idx) { const f = C().foster || {}; return Math.round(num(world.econ.childCostPerDay, 90) * idx * num(f.feeDays, 15)); }
 function fosterStart(world, state, c, focus, idx) {
-  const f = C().foster || {}; const F = FOSTER[focus];
+  const f = C().foster || {}; const F = Object.prototype.hasOwnProperty.call(FOSTER, focus) ? FOSTER[focus] : null;
   if (!F) return { err: 'Unbekanntes Förderprogramm.' };
   if (!c.tal) return { err: 'Dieses Kind hat noch kein Talentprofil.' };
   if (c.status !== 'home') return { err: 'Nur Kinder zu Hause können gefördert werden.' };

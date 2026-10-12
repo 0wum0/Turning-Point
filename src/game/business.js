@@ -166,7 +166,7 @@ function businessDaily(ctx) {
     if (state.day % 30 === 0) {
       const q = qualification(world, state, c.pkey, c.tier);
       if (!c.abandoned && !q.ok) {
-        c.abandoned = { day: state.day }; c.manager = false; c.staff = 0;
+        c.abandoned = { day: state.day }; c.manager = false; c.staff = 0; c.team = [];
         if (state.occupation && state.occupation.ownCompanyId === c.id) state.occupation = null;
         chronicle(state, `${c.name} wird aufgegeben (fehlende Qualifikation).`, 'business');
         press.story(world, state, 'business_closed', { firm: c.name, cityId: c.cityId });
@@ -189,7 +189,7 @@ function businessDaily(ctx) {
     if (c.stock) require('../lib/exchange').dividend(ctx, c, f.profit);
     if (c.cash < 0) {
       state.money += c.cash; state.stats.spent += -c.cash; c.cash = 0;
-      if (ctx.offline) { c.staff = Math.max(0, c.staff - 1); }
+      if (ctx.offline) { c.staff = Math.max(0, c.staff - 1); if (Array.isArray(c.team) && c.team.length > c.staff) c.team.length = c.staff; } // wer geht, geht auch aus der Teamliste
     }
   }
 }

@@ -392,3 +392,11 @@ test('Rate-Limit: Ausbau und Führungsaktionen laufen über eine eigene Bremse j
   assert.match(api, /OPS_ACTIONS = new Set\(require\('\.\.\/game\/operations-actions'\)\.ACTIONS\)/); assert.match(api, /userLimit\(45,/); assert.match(api, /OPS_ACTIONS\.has\(req\.params\.name\) \? opsLimit/);
   const names = require('../src/game/operations-actions').ACTIONS; for (const n of names) assert.ok(actions.ACTIONS.includes(n), n);
 });
+
+test('Regression aus dem Langlauf: setLevel setzt den alten Schalter immer (upgradeState idempotent), Teamliste folgt der Belegschaft, Prototyp-Schlüssel sind keine Förderprogramme', () => {
+  const s = rich(mk({ professionKey: 'baecker' })); const c = firm(s); delete c.security; delete c.mods;
+  OPS.setLevel(c, 'lager', 1); assert.strictEqual(c.security, false);
+  const a = JSON.stringify(c); OPS.normalize(c); assert.strictEqual(JSON.stringify(c), a);
+  const TL = require('../src/game/talents');
+  for (const k of ['toString', '__proto__', 'constructor', 'hasOwnProperty']) assert.match(TL.fosterStart(w, s, { tal: {}, status: 'home', born: s.day - 9 * 365 }, k, 1).err, /Unbekannt/);
+});

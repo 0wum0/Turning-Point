@@ -420,7 +420,10 @@ function runScenario(seed, steps = 300, opts = {}) {
       // present darf nie werfen; Zustand ist idempotent aufwertbar
       try { present(world, s, user, nowMs); } catch (e) { fail(`present wirft nach ${label}: ${e.stack.split('\n').slice(0, 3).join(' | ')}`); }
       const a = JSON.stringify(s); const up = JSON.stringify(upgradeState(JSON.parse(a)));
-      if (a !== up) fail(`upgradeState nicht idempotent nach ${label}`);
+      if (a !== up) {
+        const firstDiff = (x, y, path) => { if (JSON.stringify(x) === JSON.stringify(y)) return null; if (x && y && typeof x === 'object' && typeof y === 'object') { for (const k of new Set([...Object.keys(x), ...Object.keys(y)])) { const d = firstDiff(x[k], y[k], `${path}.${k}`); if (d) return d; } } return `${path}: ${JSON.stringify(x)} -> ${JSON.stringify(y)}`; };
+        fail(`upgradeState nicht idempotent nach ${label} (${String(firstDiff(JSON.parse(a), JSON.parse(up), 's')).slice(0, 160)})`);
+      }
       if (JSON.stringify(JSON.parse(a)) !== a) fail('JSON-Rundlauf verändert den Stand');
       st.maxYear = Math.max(st.maxYear, yearOf(s.day, s.startYear));
       prev = JSON.parse(a);
