@@ -67,6 +67,38 @@ export default {
     const dotsG = svg.querySelector('#dots'); let drawPending = false;
     let kk = 1; let clusters = []; let filter = ctx.ui.mapFilter || 'all'; let disposed = false;
     let cityRequest = 0;
+    let clusterCache = null, clusterKey = '', routesKey = '';
+    const markerNodes = new Map();
+    const setAttr = (node, name, value) => { if (node.getAttribute(name) !== String(value)) node.setAttribute(name, value); };
+    function reconcileMarkers() {
+      const retained = new Set();
+      clusters.forEach((p, i) => {
+        const id = p.c.id; retained.add(id);
+        let entry = markerNodes.get(id);
+        if (!entry) {
+          const node = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+          node.innerHTML = '<g class="sim-marker-symbol"></g><g class="sim-place-label"></g>';
+          node.setAttribute('tabindex', '0'); node.setAttribute('role', 'button');
+          entry = { node, symbol: node.firstElementChild, label: node.lastElementChild };
+          markerNodes.set(id, entry); dotsG.appendChild(node);
+        }
+        const { node, symbol, label } = entry;
+        setAttr(node, 'class', `sim-marker${p.owned ? ' owned' : ''}${id === data.here ? ' home' : ''}${id === ctx.ui.mapCity ? ' selected' : ''}`);
+        setAttr(node, 'data-marker', i); setAttr(node, 'data-city-id', id);
+        setAttr(node, 'transform', `translate(${p.xy[0]} ${p.xy[1]}) scale(${kk})`);
+        setAttr(node, 'aria-label', p.members.length > 1 ? p.members.length + ' Orte bei ' + p.c.label : p.c.label);
+        const count = p.members.length;
+        if (entry.count !== count) {
+          symbol.innerHTML = `<circle r="15" fill="transparent"/><path class="sim-pin" d="${count > 1 ? 'M0 0L-5-6a12 12 0 1 1 10 0Z' : 'M0 0C-2-3-8-9-8-14a8 8 0 0 1 16 0c0 5-6 11-8 14Z'}"/>${count > 1 ? `<text class="sim-cluster-count" y="-13">${count >= 1000 ? (Math.round(count / 100) / 10).toLocaleString('de-DE') + 'k' : count}</text>` : '<circle class="sim-pin-core" cy="-14" r="2.6"/>'}`;
+          entry.count = count;
+        }
+        const labelHtml = p.label ? `<path class="sim-label-leader" d="M0 0H${Math.round(p.label.edge)}"/><circle class="sim-place-anchor" r="2.5"/><rect class="sim-label-plate" x="${Math.round(p.label.rect.x - p.sx)}" y="-10" width="${p.label.rect.w}" height="20" rx="3"/><text class="sim-marker-label" x="${Math.round(p.label.dx)}" y="${p.label.dy}">${esc(p.label.text)}</text>` : '';
+        if (entry.labelHtml !== labelHtml) { label.innerHTML = labelHtml; entry.labelHtml = labelHtml; }
+        if (p.label) setAttr(label, 'data-label-city', id);
+        else label.removeAttribute('data-label-city');
+      });
+      for (const [id, entry] of markerNodes) if (!retained.has(id)) { entry.node.remove(); markerNodes.delete(id); }
+    }
     const dotHtml = (c, xy) => {
       const [x, y] = xy; const r = 2.6 + c.tier * 1.05; const here = c.id === data.here;
       return `<g class="city t${c.tier}${here ? ' here' : ''}${c.id === ctx.ui.mapCity ? ' sel' : ''}" data-id="${c.id}" transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(${kk})" tabindex="0" role="button" aria-label="${esc(c.label)}">
@@ -81,10 +113,16 @@ export default {
       if (simulator) {
         const bounds = svg.getBoundingClientRect();
         const excluded = [...document.querySelectorAll('#sim-world .map-search, #sim-world .map-tools, #sim-world .sim-map-toolbar, #sim-world .sim-map-toggle, #sim-world .map-legend, #sim-world #mapPanel, #side')].filter((el) => el.getClientRects().length).map((el) => { const b = el.getBoundingClientRect(); return { x: b.left - bounds.left - 4, y: b.top - bounds.top - 4, w: b.width + 8, h: b.height + 8 }; });
-        const layout = layoutMarkers(pts, { box, width: svg.clientWidth, height: svg.clientHeight, selected: ctx.ui.mapCity, home: data.here, birth: data.birthCityId, owned: own, filter, excluded, measure: labelMeasure ? (text) => labelMeasure.measureText(text).width : undefined });
+        const key = [svg.clientWidth, svg.clientHeight, box.w, box.h, ctx.ui.mapCity, filter].join(':');
+        const layout = layoutMarkers(pts, { groups: key === clusterKey ? clusterCache : undefined, box, width: svg.clientWidth, height: svg.clientHeight, selected: ctx.ui.mapCity, home: data.here, birth: data.birthCityId, owned: own, filter, excluded, measure: labelMeasure ? (text) => labelMeasure.measureText(text).width : undefined });
+        clusterKey = key; clusterCache = layout.groups;
         kk = 1 / layout.scale; clusters = layout.markers;
-        svg.querySelector('#sim-routes').innerHTML = ctx.ui.mapShowRoutes === false ? '' : routeDrawing(ctx, data.transport, ctx.ui.mapRoute, ctx.ui.mapCity, kk);
-        dotsG.innerHTML = clusters.map((p, i) => `<g class="sim-marker${p.owned ? ' owned' : ''}${p.c.id === data.here ? ' home' : ''}${p.c.id === ctx.ui.mapCity ? ' selected' : ''}" data-marker="${i}" data-city-id="${p.c.id}" transform="translate(${p.xy[0]} ${p.xy[1]}) scale(${kk})" tabindex="0" role="button" aria-label="${esc(p.members.length > 1 ? p.members.length + ' Orte bei ' + p.c.label : p.c.label)}"><circle r="15" fill="transparent"/><path class="sim-pin" d="${p.members.length > 1 ? 'M0 0L-5-6a12 12 0 1 1 10 0Z' : 'M0 0C-2-3-8-9-8-14a8 8 0 0 1 16 0c0 5-6 11-8 14Z'}"/>${p.members.length > 1 ? `<text class="sim-cluster-count" y="-13">${p.members.length >= 1000 ? (Math.round(p.members.length / 100) / 10).toLocaleString('de-DE') + 'k' : p.members.length}</text>` : '<circle class="sim-pin-core" cy="-14" r="2.6"/>'}${p.label ? `<g class="sim-place-label" data-label-city="${p.c.id}"><path class="sim-label-leader" d="M0 0H${p.label.edge}"/><circle class="sim-place-anchor" r="2.5"/><rect class="sim-label-plate" x="${p.label.rect.x - p.sx}" y="-10" width="${p.label.rect.w}" height="20" rx="3"/><text class="sim-marker-label" x="${p.label.dx}" y="${p.label.dy}">${esc(p.label.text)}</text></g>` : ''}</g>`).join('');
+        const nextRoutesKey = [kk, ctx.ui.mapShowRoutes, ctx.ui.mapRoute, ctx.ui.mapCity].join(':');
+        if (nextRoutesKey !== routesKey) {
+          svg.querySelector('#sim-routes').innerHTML = ctx.ui.mapShowRoutes === false ? '' : routeDrawing(ctx, data.transport, ctx.ui.mapRoute, ctx.ui.mapCity, kk);
+          routesKey = nextRoutesKey;
+        }
+        reconcileMarkers();
       } else {
       const z = full.w / box.w; const minTier = z < 1.5 ? 3 : z < 3 ? 2 : 1; const pad = 24; const out = []; kk = Math.max(0.2, Math.min(1, box.w / full.w * 1.15));
       for (const p of pts) {

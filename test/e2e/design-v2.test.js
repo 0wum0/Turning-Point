@@ -129,7 +129,9 @@ test('Simulator: production place density, every module, interactions and revers
     await page.locator('#sim-window [data-sim-close]').first().click();
     await page.locator('#zreset').click();
     assert.ok(world.cityRows.length > 8900);
-    assert.ok(await page.locator('.sim-marker').count() < 150, 'overview is clustered at realistic density');
+    await page.evaluate(() => new Promise(requestAnimationFrame));
+    const overviewCount = await page.locator('.sim-marker').count();
+    assert.ok(overviewCount < 150, `overview is clustered at realistic density (${overviewCount} pins)`);
     const marker = page.locator('.sim-marker').filter({ has: page.locator('.sim-cluster-count') }).first();
     await marker.locator('.sim-pin').click();
     await page.waitForSelector('.sim-cluster-list');

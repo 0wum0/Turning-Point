@@ -26,6 +26,15 @@
   --font-display:var(--font-ui); --sim-dock:72px; --shadow:0 8px 28px #0006;
   background:#1d2827; color-scheme:dark;
 }
+/* V2 owns both sides of form contrast, including when Classic uses the light theme. */
+:root[data-game-design="v2"] body.game :is(input:not([type]), input[type="text"], input[type="email"], input[type="password"], input[type="number"], input[type="url"], input[type="search"], input[type="tel"], input[type="date"], input[type="datetime-local"], input[type="time"], input[type="file"], select, textarea) {
+  background-color:#1c292b; color:#eff3f1; caret-color:#81f8b9; border-color:#758b85; color-scheme:dark;
+}
+:root[data-game-design="v2"] body.game :is(input, textarea)::placeholder { color:#b1beb9; opacity:1; }
+:root[data-game-design="v2"] body.game :is(input, select, textarea):focus-visible { border-color:#81f8b9; outline:2px solid #81f8b9; outline-offset:2px; }
+:root[data-game-design="v2"] body.game :is(input, select, textarea):disabled { color:#b1beb9; opacity:1; cursor:not-allowed; }
+:root[data-game-design="v2"] body.game select option { background-color:#1c292b; color:#eff3f1; }
+:root[data-game-design="v2"] body.game input:autofill { -webkit-text-fill-color:#eff3f1; caret-color:#81f8b9; box-shadow:inset 0 0 0 1000px #1c292b; }
 :root[data-game-design="v2"] body.game.sim-playing { height:100dvh; overflow:hidden; }
 :root[data-game-design="v2"] body.game::before { display:none; }
 :root[data-game-design="v2"] body.game .shell { display:block; padding:0; height:100dvh; overflow:hidden; }

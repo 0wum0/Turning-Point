@@ -11,10 +11,12 @@ test('dense map clusters retain every visible place and keep names and pins apar
   const { layoutMarkers } = await load();
   for (const [width,height] of [[1440,860],[832,344],[412,840],[320,565]]) {
     const h=598,w=h*width/height,box={x:(375-w)/2,y:-45,w,h};
-    const {markers,scale}=layoutMarkers(points,{box,width,height,home:20,birth:100,owned:new Set([40,60])});
+    const {markers,scale,groups}=layoutMarkers(points,{box,width,height,home:20,birth:100,owned:new Set([40,60])});
     assert.ok(markers.length < 160);
     const visible=points.filter(p=>{const x=(p.xy[0]-box.x)*scale,y=(p.xy[1]-box.y)*scale;return x>=10 && x<=width-10 && y>=18 && y<=height-10;});
-    assert.deepEqual(markers.flatMap(p=>p.members.map(q=>q.c.id)).sort((a,b)=>a-b),visible.map(p=>p.c.id).sort((a,b)=>a-b));
+    const drawn = new Set(markers.flatMap(p=>p.members.map(q=>q.c.id)));
+    assert.ok(visible.every(p=>drawn.has(p.c.id)), 'overscanned groups cover every visible place');
+    assert.deepEqual(groups.flatMap(p=>p.members.map(q=>q.c.id)).sort((a,b)=>a-b), points.map(p=>p.c.id).sort((a,b)=>a-b), 'every place belongs to exactly one stable group');
     const labels=markers.filter(p=>p.label).map(p=>p.label.rect);
     for(let i=0;i<markers.length;i++)for(let j=i+1;j<markers.length;j++)assert.ok(Math.hypot(markers[i].sx-markers[j].sx,markers[i].sy-markers[j].sy)>=34);
     for(let i=0;i<labels.length;i++)for(let j=i+1;j<labels.length;j++){const a=labels[i],b=labels[j];assert.ok(!(a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y));}
@@ -57,4 +59,20 @@ test('freight advances with the game clock, clamps to destination and never loop
   assert.equal(freightProgress(null), 0);
   assert.equal(freightProgress({ days: 0, left: 0 }), 0);
   assert.deepEqual(freightPoint([0, 10], [40, 30], .5), [20, 20]);
+});
+
+
+test('panning never changes cluster leaders or membership, including viewport edges', async () => {
+  const { layoutMarkers } = await load();
+  for (const width of [320, 412, 1440]) for (const zoom of [1, 2, 4, 8, 16]) {
+    const opts = { width, height: 800, box: { x: 50, y: 20, w: 420 / zoom, h: 600 / zoom }, home: 20, selected: 100, owned: new Set([40]) };
+    const original = layoutMarkers(points, opts);
+    const signature = groups => groups.map(p => [p.c.id, p.members.map(q => q.c.id)]);
+    for (const [dx,dy] of [[1, 1], [57 / original.scale, 40 / original.scale], [-120, 150]]) {
+      const shifted = { ...opts, box: { ...opts.box, x: opts.box.x + dx, y: opts.box.y + dy } };
+      const result = layoutMarkers(points, shifted);
+      assert.deepEqual(signature(result.groups), signature(original.groups));
+      assert.deepEqual(layoutMarkers(points, { ...shifted, groups: original.groups }).markers, result.markers, 'cached and fresh layout agree');
+    }
+  }
 });
