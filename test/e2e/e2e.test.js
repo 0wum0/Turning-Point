@@ -77,7 +77,7 @@ describe('E2E Turning Point', { concurrency: false }, () => {
       await b.page.waitForSelector('.auth-card .alert.bad');
       assert.match(await text(b, '.auth-card'), /stimmt nicht/);
       await L.login(b, { login: B.email, password: B.password }); // per E-Mail
-      await b.page.waitForSelector('#hud .hud-id');
+      await b.page.waitForSelector('#hud .hud-id', { state: 'attached' });
       assert.match(await text(b, '#hud'), /Bernd Beta/);
       // geschützte Seite ohne Sitzung
       const anon = await L.newPlayer(browser, app, 'anon');
@@ -271,7 +271,7 @@ describe('E2E Turning Point', { concurrency: false }, () => {
       await a.page.reload(); await a.page.waitForSelector('#page'); await L.nav(a, 'housing');
       await a.page.click('[data-evict="1"]'); await confirmYes(a);
       await a.page.waitForFunction(() => !/Spieler-Mieter kündigen/.test(document.querySelector('#page').innerText));
-      await b.page.reload(); await b.page.waitForSelector('#hud .hud-id'); await L.nav(b, 'housing');
+      await b.page.reload(); await b.page.waitForSelector('#hud .hud-id', { state: 'attached' }); await L.nav(b, 'housing');
       assert.match(await text(b), /Straße|Kein Dach|Aktuell/);
       assert.doesNotMatch(await text(b), /zur Miete bei einem anderen Spieler/);
       noErrors(a, b);
@@ -284,7 +284,7 @@ describe('E2E Turning Point', { concurrency: false }, () => {
       await b.page.fill('#of-m', `Sofort bar ${XSS}`);
       await b.page.click('#of-go');
       await b.page.waitForSelector('.toasts .toast');
-      await a.page.reload(); await a.page.waitForSelector('#hud .hud-id');
+      await a.page.reload(); await a.page.waitForSelector('#hud .hud-id', { state: 'attached' });
       await L.socialTab(a, 'market');
       await a.page.waitForSelector('[data-moff=accept]');
       assert.match(await text(a), /Sofort bar/);
@@ -306,7 +306,7 @@ describe('E2E Turning Point', { concurrency: false }, () => {
       await confirmYes(a);
       await a.page.waitForFunction(() => /Die Versteigerung läuft/.test(document.body.innerText));
       await L.socialTab(b, 'market');
-      await b.page.reload(); await b.page.waitForSelector('#hud .hud-id'); await L.socialTab(b, 'market');
+      await b.page.reload(); await b.page.waitForSelector('#hud .hud-id', { state: 'attached' }); await L.socialTab(b, 'market');
       await b.page.waitForSelector('[data-bid]');
       await b.page.click('[data-bid] >> nth=0');
       await b.page.click('#bd-go');
@@ -329,7 +329,7 @@ describe('E2E Turning Point', { concurrency: false }, () => {
       const n = await L.until(async () => Number((await app.sql("SELECT COUNT(*) n FROM stocks WHERE user_id = ? AND status = 'active'", [aId]))[0].n), { what: 'Börsengang (Aktie aktiv)' });
       assert.equal(n, 1);
       await L.socialTab(b, 'exchange');
-      await b.page.reload(); await b.page.waitForSelector('#hud .hud-id'); await L.socialTab(b, 'exchange');
+      await b.page.reload(); await b.page.waitForSelector('#hud .hud-id', { state: 'attached' }); await L.socialTab(b, 'exchange');
       await b.page.waitForSelector('[data-xbuy]');
       await b.page.click('[data-xbuy] >> nth=0');
       await b.page.fill('#tr-n', '5');
@@ -348,7 +348,7 @@ describe('E2E Turning Point', { concurrency: false }, () => {
       assert.equal(none.status, 400, 'ohne Partner nicht möglich');
       const partner = { personId: 'p-e2e', name: 'Paul Partner', gender: 'm', born: -9000, pkey: 'baecker', profession: 'Bäcker', sat: 80, married: true, cohabit: true, giftBoost: 0, unhappyDays: 0, since: 0 };
       await app.sql("UPDATE characters SET state = JSON_SET(state, '$.partner', JSON_COMPACT(?)) WHERE user_id = ? AND status = 'alive'", [JSON.stringify(partner), aId]);
-      await a.page.reload(); await a.page.waitForSelector('#hud .hud-id');
+      await a.page.reload(); await a.page.waitForSelector('#hud .hud-id', { state: 'attached' });
       await L.nav(a, 'family');
       await a.page.waitForSelector('[data-p=adopt], [data-p=adoptCancel]');
       assert.match(await text(a), /Kind adoptieren|Adoption läuft/);
@@ -470,6 +470,86 @@ describe('E2E Turning Point', { concurrency: false }, () => {
       assert.ok(after && after.end > st.day);
       assert.ok(Number((await app.sql('SELECT money FROM characters WHERE id = ?', [row.id]))[0].money) < m0, 'Förderung kostet Geld');
       noErrors(f);
+    });
+
+    it('Betrieb 2.0: Modul bauen (Dialog), Betriebsversicherung, Betriebsklima – Lob, Prämie und Abmahnung im Teamdialog; Klima sichtbar, Geld auf den Cent', async () => {
+      const comp = async () => L.json((await app.sql("SELECT JSON_EXTRACT(state, '$.companies[0]') s FROM characters WHERE user_id = ? AND status = 'alive'", [fId]))[0].s);
+      const money = async () => Number((await app.sql("SELECT money FROM characters WHERE user_id = ? AND status = 'alive'", [fId]))[0].money);
+      await app.sql("UPDATE characters SET state = JSON_SET(state, '$.money', 50000000), money = 50000000 WHERE user_id = ? AND status = 'alive'", [fId]);
+      await L.reloadGame(f); await L.nav(f, 'business');
+      const box = f.page.locator('.card.biz .ops-box').first();
+      await box.waitFor();
+      let t = await box.innerText();
+      assert.match(t, /Ausbau/i); assert.match(t, /Brandrisiko/); assert.match(t, /Betriebsklima/i); assert.match(t, /Lager/); assert.match(t, /Arbeitsplätze/);
+      // Modul „Brandschutz“ Stufe 1 bauen: Dialog bestätigen
+      const m0 = await money(); const c0 = await comp();
+      const day0 = (await app.sql("SELECT game_day d FROM characters WHERE user_id = ? AND status = 'alive'", [fId]))[0].d;
+      const expected = require('../../src/game/operations').upgradeCost(require('../helpers').testWorld(), null, c0, 'brand', 1, 1945 + Math.floor(Number(day0) / 365));
+      const built = f.page.waitForResponse((r) => /\/api\/action\/opsBuild$/.test(r.url()));
+      await f.page.click('[data-ops-build="brand"]');
+      await f.page.waitForSelector('.modal [data-close=yes]'); await confirmYes(f);
+      assert.equal((await built).status(), 200);
+      const c1 = await comp(); assert.equal(c1.mods.brand, 1);
+      assert.ok(Math.abs((m0 - (await money())) - expected) <= expected * 0.06 + 20, `Ausbau kostet ${m0 - (await money())}, erwartet ${expected}`); // die Uhr läuft nebenbei: Tageskosten können dazukommen
+      await f.page.waitForFunction(() => /Feuerlöscher und Brandwand/.test(document.querySelector('#page').innerText));
+      // Betriebsversicherung abschließen
+      const ins = f.page.waitForResponse((r) => /\/api\/action\/insurance$/.test(r.url()));
+      await f.page.click('[data-ops-ins]'); assert.equal((await ins).status(), 200);
+      assert.equal(L.json((await app.sql("SELECT JSON_EXTRACT(state, '$.insurance.betrieb') s FROM characters WHERE user_id = ? AND status = 'alive'", [fId]))[0].s), true);
+      await f.page.waitForFunction(() => /Betriebsversicherung aktiv/.test(document.querySelector('#page').innerText));
+      // Lob für alle
+      const pr = f.page.waitForResponse((r) => /\/api\/action\/bizPraise$/.test(r.url()));
+      await f.page.click('[data-ops-lead="praise"]'); assert.equal((await pr).status(), 200);
+      const c2 = await comp(); assert.ok(c2.team.length >= 1 && c2.team.every((m) => m.mood > 50 && m.mood <= 100), 'Stimmung gestiegen');
+      assert.ok(c2.team[0].mcd && c2.team[0].mcd.praise > c2.team[0].since, 'Abkühlzeit gesetzt');
+      await f.page.waitForFunction(() => { const b = document.querySelector('[data-ops-lead="praise"]'); return b && b.disabled; }, null, { timeout: 8000 }); // Lob ist gerade nicht möglich
+      // Teamdialog: Prämie (Kosten exakt), Abmahnung (mit Bestätigung)
+      await f.page.click('.card.biz [data-team]'); await f.page.waitForSelector('#talTeam .ops-member');
+      t = await text(f, '#talTeam'); assert.match(t, /Stimmung/); assert.match(t, /Prämie/); assert.match(t, /Abmahnen/);
+      const m1 = await money(); const bo = f.page.waitForResponse((r) => /\/api\/action\/bizBonus$/.test(r.url()));
+      await f.page.click('#talTeam [data-lead="bonus"]'); assert.equal((await bo).status(), 200);
+      const day = (await comp()); void day;
+      const spent = m1 - (await money()); const wageDay = Math.round(500 * require('../helpers').testWorld().idx(1945 + Math.floor((await app.sql("SELECT game_day d FROM characters WHERE user_id = ? AND status = 'alive'", [fId]))[0].d / 365)));
+      assert.ok(spent > 0 && Math.abs(spent - wageDay * 2) <= wageDay * 2 * 0.5, `Prämie kostet etwa zwei Tageslöhne (${spent})`);
+      const mood0 = (await comp()).team[0].mood;
+      const wn = f.page.waitForResponse((r) => /\/api\/action\/bizWarn$/.test(r.url()));
+      await f.page.click('#talTeam [data-lead="warn"]'); await f.page.waitForSelector('.modal [data-close=yes]'); await confirmYes(f); assert.equal((await wn).status(), 200);
+      const c3 = await comp(); assert.ok(c3.team[0].mood < mood0 - 5, 'Abmahnung senkt die Stimmung'); assert.ok(c3.ops.fear && c3.ops.fear.length === 1 && c3.ops.push, 'Druck und kurzer Leistungsschub');
+      await L.closeModals(f);
+      // Ohne Neuladen aktualisiert sich die Karte; das Klima zeigt die Wirkung
+      await f.page.waitForFunction(() => /Nach einer Abmahnung ist das Team verunsichert/.test(document.querySelector('#page').innerText));
+      noErrors(f);
+    });
+
+    it('Betrieb 2.0: Vorfall (Brand) wird genau einmal protokolliert (Protokoll, Tagesblatt); Aufgaben „Rüste deinen Betrieb aus“ und „Würdige dein Team“ sind erledigt', async () => {
+      const [row] = await app.sql("SELECT id, state FROM characters WHERE user_id = ? AND status = 'alive'", [fId]);
+      const st = L.json(row.state); const c = st.companies[0]; st.pending = st.pending || {};
+      await app.sql('UPDATE characters SET state = ? WHERE id = ?', [JSON.stringify({ ...st, pending: { ...st.pending, ops: [{ k: 'fire', c: c.id, city: c.cityId, name: c.name, real: 4000, ins: 1, days: 9 }] } }), row.id]);
+      await L.reloadGame(f);
+      await L.until(async () => (await app.sql('SELECT 1 FROM ops_log WHERE user_id = ?', [fId])).length === 1, { what: 'Vorfall im Protokoll' });
+      assert.equal((await app.sql("SELECT COUNT(*) n FROM world_events WHERE title = 'Betriebsbrand'"))[0].n, 1);
+      await L.reloadGame(f); await L.reloadGame(f);
+      assert.equal((await app.sql('SELECT COUNT(*) n FROM ops_log WHERE user_id = ?', [fId]))[0].n, 1, 'genau einmal');
+      const r = await L.api(f, 'GET', '/api/state'); const done = (r.json.view.onboarding.quests || []).filter((x) => x.done).map((x) => x.id);
+      assert.ok(done.includes('module') && done.includes('lead'), `erledigte Aufgaben: ${done.join(', ')}`);
+      assert.ok(r.json.view.onboarding.unlocks.staff.open);
+      noErrors(f);
+    });
+
+    it('Betrieb 2.0: Englische Oberfläche ohne deutsche Reste im Reiter Unternehmen', async () => {
+      await f.page.goto(`${app.base}/lang/en?next=/play`); await f.page.waitForSelector('#hud .hud-id', { state: 'attached' });
+      try {
+        await L.nav(f, 'business'); await f.page.waitForSelector('.card.biz .ops-box');
+        const T = await text(f, '.card.biz .ops-box');
+        assert.match(T, /Expansion/i); assert.match(T, /Work climate/i); assert.match(T, /Fire risk/);
+        assert.doesNotMatch(T, /\b(Brandschutz|Betriebsklima|Prämie|Ausbau|Vorrat|Abmahn|Mitarbeiter|Stufe|Rückbau|Arbeitsplätze|Versicherung)\w*/i, `Deutscher Rest:\n${T}`);
+        await f.page.click('.card.biz [data-team]'); await f.page.waitForSelector('#talTeam .ops-member');
+        const D2 = await text(f, '#talTeam .ops-member'); assert.match(D2, /Mood/); assert.match(D2, /Praise/); assert.doesNotMatch(D2, /\b(Stimmung|Lob|Prämie|Geschenk|Abmahn)\w*/, `Deutscher Rest:\n${D2}`);
+        await L.closeModals(f);
+        noErrors(f);
+      } finally {
+        await f.page.goto(`${app.base}/lang/de?next=/play`); await f.page.waitForSelector('#hud .hud-id', { state: 'attached' });
+      }
     });
 
     it('Jahreszeiten & Seuchen: Jahreszeit-Karte und Check, Seuchenhinweis, Schutz mit einem Klick, Beschluss des Kanzlers mit Vorschau', async () => {
@@ -976,7 +1056,7 @@ describe('E2E Turning Point', { concurrency: false }, () => {
 
     it('Englische Oberfläche: Reiter, Beschriftungen und Fehlermeldungen sind übersetzt', async () => {
       await v.page.goto(`${app.base}/lang/en?next=/play`);
-      await v.page.waitForSelector('#hud .hud-id');
+      await v.page.waitForSelector('#hud .hud-id', { state: 'attached' });
       await L.nav(v, 'society'); await closeAll(v);
       await v.page.waitForSelector('#civicBox [data-ctab=clubs]');
       const German = /\b(Mitglied|Spende|Kasse|Beitrag|Notgabe|Vorsitz|Verein|Gemeinde|Titel|Gründ|Ausschüttung|Vermögen|Zustift|Voraussetzung|Stimmengewicht|Wahl)\w*/;
@@ -993,7 +1073,7 @@ describe('E2E Turning Point', { concurrency: false }, () => {
       const r = await L.api(v, 'POST', `/api/civic/club/${clubId}/withdraw`, { amount: 1 });
       assert.equal(r.status, 400);
       noErrors(v);
-      await v.page.goto(`${app.base}/lang/de?next=/play`); await v.page.waitForSelector('#hud .hud-id');
+      await v.page.goto(`${app.base}/lang/de?next=/play`); await v.page.waitForSelector('#hud .hud-id', { state: 'attached' });
     });
 
     it('Admin: Seite „Gesellschaft“ zeigt Vereine, Gemeinden, Stiftungen und Titel; Einstellungsgruppe lädt', async () => {
@@ -1114,7 +1194,7 @@ describe('E2E Turning Point', { concurrency: false }, () => {
 
     it('Spiel: Navigation, Design, Sprache und Chat ohne Neuladen; Konto zeigt Fehler an Ort und Stelle', async () => {
       const g = a; // Alice hat einen Charakter (spart Registrierungen: die Bremse zählt je Adresse)
-      await g.page.goto(`${app.base}/play`); await g.page.waitForSelector('#hud .hud-id'); await L.closeModals(g);
+      await g.page.goto(`${app.base}/play`); await g.page.waitForSelector('#hud .hud-id', { state: 'attached' }); await L.closeModals(g);
       const w = await watch(g);
       for (const id of ['newspaper', 'household', 'overview']) await L.nav(g, id);
       await g.page.click('#hud [data-theme-toggle]');
@@ -1150,7 +1230,7 @@ describe('E2E Turning Point', { concurrency: false }, () => {
       assert.match(await text(g, 'main'), /stimmt nicht/);
       await w2.check('Konto-Formular');
       noErrors(g);
-      await g.page.goto(`${app.base}/play`); await g.page.waitForSelector('#hud .hud-id');
+      await g.page.goto(`${app.base}/play`); await g.page.waitForSelector('#hud .hud-id', { state: 'attached' });
     });
   });
 });

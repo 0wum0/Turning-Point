@@ -58,4 +58,4 @@ app.post('/api/action/taskFinish',(_,res)=>res.json({ok:true,view,message:'Aufga
 app.post('/api/action/collect',(_,res)=>res.json({ok:true,view,coins:25,efsPool:40,message:'+10 EFS'}));
 app.get('/api/reputation',(_,res)=>res.json({ok:true,level:0,localLevel:0,score:0,top:[],ledger:[],progress:{next:10,pct:0}}));
 app.use('/api',(_,res)=>res.json({ok:true,enabled:false,rows:[],items:[]}));
-module.exports = { app, view, world, transport };
+module.exports = { app, view, world, transport, state };

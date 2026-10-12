@@ -122,6 +122,31 @@ function invariants(s, prev) {
       need(TLN.repGain(s.talents) >= 0.85 && TLN.repGain(s.talents) <= 1.15 && TLN.studyMult(s.talents) >= 0.75 && TLN.studyMult(s.talents) <= 1.25 && TLN.voteWeight(s.talents) >= 0.94 && TLN.voteWeight(s.talents) <= 1.06, 'Talentwirkung außerhalb');
     }
   }
+  { // Betrieb 2.0: Module 0–3, Lagerbestand im Rahmen, Stimmung 0–100, Vorfälle klein und sauber, Wirkungen gedeckelt, Spieler-Angestellte unberührt
+    const OPSX = require('../src/game/operations');
+    for (const c of s.companies) {
+      if (c.mods !== undefined) for (const k of OPSX.KEYS) need(c.mods[k] === undefined || (Number.isInteger(c.mods[k]) && c.mods[k] >= 0 && c.mods[k] <= 3), `Modul ${k} = ${c.mods[k]}`);
+      if (c.mods && c.mods.schutz !== undefined) need(c.security === (c.mods.schutz >= 1), 'Schutz und alter Schalter im Takt');
+      const o = c.ops;
+      if (o !== undefined) {
+        need(o && typeof o === 'object' && !Array.isArray(o), 'ops kein Objekt');
+        if (o.stock !== undefined) need(Number.isFinite(o.stock) && o.stock >= 0 && o.stock <= Math.max(14, OPSX.lagerCap(c)) + 1e-6 && (OPSX.lagerCap(c) > 0 || o.stock === 0 || c.mods === undefined || OPSX.level(c, 'lager') === 0), `Lagerbestand ${o.stock} bei Stufe ${OPSX.level(c, 'lager')}`);
+        if (o.hist !== undefined) need(Array.isArray(o.hist) && o.hist.length <= 10, 'Vorfallsliste zu lang');
+        if (o.fear !== undefined) need(Array.isArray(o.fear) && o.fear.length <= 3 && o.fear.every(Number.isFinite), 'Abmahnungsdruck');
+        if (o.warns !== undefined) need(Array.isArray(o.warns) && o.warns.length <= 6, 'Abmahnungen zu lang');
+      }
+      for (const m of c.team || []) { if (m.mood !== undefined) need(Number.isFinite(m.mood) && m.mood >= 0 && m.mood <= 100, `Stimmung ${m.mood}`); }
+      for (const p of c.playerStaff || []) need(p.mood === undefined && p.mcd === undefined, 'Spieler-Angestellter beeinflusst');
+      if (!c.abandoned) {
+        const needed = require('../src/game/business').staffNeeded(world, c); const ox = OPSX.firmEffects(c, needed, s.day);
+        need(ox.climateMult >= 0.94 - 1e-9 && ox.climateMult <= 1.06 + 1e-9 && ox.capMult >= 1 && ox.capMult <= 1.06 + 1e-9 && ox.pushMult >= 1 && ox.pushMult <= 1.03 && ox.sickMult > 0 && ox.sickMult <= 1, `Betriebswirkung ${JSON.stringify(ox)}`);
+        const rv = OPSX.revFactor(1.15, ox); need(rv <= 1.15 * 1.06 * 1.03 + 1e-9, `Umsatzfaktor ${rv}`);
+        need(c.staff <= OPSX.maxStaff(world, c) || c.staff <= needed + 5, `Personal ${c.staff} über der Grenze`);
+      }
+    }
+    { const q = s.pending && s.pending.ops; if (q !== undefined) { need(Array.isArray(q) && q.length <= 20, 'Vorfall-Warteschlange'); for (const e of q || []) need(['fire'].includes(e.k) && Number.isFinite(e.real) && e.real >= 0 && Number.isInteger(e.c) && Number.isInteger(e.city), `Vorfall ${JSON.stringify(e)}`); } }
+    need(typeof s.insurance.betrieb === 'boolean' || s.insurance.betrieb === undefined, 'Betriebsversicherung');
+  }
   { // Jahreszeiten, Ernte, Seuchen: Zustand sauber, alle Faktoren endlich und begrenzt
     const e = s.epi;
     need(e && typeof e === 'object', 'epi fehlt');
@@ -209,6 +234,11 @@ function inputFor0(name, s, r, user) {
     case 'giftChild': case 'search': return { childId: maybe(kid()) };
     case 'bizWork': case 'bizSell': case 'bizReactivate': case 'bizExpand': case 'bizUpgrade': return { id: maybe(comp()) };
     case 'bizSupply': return { id: maybe(comp()), on: r() < 0.5 };
+    case 'opsBuild': case 'opsRemove': return { id: maybe(comp()), mod: maybe(pickOf(r, ['lager', 'brand', 'schutz', 'arbeit', 'x', '__proto__'])), level: r() < 0.3 ? maybe(1 + Math.floor(r() * 4)) : undefined };
+    case 'bizPraise': case 'bizBonus': case 'bizGift': case 'bizWarn': case 'bizParty': {
+      const c = s.companies.length ? pickOf(r, s.companies) : null;
+      return { id: maybe(c ? c.id : 1), mid: maybe(c && c.team && c.team.length && r() > 0.25 ? pickOf(r, c.team).id : r() < 0.5 ? 'all' : 1) };
+    }
     case 'bizHire': return { id: maybe(comp()), delta: maybe(r() < 0.5 ? 1 : -1) };
     case 'bizHireApplicant': case 'bizFire': case 'bizTrain': case 'bizRaise': {
       const c = s.companies.length ? pickOf(r, s.companies) : null; const T = require('../src/game/talents');
@@ -486,6 +516,50 @@ function runTradeScenario(seed, rounds = 40) {
 }
 
 /**
+ * Betrieb 2.0 – Module, Klima und Brände über viele Spieltage: Geld bleibt ganzzahlig und nie negativ, Stimmung 0–100, Lager im Rahmen,
+ * Wirkung gedeckelt, Brand löst nie die Insolvenz aus, Vorfälle werden genau einmal gebucht (Warteschlange leert sich beim Speichern), Bauaufträge entsprechen den Kosten.
+ */
+function runOpsScenario(seed, rounds = 40) {
+  const realRandom = Math.random; Math.random = mulberry32(seed ^ 31);
+  const r = mulberry32(seed + 17); const failures = [];
+  const OPSX = require('../src/game/operations'); const BIZ = require('../src/game/business'); const B = settings.DEFAULTS.betrieb;
+  const keepFire = B.fire.weeklyChance; B.fire.weeklyChance = 0.02; // viele Brände, damit sie vorkommen
+  try {
+    const u = () => ({ meta: {}, coins: 50, efs_pool: 0 });
+    const s = createCharacter(world, { gender: 'm', firstName: 'Anna', lastName: 'Tester', birthCityId: pickOf(r, world.cityList).id, professionKey: 'baecker', fatherName: 'a', motherName: 'b' }, u());
+    s.life.baseYears = 900; s.life.rare = false; s.day = 100 + Math.floor(r() * 50000 / 2); s.person.birthDay = s.day - 30 * 365;
+    s.money = 5e9; s.housing = { type: 'rent', cityId: s.cityId, base: 70, rooms: 4 }; s.skills.days.baecker = 4000;
+    const run = (n, i) => { try { return actions.run(n, { world, state: s, input: i, user: u(), now: 1 }); } catch (e) { if (!(e instanceof actions.ActionError)) throw e; return null; } };
+    run('foundBiz', { pkey: 'baecker', tier: 0 }); const c = s.companies[0]; if (!c) return failures;
+    for (let i = 0; i < 4; i++) run('bizHire', { id: c.id, delta: 1 });
+    let paid = 0;
+    for (let i = 0; i < rounds && s.status === 'alive'; i++) {
+      s.meters.fridge = 100; s.meters.health = 100; s.meters.rest = 100;
+      const pick = r();
+      const m0 = s.money; const jobs0 = (s.pending.jobs || []).length;
+      if (pick < 0.25) { const key = pickOf(r, OPSX.KEYS); const lv0 = OPSX.level(c, key); const cost = lv0 < 3 ? OPSX.upgradeCost(world, s, c, key, lv0 + 1, yearOf(s.day, s.startYear)) : 0; if (run('opsBuild', { id: c.id, mod: key })) { paid += cost; if (m0 - s.money !== cost) failures.push({ seed, msg: `Ausbau bucht ${m0 - s.money} statt ${cost}` }); if (OPSX.level(c, key) !== lv0 + 1) failures.push({ seed, msg: 'Stufe nach Ausbau' }); if ((s.pending.jobs || []).length !== jobs0 + 1) failures.push({ seed, msg: 'Bauauftrag fehlt oder doppelt' }); } }
+      else if (pick < 0.32) run('opsRemove', { id: c.id, mod: pickOf(r, OPSX.KEYS) });
+      else if (pick < 0.5) run(pickOf(r, ['bizPraise', 'bizBonus']), { id: c.id, mid: r() < 0.5 ? 'all' : (c.team[0] || { id: 1 }).id });
+      else if (pick < 0.58) run('bizParty', { id: c.id });
+      else if (pick < 0.65) run(pickOf(r, ['bizGift', 'bizWarn']), { id: c.id, mid: (c.team[Math.floor(r() * c.team.length)] || { id: 1 }).id });
+      else if (pick < 0.7) run('insurance', { key: 'betrieb', on: r() < 0.6 });
+      else if (pick < 0.75) run('bizHire', { id: c.id, delta: r() < 0.7 ? 1 : -1 });
+      const days = 3 + Math.floor(r() * 30);
+      const before = s.money;
+      for (let d = 0; d < days && s.status === 'alive'; d++) { advance(world, s, 1); s.interrupts = []; s.money = Math.max(s.money, 1e6); }
+      void before;
+      for (const bad of invariants(s, null)) failures.push({ seed, msg: `Betrieb 2.0: ${bad}` });
+      if ((s.pending.ops || []).length > 20) failures.push({ seed, msg: 'Vorfälle häufen sich' });
+      // Vorfälle werden beim Speichern genau einmal geschrieben: Liste leeren darf nichts zurücklassen
+      const q = s.pending.ops || []; s.pending.ops = [];
+      for (const e of q) if (!(e.real >= 0 && Number.isInteger(e.days))) failures.push({ seed, msg: `Vorfall ${JSON.stringify(e)}` });
+    }
+    void paid;
+  } catch (e) { failures.push({ seed, msg: `Betriebslauf: ${e.stack}` }); } finally { Math.random = realRandom; B.fire.weeklyChance = keepFire; }
+  return failures;
+}
+
+/**
  * Lieferverträge zwischen zwei Spielern in verschiedenen Epochen: Was der Käufer zahlt, wird in Realwert genau einmal vorgemerkt
  * und – nach dem Verbuchen (Liste leeren) – nie ein zweites Mal; Gutschriften sind nie negativ; der Verkäufer verliert nie Ware ohne Gegenwert.
  * Geld entsteht nicht: Σ vorgemerkter Realwert = Σ Zahlungen des Käufers ÷ Index (je Tag exakt).
@@ -732,4 +806,4 @@ function runTransportScenario(seed, rounds = 14) {
   return { failures, digest };
 }
 
-module.exports = { runCivicScenario, runTransportScenario, runCourtScenario, runRepScenario, world, runScenario, runTradeScenario, runSupplyScenario, runCityEconScenario, invariants, inputFor, JUNK, clone };
+module.exports = { runOpsScenario, runCivicScenario, runTransportScenario, runCourtScenario, runRepScenario, world, runScenario, runTradeScenario, runSupplyScenario, runCityEconScenario, invariants, inputFor, JUNK, clone };

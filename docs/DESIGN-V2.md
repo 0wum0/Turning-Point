@@ -118,6 +118,15 @@ Die 3D-Stadt (Stadt → „3D-Stadt“) ist vollständig prozedural (keine Bild-
   Reisen …). Jeder Knopf wählt dieselben Gegenstände/Aktionen wie der Klick im Raum bzw. die Liste rechts – es gibt keine neuen
   Spielaktionen. Punkt am Knopf = Aufgabe bereit. Personal mit Mützen/Schürzen, laufende Kundschaft, Fensterblick passend zur
   Tageszeit, Namensschild an der Wand, sanfte Kamerafahrt beim Betreten.
+- **Betrieb 2.0 im Innenraum** (`rooms.js`, Raumtyp `biz`, nur für eigene Betriebe mit aktivem Betrieb 2.0): drei zusätzliche Gegenstände mit Verben in der Aktionsleiste –
+  **Lager** (Regal an der linken Wand, die Kisten spiegeln den Füllstand; Aktionen: Vorrat ansehen, nächste Stufe bauen), **Schutz & Brand** (Alarmtafel mit Kontrolllampen,
+  Feuerlöscher, ab Brandschutz 3 Sprinklerleitung, ab Schutz 2 Kamera; Aktionen: Brandrisiko, Brandschutz/Schutz ausbauen, Betriebsversicherung) und **Betriebsklima**
+  (Aushang mit Stimmungsfarbe und Balken je Mitarbeiter; Aktionen: Team loben, Prämie, Betriebsfest bzw. Weihnachtsfeier, „Mitarbeiter einzeln führen“ öffnet die Unternehmen-Seite).
+  Alle Knöpfe rufen die vorhandenen Spielaktionen auf (`opsBuild`, `bizPraise`, `bizBonus`, `bizParty`, `insurance`); gesperrte Aktionen nennen den Grund
+  (Epoche, Geld, Betrieb ohne Zutaten). Ohne Mitarbeiter bleibt der Aushang leer („Stelle Mitarbeiter ein“).
+- **Betrieb 2.0 in der Stadt** (`city-buildings.js`, Daten aus `/api/city` → `mods`, `burning`): Eigene Betriebe zeigen ihre Module dezent am Haus – roter Feuerlöscher an der
+  Fassade (Brandschutz 1+), Sprinklerleitung unter der Traufe (3), Kamera an der Ecke mit Kontrolllicht (Schutz 2+), Poller (Schutz 1+), Lagerkisten (eine je Lagerstufe) und eine
+  Bank vor dem Haus (Arbeitsplätze). Nach einem Brand glimmen oranger Schein und Licht am Gebäude, solange der Betrieb ruht. Der Draw-Call-Bereich bleibt im Budget (Test `design-gilde`).
 - Prüfhilfen: `document.documentElement.dataset.cityHour` (0–24) und `cityDoy` (0–364) frieren Tages-/Jahreszeit ein;
   `#city3dHost.__city3d.stats()` liefert Draw-Calls, Dreiecke, Passanten usw. Das Renderer-Bundle wurde um einige three.js-Exporte
   erweitert (siehe `public/vendor/three/README.md`).
@@ -136,7 +145,7 @@ Die 3D-Stadt (Stadt → „3D-Stadt“) ist vollständig prozedural (keine Bild-
   Anhalten einer Route über den originalen Handler mit Aktualisierung der Karte.
   Die Funktionsauswahl respektiert unabhängig gesetzte `hidden`-Attribute der
   Spielmodule.
-- `design-gilde.test.js`: 3D-Stadt (Tages-/Jahreszeit, Draw-Call-Budget, Hover, Karte, Vollbild), Innenraum-Aktionsleiste auf Desktop und Handy (auch reduzierte Bewegung).
+- `design-gilde.test.js`: 3D-Stadt (Tages-/Jahreszeit, Draw-Call-Budget, Hover, Karte, Vollbild), Innenraum-Aktionsleiste auf Desktop und Handy (auch reduzierte Bewegung), Betriebs-Innenraum (Lager, Schutz & Brand, Betriebsklima) und Modul-Details in der Stadt.
 - Zusätzlicher Browsertest: gestaffeltes Laden, Startfehler/Wiederholen,
   Koordinaten und Beschriftungs-IDs über drei Zoomstufen und vier Viewports,
   fortschreitende Frachtposition, ruhende Routen und reduzierte Bewegung.

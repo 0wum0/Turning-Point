@@ -145,7 +145,7 @@ Benötigt MySQL ≥ 5.7 oder MariaDB ≥ 10.3 (utf8mb4).
 ## 3b. Tests
 
 - `npm test` – schnelle Unit-Tests (ohne Datenbank), inkl. `test/security.test.js` und `test/maintenance.test.js`.
-- `npm run test:e2e` – Browser-Rundgang mit zwei frischen Spielern (Flackerfrei-Szenario: Klicks, Speichern und Ansehen setzen im Admin sowie Navigation, Design, Sprache, Chat im Spiel lösen keine Dokument-Anfrage und kein `load` aus; Registrieren, Charakter, Essen, Wohnen, Job, Vorspulen, Karte, Zeitung, Stadtplatz-Chat, Briefe, Glocke, Vermieten an Spieler, Marktangebot, Auktion, Börsengang und Aktienkauf, Adoption, Sicherheitsprüfungen, englische Oberfläche; Verein gründen und beitreten, Gemeinde, Stiftung und Titel; außerdem Einsteiger-Sperren und „Alle Funktionen anzeigen“, Gründungsdialog, Liefervertrag mit Annahme durch einen zweiten Spieler, Spieluhr per Zeitreise über `users.efs_accrued_at` und das Preisbarometer). Nicht Teil von `npm test`.
+- `npm run test:e2e` – Browser-Rundgang mit zwei frischen Spielern (Flackerfrei-Szenario: Klicks, Speichern und Ansehen setzen im Admin sowie Navigation, Design, Sprache, Chat im Spiel lösen keine Dokument-Anfrage und kein `load` aus; Registrieren, Charakter, Essen, Wohnen, Job, Vorspulen, Karte, Zeitung, Stadtplatz-Chat, Briefe, Glocke, Vermieten an Spieler, Marktangebot, Auktion, Börsengang und Aktienkauf, Adoption, Sicherheitsprüfungen, englische Oberfläche; Verein gründen und beitreten, Gemeinde, Stiftung und Titel; außerdem Einsteiger-Sperren und „Alle Funktionen anzeigen“, Gründungsdialog, Liefervertrag mit Annahme durch einen zweiten Spieler, Spieluhr per Zeitreise über `users.efs_accrued_at` und das Preisbarometer; Betrieb 2.0: Modul kaufen, Betriebsversicherung, Lob, Prämie und Abmahnung, Brandmeldung genau einmal). Nicht Teil von `npm test`.
   - Voraussetzungen: laufende MariaDB/MySQL, [Playwright](https://playwright.dev) mit Chromium (`TP_PLAYWRIGHT_PATH` zeigt auf das Paket, falls es nicht im Modulpfad liegt; `PLAYWRIGHT_BROWSERS_PATH` für den Browser-Ordner).
   - Die Suite legt eine **eigene** Datenbank an (Standard `tp_e2e`, wird jedes Mal gelöscht und neu erzeugt) und startet die App selbst auf Port 3290 mit eigenem Daten-Ordner – ein laufender Entwicklungsserver bleibt unberührt.
   - Einstellungen per Umgebung: `TP_E2E_PORT`, `TP_E2E_DB_NAME`, `TP_E2E_DB_USER`/`TP_E2E_DB_PASS`/`TP_E2E_DB_HOST`; für das Anlegen der Datenbank `TP_E2E_ADMIN_USER`/`TP_E2E_ADMIN_PASS` (Standard: `root` über `/run/mysqld/mysqld.sock`, sonst zusätzlich `TP_E2E_ADMIN_HOST`). `TP_E2E_HEADED=1` zeigt den Browser.
@@ -154,7 +154,7 @@ Benötigt MySQL ≥ 5.7 oder MariaDB ≥ 10.3 (utf8mb4).
 
 ## 3c. Aufräumen alter Daten
 
-`src/lib/maintenance.js` löscht täglich (in kleinen `DELETE … LIMIT`-Schritten) alte Chat-Nachrichten (30 Tage), gelesene Briefe (180), Zeitungsmeldungen (90), Weltereignisse (60), beendete Angebote/Versteigerungen/Gebote (30), erledigte Börsenorders (30), Börsengeschäfte (180), beendete Mietverträge (90) sowie abgelaufene und anonyme Sitzungen. Die Fristen stehen unter Admin → Einstellungen → „Aufräumen“.
+`src/lib/maintenance.js` löscht täglich (in kleinen `DELETE … LIMIT`-Schritten) alte Chat-Nachrichten (30 Tage), gelesene Briefe (180), Zeitungsmeldungen (90), Weltereignisse (60), beendete Angebote/Versteigerungen/Gebote (30), erledigte Börsenorders (30), Börsengeschäfte (180), beendete Mietverträge (90) sowie abgelaufene und anonyme Sitzungen, Betriebsvorfälle (`ops_log`, 120 Tage). Die Fristen stehen unter Admin → Einstellungen → „Aufräumen“.
 
 ## 4. Architektur in Kürze
 
@@ -505,6 +505,46 @@ Netto in DM von 1945 am Ende (85 Jahre). Alle Archetypen liegen in der Summe inn
 **Qualität.** `test/civic.test.js` (Modell: Namen, Beiträge, Wirkungen, Deckel, Stiftungsabrechnung, Töpfe, Titel, Spielstand, Engine), `test/civic-db.test.js` (Datenbank, mit `TP_TEST_DB_PORT`: Gründen, Beitreten, Beiträge genau einmal, Kasse, Vorstand, Abwahl, Veruntreuung mit Gericht, Wahlempfehlung, Gemeinde, Notgabe, Feiern, Stiftung, Erbfall, Titel, Admin), `test/civic-i18n.test.js`, UI-Static-Test in `test/ui-static.test.js`, Fuzz-Szenario `runCivicScenario` in `test/fuzz.test.js` (und `tools/fuzz-long.js`), E2E-Szenario „Gesellschaft“ in `test/e2e/e2e.test.js` (Verein gründen, zweiter Spieler tritt bei, Beitrag, Fest, Gemeinde, Notgabe, Stiftung, Titel, englische Oberfläche).
 
 **Offen.** Keine Vereinsturniere oder Wettbewerbe zwischen Vereinen; keine Gemeinde-Ämter (Pfarrer, Vorsteher); Titel werden nur geprüft, wenn die Seite geöffnet wird oder die Tagesprüfung läuft; Stiftungen können nicht mehrere Zwecke teilen.
+
+## Betrieb 2.0: Ausbaumodule, Betriebsbrand & Betriebsklima
+
+Schritt 9 der Entwicklung: Betriebe lassen sich in vier **Modulen** ausbauen, brennen selten ab und haben ein **Arbeitsklima**, das man mit realistischer Mitarbeiterführung pflegt. Alles ist freiwillig, die Wirkungen sind spürbar, aber gedeckelt. Code: `src/game/operations.js` und `operations-defaults.js` (reines Modell), `operations-actions.js` (Aktionen), `src/lib/operations.js` (Vorfälle in der Datenbank, Tagesblatt, Live-Meldung), Migration `034_operations`, Oberfläche `public/js/game/ops.js`.
+
+**Module** (`c.mods`, Stufen 0 bis 3; Kosten als Anteil am Grundwert des Betriebs, mit Preisindex und Baupreisen der Stadt, Rechnung als Bauauftrag an eine Baufirma der Stadt über `contractors.order`, also genau einmal; Unterhalt klein pro Tag):
+- **Lager**: 3 / 7 / 14 Tage Vorrat. Der Betrieb überbrückt Lücken im Warenkreislauf aus dem eigenen Lager und kauft in einem Preisfenster von höchstens ±3 % der Zutatenkosten günstig ein. Im Diebstahl und im Brand steckt der Vorrat als Verlustmasse.
+- **Brandschutz**: Brandchance ×0,6 / 0,35 / 0,2, Schaden ×0,75 / 0,55 / 0,4, kürzerer Ausfall, Rabatt auf die Betriebsversicherung.
+- **Schutz** (Schutzstufen gegen Diebstahl): Abwehr 45 / 70 / 90 %, Wettbewerb (`rivalry`) ×1 / 1,3 / 1,6 schwerer; Alarmanlage ab 1970, Videoüberwachung ab 1990. Der alte Schalter „Sicherheitsdienst“ (`c.security`) gilt als Stufe 1 und bleibt synchron.
+- **Arbeitsplätze**: 1 / 2 / 3 zusätzliche Stellen (über die Raumgrenze hinaus), Stimmung +5 / +10 / +15, weniger Krankenausfall.
+
+**Betriebsbrand.** Deterministisches Wochenereignis nach Branchenrisiko (Küche, Werkstatt und Landwirtschaft höher), im Winter häufiger. Nie offline, nie im Anfängerschutz, nie Insolvenz (der Schaden ist auf die Firmenkasse plus die Hälfte des Privatgelds gedeckelt, sonst fällt der Betrieb länger aus). Die **Betriebsversicherung** (`economy.insurance.betrieb`, Beitrag in den Tageskosten) erstattet 90 % und verkürzt den Ausfall; die Wiederherstellung geht als Bauauftrag an die Baufirmen der Stadt. Die Meldung erscheint im Tagesblatt („Betriebsbrand“) und live (SSE `business`). Die Vorfälle landen genau einmal in `ops_log`.
+
+**Betriebsklima.** Jeder Angestellte hat eine Stimmung 0 bis 100 (`m.mood`), die täglich um 0,03 zu einem Zielwert wandert: Lohn gegen Marktlohn, Besetzung, Sozialräume (Arbeitsplätze), Krankenstand, Führung, Abmahnungen. Ein Manager hält das Ziel mindestens neutral (Autopilot). Wirkung: bis ±6 % Umsatz **innerhalb** der Talentgrenze (Talente und Klima zusammen höchstens ±15 %, keine Doppelzählung), Kündigungsneigung (eine Lohnforderung mit Frist, vorher anzeigbar), bei sehr schlechter Stimmung gelegentlich ein Streiktag, Ansehen (`staff_fair` bei gutem Umgang, `staff_pressure` bei Druck). Spieler als Angestellte werden nie beeinflusst. Das Arbeitsklima ist im Stadtverzeichnis und bei Stellenangeboten sichtbar (`player_firms.climate`).
+
+**Führung** (Karte „Betriebsklima“ am Betrieb und im Teamdialog je Mitarbeiter, jeweils mit Wartezeit): **Lob** (klein, schnell, nutzt sich ab), **Prämie** (Bonus in Tageslöhnen, größte Wirkung), **Betriebsfest** (alle, in der Weihnachtszeit stärker), **Geschenk**, **Abmahnung** (die realistische Variante der „Drohung“: kurzer Leistungsschub, danach Zielstimmung −6 Punkte für 45 Tage, Wiederholung binnen 90 Tagen kostet Ansehen). Keine Drohungen, keine Gewalt. Alle Eingaben werden geprüft, die Aktionen sind ratenbegrenzt (`userLimit(45)`).
+
+**Zusammenspiel.** Warenkreislauf/Lager (Vorrat, Preisfenster), Talente (Lohnforderung, Team-Obergrenze `maxStaff`, Wirkungsdeckel), Ruf (`staff_fair`, `staff_pressure`), Versicherung (Betrieb und Beitragsrabatt), Wettbewerb (Schutzstufen), Stadtwirtschaft (Baupreise der Stadt), Tagesblatt und Live, Erbe (`heir.js` ergänzt fehlende Felder). Gerichtsfälle des Arbeitsrechts sind nicht vorgesehen. **Bots** bauen nur milde (bis Stufe 2), schließen die Betriebsversicherung ab, loben und zahlen Prämien, mahnen nie ab.
+
+**Einsteiger.** Aufgaben „Rüste deinen Betrieb aus“ und „Würdige dein Team mit einem Lob“, Freischaltung „Personal“ (`staff`), „Was jetzt?“-Hinweise bei schlechtem Klima und bei ungeschütztem Betrieb, Glossar (Lager, Brandschutz, Schutzstufe, Betriebsklima, Stimmung, Prämie, Abmahnung, Betriebsversicherung, Betriebsunterbrechung).
+
+**Oberfläche.** Classic: Karte „Ausbau“ und „Betriebsklima“ am Betrieb (`views/business.js`, `ops.js`). Design V2: Innenraum mit Hotspots (Lager, Sicherheit, Aushang/Betriebsklima) und Einträgen in der Aktionsleiste; die 3D-Stadt zeigt Brandschutz und Schutzstufe dezent am Gebäude (Rauchmelder-/Kameralicht, Brandlichter bei einem Brand). Beide Designs nutzen dieselben Aktionen, keines wurde verändert.
+
+**Admin.** Einstellungen → *Betrieb 2.0* (`betrieb`: Ein/Aus, Stärke der Wirkungen, Module mit Namen, Kosten, Epochen und Effekten, Brandchance und -folgen, Versicherung, Diebstahl, Klima, Führungsaktionen, Bots). Beitragssatz der Betriebsversicherung: `economy.insurance.betrieb`; Aufräumen von `ops_log` nach 120 Tagen (Admin → Aufräumen). Admin → Charaktere kann die Betriebsversicherung setzen.
+
+**Balance** (`node tools/econ-sim.js --only <Archetyp> --betrieb off|on|full`, Seeds 7 bis 10, 85 Jahre, Mittel der letzten Jahrzehnts-Nettowerte in DM von 1945; `off` = ohne die Regeln, `on` = Regeln aktiv, aber der Spieler nutzt nichts davon, `full` = Spieler nutzt die Module und die Führung konsequent):
+
+| Archetyp | Ohne die Regeln (Seeds 7/8/9/10, DM) | Regeln aktiv, nichts genutzt (Summe; je Seed) | Konsequenter Ausbau und Führung (Summe; je Seed) |
+| --- | --- | --- | --- |
+| Angestellter | 124.337 / 124.715 / 125.636 / 122.233 | 1,000 (1,00 je Seed) | 1,000 (1,00 je Seed) |
+| Vermieter ohne Kredit | 198.333 / 184.869 / 188.420 / 190.760 | 1,000 (1,00 je Seed) | 1,000 (1,00 je Seed) |
+| Vermieter mit Kredit | 192.403 / 199.721 / 199.000 / 193.894 | 1,000 (1,00 je Seed) | 1,000 (1,00 je Seed) |
+| Betriebsinhaber | 1.993.466 / 1.937.879 / 1.988.439 / 1.980.465 | 0,973 (0,98 / 0,99 / 0,94 / 0,99) | 0,947 (0,94 / 0,96 / 0,94 / 0,94) |
+| Mischform | 1.572.053 / 1.576.116 / 1.550.222 / 1.580.287 | 0,977 (0,99 / 0,97 / 0,96 / 0,99) | 0,981 (0,99 / 0,98 / 0,98 / 0,97) |
+
+Alle Archetypen bleiben innerhalb ±10 %, auch einzelne Seeds (schlechtester: Betriebsinhaber 0,94). Ohne Betrieb bleiben Angestellte und Vermieter unberührt. Das Brandrisiko kostet Betriebsinhaber ohne Vorsorge etwa 3 % (sie bleiben bewusst ungeschützt, das Risiko ist die Lenkung); wer ausbaut, zahlt Baukosten, Unterhalt und Beiträge (etwa −5 %) und bekommt dafür weniger Ausfälle, ein besseres Klima und mehr Sicherheit. Die Vorteile des Lagers (Preisfenster ±3 %) und des Klimas (±6 % Umsatz, innerhalb der Talentgrenze) zeigen sich in der Simulation nur teilweise, weil dort Knappheit immer 1 ist und der Autopilot-Manager das Klima neutral hält; in der Praxis (Spieler mit Lücken im Warenkreislauf, schlechtem Lohn) sind sie größer. Absichtlich gibt es keinen „Pflicht-Ausbau“: ohne Module spielt man weiter vollwertig.
+
+**Qualität.** `test/operations.test.js` (Module, Kosten, Epochen, Lager-Plan, Brand mit und ohne Versicherung, Deckel gegen Insolvenz, Klima, Aktionen, Wartezeiten, Abmahnung, Streik, Altspielstände, Bots, Ratenbegrenzung), `test/operations-i18n.test.js`, `test/operations-db.test.js` (opt-in `TP_TEST_DB_PORT`: Bau und Brand ohne Doppelbuchung, Vorfälle genau einmal, Tagesblatt, Verzeichnis), UI-Static-Test in `test/ui-static.test.js`, Fuzz-Invarianten und `runOpsScenario` in `test/fuzz.test.js` und `tools/fuzz-long.js`, E2E-Szenarien in `test/e2e/e2e.test.js` (Modul kaufen, Betriebsversicherung, Lob, Prämie und Abmahnung; Brandmeldung genau einmal; englische Oberfläche ohne deutsche Reste) und `test/e2e/design-gilde.test.js` (Design V2: Hotspots und Aktionsleiste, Stadtansicht).
+
+**Offen.** Kein Gesundheitstag; keine Arbeitsrechtsfälle vor Gericht; das Lager zählt in Tagen Zutaten (keine einzelnen Waren); der Preisvorteil des Lagers zeigt sich in der Langzeitsimulation nicht (dort ist die Knappheit immer 1); keine eigenen Fahrzeuge, Versicherungsvergleiche oder Brandschutzprüfungen durch Behörden.
 
 ## Jahreszeiten, Ernte & Seuchen
 

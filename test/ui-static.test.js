@@ -96,3 +96,37 @@ test('Gesellschaft: jeder Knopf der Oberfläche ist verdrahtet, jede Server-Adre
   assert.match(fs.readFileSync(path.join(ROOT, 'public/js/game/views/overview.js'), 'utf8'), /civicMini\(ctx\)/);
   assert.match(fs.readFileSync(path.join(ROOT, 'public/js/game/live.js'), 'utf8'), /tp-live-civic/);
 });
+
+test('Betrieb 2.0: Knöpfe sind verdrahtet, Aktionen existieren, Glossar/Spots vorhanden; Classic und Design V2 sind angebunden', () => {
+  const ops = fs.readFileSync(path.join(ROOT, 'public/js/game/ops.js'), 'utf8');
+  const sels = new Set([...ops.matchAll(/on\(root, 'click', '\[(data-[a-z-]+)\]'/g)].map((m) => m[1]));
+  assert.ok(sels.size >= 5, [...sels].join());
+  for (const a of sels) assert.ok(new RegExp(` ${a}(=|[ >])`).test(ops), `Kein Knopf mit ${a}`);
+  // Aktionsnamen im Client ↔ A.<name> im Server
+  const A = require('../src/game/actions').ACTIONS;
+  const used = new Set([...ops.matchAll(/(?:ctx\.act|act)\('([A-Za-z]+)'/g)].map((m) => m[1]).concat([...ops.matchAll(/const name = [^;]+;/g)].flatMap((m) => [...m[0].matchAll(/'(biz[A-Za-z]+)'/g)].map((x) => x[1]))));
+  for (const n of used) assert.ok(A.includes(n), `Aktion ${n} fehlt im Server`);
+  for (const n of ['opsBuild', 'opsRemove', 'bizPraise', 'bizBonus', 'bizParty', 'bizGift', 'bizWarn', 'bizSecurity']) assert.ok(A.includes(n), n);
+  // Glossar: term('…') nennt vorhandene Schlüssel
+  const gl = fs.readFileSync(path.join(ROOT, 'public/js/game/glossary-ops.js'), 'utf8');
+  const keys = new Set([...gl.matchAll(/^\s*\['([^']+)'/gm)].map((m) => m[1]));
+  for (const m of ops.matchAll(/term\('([^']+)'/g)) assert.ok(keys.has(m[1]), `Glossar fehlt: ${m[1]}`);
+  assert.match(fs.readFileSync(path.join(ROOT, 'public/js/game/glossary.js'), 'utf8'), /GLOSSARY_OPS/);
+  // Einsteiger-Spots (Aufgaben „module“ und „lead“) zeigen auf vorhandene Elemente
+  const ob = fs.readFileSync(path.join(ROOT, 'public/js/game/onboarding.js'), 'utf8');
+  assert.match(ob, /modules: \{ sel: '\[data-ops-modules\]'/); assert.match(ob, /climate: \{ sel: '\[data-ops-climate\]/);
+  assert.match(ops, /data-ops-modules/); assert.match(ops, /data-ops-climate/);
+  // Classic: Betriebskarte bindet die Oberfläche ein; Teamdialog führt einzelne Mitarbeiter
+  const biz = fs.readFileSync(path.join(ROOT, 'public/js/game/views/business.js'), 'utf8');
+  assert.match(biz, /opsBox\(c, v, ctx\)/); assert.match(biz, /bindOps\(root, ctx\)/);
+  assert.match(fs.readFileSync(path.join(ROOT, 'public/js/game/talents.js'), 'utf8'), /memberLead\(c, x, cur\)/);
+  // Design V2: Innenraum des Betriebs mit Lager, Schutz & Brand und Aushang; Stadtgebäude zeigen Module; Live-Ereignis „business“ lädt nach
+  const rooms = fs.readFileSync(path.join(ROOT, 'public/js/game/rooms.js'), 'utf8');
+  for (const id of ['stock', 'safety', 'board']) assert.match(rooms, new RegExp(`spot\\([a-zA-Z]+, '${id}'`));
+  assert.match(rooms, /\['stock', 'Lager', 'package'\], \['safety', 'Schutz & Brand', 'shield'\], \['board', 'Betriebsklima', 'smile'\]/);
+  assert.match(fs.readFileSync(path.join(ROOT, 'public/js/game/city-buildings.js'), 'utf8'), /b\.mods\.brand >= 1/);
+  assert.match(fs.readFileSync(path.join(ROOT, 'public/js/game/aerial.js'), 'utf8'), /mods:b\.mods/);
+  assert.match(fs.readFileSync(path.join(ROOT, 'public/js/game/live.js'), 'utf8'), /business: \['business', 'overview'\]/);
+  // Der Server liefert, was die Oberfläche braucht
+  const { buildingsFor } = require('../src/game/places'); assert.ok(buildingsFor.toString().includes('mods:'));
+});

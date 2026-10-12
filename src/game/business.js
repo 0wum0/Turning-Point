@@ -149,7 +149,8 @@ function bizEvents(ctx, c, year) {
       const loss = ins ? Math.round(base * 0.1) : base; // Betriebsversicherung: Einbruch gedeckt (Selbstbeteiligung)
       c.cash -= loss;
       const lostDays = OPS.theftStock(c);
-      notice(state, { level: 'warn', title: `Diebstahl in ${c.name}`, tab: 'business', text: ins ? `Aus dem Betrieb wurde Ware gestohlen; die Betriebsversicherung ersetzt den Schaden bis auf ${formatMoney(loss, cur)}.` : `Aus dem Betrieb wurde Ware im Wert von ${formatMoney(loss, cur)} gestohlen.${lostDays > 0 ? ' Auch aus dem Lager fehlt etwas.' : ''}` });
+      const lossTxt = formatMoney(loss, cur);
+      notice(state, { level: 'warn', title: `Diebstahl in ${c.name}`, tab: 'business', text: ins ? `Aus dem Betrieb wurde Ware gestohlen; die Betriebsversicherung ersetzt den Schaden bis auf ${lossTxt}.` : lostDays > 0 ? `Aus dem Betrieb wurde Ware im Wert von ${lossTxt} gestohlen. Auch aus dem Lager fehlt etwas.` : `Aus dem Betrieb wurde Ware im Wert von ${lossTxt} gestohlen.` });
     }
   }
 }

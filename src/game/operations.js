@@ -49,8 +49,7 @@ function setLevel(c, key, lv) {
 /** Altspielstände: Schalter → Stufe (idempotent). */
 function normalize(c) {
   if (!c || typeof c !== 'object') return c;
-  if (c.mods && typeof c.mods === 'object') for (const k of KEYS) c.mods[k] = clamp(Math.floor(num(c.mods[k], 0)), 0, 3);
-  else if (c.security) c.mods = { schutz: 1 };
+  if (c.mods && typeof c.mods === 'object') { for (const k of KEYS) if (c.mods[k] != null) c.mods[k] = clamp(Math.floor(num(c.mods[k], 0)), 0, 3); } else if (c.security) c.mods = { schutz: 1 };
   if (c.mods && c.mods.schutz == null && c.security) c.mods.schutz = 1;
   if (c.mods) c.security = (c.mods.schutz || 0) >= 1;
   return c;
@@ -253,7 +252,7 @@ function weekly(ctx, c, year) {
       const TL = require('./talents'); const askDays = Math.round(num((TL.C().raise || {}).askDays, 30));
       const w = Math.max(num(m.w, 1) * 1.05, TL.marketWage(world, c, m));
       m.ask = { w: r2(w), until: state.day + askDays, mood: true };
-      require('./core').notice(state, { level: 'warn', title: `${m.name} ist unzufrieden`, tab: 'business', text: `${c.name}: ${m.name} denkt ans Kündigen. Du hast ${askDays} Tage, um die Stimmung zu heben – ein Lob, eine Prämie oder mehr Lohn helfen.`, info: ['Die Stimmung im Team ist niedrig.', 'Wer sich nicht wertgeschätzt fühlt, sucht sich eine neue Stelle.', 'Öffne das Team und wähle Lob, Prämie oder Lohnerhöhung.'] });
+      require('./core').notice(state, { level: 'warn', title: `${m.name} denkt an Kündigung`, tab: 'business', text: `${c.name}: ${m.name} denkt ans Kündigen. Du hast ${askDays} Tage, um die Stimmung zu heben – ein Lob, eine Prämie oder mehr Lohn helfen.`, info: ['Die Stimmung im Team ist niedrig.', 'Wer sich nicht wertgeschätzt fühlt, sucht sich eine neue Stelle.', 'Öffne das Team und wähle Lob, Prämie oder Lohnerhöhung.'] });
     }
   }
   if (ox.avg != null && ox.avg < Kc.strikeBelow && c.staff >= num(((world.econ.events || {}).business || {}).strikeMinStaff, 3) && !(c.strikeUntil && state.day < c.strikeUntil)) {
@@ -301,12 +300,17 @@ function fire(ctx, c, year, rk) {
   // Wiederaufbau: die Rechnung geht an eine Baufirma der Stadt (Spieler oder Bot), sonst an den städtischen Handwerksbetrieb
   const paid = fromCash + fromOwner + covered;
   if (paid > 0) { try { require('./contractors').order(state, null, world, c.cityId, paid, `Wiederaufbau ${c.name}`); } catch (_) { /* optional */ } }
-  core.chronicle(state, `Brand in ${c.name} (${(world.city(c.cityId) || {}).name || ''}).`, 'event');
+  const cn = (world.city(c.cityId) || {}).name || '';
+  core.chronicle(state, `Brand in ${c.name} (${cn}).`, 'event');
   press.story(world, state, 'fire', { prop: c.name, cityId: c.cityId });
+  const dmgTxt = fmtD(damage, cur); const covTxt = fmtD(covered, cur); const compTxt = fmtD(interruption, cur);
+  const info = ['In deinem Betrieb hat es gebrannt.', ins ? 'Die Betriebsversicherung trägt den größten Teil, der Betrieb ruht trotzdem einige Tage.' : 'Ohne Betriebsversicherung trägst du Schaden und Ausfall selbst.', 'Brandschutz senkt Wahrscheinlichkeit und Schaden; die Betriebsversicherung schließt du im Haushalt ab.'];
+  if (lost > 0) info.push('Ein Teil des Lagers ist verbrannt.');
+  if (ins && interruption > 0) info.push(`Für den Ausfall gibt es ${compTxt} Entschädigung.`);
   core.notice(state, {
     level: 'bad', title: `Brand in ${c.name}`, tab: 'business', interrupt: true,
-    text: `${ins ? `Die Betriebsversicherung übernimmt ${fmtD(covered, cur)} des Schadens` : `Der Schaden von ${fmtD(damage, cur)} geht zu deinen Lasten`}. Der Betrieb steht etwa ${out} Tage still${lost > 0 ? ' und ein Teil des Lagers ist verbrannt' : ''}.${ins && interruption > 0 ? ` Für den Ausfall gibt es ${fmtD(interruption, cur)} Entschädigung.` : ''}`,
-    info: ['In deinem Betrieb hat es gebrannt.', ins ? 'Die Betriebsversicherung trägt den größten Teil, der Betrieb ruht trotzdem einige Tage.' : 'Ohne Betriebsversicherung trägst du Schaden und Ausfall selbst.', 'Brandschutz senkt Wahrscheinlichkeit und Schaden; die Betriebsversicherung schließt du im Haushalt ab.'],
+    text: ins ? `Die Betriebsversicherung übernimmt ${covTxt} des Schadens. Der Betrieb steht etwa ${out} Tage still.` : `Der Schaden von ${dmgTxt} geht zu deinen Lasten. Der Betrieb steht etwa ${out} Tage still.`,
+    info,
   });
 }
 
@@ -445,6 +449,7 @@ function firmView(world, state, c, idx, year, f) {
   const wd = Math.round(wageDay(world, year));
   const team = members(c);
   const cd = (key) => Math.max(0, num((c.ops && c.ops.cd || {})[key], 0) - state.day);
+  const mcdMin = (key) => (team.length ? Math.min(...team.map((m) => Math.max(0, num(m.mcd && m.mcd[key], 0) - state.day))) : 0); // Wartezeit je Mitarbeiter: der Knopf gilt, solange irgendjemand infrage kommt
   const dec = (cents, d) => Math.round(cents * d);
   const lock = enabled() && !c.abandoned;
   const christmas = doy >= 334 || doy < 3;
@@ -459,8 +464,8 @@ function firmView(world, state, c, idx, year, f) {
     fire: { yearPct: rk.yearly, band: rk.yearly >= 3 ? 'high' : rk.yearly >= 1.2 ? 'mid' : 'low', insured: insured(state), outage: c.outageUntil && state.day < c.outageUntil && c.ops && c.ops.fire ? c.outageUntil - state.day : 0 },
     insurance: { on: insured(state), premiumDay: Math.round(premiumDay(world, { ...state, companies: [c] }, year)), disc: Math.round((1 - premiumFactor(c)) * 100) },
     actions: lock ? {
-      praise: { ok: team.length > 0 && cd('praise') <= 0, cd: cd('praise'), cooldown: L.praise.cooldown },
-      bonus: { cost: dec(wd, L.bonus.costDays) * 1, perHead: dec(wd, L.bonus.costDays), cd: cd('bonus'), gain: L.bonus.gain, cooldown: L.bonus.cooldown },
+      praise: { ok: team.some((m) => Math.max(0, num(m.mcd && m.mcd.praise, 0) - state.day) <= 0 && moodOf(m) < 95), cd: mcdMin('praise'), cooldown: L.praise.cooldown },
+      bonus: { cost: dec(wd, L.bonus.costDays) * 1, perHead: dec(wd, L.bonus.costDays), cd: mcdMin('bonus'), gain: L.bonus.gain, cooldown: L.bonus.cooldown },
       party: { cost: dec(wd, L.party.baseDays + L.party.costDays * team.length), cd: cd('party'), gain: L.party.gain * (christmas ? L.party.christmas : 1), christmas, cooldown: L.party.cooldown },
       gift: { cost: dec(wd, L.gift.costDays), cd: 0, gain: L.gift.gain, cooldown: L.gift.cooldown },
       warn: { loss: L.warn.loss, others: L.warn.others, cooldown: L.warn.cooldown },

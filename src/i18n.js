@@ -56,6 +56,8 @@ function dictScript(req, res) {
   try { qq = require('./i18n-data/client-Q'); } catch (_) { /* optional */ }
   let rr = { exact: {}, patterns: [] };
   try { rr = require('./i18n-data/client-R'); } catch (_) { /* optional */ }
-  res.type('application/javascript').set('Cache-Control', 'public, max-age=300').send('window.TP_I18N=' + JSON.stringify({ exact: Object.assign({}, rr.exact, qq.exact, pp.exact, oo.exact, nn.exact, mm.exact, ll.exact, kk.exact, jj.exact, ii.exact, hh.exact, gg.exact, fx.exact, phase.exact, extra.exact, more.exact, EN.EXACT), patterns: rr.patterns.concat(qq.patterns, pp.patterns, oo.patterns, nn.patterns, mm.patterns, ll.patterns, kk.patterns, jj.patterns, ii.patterns, hh.patterns, EN.PATTERNS, extra.patterns || [], more.patterns, phase.patterns, fx.patterns) }) + ';');
+  let ss = { exact: {}, patterns: [] };
+  try { ss = require('./i18n-data/client-S'); } catch (_) { /* optional */ }
+  res.type('application/javascript').set('Cache-Control', 'public, max-age=300').send('window.TP_I18N=' + JSON.stringify({ exact: Object.assign({}, ss.exact, rr.exact, qq.exact, pp.exact, oo.exact, nn.exact, mm.exact, ll.exact, kk.exact, jj.exact, ii.exact, hh.exact, gg.exact, fx.exact, phase.exact, extra.exact, more.exact, EN.EXACT), patterns: ss.patterns.concat(rr.patterns, qq.patterns, pp.patterns, oo.patterns, nn.patterns, mm.patterns, ll.patterns, kk.patterns, jj.patterns, ii.patterns, hh.patterns, EN.PATTERNS, extra.patterns || [], more.patterns, phase.patterns, fx.patterns) }) + ';');
 }
 module.exports = { middleware, setLang, dictScript, detect };

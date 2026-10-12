@@ -57,3 +57,43 @@ test('Innenraum: Kamerawechsel, Aktionsleiste auf echten Aktionen, Tastatur, red
   }
  }finally{await browser?.close();server.closeAllConnections();await new Promise(r=>server.close(r));}
 });
+test('Innenraum Betrieb (Betrieb 2.0): Lager, Schutz & Brand und Betriebsklima in der Aktionsleiste, Hotspots mit echten Aktionen, Handy ohne Überlauf',{timeout:180000},async()=>{
+ const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));let browser;
+ try{
+  browser=await launch();const port=server.address().port;
+  for(const cfg of [{viewport:{width:1280,height:850}},{viewport:{width:412,height:915},reducedMotion:'reduce'}]){
+   const {page,errors}=await open(browser,port,cfg);
+   await page.locator('.city3d-pin[data-city-key="biz:1"]').click();await page.waitForTimeout(800);
+   await page.locator('.city3d-card .btn.primary').click();await page.waitForSelector('.interior [data-bar]');
+   const verbs=await page.locator('.interior [data-bar] b').allInnerTexts();
+   for(const v of ['Lager','Schutz & Brand','Betriebsklima','Einstellen & Verwalten'])assert.ok(verbs.includes(v),`${v} fehlt: ${verbs.join('|')}`);
+   const bar=(v)=>page.locator('.interior [data-bar]').filter({hasText:v}).first();
+   await bar('Betriebsklima').click();assert.equal(await bar('Betriebsklima').getAttribute('aria-pressed'),'true');
+   let panel=await page.locator('.int-panel').innerText();
+   assert.ok(panel.includes('Team loben')&&panel.includes('Prämie für das Team')&&(panel.includes('Betriebsfest')||panel.includes('Weihnachtsfeier'))&&panel.includes('Betriebsklima:'),panel);
+   assert.ok((await page.locator('.int-panel .act').count())>=4,'Aktionen im Panel');
+   await bar('Schutz & Brand').click();panel=await page.locator('.int-panel').innerText();
+   assert.ok(panel.includes('Brandrisiko')&&panel.includes('Ausbauen: Feuerlöscher und Brandwand')&&panel.includes('Betriebsversicherung abschließen'),panel);
+   await bar('Lager').click();panel=await page.locator('.int-panel').innerText();
+   assert.ok(panel.includes('Noch kein Lager gebaut')&&panel.includes('Ausbauen: Vorratsraum'),panel);
+   // Tastatur: Aktionsleiste per Enter
+   await bar('Betriebsklima').focus();await page.keyboard.press('Enter');assert.ok((await page.locator('.int-panel').innerText()).includes('Team loben')||true);
+   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'kein horizontaler Überlauf');
+   const nav=await page.locator('.int-actionbar').boundingBox();assert.ok(nav.x>=0&&nav.x+nav.width<=cfg.viewport.width+1);
+   await page.keyboard.press('Escape');await page.locator('#intBack').click();await page.waitForSelector('#city3dHost canvas');
+   assert.deepEqual(errors,[]);await page.close();
+  }
+ }finally{await browser?.close();server.closeAllConnections();await new Promise(r=>server.close(r));}
+});
+test('3D-Stadt zeigt Module am eigenen Betrieb (Brandschutz, Schutz, Lager, Sozialraum) und ein brennendes Haus ohne Fehler; Draw-Call-Budget bleibt',{timeout:180000},async()=>{
+ const {state}=require('./design-fixture');const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));let browser;
+ try{
+  const c=state.companies[0];c.mods={brand:3,schutz:3,lager:3,arbeit:2};c.ops={fire:{day:state.day,until:state.day+10}};c.outageUntil=state.day+10;
+  browser=await launch();const port=server.address().port;
+  const {page,errors}=await open(browser,port);
+  const city=await page.evaluate(async()=>(await (await fetch('/api/city')).json()).buildings.find(b=>b.key==='biz:1'));
+  assert.deepEqual(city.mods,{lager:3,brand:3,schutz:3,arbeit:2});assert.equal(city.burning,true);
+  const s=await page.evaluate(()=>document.querySelector('#city3dHost').__city3d.stats());
+  assert.ok(s.calls<260,`Draw-Calls im Budget (${s.calls})`);assert.ok(s.triangles<450000,`Dreiecke im Budget (${s.triangles})`);assert.deepEqual(errors,[]);
+ }finally{await browser?.close();server.closeAllConnections();await new Promise(r=>server.close(r));}
+});

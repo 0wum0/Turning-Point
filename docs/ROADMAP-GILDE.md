@@ -1,6 +1,6 @@
 # Roadmap „Die Gilde“ – Bauschritte 9 bis 15
 
-Stand: Analyse des Codes nach Schritt 8 (Gesellschaft). Reine Planung, kein Feature-Code.
+Stand: Analyse des Codes nach Schritt 8 (Gesellschaft); **Schritt 9 (Betrieb 2.0) ist umgesetzt** (siehe Abschnitt „Schritt 9“ und README). Die Schritte 10 bis 15 sind weiter reine Planung.
 Die Schritte 0 bis 8 sind fertig (Warenkreislauf, Stadtwirtschaft, Ruf, Recht & Gericht, Talente, Jahreszeiten, Handel & Transport, Gesellschaft, dazu Einsteiger-Erlebnis, Börse, Wahlen/Karriere, Design V2). Dieses Dokument legt fest, was von den Mechaniken des Spiels „Die Gilde“ (2002) schon im Spiel steckt, was fehlt und wie die Lücken **realistisch in unserer Welt** (Deutschland ab 1945, keine Fantasy) geschlossen werden. Der ältere Konzeptstand steht in `docs/ROADMAP.md`, Design V2 in `docs/DESIGN-V2.md`, die Feature-Beschreibungen im `README.md`.
 
 ---
@@ -171,6 +171,15 @@ Reihenfolge nach Abhängigkeit und Nutzen. Jeder Schritt ist für sich lauffähi
 - **Betriebsklima**: Wert 0 bis 100 je Mitarbeiter (`m.mood`) und Mittel je Betrieb. Treiber: Lohn relativ zum Marktlohn, Anerkennung, Auslastung, Sozialräume, Jahreszeit und Seuche. Wirkung mittelwertfrei: Produktivität höchstens ±6 % **innerhalb** der bestehenden Umsatzgrenze der Talente (kein Doppelzählen), Kündigungs- und Lohnforderungsneigung (bestehendes `ask`), Streikchance (bisher reiner Zufall, künftig klimaabhängig).
 - **Führungsaktionen** (Abkühlzeit, Kosten in Lohntagen): *Lob* (kostenlos, kurze Wirkung, wirkt stärker mit Führung/Charme), *Prämie* (Geld, abnehmender Ertrag), *Betriebsfest/Weihnachtsfeier* (Team), *Gesundheitstag*, *Abmahnung/Kündigungsandrohung* (die „Drohung“: kurzfristig mehr Leistung, aber Klima sinkt und Wiederholung kostet Ruf `staff_pressure`). Spieler als Angestellte werden nie beeinflusst, sie entscheiden selbst; für sie bleibt nur der vereinbarte Lohn.
 - **Autopilot**: Mit Manager hält der Betrieb das Klima auf neutralem Niveau; Einsteiger sehen Module und Klima erst, wenn der Betrieb Personal hat (`UNLOCKS.staff`).
+
+
+**Status: umgesetzt.** Abweichungen und Festlegungen gegenüber dem Plan:
+- Module (`c.mods`) mit Stufen 0 bis 3: *Lager* (3 / 7 / 14 Tage Vorrat, Lücken überbrücken, Preisfenster höchstens ±3 % der Zutatenkosten), *Brandschutz* (Brandchance ×0,6 / 0,35 / 0,2, Schaden ×0,75 / 0,55 / 0,4, kürzerer Ausfall, Beitragsrabatt), *Schutz* (Abwehr eines Diebstahls 45 / 70 / 90 %, Wettbewerb ×1 / 1,3 / 1,6; Alarmanlage ab 1970, Videoüberwachung ab 1990; alter Schalter `security: true` gilt als Stufe 1), *Arbeitsplätze* (Zusatzstellen 1 / 2 / 3, Stimmung +5 / +10 / +15, weniger Krankenausfall). Kosten: Anteil am Grundwert des Betriebs × Preisindex × Baupreise der Stadt (`buildMult`); die Rechnung geht als Bauauftrag an eine Baufirma der Stadt (`contractors.order` → `pending_credits`, genau einmal). Epochen: Lager 3 ab 1965, Brandschutz 2 ab 1970 und 3 ab 1985, Schutz 2 ab 1970 und 3 ab 1990, Arbeitsplätze 2 ab 1960 und 3 ab 1990.
+- Betriebsbrand: deterministisches Wochenereignis (`fire.weeklyChance`, Branchenrisiko, Heizperiode), nie offline, nicht im Anfängerschutz, nie Insolvenz (Deckel auf Firmenkasse plus 50 % des Privatgelds, längerer Ausfall statt Schulden). Neue **Betriebsversicherung** (`economy.insurance.betrieb`, Beitrag in den Tageskosten, 90 % Erstattung, kürzerer Ausfall, Entschädigung je Ausfalltag; Rabatt durch Brandschutz und Schutz).
+- Klima: Stimmung 0 bis 100 je Mitarbeiter (`m.mood`), Ziel aus Lohn gegen Marktlohn, Besetzung, Sozialräumen, Krankenstand, Führung, Abmahnungen; Manager hält das Klima mindestens neutral (Autopilot). Wirkung ±6 % Umsatz **innerhalb** der Talentgrenze (±15 % gemeinsam), Kündigungsneigung (Lohnforderung mit Frist), Streikwahrscheinlichkeit, Ansehen (`staff_fair`, `staff_pressure`). Spieler als Angestellte werden nie beeinflusst.
+- Führungsaktionen: Lob, Prämie, Betriebsfest/Weihnachtsfeier, Geschenk, Abmahnung (die realistische „Drohung“: kurzer Leistungsschub, danach Zielstimmung −6 Punkte für 45 Tage, bei Wiederholung innerhalb von 90 Tagen Ansehensverlust). Der **Gesundheitstag** entfällt (kein eigener Nutzen neben Arbeitsschutz und Sozialräumen).
+- Migration `034_operations`: Tabelle `ops_log` (Vorfälle, werden genau einmal aus dem Spielstand geschrieben, Aufräumen nach 120 Tagen), Spalte `player_firms.climate` (öffentlich als „Arbeitsklima“ im Stadtverzeichnis und bei Stellenangeboten), Betriebsversicherung in gespeicherten Wirtschaftsdaten.
+- Balance (siehe README, Abschnitt Betrieb 2.0, Seeds 7 bis 10): Angestellte und Vermieter unverändert (1,00); Betriebsinhaber ohne Nutzung 0,97, mit konsequentem Ausbau 0,95; Mischform 0,98; alle Archetypen und alle einzelnen Seeds innerhalb ±10 %.
 
 **Abhängigkeiten.** Nur vorhandene Systeme (Business, Talente, Transport, Jahreszeiten). Grundlage für Schritt 14 (Schutz) und 15 (Darstellung).
 
@@ -358,6 +367,16 @@ Gründe: Reihenfolge von klein nach groß (Betrieb, Person, Familie, dann Politi
 | 3 | **Macht von Spielern in der Justiz**: Echte, eng begrenzte Entscheidungsgewalt (Richter, Polizei) oder nur beratend (NPC entscheidet, Spieler-Schöffen geben Empfehlung)? | Begrenzte Gewalt (±8 Punkte, eine Stufe) mit Befangenheitsregeln, Frist und NPC-Fallback. |
 | 4 | **Übergabe zu Lebzeiten** an das Kind (Ruhestand ab 60) zusätzlich zur Erbfolge beim Tod? | Optional in Schritt 11, nur für volljährige Erben und ohne Duplizierung von Besitz oder Erfahrung. |
 | 5 | **Reihenfolge der Sichtbarkeit**: Figuren und Fahrzeuge der 3D-Stadt früher ziehen (Schritt 15 aufteilen) oder wie geplant zuletzt? | Wie geplant zuletzt; nur Fahrzeuge der eigenen Routen früher, wenn gewünscht. |
+
+## 8a. Entscheidungen (verbindlich)
+
+Der Nutzer hat die offenen Fragen aus Abschnitt 8 entschieden. Diese Festlegungen gelten für alle weiteren Schritte und werden bei Konflikten über jede Empfehlung in diesem Dokument gestellt.
+
+| Nr. | Entscheidung | Folgen für die Bauschritte |
+|---|---|---|
+| 1 | **Streng realistisch und modern.** Behörden, Strafrecht, Cyber-Erpressung statt Entführung, keine Waffen. Ein Brandanschlag bleibt eine seltene Sabotage-Variante, nur im freiwilligen Wettbewerb (opt-in) und mit der höchsten Strafstufe. | Schritt 9: Betriebsbrand ist ein Zufallsereignis (Unfall), kein Anschlag; Drohungen und Gewalt im Betrieb gibt es nicht (Führungsaktionen: Lob, Prämie, Betriebsfest, Geschenk, förmliche Abmahnung). Schritt 14: Brandanschlag nur als Variante der Sabotage mit `court.trace`, Cyberangriff statt Lösegeld-Entführung. |
+| 2 | **Bürgerwahl bleibt** für die sechs politischen Ämter. Der Kanzler muss immer erreichbar bleiben. Gremienwahl gilt **nur für die neue Laufbahn** (Schritte 12 und 13). Der Admin-Schalter „Kanzler durch den Bundestag“ (`kanzlerMode`) steht **standardmäßig aus** (`citizens`); bei zu wenigen Bundestagsmitgliedern fällt jede Einstellung auf Bürgerwahl zurück. | Schritt 12: Test „Kanzler erreichbar unter jeder Einstellung“ ist Pflicht. Schritt 9 berührt Politik nicht. |
+| 3 | **Justiz- und Polizeigewalt der Spieler eng begrenzt**: höchstens ±8 Punkte auf die Schuldwahrscheinlichkeit, höchstens eine Stufe beim Strafmaß, Befangenheit (Freunde, gleicher Verein, gleiche IP, Beteiligte) schließt aus, Entscheidungsfrist (`hearingHours`), danach ergeht das NPC-Standardurteil. | Schritt 13: Modulation und Fallback wie beschrieben; Schritt 14: Spieler-Polizisten bearbeiten Fälle nur mit kleiner Belohnung. Arbeitsrecht-Fälle vor Gericht sind **nicht** vorgesehen (Schritt 9 löst „fairen Umgang“ über Ansehen: `staff_fair`, `staff_pressure`). |
 
 ## 9. Nicht-Ziele
 

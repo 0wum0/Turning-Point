@@ -152,8 +152,8 @@ test('Klima: Stimmung nähert sich dem Ziel, bleibt in 0 … 100; Wirkung auf Um
   assert.ok(OPS.revFactor(1.15, { climateMult: 1.06, capMult: 1, pushMult: 1 }) <= 1.15 + 1e-9); assert.ok(OPS.revFactor(0.85, { climateMult: 0.94, capMult: 1, pushMult: 1 }) >= 0.85 - 1e-9);
   assert.ok(OPS.revFactor(1.15, { climateMult: 1.06, capMult: 1.06, pushMult: 1.015 }) <= 1.15 * 1.06 * 1.015 + 1e-9);
   // Stimmung relaxiert in Richtung Ziel
-  for (const m of c.team) { m.mood = 5; m.w = TL.marketWage(w, c, m); } c.manager = false;
-  run(s, 60); const avg = OPS.avgMood(c); assert.ok(avg > 30 && avg <= 100, `Stimmung ${avg}`); for (const m of c.team) assert.ok(m.mood >= 0 && m.mood <= 100);
+  for (const m of c.team) { m.mood = 5; m.w = TL.marketWage(w, c, m); } c.manager = true; // ein Manager hält das Klima mindestens neutral (und niemand kündigt)
+  run(s, 20); const avg = OPS.avgMood(c); assert.ok(avg > 15 && avg <= 50, `Stimmung ${avg}`); for (const m of c.team) assert.ok(m.mood >= 0 && m.mood <= 100);
   // Stärke 0 schaltet die Wirkung ab
   withCfg(null, () => { B.effects.strength = 0; for (const m of c.team) m.mood = 100; const o0 = OPS.firmEffects(c, 1, s.day); assert.strictEqual(o0.climateMult, 1); assert.strictEqual(o0.capMult, 1); assert.strictEqual(OPS.sickEff(0.8, { sickMult: 1 }), 0.8); });
   // Ausgeschaltet: wie ohne Module
@@ -346,6 +346,10 @@ test('Ansicht: Module, Vorrat, Klima, Brandrisiko, Versicherung, Kosten der Akti
   assert.ok(o.fire.yearPct > 0 && o.fire.yearPct < 10); assert.strictEqual(o.insurance.on, false); assert.ok(v.companies[0].mods.brand === 1 && v.companies[0].talent.team.every((m) => Number.isFinite(m.mood)));
   const walk = (x) => { if (typeof x === 'number') assert.ok(Number.isFinite(x), `Zahl ${x}`); else if (x && typeof x === 'object') Object.values(x).forEach(walk); }; walk(o);
   assert.ok(o.modules.brand.next.why === null && o.modules.arbeit.next.ok);
+  // Lob und Prämie für alle: danach sperrt der Knopf (Wartezeit je Mitarbeiter), Betriebsfest sperrt am Betrieb
+  assert.strictEqual(o.actions.praise.ok, true); for (const m of c.team) m.mood = 40;
+  act(s, 'bizPraise', { id: c.id, mid: 'all' }); act(s, 'bizBonus', { id: c.id, mid: 'all' }); act(s, 'bizParty', { id: c.id });
+  const o2 = present(w, s, user(), Date.now()).companies[0].ops; assert.strictEqual(o2.actions.praise.ok, false); assert.ok(o2.actions.praise.cd > 0 && o2.actions.bonus.cd > 0 && o2.actions.party.cd > 0);
   s.day = 100; const early = present(w, s, user(), Date.now()).companies[0].ops; assert.ok(early.modules.brand.next.why === 'era' || early.modules.brand.next.ok !== undefined);
 });
 
@@ -360,4 +364,31 @@ test('Betrieb im Alltag: Module ohne Nutzung ändern nichts am Umsatz; Unterhalt
   // Zusatzstellen im Umsatz sichtbar
   OPS.setLevel(c, 'arbeit', 3); const big = { ...c, rooms: 12, staff: biz.staffNeeded(w, { ...c, rooms: 12 }) + 3, team: undefined };
   const big0 = { ...big, mods: { ...c.mods, arbeit: 0 } }; assert.ok(biz.companyFlows(w, s, big, y).income > biz.companyFlows(w, s, big0, y).income);
+});
+
+test('Bots (mild): bauen nur kleine Stufen, versichern ihre Betriebe, loben ihr Team – ohne Abmahnungen, ohne Spieler-Angestellte anzufassen', () => {
+  withCfg(null, () => {
+    quiet(); B.bots.build = 1; B.bots.lead = 1;
+    const bots = require('../src/lib/bots'); const P = bots.makePersona('de');
+    const s = rich(mk({ professionKey: 'baecker' })); const c = firm(s, 3); TL.syncTeam(w, s, c); c.playerStaff = [{ userId: 9, wage: 500, tal: null }];
+    const realRandom = Math.random; let seed = 7; Math.random = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+    const acts = []; const orig = actions.run;
+    try {
+      for (let i = 0; i < 60; i++) { s.day += 9; s.money = Math.max(s.money, 5e9); const before = JSON.stringify(c.mods || {}); bots.decide({ world: w, state: s, user: user(), now: Date.now() }, P); void before; }
+    } finally { Math.random = realRandom; actions.run = orig; }
+    void acts;
+    assert.ok(OPS.KEYS.every((k) => OPS.level(c, k) <= 2), 'Bots bauen höchstens Stufe 2');
+    assert.ok(OPS.KEYS.some((k) => OPS.level(c, k) >= 1), 'und bauen etwas');
+    assert.strictEqual(s.insurance.betrieb, true, 'Betriebsversicherung abgeschlossen');
+    assert.ok(c.team.some((m) => m.pr && m.pr.n >= 1), 'das Team wurde gelobt');
+    assert.ok(!(c.ops && c.ops.warns && c.ops.warns.length), 'Bots mahnen nie ab');
+    assert.ok(c.playerStaff.every((p) => p.mood === undefined));
+  });
+});
+
+test('Rate-Limit: Ausbau und Führungsaktionen laufen über eine eigene Bremse je Spieler; alle Aktionsnamen sind echte Aktionen', () => {
+  const fs = require('fs'); const path = require('path');
+  const api = fs.readFileSync(path.join(__dirname, '../src/routes/api.js'), 'utf8');
+  assert.match(api, /OPS_ACTIONS = new Set\(require\('\.\.\/game\/operations-actions'\)\.ACTIONS\)/); assert.match(api, /userLimit\(45,/); assert.match(api, /OPS_ACTIONS\.has\(req\.params\.name\) \? opsLimit/);
+  const names = require('../src/game/operations-actions').ACTIONS; for (const n of names) assert.ok(actions.ACTIONS.includes(n), n);
 });

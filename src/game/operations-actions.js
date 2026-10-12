@@ -33,7 +33,7 @@ function install(A, fail, { yr, pay }) {
     if (lv >= 3) fail('Das ist bereits die höchste Stufe.');
     if (input.level != null && intOf(input.level) !== lv + 1) fail('Stufen werden nacheinander gebaut.');
     const year = yr(state); const nl = lv + 1;
-    if (!OPS.eraOk(key, nl, year)) fail(`${OPS.levelName(key, nl)} gibt es erst ab ${OPS.LV(key, nl).from}.`);
+    if (!OPS.eraOk(key, nl, year)) { const ln = OPS.levelName(key, nl); const from = OPS.LV(key, nl).from; fail(`${ln} gibt es erst ab ${from}.`); }
     if (key === 'lager' && !(require('./goods').activeRecipe(world, c.pkey, year, c.cityId).inputs || []).length) fail('Dieser Betrieb braucht keine Zutaten und lagert nichts ein.');
     const cost = OPS.upgradeCost(world, state, c, key, nl, year);
     if (state.money < cost) fail('Dafür reicht dein Geld nicht.');
@@ -42,10 +42,10 @@ function install(A, fail, { yr, pay }) {
     OPS.setLevel(c, key, nl);
     c.base += Math.round(cost / idx * 0.8); // Module steigern den Wert des Betriebs
     if (key === 'lager') OPS.ops(c).stock = OPS.lagerCap(c); // der Preis enthält die erste Befüllung
-    try { require('./contractors').order(state, user, world, c.cityId, cost, `Ausbau ${c.name}: ${OPS.levelName(key, nl)}`); } catch (_) { /* optional */ }
-    const nm = OPS.MOD(key).name;
-    chronicle(state, `${c.name}: ${nm} ausgebaut (${OPS.levelName(key, nl)}).`, 'business');
-    return { msg: `${nm} ausgebaut: ${OPS.levelName(key, nl)} (${money(world, state, cost)}).`, level: 'good' };
+    try { require('./contractors').order(state, user, world, c.cityId, cost, `Ausbau ${c.name}: ${OPS.levelName(key, nl)}`); /* Text: „Bauauftrag: Ausbau …“ */ } catch (_) { /* optional */ }
+    const nm = OPS.MOD(key).name; const ln = OPS.levelName(key, nl); const fm = money(world, state, cost);
+    chronicle(state, `${c.name}: ${nm} ausgebaut (${ln}).`, 'business');
+    return { msg: `${nm} ausgebaut: ${ln} (${fm}).`, level: 'good' };
   };
 
   A.opsRemove = ({ state, input }) => {
@@ -54,7 +54,7 @@ function install(A, fail, { yr, pay }) {
     if (!lv) fail('Dieses Modul ist nicht gebaut.');
     OPS.setLevel(c, key, 0);
     if (key === 'lager') OPS.ops(c).stock = 0;
-    return { msg: `${OPS.MOD(key).name} zurückgebaut. Eine Erstattung gibt es nicht.`, level: 'warn' };
+    const nm = OPS.MOD(key).name; return { msg: `${nm} zurückgebaut. Eine Erstattung gibt es nicht.`, level: 'warn' };
   };
 
   // Alter Schalter „Sicherheitsdienst“: bleibt als Kurzform für Schutz Stufe 1 bzw. ohne Schutz erhalten.
@@ -77,14 +77,15 @@ function install(A, fail, { yr, pay }) {
     const who = input.mid === 'all' ? mem : [member(c, input.mid)];
     const P = L().praise; const skill = OPS.leadSkill(state);
     const todo = who.filter((m) => left(state, m, 'praise') <= 0 && OPS.moodOf(m) < 95);
-    if (!todo.length) fail(who.length === 1 ? (OPS.moodOf(who[0]) >= 95 ? `${who[0].name} ist bestens gelaunt – ein Lob wäre jetzt verschwendet.` : `${who[0].name} wurde gerade erst gelobt.`) : 'Dein Team wurde gerade erst gelobt oder ist bestens gelaunt.');
+    if (!todo.length) { const nm = who[0].name; fail(who.length === 1 ? (OPS.moodOf(who[0]) >= 95 ? `${nm} ist bestens gelaunt – ein Lob wäre jetzt verschwendet.` : `${nm} wurde gerade erst gelobt.`) : 'Dein Team wurde gerade erst gelobt oder ist bestens gelaunt.'); }
     for (const m of todo) {
       const recent = m.pr && state.day - (m.pr.d || 0) <= 30 ? m.pr.n || 0 : 0;
       OPS.bump(m, P.gain * skill * Math.pow(P.fatigue, recent));
       m.pr = { d: state.day, n: recent + 1 };
       mcd(m).praise = state.day + P.cooldown;
     }
-    return { msg: todo.length === 1 ? `${todo[0].name} freut sich über dein Lob.` : 'Das Team freut sich über dein Lob.', level: 'good' };
+    const nm1 = todo[0].name;
+    return { msg: todo.length === 1 ? `${nm1} freut sich über dein Lob.` : 'Das Team freut sich über dein Lob.', level: 'good' };
   };
 
   A.bizBonus = ({ world, state, input }) => {
@@ -92,7 +93,7 @@ function install(A, fail, { yr, pay }) {
     if (!mem.length) fail('Es gibt niemanden, dem du eine Prämie zahlen könntest.');
     const who = input.mid === 'all' ? mem : [member(c, input.mid)];
     const B = L().bonus; const todo = who.filter((m) => left(state, m, 'bonus') <= 0);
-    if (!todo.length) fail(who.length === 1 ? `${who[0].name} hat erst vor kurzem eine Prämie bekommen.` : 'Dein Team hat erst vor kurzem eine Prämie bekommen.');
+    if (!todo.length) { const nm = who[0].name; fail(who.length === 1 ? `${nm} hat erst vor kurzem eine Prämie bekommen.` : 'Dein Team hat erst vor kurzem eine Prämie bekommen.'); }
     const cost = Math.round(OPS.wageDay(world, yr(state)) * B.costDays * todo.length);
     if (state.money < cost) fail('Für die Prämie reicht dein Geld nicht.');
     pay(state, cost);
@@ -102,39 +103,42 @@ function install(A, fail, { yr, pay }) {
       m.bn = { d: state.day, n: recent + 1 };
       mcd(m).bonus = state.day + B.cooldown;
     }
-    return { msg: todo.length === 1 ? `${todo[0].name} bekommt eine Prämie (${money(world, state, cost)}).` : `Das Team bekommt eine Prämie (${money(world, state, cost)}).`, level: 'good' };
+    const nm1 = todo[0].name; const fm = money(world, state, cost);
+    return { msg: todo.length === 1 ? `${nm1} bekommt eine Prämie (${fm}).` : `Das Team bekommt eine Prämie (${fm}).`, level: 'good' };
   };
 
   A.bizParty = ({ world, state, input }) => {
     on(); const c = company(state, input.id); active(c); const mem = team(world, state, c);
     if (!mem.length) fail('Ohne Mitarbeiter gibt es nichts zu feiern.');
     const Pa = L().party; const o = OPS.ops(c); o.cd = o.cd && typeof o.cd === 'object' ? o.cd : {};
-    if ((o.cd.party || 0) > state.day) fail(`Das letzte Betriebsfest ist noch nicht lange her (noch ${o.cd.party - state.day} Tage).`);
+    if ((o.cd.party || 0) > state.day) { const left = o.cd.party - state.day; fail(`Das letzte Betriebsfest ist noch nicht lange her (noch ${left} Tage).`); }
     const doy = dateOf(state.day, state.startYear).doy; const xmas = doy >= 334 || doy < 3;
     const cost = Math.round(OPS.wageDay(world, yr(state)) * (Pa.baseDays + Pa.costDays * mem.length));
     if (state.money < cost) fail('Für das Fest reicht dein Geld nicht.');
     pay(state, cost);
     for (const m of mem) OPS.bump(m, Pa.gain * (xmas ? Pa.christmas : 1));
     o.cd.party = state.day + Pa.cooldown;
-    return { msg: `${xmas ? 'Weihnachtsfeier' : 'Betriebsfest'} in ${c.name}: Die Stimmung steigt (${money(world, state, cost)}).`, level: 'good' };
+    const fm = money(world, state, cost); const cn = c.name;
+    return { msg: xmas ? `Weihnachtsfeier in ${cn}: Die Stimmung steigt (${fm}).` : `Betriebsfest in ${cn}: Die Stimmung steigt (${fm}).`, level: 'good' };
   };
 
   A.bizGift = ({ world, state, input }) => {
     on(); const c = company(state, input.id); active(c); team(world, state, c);
     const m = member(c, input.mid); const G = L().gift;
-    if (left(state, m, 'gift') > 0) fail(`${m.name} hat erst vor kurzem ein Geschenk bekommen.`);
+    if (left(state, m, 'gift') > 0) { const nm = m.name; fail(`${nm} hat erst vor kurzem ein Geschenk bekommen.`); }
     const cost = Math.round(OPS.wageDay(world, yr(state)) * G.costDays);
     if (state.money < cost) fail('Für das Geschenk reicht dein Geld nicht.');
     pay(state, cost);
     OPS.bump(m, G.gain);
     mcd(m).gift = state.day + G.cooldown;
-    return { msg: `${m.name} freut sich über das Geschenk (${money(world, state, cost)}).`, level: 'good' };
+    const nm = m.name; const fm = money(world, state, cost);
+    return { msg: `${nm} freut sich über das Geschenk (${fm}).`, level: 'good' };
   };
 
   A.bizWarn = ({ world, state, input }) => {
     on(); const c = company(state, input.id); active(c); const mem = team(world, state, c);
     const m = member(c, input.mid); const W = L().warn; const K = OPS.K();
-    if (left(state, m, 'warn') > 0) fail(`${m.name} hat bereits eine Abmahnung bekommen.`);
+    if (left(state, m, 'warn') > 0) { const nm = m.name; fail(`${nm} hat bereits eine Abmahnung bekommen.`); }
     mcd(m).warn = state.day + W.cooldown;
     m.mood = OPS.r2(Math.max(0, OPS.moodOf(m) - W.loss));
     for (const x of mem) if (x !== m) x.mood = OPS.r2(Math.max(0, OPS.moodOf(x) - W.others));
@@ -142,9 +146,9 @@ function install(A, fail, { yr, pay }) {
     o.fear = (Array.isArray(o.fear) ? o.fear.filter((u) => u > state.day) : []).concat(state.day + K.fearDays).slice(-3);
     o.push = { until: state.day + W.pushDays, pct: W.push };
     o.warns = (Array.isArray(o.warns) ? o.warns.filter((d) => state.day - d <= W.repeatDays) : []).concat(state.day).slice(-6);
-    let note = '';
-    if (o.warns.length >= 2) { require('./reputation').queue(state, 'scandal', null, 'staff_pressure', `c${c.id}`); note = ' Wer oft abmahnt, gilt als Chef, der Druck macht – das kostet Ansehen.'; }
-    return { msg: `${m.name} wurde abgemahnt. Kurzfristig steigt die Leistung, doch die Stimmung im Team sinkt.${note}`, level: 'warn' };
+    const nm = m.name;
+    if (o.warns.length >= 2) { require('./reputation').queue(state, 'scandal', null, 'staff_pressure', `c${c.id}`); return { msg: `${nm} wurde abgemahnt. Kurzfristig steigt die Leistung, doch die Stimmung im Team sinkt. Wer oft abmahnt, gilt als Chef, der Druck macht – das kostet Ansehen.`, level: 'warn' }; }
+    return { msg: `${nm} wurde abgemahnt. Kurzfristig steigt die Leistung, doch die Stimmung im Team sinkt.`, level: 'warn' };
   };
 }
 

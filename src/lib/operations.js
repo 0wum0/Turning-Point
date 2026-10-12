@@ -20,12 +20,12 @@ async function flush(conn, user, state, world) {
       await conn.query('INSERT INTO ops_log (user_id, company_id, city_id, kind, real_amount, insured, days, name) VALUES (?,?,?,?,?,?,?,?)',
         [user.id, Number(e.c) || 0, Number(e.city) || 0, String(e.k).slice(0, 12), Math.round(Number(e.real) || 0), e.ins ? 1 : 0, Math.round(Number(e.days) || 0), String(e.name || '').slice(0, 120)]);
       if (e.k === 'fire') {
-        const who = user.social_public ? e.name : 'Ein Betrieb';
-        await require('./tagesblatt').post('life', 'Betriebsbrand', `${who} in ${city(e.city)} ist abgebrannt. Die Feuerwehr war im Einsatz${e.ins ? '' : ' – eine Versicherung gab es nicht'}.`, e.city, conn);
+        const who = user.social_public ? e.name : 'Ein Betrieb'; const where = city(e.city);
+        await require('./tagesblatt').post('life', 'Betriebsbrand', e.ins ? `${who} in ${where} ist abgebrannt. Die Feuerwehr war im Einsatz.` : `${who} in ${where} ist abgebrannt. Die Feuerwehr war im Einsatz – eine Versicherung gab es nicht.`, e.city, conn);
       }
     } catch (err) { log.warn(`[betrieb] ${err.message}`); }
   }
-  if (conn.repAfter) conn.repAfter.push(() => live.publish('biz', {}, user.id)); else live.publish('biz', {}, user.id);
+  if (conn.repAfter) conn.repAfter.push(() => live.publish('business', {}, user.id)); else live.publish('business', {}, user.id);
 }
 
 /** Letzte Vorfälle für den Admin. */

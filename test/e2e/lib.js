@@ -126,7 +126,7 @@ async function createCharacter(pl, { first, last, city = 'Berlin', prof = 'baeck
   await page.locator('#next').click({ timeout: 30000 });
   await page.locator('#next').click({ timeout: 30000 });
   await page.waitForSelector('#page');
-  await page.waitForSelector('#hud .hud-id');
+  await page.waitForSelector('#hud .hud-id', { state: 'attached' });
   await dismissWelcome(pl);
 }
 
@@ -160,7 +160,7 @@ async function showAll(pl, on = true) {
 /** Seite neu laden und warten, bis das Spiel (Kopfzeile + Hauptfläche) fertig aufgebaut ist; ein evtl. Willkommensdialog wird geschlossen. */
 async function reloadGame(pl) {
   await pl.page.reload();
-  try { await pl.page.waitForSelector('#hud .hud-id'); } catch (e) { throw new Error(`${e.message}\nSeite nach dem Neuladen: ${(await pl.page.innerText('body').catch(() => '')).slice(0, 400)}`); }
+  try { await pl.page.waitForSelector('#hud .hud-id', { state: 'attached' }); } catch (e) { throw new Error(`${e.message}\nSeite nach dem Neuladen: ${(await pl.page.innerText('body').catch(() => '')).slice(0, 400)}`); }
   await pl.page.waitForFunction(() => document.getElementById('page') && !document.querySelector('#page .skel'));
   await dismissWelcome(pl);
 }
