@@ -201,7 +201,7 @@ A.maintain = ({ world, state, input, user }) => {
   const p = state.properties.find((x) => x.id === Number(input.propertyId));
   if (!p) fail('Immobilie nicht gefunden.');
   const v = propertyValue(world, state, p, yr(state));
-  const cost = Math.round(v * ((100 - p.condition) / 100) * 0.5);
+  const cost = Math.round(v * ((100 - p.condition) / 100) * 0.3);
   if (cost <= 0) fail('Die Immobilie ist in bestem Zustand.');
   if (state.money < cost) fail('Dir fehlt das Geld für die Instandhaltung.');
   pay(state, cost);
@@ -216,7 +216,7 @@ A.repair = ({ world, state, input, user }) => {
   if (!(left > 0)) fail('Hier ist nichts beschädigt.');
   if (left <= 10) fail('Die Instandsetzung ist ohnehin bald fertig.');
   const v = propertyValue(world, state, p, yr(state));
-  const cost = Math.round(v * Math.min(0.2, 0.04 + 0.0015 * left));
+  const cost = Math.round(v * Math.min(0.08, 0.015 + 0.0006 * left));
   if (state.money < cost) fail('Dir fehlt das Geld für die Reparatur.');
   pay(state, cost);
   p.closedUntil = state.day + 10; p.condition = Math.max(p.condition, 70);

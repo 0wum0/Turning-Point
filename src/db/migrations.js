@@ -1126,6 +1126,15 @@ const MIGRATIONS = [
     // der höchste Titel steht in Ranglisten, Profilen und Wahllisten hinter dem Namen
     'ALTER TABLE player_stats ADD COLUMN title VARCHAR(48) NULL',
   ] },
+  { id: '033_rarer_damage', up: [async (db) => {
+    // Schäden an Immobilien (Sturm, Feuer) mit der Spieluhr deutlich seltener und billiger: gespeicherte Werte nur nach unten begrenzen.
+    const r = await db.query("SELECT value FROM settings WHERE `key` = 'economy'"); if (!r.length) return;
+    let o = null; try { o = JSON.parse(r[0].value); } catch (_) { o = null; }
+    const t = o && o.events && o.events.town; if (!t) return;
+    const cap = { stormHitChance: 0.02, stormCostPct: 2, stormClosedDays: 7, fireHitChance: 0.005, fireCostPct: 10, fireClosedDays: 30 };
+    let ch = false; for (const k of Object.keys(cap)) if (typeof t[k] === 'number' && t[k] > cap[k]) { t[k] = cap[k]; ch = true; }
+    if (ch) await db.query("UPDATE settings SET value = ? WHERE `key` = 'economy'", [JSON.stringify(o)]);
+  }] },
 ];
 
 async function ensureTable(db) {

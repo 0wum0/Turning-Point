@@ -350,8 +350,9 @@ const DEFAULTS = {
     },
     upkeepYearPct: 1.2,
     // Wirtschaftsbalance: Unwetter und Brände trafen jede Immobilie ca. 5x bzw. 0,6x im Jahr (Schäden von >40 % des Werts jährlich);
-    // abgeschwächt auf ca. 1,1 Sturmschäden / 0,2 Brände je Immobilie und Jahr.
-    events: { ...EVENT_DEFAULTS, town: { ...EVENT_DEFAULTS.town, stormHitChance: 0.1, stormCostPct: 4, fireHitChance: 0.04 } },
+    // abgeschwächt auf ca. 1,1 Sturmschäden / 0,2 Brände je Immobilie und Jahr; mit der Spieluhr (1 Jahr pro Tag) nochmals deutlich seltener und billiger:
+    // ca. 0,25 Sturmschäden / 0,03 Brände je Immobilie und Jahr, Schäden 2 % bzw. 10 % des Werts.
+    events: { ...EVENT_DEFAULTS, town: { ...EVENT_DEFAULTS.town, stormHitChance: 0.02, stormCostPct: 2, stormClosedDays: 7, fireHitChance: 0.005, fireCostPct: 10, fireClosedDays: 30 } },
     insurance: {
       hausrat: { name: 'Hausratversicherung', perDay: 12, covers: ['burglary'] },
       gebaeude: { name: 'Gebäudeversicherung', yearPctOfValue: 0.3, covers: ['fire', 'storm'] },
