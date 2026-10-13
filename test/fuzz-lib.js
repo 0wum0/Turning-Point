@@ -321,7 +321,7 @@ function smartMoves(s, r, user) {
 
 /* ---------------- Lauf ---------------- */
 // Aktionen, die legitim Geld einbringen (Verkauf, Kredit, Glücksspiel, Trinkgeld, Gewinnentnahme)
-const MONEY_UP = new Set(['sell', 'bizSell', 'bizCollect', 'loanTake', 'lotto', 'casino', 'taskFinish']);
+const MONEY_UP = new Set(['sell', 'bizSell', 'bizCollect', 'loanTake', 'lotto', 'casino', 'taskFinish', 'chSell']);
 class Failure extends Error {}
 
 function runScenario(seed, steps = 300, opts = {}) {

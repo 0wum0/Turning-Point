@@ -37,7 +37,7 @@ test('Simulator: production place density, every module, interactions and revers
     assert.equal(await page.locator('#sim-world, #sim-window, .sim-workspace').count(), 0);
     await change('v2');
     const groups = [
-      ['overview', ['overview', 'housing', 'household', 'family', 'legacy']],
+      ['overview', ['overview', 'character', 'housing', 'household', 'family', 'legacy']],
       ['map', ['city', 'newspaper', 'map']],
       ['work', ['business', 'work', 'trade']],
       ['society', ['society', 'social']],
@@ -63,7 +63,7 @@ test('Simulator: production place density, every module, interactions and revers
         visited.push(id);
       }
     }
-    assert.deepEqual(visited.sort(), routes, 'all fourteen original routes are reachable through dock/tabs');
+    assert.deepEqual(visited.sort(), routes, 'all fifteen routes (including the character sheet) are reachable through dock/tabs');
     // Typed input and the actual original element survive both layout changes.
     await page.locator('[data-sim-group="map"]').click();
     await page.locator('[data-nav="city"]').click();
@@ -186,7 +186,7 @@ test('Simulator: production place density, every module, interactions and revers
     assert.equal(await page.locator('html').getAttribute('data-game-design'), 'v2');
     await change('classic');
     await page.waitForSelector('#page #germany');
-    assert.equal(await page.locator('#side [data-nav]').count(), 14);
+    assert.equal(await page.locator('#side [data-nav]').count(), 15);
     assert.equal(await page.locator('.shell').evaluate(e => getComputedStyle(e).display), 'grid');
     await change('v2');
     await page.waitForSelector('#sim-world .pickup');

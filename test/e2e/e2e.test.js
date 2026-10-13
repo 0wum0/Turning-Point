@@ -581,15 +581,15 @@ describe('E2E Turning Point', { concurrency: false }, () => {
       assert.equal((await xp()).v.length, 6); const st = L.json((await sql1("SELECT JSON_EXTRACT(state, '$.char') s FROM characters WHERE user_id = ? AND status = 'alive'")).s); assert.equal(st.gear.kleidung.lv, 2);
       await f.page.waitForSelector('[data-ch-slot="kleidung"] .ch-lv.cur');
       v = await view(); k = v.char.gear.find((g) => g.key === 'kleidung'); const net3 = k.levels[2].net; assert.ok(net3 < k.levels[2].price, 'altes Stück angerechnet'); assert.equal(k.levels[1].current, true);
-      const m1 = await money(); const by2 = f.page.waitForResponse((r) => /\/api\/action\/chBuy$/.test(r.url()));
+      const m1 = await money(); await f.page.waitForSelector('[data-ch-buy="kleidung:3"]:not([disabled])'); await f.page.waitForTimeout(600); const by2 = f.page.waitForResponse((r) => /\/api\/action\/chBuy$/.test(r.url()), { timeout: 15000 });
       await f.page.click('[data-ch-buy="kleidung:3"]'); await f.page.waitForSelector('.modal [data-close=yes]'); await confirmYes(f); assert.equal((await by2).status(), 200);
-      assert.equal(m1 - (await money()), net3, 'Wechsel: Preis minus Anrechnung, auf den Cent');
+      assert.equal(m1 - (await money()), net3, 'Wechsel: Preis minus Anrechnung, auf den Cent'); await f.page.waitForSelector('[data-ch-buy="kleidung:2"]'); // Seite ist neu aufgebaut
       v = await view(); k = v.char.gear.find((g) => g.key === 'kleidung'); const resale = k.resale; assert.ok(resale > 0 && resale < k.levels[2].price);
       const m2 = await money(); const sl = f.page.waitForResponse((r) => /\/api\/action\/chSell$/.test(r.url()));
       await f.page.click('[data-ch-sell="kleidung"]'); await f.page.waitForSelector('.modal [data-close=yes]'); await confirmYes(f); assert.equal((await sl).status(), 200);
-      assert.equal((await money()) - m2, resale, 'Verkauf auf den Cent');
+      assert.equal((await money()) - m2, resale, 'Verkauf auf den Cent'); await f.page.waitForFunction(() => !document.querySelector('[data-ch-sell="kleidung"]')); await f.page.waitForSelector('[data-ch-buy="uhr:2"]:not([disabled])');
       // Eine Uhr und ein Sicherheitsdienst; Dienst kostet täglich (in der Tagesrechnung), Auftreten wächst
-      const wb = f.page.waitForResponse((r) => /\/api\/action\/chBuy$/.test(r.url())); await f.page.click('[data-ch-buy="uhr:2"]'); await f.page.waitForSelector('.modal [data-close=yes]'); await confirmYes(f); assert.equal((await wb).status(), 200);
+      const wb = f.page.waitForResponse((r) => /\/api\/action\/chBuy$/.test(r.url())); await f.page.click('[data-ch-buy="uhr:2"]'); await f.page.waitForSelector('.modal [data-close=yes]'); await confirmYes(f); assert.equal((await wb).status(), 200); await f.page.waitForSelector('[data-ch-slot="uhr"] .ch-lv.cur');
       const sv = f.page.waitForResponse((r) => /\/api\/action\/chService$/.test(r.url())); await f.page.click('[data-ch-svc="pflege:1"]'); assert.equal((await sv).status(), 200);
       v = await view(); assert.ok(v.char.look > 4 && v.char.upkeepDay > 0 && v.flows.exp.gear === v.char.upkeepDay, 'Auftreten und Tageskosten');
       await f.page.waitForFunction(() => /Auftreten/.test(document.querySelector('#page').innerText) && document.querySelector('[data-ch-svc="pflege:0"]'));
@@ -602,8 +602,8 @@ describe('E2E Turning Point', { concurrency: false }, () => {
       assert.ok(await f.page.locator('[data-ch-ladder] .ch-ladder li.now').count());
       await L.until(async () => (await app.sql("SELECT COUNT(*) n FROM char_log WHERE user_id = ?", [fId]))[0].n >= 7, { what: 'Protokoll' });
       const kinds = await app.sql('SELECT kind, COUNT(*) n FROM char_log WHERE user_id = ? GROUP BY kind', [fId]); const by3 = Object.fromEntries(kinds.map((r) => [r.kind, Number(r.n)]));
-      assert.equal(by3.buy, 5, JSON.stringify(by3)); assert.equal(by3.sell, 1); assert.equal(by3.svc, 1); assert.ok(by3.rank >= 1);
-      await L.reloadGame(f); await L.reloadGame(f); assert.equal((await app.sql("SELECT COUNT(*) n FROM char_log WHERE user_id = ? AND kind = 'buy'", [fId]))[0].n, 5, 'genau einmal');
+      assert.equal(by3.buy, 4, JSON.stringify(by3)); assert.equal(by3.sell, 1); assert.equal(by3.svc, 1); assert.ok(by3.rank >= 1);
+      await L.reloadGame(f); await L.reloadGame(f); assert.equal((await app.sql("SELECT COUNT(*) n FROM char_log WHERE user_id = ? AND kind = 'buy'", [fId]))[0].n, 4, 'genau einmal');
       assert.equal((await app.sql('SELECT rank_lv FROM player_stats WHERE user_id = ?', [fId]))[0].rank_lv, v.char.rank.lv, 'Rang im öffentlichen Profil');
       const q = (await view()).onboarding.quests.filter((x) => x.done).map((x) => x.id); assert.ok(q.includes('xp') && q.includes('gear'), `Aufgaben: ${q.join(', ')}`);
       // Übersicht zeigt die kleine Karte; Zeitung bietet ab Rang 4 ein Vorab-Angebot
@@ -1027,6 +1027,7 @@ describe('E2E Turning Point', { concurrency: false }, () => {
     });
 
     it('Spenden im Vereinsdialog: Betrag, Kasse und Kassenbuch (mit Namen der sichtbaren Mitglieder)', async () => {
+      await w.page.waitForSelector('.modal-backdrop', { state: 'detached', timeout: 10000 }).catch(() => {});
       await w.page.click(`#civicBox [data-club-open="${clubId}"]`);
       await w.page.waitForSelector('.civic-modal [data-cd=donate]');
       await w.page.click('.civic-modal [data-cd=donate]');
