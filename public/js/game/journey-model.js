@@ -1,9 +1,9 @@
 /* Read-only progression derived from the server's real quests and recommendations. */
 const CHAPTERS = [
-  { id:'life', title:'Leben sichern', icon:'house', why:'Essen, Unterkunft und Lohn tragen deinen Alltag.', ids:['paper','food','shelter','job','wage','home','fridge7'], tab:'household' },
+  { id:'life', title:'Leben sichern', icon:'house', why:'Essen, Unterkunft und Lohn tragen deinen Alltag.', ids:['paper','food','shelter','job','wage','home','xp','fridge7'], tab:'household' },
   { id:'craft', title:'Betrieb aufbauen', icon:'hammer', why:'Beruf lernen, gründen, Mitarbeiter führen und Zutaten beschaffen.', ids:['skill2','business','hire','talent','module','lead','contract'], tab:'business' },
   { id:'trade', title:'Handel vernetzen', icon:'route', why:'Preise vergleichen, Rücklagen bilden und mit Lieferungen Geld verdienen.', ids:['prices','save','let','market','route'], tab:'trade' },
-  { id:'dynasty', title:'Familie & Einfluss', icon:'users', why:'Beziehungen, Ansehen und Ämter stärken das Vermächtnis deiner Familie.', ids:['friend','standing','vote','winter','court','club','give'], tab:'family' },
+  { id:'dynasty', title:'Familie & Einfluss', icon:'users', why:'Beziehungen, Ansehen und Ämter stärken das Vermächtnis deiner Familie.', ids:['friend','standing','gear','rank','vote','winter','court','club','give'], tab:'family' },
 ];
 const questAction = q => ({ id:q.id, title:q.title, why:q.why, icon:'flag', cta:{ kind:'go', label:'Zeig mir den nächsten Schritt', tab:q.tab, spot:q.spot } });
 export function journeyOf(view) {
