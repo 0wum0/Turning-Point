@@ -1,6 +1,7 @@
 import { html, raw, icon, money, infoBtn, api, on, toast, num, esc, mount, modal } from '../ui.js';
 import { project, VIEW, outlinePath } from '../germany.js';
 import { isV2 } from '../design.js';
+import { visitCity } from '../city-context.js';
 import { layoutMarkers } from '../map-layout.js';
 import { operationsPanel, cityAssets, routePanel, routeDrawing, animateFreight } from '../map-operations.js';
 import { GEOGRAPHY } from '../map-geography.js';
@@ -225,7 +226,7 @@ export default {
               ${(v.money < quote.money || ctx.coins < quote.coins) ? html`<div class="small neg">${v.money < quote.money ? 'Es fehlt Geld. ' : ''}${ctx.coins < quote.coins ? 'Es fehlen Coins (du hast ' + ctx.coins + ').' : ''}</div>` : ''}
             </div>` : html`<p class="dim small" role="status">Umzugskosten konnten nicht geladen werden.</p><button class="btn block" data-move-retry>Erneut versuchen</button>`}</div>`);
       panel.querySelector('[data-portfolio]')?.addEventListener('click', showPortfolio);
-      panel.querySelector('#enterCity').onclick = () => { ctx.ui.cityId = id; ctx.ui.cityBox = null; ctx.go('city'); };
+      panel.querySelector('#enterCity').onclick = () => visitCity(ctx, id, simulator);
       panel.querySelector('[data-move-retry]')?.addEventListener('click', () => showCity(id));
       const mv = panel.querySelector('#doMove');
       if (mv) mv.onclick = async () => { const ok = await ctx.confirm({ title: `Nach ${c.name} ziehen?`, text: 'Kosten werden sofort abgebucht. Du verlierst deine Stelle und eine gemietete Wohnung.', ok: 'Umziehen' }); if (ok) { ctx.ui.mapCity = null; await ctx.act('move', { cityId: id }); } };
@@ -257,12 +258,12 @@ export default {
     on(svg, 'keydown', '[data-map-route]', (e, b) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showRoute(b.dataset.mapRoute); } });
     function pickMarker(index) {
       const p = clusters[index]; if (!p) return;
-      if (p.members.length === 1) { showCity(p.c.id); return; }
+      if (p.members.length === 1) { visitCity(ctx, p.c.id, simulator); return; }
       const m = modal(html`<h3>${p.members.length} Orte bei ${p.c.label}</h3><p class="dim small">Wähle einen Ort oder vergrößere diesen Kartenausschnitt.</p><button class="btn primary mb" data-cluster-zoom>${icon('plus')} Ausschnitt vergrößern</button><div class="sim-cluster-list">${p.members.map(({ c }) => html`<button class="btn" data-cluster-city="${c.id}"><span>${c.label}</span><small>${own.has(c.id) ? 'Eigener Besitz' : c.state}</small></button>`)}</div>`);
       m.el.querySelector('[data-cluster-zoom]').onclick = () => { m.close(); zoomAt(.5, p.xy[0], p.xy[1]); };
       m.el.querySelectorAll('[data-cluster-city]').forEach((b) => { b.onclick = () => { m.close(); focusCity(ctx.world.cityById.get(Number(b.dataset.clusterCity))); }; });
     }
-    on(svg, 'click', '[data-marker]', (e, t) => { if (!dragged) pickMarker(Number(t.dataset.marker)); });
+    on(svg, 'click', '[data-marker]', (e, t) => { if (dragged) return; const label = e.target.closest('[data-label-city]'); if (label) visitCity(ctx, Number(label.dataset.labelCity), true); else pickMarker(Number(t.dataset.marker)); });
     on(svg, 'keydown', '[data-marker]', (e, t) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pickMarker(Number(t.dataset.marker)); } });
     on(svg, 'click', '.city' , (e, t) => { if (dragged) return; showCity(Number(t.dataset.id)); });
     on(svg, 'dblclick', '.city', (e, t) => { ctx.ui.cityId = Number(t.dataset.id); ctx.ui.cityBox = null; ctx.go('city'); });
@@ -276,7 +277,7 @@ export default {
       } catch (_) { /* Toast kommt aus act */ }
     });
     on(svg, 'keydown', '.pickup', (e, t) => { if (e.key === 'Enter') t.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
-    function focusCity(c) { const xy = project(c.lon, c.lat); box.w = simulator ? VIEW.w / 3 : full.w / 4; box.h = box.w * (full.h / full.w); box.x = xy[0] - box.w / 2; box.y = xy[1] - box.h / 2; clampBox(); apply(); showCity(c.id); }
+    function focusCity(c) { const xy = project(c.lon, c.lat); box.w = simulator ? VIEW.w / 3 : full.w / 4; box.h = box.w * (full.h / full.w); box.x = xy[0] - box.w / 2; box.y = xy[1] - box.h / 2; clampBox(); apply(); if (simulator) { ctx.ui.mapCity = c.id; ctx.ui.mapPanelCollapsed = false; visitCity(ctx, c.id, true); } else showCity(c.id); }
     bindPlaceSearch(root.querySelector('#mapq'), root.querySelector('#mapres'), ctx, { year, onPick: focusCity });
     const initialCollapsed = ctx.ui.mapPanelCollapsed ?? (matchMedia('(max-width:650px)').matches && !ctx.ui.mapCity);
     clampBox(); apply();

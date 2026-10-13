@@ -154,3 +154,22 @@ Die 3D-Stadt (Stadt → „3D-Stadt“) ist vollständig prozedural (keine Bild-
 Playwright lokal installieren oder `TP_PLAYWRIGHT_PATH` angeben; optional
 `TP_CHROMIUM_PATH` für vorhandenes Chromium. Die UI-Fixture arbeitet ohne
 Produktivkonten und ersetzt keinen Test mit einer echten Mehrspieler-Datenbank.
+
+### Durchgängiger Stadteinstieg und Lebensweg
+
+- Ortsnamen, einzelne Ortsmarker, Suchtreffer und Orte aus einer Markergruppe öffnen in V2 direkt die 3D-Stadt. Eine Zahl auf einem Gruppenmarker öffnet weiterhin die Ortsauswahl. Die 2D-Karte bleibt wählbar; bei fehlendem WebGL greift der bestehende Rückfall auf 2D.
+- Der besuchte Ort und der Wohnort sind getrennt. Die Zeitung übernimmt den besuchten Ort, auch beim Öffnen aus einem Gebäude. „Zurück zu meinem Wohnort“ wählt ausdrücklich die Heimat-Ausgabe. Ein Stadtrundgang löst keinen Umzug und keine Zahlung aus.
+- Der Stadtbegleiter zeigt die nächste Empfehlung des Servers; dringende Probleme wie Essen, Unterkunft, Gesundheit oder fehlende Zutaten haben Vorrang. Auf dem Handy steht eine kompakte Verknüpfung über der Stadt. Der aufklappbare Lebensweg verbindet die vorhandenen Aufgaben in vier Bereiche: Leben sichern, Betrieb aufbauen, Handel vernetzen, Familie & Einfluss.
+- Ziele öffnen die bestehenden Spielaktionen und ihre passenden Reiter. Persönliche Stellen-/Wohnungssuche führt zur Zeitung des Wohnorts. Beim Verlassen des eigenen Betriebs öffnet dessen Verwaltungsaktion gezielt diesen Betrieb.
+- Fortschritt, Belohnungen, Berufsvoraussetzungen, Produktion, Lieferungen und Erbschaft verwenden weiterhin die vorhandene Serverlogik. Die neue Führung vergibt keine eigenen Belohnungen und simuliert keinen zweiten Spielstand. Sie ist eine Verbindung der Turning-Point-Systeme, keine vollständige Nachbildung aller Gilde-Mechaniken.
+
+Prüfung: `test/city-journey.test.js` und `test/e2e/design-city-flow.test.js` decken Ortswechsel ohne Umzug, lokale Zeitungsausgaben, den Weg zurück, echte Angebotsreiter und abgeleiteten Fortschritt ab. Die bestehenden Design-/Innenraumtests prüfen weiterhin Aktionen, 2D/3D-Wechsel und Classic.
+
+### Betriebsalltag in der Stadt (Gilde-Referenz)
+
+- Ein eigener Betrieb zeigt schon bei der Gebäudeauswahl seinen Zustand. Im Innenraum erklären Zutaten, Auslastung und Tagesgewinn den Warenkreislauf; Details zu Rezept, Erzeugnissen, Team und Firmenkasse bleiben zunächst eingeklappt. Die Verwaltung öffnet genau den ausgewählten Betrieb.
+- Die Darstellung liest die bestehenden Serverwerte einschließlich der wirksamen Lagerversorgung, nicht nur den ungepufferten Einkauf. Brand, Produktionsausfall, Streik und Stilllegung haben Vorrang. Der Presenter ergänzt dafür nur Streikdauer, Spielerpersonal und Betriebsleitung; Produktionsrechnung, Guthaben und Balance ändern sich nicht.
+- V2-Mitarbeiter stehen an Arbeitsplätzen und bewegen ihre Arme; Bäckerei, Tischlerei und Schmiede erhalten passende Werkstücke. Höchstens acht Mitarbeiterfiguren repräsentieren das reale Team. Der Eigentümer arbeitet sichtbar nur mit, wenn er diesem Betrieb zugeteilt ist. Arbeitsbewegung und Kundschaft stoppen bei Stillständen; nach Spielaktionen wird der Zustand im offenen Raum aktualisiert. Reduzierte Bewegung bleibt respektiert. Die Bewegung ist eine Darstellung der Produktion und erzeugt keine zusätzlichen Waren.
+- Prüfung: `test/business-life.test.js` prüft echte Presenter-Zustände, Streik, Ausfall und Lagerdeckung. `test/e2e/design-business-life.test.js` prüft reale WebGL-Posen, Stillstand nach Serverantwort, reduzierte Bewegung, Firmenauswahl und Handy-Layout.
+
+Weiter offen laut `ROADMAP-GILDE.md`: frei steuerbare Familienfiguren, erweitertes Werben, Ausstattung/EP und die zusätzlichen Amts-/Gerichtsrollen. Dieser Ausbau schließt diese Roadmap-Schritte nicht ab.

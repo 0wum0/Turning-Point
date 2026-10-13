@@ -120,6 +120,8 @@ test('Simulator: production place density, every module, interactions and revers
     await page.locator('[data-ops-back]').click();
     await page.locator('[data-ops-tab="sites"]').click();
     await page.locator(`[data-location="${view.properties[0].cityId}"]`).click();
+    await page.waitForSelector('#city3dHost canvas');
+    await page.locator('#page [data-go="map"]').click();
     await page.locator('[data-sim-open="housing"]').first().click();
     await page.waitForSelector('.property.sim-entity-focus');
     assert.equal(await page.locator('.sim-workspace-content > .sim-section:visible').count(), 1);
@@ -140,8 +142,10 @@ test('Simulator: production place density, every module, interactions and revers
     // Search still reaches small places even when their overview markers are grouped.
     await page.locator('#mapq').fill('Mulfingen');
     await page.locator('#mapres [data-pick]').first().click();
-    await page.waitForSelector('#enterCity');
-    await page.waitForFunction(() => document.querySelector('#mapPanel h3')?.textContent.includes('Mulfingen'));
+    await page.waitForSelector('#city3dHost canvas');
+    await page.waitForFunction(() => document.querySelector('#page .panel-head h2')?.textContent.includes('Mulfingen'));
+    await page.locator('#page [data-go="map"]').click();
+    await page.waitForFunction(() => document.querySelector('#mapPanel')?.textContent.includes('Mulfingen'));
     assert.match(await page.locator('#mapPanel').innerText(), /Mulfingen/);
     const zoom = await page.locator('#germany').getAttribute('viewBox');
     await page.locator('#zin').click();

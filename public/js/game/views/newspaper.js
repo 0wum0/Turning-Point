@@ -1,3 +1,5 @@
+import { newspaperCity, visitCity } from '../city-context.js';
+import { isV2 } from '../design.js';
 import { bindPlaceSearch } from '../places.js';
 import { html, icon, money, infoBtn, bar, on, api, num, yearsText, modal } from '../ui.js';
 import { paginate } from '../paginate.js';
@@ -97,7 +99,7 @@ function partnerCard(p, v, here) {
 export default {
   id: 'newspaper', label: 'Zeitung', icon: 'newspaper',
   async load(ctx) {
-    const cityId = ctx.ui.newsCity || ctx.view.city.id;
+    const cityId = newspaperCity(ctx, isV2());
     const r = await api('GET', `/api/newspaper?cityId=${cityId}`);
     return r;
   },
@@ -124,7 +126,7 @@ export default {
         <div class="row mt"><button class="btn sm ghost" data-act="tutorial" data-on="${e.tutorial.length ? '0' : '1'}">${e.tutorial.length ? 'Ratgeber ausblenden' : 'Ratgeber wieder einblenden'}</button></div>`,
     }[tab]();
     return html`
-    <div class="panel-head"><div><h2>${web ? 'Das Netz' : 'Die Zeitung'}</h2><p>${web ? 'Jobs, Immobilien, Kontakte und Nachrichten – seit 2002 online.' : 'Stellen, Wohnungen, Kontakte und Neuigkeiten aus deiner Stadt.'}</p></div>
+    <div class="panel-head"><div>${isV2() ? html`<button class="btn sm ghost" data-news-city>${icon('building-2')} Zur Stadt ${e.city.name}</button>` : ''}<h2>${web ? 'Das Netz' : 'Die Zeitung'}</h2><p>${web ? 'Jobs, Immobilien, Kontakte und Nachrichten – seit 2002 online.' : 'Stellen, Wohnungen, Kontakte und Neuigkeiten aus deiner Stadt.'}</p></div>
       <div class="field mb0 pl-wrap" style="min-width:min(300px,100%)"><label class="sr" for="nCity">Stadt</label><input id="nCity" type="search" placeholder="${e.city.label || e.city.name}${e.city.id === v.city.id ? ' (dein Wohnort)' : ''} – anderen Ort lesen …" autocomplete="off"><div class="pl-res" id="nCityRes"></div>${e.city.id !== v.city.id ? html`<button class="btn sm ghost mt" id="nHome">${icon('map-pin')} Zurück zu meinem Wohnort</button>` : ''}</div></div>
     ${!here ? html`<div class="alert info">${icon('info')}<div>Du liest die Ausgabe aus <b>${e.city.name}</b>. Um dort zu arbeiten oder zu wohnen, musst du erst umziehen (Karte).</div></div>` : ''}
     <section class="paper ${web ? 'web' : ''}">
@@ -135,6 +137,7 @@ export default {
     </section>`;
   },
   bind(root, ctx, data) {
+    root.querySelector('[data-news-city]')?.addEventListener('click', () => visitCity(ctx, data.edition.city.id, true));
     if (root.querySelector('#econBox')) bindEcon(root, ctx, data.edition.city.id);
     on(root, 'click', '[data-gosoc]', (ev, t) => { ctx.ui.soc = ctx.ui.soc || {}; ctx.ui.soc.tab = t.dataset.gosoc; ctx.go('social'); });
     on(root, 'click', '[data-profile]', (ev, t) => { ev.preventDefault(); openProfile(ctx, Number(t.dataset.profile)); });
@@ -142,7 +145,7 @@ export default {
     on(root, 'click', '[data-go-found]', () => { ctx.ui.openFound = true; ctx.go('business'); });
     on(root, 'click', '[data-tab]', (e, t) => { ctx.ui.newsTab = t.dataset.tab; ctx.rerender(); });
     bindPlaceSearch(root.querySelector('#nCity'), root.querySelector('#nCityRes'), ctx, { year: ctx.view.date.year, onPick: (c) => { ctx.ui.newsCity = c.id; ctx.rerender(); } });
-    const nh = root.querySelector('#nHome'); if (nh) nh.onclick = () => { ctx.ui.newsCity = null; ctx.rerender(); };
+    const nh = root.querySelector('#nHome'); if (nh) nh.onclick = () => { ctx.ui.newsCity = ctx.view.city.id; ctx.rerender(); };
     on(root, 'click', '[data-act]', async (e, t) => {
       const name = t.dataset.act;
       const input = name === 'tutorial' ? { on: t.dataset.on === '1' } : { listingId: t.dataset.id };

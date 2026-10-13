@@ -1,4 +1,7 @@
 import { html, raw, icon, infoBtn, api, on, mount, toast, esc } from '../ui.js';
+import { cityJourney, cityJourneyShortcut, bindCityJourney } from '../city-journey.js';
+import { rememberCity } from '../city-context.js';
+import { businessLife } from '../business-life.js';
 import { isV2 } from '../design.js';
 import { createCityCamera } from '../city-camera.js';
 import { buildAerial } from '../aerial.js';
@@ -21,14 +24,15 @@ export default {
     const row = (b) => html`<button class="bl-item ${b.own ? 'own' : ''}" data-focus="${b.key}"><span class="bl-ic">${icon(b.icon || 'landmark')}</span><span class="grow">${b.name}</span>${b.tasks.some((t) => t.ready) ? html`<i class="rdy" title="Aufgabe verfügbar"></i>` : ''}</button>`;
     return html`
     <div class="panel-head"><div><h2>${c.name}</h2><p>${c.state} · Luftansicht – ziehen zum Verschieben, Mausrad zum Zoomen, Gebäude auswählen und die Stadt entdecken.</p></div>
-      <div class="row">${data.here ? html`<span class="chip good">${icon('map-pin')} Hier wohnst du</span>` : html`<span class="chip warn">${icon('eye')} Du bist nicht vor Ort</span>`}<button class="btn sm" data-go="map">${icon('map')} Zur Karte</button>
+      <div class="row">${data.here ? html`<span class="chip good">${icon('map-pin')} Hier wohnst du</span>` : html`<span class="chip warn">${icon('eye')} Du bist nicht vor Ort</span>`}<button class="btn sm sim-city-only" data-city-paper>${icon('newspaper')} Zeitung aus ${c.name}</button><button class="btn sm" data-go="map">${icon('map')} Zur Karte</button>
       ${infoBtn(['Das ist deine Stadt aus der Vogelperspektive. Öffentliche Orte wie Rathaus, Markthalle oder Bahnhof sind immer da – dazu alles, was dir selbst gehört.', 'In jedem Gebäude findest du Aufgaben und Möglichkeiten. Aufgaben bringen zusätzliche EFS und kleine Vorteile. Interaktionen sind nur in der Stadt möglich, in der du wohnst.', 'Klicke ein Gebäude an, schau dich um (ziehen zum Drehen) und klicke auf leuchtende Dinge.'], 'Stadtansicht')}</div></div>
-    ${data.here ? '' : html`<div class="alert info">${icon('info')}<div>Du siehst ${c.name} nur von oben. Aufgaben und Einkäufe sind nur in deinem Wohnort möglich – ziehe dafür um (Karte).</div></div>`}
+    ${data.here ? '' : html`<div class="alert info">${icon('info')}<div>Du erkundest ${c.name}. Dein Wohnort bleibt ${v.city.name}. Aufgaben und Einkäufe sind dort möglich; umziehen kannst du über die Karte.</div></div>`}
+    ${cityJourneyShortcut(ctx, data)}
     <div class="city-layout">
       <section class="card aerial-card"><div class="map-tools"><button class="btn sm" id="azin" aria-label="Vergrößern">${icon('plus')}</button><button class="btn sm" id="azout" aria-label="Verkleinern">${icon('minus')}</button><button class="btn sm" id="azreset" aria-label="Zentrieren">${icon('refresh-cw')}</button><button class="btn sm sim-city-only" id="azfull" aria-pressed="false" aria-label="Vollbild" title="Vollbild">${icon('maximize')}</button></div>
         <div class="sim-city-only city-view-mode" role="group" aria-label="Stadtdarstellung"><button data-city-view="2d" aria-pressed="true">2D-Karte</button><button data-city-view="3d" aria-pressed="false">3D-Stadt</button></div><div id="city3dHost" hidden></div><div id="citySceneStatus" role="status" hidden></div><div id="aerialHost">${raw(a.svg)}</div>
         <div class="aerial-hint small dim">${icon('hand-coins')} Goldene Umrandung = dein Besitz</div></section>
-      <aside class="card bl-panel">
+      <aside class="card bl-panel">${cityJourney(ctx, data)}
         <div class="sim-city-only city-catalog-head"><span class="city-eyebrow">DEINE STADT</span><h3>Orte entdecken</h3><label class="sr" for="citySearch">Gebäude suchen</label><input id="citySearch" type="search" placeholder="Gebäude suchen …" autocomplete="off"></div>
         <div class="sim-city-only" id="citySelection" aria-live="polite"></div>
         <p class="sim-city-only city-no-results" hidden>Kein Gebäude gefunden.</p>
@@ -42,6 +46,7 @@ export default {
   },
   bind(root, ctx, data) {
     data.visualHour = ctx.ui._aerial.hour; ctx.ui.cityData = data;
+    if (isV2()) rememberCity(ctx, data.city.id);
     let scene3d=null, sceneVersion=0, disposed=false;
     const svg = root.querySelector('svg.aerial'); const spots = ctx.ui._aerial.spots;
     const saved = ctx.ui.cityBox?.id === data.city.id ? ctx.ui.cityBox.box : null;
@@ -86,14 +91,20 @@ export default {
       svg.querySelectorAll('.bld').forEach(el => el.classList.toggle('sel', el.dataset.key === key));
       root.querySelectorAll('[data-focus]').forEach(el => el.setAttribute('aria-pressed', String(el.dataset.focus === key)));
       const ready = b.tasks.filter(t => t.ready && !t.blocked).length;
+      const life = b.type === 'biz' ? businessLife(ctx.view.companies.find(c => c.id === b.ref)) : null;
       mount(root.querySelector('#citySelection'), html`<div class="city-selection-icon">${icon(b.icon || 'landmark')}</div><span class="city-eyebrow">${b.own ? 'DEIN BESITZ' : 'ÖFFENTLICHER ORT'}</span><h3>${b.name}</h3><p>${!data.here ? 'Du besuchst diese Stadt. Aktionen sind an deinem Wohnort verfügbar.' : ready ? `${ready} Aufgaben für dich bereit` : 'Entdecke die Möglichkeiten in diesem Gebäude.'}</p><button class="btn primary" id="cityEnter">${icon('arrow-right')} Gebäude betreten</button>`);
       root.querySelector('#cityEnter').onclick = () => enter(key);
+      if (life) {
+        const summary = document.createElement('p'); summary.className = `city-business-status ${life.tone}`;
+        summary.textContent = `${life.status} · ${life.why}`;
+        root.querySelector('#cityEnter').before(summary);
+      }
       root.querySelector('.bl-panel').scrollTop = 0;
       if (matchMedia('(max-width:650px) and (orientation:portrait)').matches) root.querySelector('#citySelection').scrollIntoView({ block:'nearest', behavior:media.matches || document.documentElement.dataset.motion === 'off' ? 'instant' : 'smooth' });
     };
-    const switchScene = async (mode) => {
+    const switchScene = async (mode, remember = true) => {
       const version=++sceneVersion, host=root.querySelector('#city3dHost'), status=root.querySelector('#citySceneStatus');
-      scene3d?.dispose();scene3d=null;ctx.ui.cityScene=mode;
+      scene3d?.dispose();scene3d=null;if(remember)ctx.ui.cityScene=mode;
       const three=mode==='3d' && isV2(); host.hidden=!three;root.querySelector('#aerialHost').hidden=three;
       root.querySelector('.aerial-card').dataset.scene=three?'3d':'2d';
       root.querySelector('.panel-head p').textContent = `${data.city.state} · ${three ? '3D-Stadt – ziehen zum Drehen, Mausrad zum Zoomen, Gebäude oder Marker auswählen.' : 'Luftansicht – ziehen zum Verschieben, Mausrad zum Zoomen, Gebäude auswählen und die Stadt entdecken.'}`;
@@ -109,8 +120,8 @@ export default {
       } catch(e) { if(disposed || version!==sceneVersion)return; await switchScene('2d');status.textContent=e.message;status.hidden=false; }
     };
     root.querySelectorAll('[data-city-view]').forEach(el=>{el.onclick=()=>switchScene(el.dataset.cityView);});
-    const designObserver=new MutationObserver(()=>{if(!isV2())switchScene('2d');});designObserver.observe(document.documentElement,{attributes:true,attributeFilter:['data-game-design']});
-    if(isV2() && ctx.ui.cityScene==='3d')switchScene('3d');
+    const designObserver=new MutationObserver(()=>{if(isV2()){rememberCity(ctx,data.city.id);switchScene(ctx.ui.cityScene ?? '3d');}else switchScene('2d',false);});designObserver.observe(document.documentElement,{attributes:true,attributeFilter:['data-game-design']});
+    if(isV2() && ctx.ui.cityScene !== '2d')switchScene('3d');
     if(isV2() && data.buildings.some(b=>b.key===ctx.ui.cityBuilding)) select(ctx.ui.cityBuilding);
     root.querySelector('#citySearch').oninput = e => {
       const q = e.target.value.trim().toLocaleLowerCase('de'); let count = 0;
@@ -120,8 +131,10 @@ export default {
     on(svg, 'click', '.bld', (e, t) => { if (!camera.dragged) select(t.dataset.key); });
     on(svg, 'keydown', '.bld', (e, t) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(t.dataset.key); } });
     on(root, 'click', '[data-focus]', (e, t) => { const s = spots[t.dataset.focus]; if (s) centerOn(s.x, s.y, 2.4); select(t.dataset.focus); });
+    bindCityJourney(root, ctx);
     bindEcon(root, ctx, data.city.id);
     bindDirectory(root, ctx, data.city.id);
+    root.querySelector('[data-city-paper]').onclick = () => { ctx.ui.newsCity = data.city.id; ctx.ui.newsTab = 'news'; ctx.go('newspaper'); };
     on(root, 'click', '[data-go]', (e, t) => ctx.go(t.dataset.go));
     on(root, 'click', '[data-plaza]', () => { ctx.ui.soc = ctx.ui.soc || {}; ctx.ui.soc.tab = 'plaza'; ctx.go('social'); });
   },

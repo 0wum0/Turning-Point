@@ -1,6 +1,7 @@
 # Roadmap „Die Gilde“ – Bauschritte 9 bis 15
 
 Stand: Analyse des Codes nach Schritt 8 (Gesellschaft); **Schritt 9 (Betrieb 2.0) ist umgesetzt** (siehe Abschnitt „Schritt 9“ und README). Die Schritte 10 bis 15 sind weiter reine Planung.
+Ergänzung Design V2: Ein Teil der Darstellung aus Schritt 15 ist vorgezogen: serverabhängige Arbeitsanimationen und Betriebsübersicht, direkter 3D-Stadteinstieg, lokaler Zeitungskontext und geführter Lebensweg. Siehe `DESIGN-V2.md`; Figurensteuerung und die übrigen Mechaniken der Schritte 10–15 bleiben offen.
 Die Schritte 0 bis 8 sind fertig (Warenkreislauf, Stadtwirtschaft, Ruf, Recht & Gericht, Talente, Jahreszeiten, Handel & Transport, Gesellschaft, dazu Einsteiger-Erlebnis, Börse, Wahlen/Karriere, Design V2). Dieses Dokument legt fest, was von den Mechaniken des Spiels „Die Gilde“ (2002) schon im Spiel steckt, was fehlt und wie die Lücken **realistisch in unserer Welt** (Deutschland ab 1945, keine Fantasy) geschlossen werden. Der ältere Konzeptstand steht in `docs/ROADMAP.md`, Design V2 in `docs/DESIGN-V2.md`, die Feature-Beschreibungen im `README.md`.
 
 ---

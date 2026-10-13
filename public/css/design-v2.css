@@ -641,3 +641,35 @@
 }
 /* Hochformat: Panorama so verschieben, dass der Kirchturm im Bild bleibt. */
 @media (max-aspect-ratio:1/1) { :root[data-game-design="v2"] body.game .sim-splash { background-position:0 0,31% 65%,0 0; } }
+
+/* City goals explain one useful action; the full life path stays optional. */
+:root[data-game-design="v2"] body.game .city-journey { padding:18px; margin:0 0 20px; background:linear-gradient(140deg,#234339,#1d3030); border:1px solid #7cd4ab68; border-radius:12px; }
+:root[data-game-design="v2"] body.game .city-journey h3 { margin:8px 0; font-size:19px; line-height:1.3; color:#f0f8f3; }
+:root[data-game-design="v2"] body.game .city-journey p { margin:8px 0 14px; font-size:14px; line-height:1.55; color:#c4d6ce; }
+:root[data-game-design="v2"] body.game .city-life-path { margin-top:16px; border-top:1px solid #ffffff24; padding-top:12px; }
+:root[data-game-design="v2"] body.game .city-life-path summary { display:flex; gap:8px; align-items:center; min-height:36px; font-size:14px; color:#b5f0d3; }
+:root[data-game-design="v2"] body.game .city-life-path summary span { margin-left:auto; white-space:nowrap; }
+:root[data-game-design="v2"] body.game .city-life-path ol { list-style:none; padding:0; margin:0; display:grid; gap:14px; }
+:root[data-game-design="v2"] body.game .city-life-path li { border-top:1px solid #ffffff18; padding-top:12px; }
+:root[data-game-design="v2"] body.game .city-life-path li > div { display:flex; gap:10px; justify-content:space-between; font-size:14px; }
+:root[data-game-design="v2"] body.game .city-life-path li > div > span { white-space:nowrap; color:#a9bbaf; }
+:root[data-game-design="v2"] body.game .city-life-path li .btn { width:100%; text-align:left; justify-content:flex-start; }
+
+:root[data-game-design="v2"] body.game .city-goal-shortcut { display:none; }
+@media(max-width:650px) and (orientation:portrait) {
+ :root[data-game-design="v2"] body.game .city-goal-shortcut { display:grid; grid-template-columns:minmax(0,1fr) 22px; flex:none; gap:4px 12px; width:100%; padding:12px 14px; border:1px solid #8bd1b06b; border-radius:10px; background:#25483b; color:#eff8f1; text-align:left; font:600 14px var(--font-ui); cursor:pointer; }
+ :root[data-game-design="v2"] body.game .city-goal-shortcut span { color:#aadfc3; font-size:11px; text-transform:uppercase; letter-spacing:.06em; }
+ :root[data-game-design="v2"] body.game .city-goal-shortcut b { grid-column:1; }
+ :root[data-game-design="v2"] body.game .city-goal-shortcut > svg { grid-column:2; grid-row:1/3; align-self:center; }
+}
+.sim-interior .int-business { color:#edf4ee; text-align:left; }
+.sim-interior .int-business h2 { display:flex; align-items:center; gap:.5rem; margin:.5rem 0; font-size:1.15rem; line-height:1.35; }
+.sim-interior .int-business p { margin:.6rem 0; color:#c8d8cf; font-size:.875rem; line-height:1.55; }
+.sim-interior .business-cycle { list-style:none; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.4rem; padding:0; margin:1rem 0; }
+.sim-interior .business-cycle li { min-width:0; padding:.65rem .45rem; border:1px solid #587269; border-radius:9px; background:#1b302c; }
+.sim-interior .business-cycle span { display:block; font-size:.7rem; color:#bacfc4; margin-bottom:.4rem; }
+.sim-interior .business-cycle b { display:block; font-size:.8rem; overflow-wrap:anywhere; }
+.sim-interior .business-ledger { border-block:1px solid #52685e; margin:.8rem 0; padding:.7rem 0; font-size:.85rem; line-height:1.5; }
+.sim-interior .business-ledger summary { cursor:pointer; color:#e1eadf; }
+.sim-interior .business-ledger ul { padding-left:1.2rem; margin:.4rem 0 .8rem; }
+html[data-game-design="v2"] .city-business-status { border-left:3px solid #82d1a5; padding:.65rem .8rem; background:#20352e; color:#dbeadc; line-height:1.5; }

@@ -8,6 +8,7 @@ const PAL = {
 };
 import { makeTextures } from './textures.js';
 import { signTexture } from './signs.js';
+import { businessLife } from './business-life.js';
 const hex = (n) => `#${n.toString(16).padStart(6, '0')}`;
 
 /** Aktionsleiste im Raum: [Gegenstand-ID, Verb, Symbol, optionaler Filter auf die echten Aktionen]. Ruft ausschließlich vorhandene Spielaktionen auf. */
@@ -101,7 +102,7 @@ export function buildRoom(T, b, ctx, { enhanced=false, hour=new Date().getHours(
   // ---- Hotspot-Registrierung
   const spot = (obj, id, label, actions, hint) => { hot.push({ obj, id, label, hint: hint || '', actions }); return obj; };
   const taskAct = (...keys) => () => keys.map((key) => (b.tasks || []).find((x) => x.id === key)).filter(Boolean).map((t) => ({ kind: 'task', task: t }));
-  const goAct = (label, route, sub, tab) => () => [{ label, sub, run: ({ go }) => go(route, tab) }];
+  const goAct = (label, route, sub, tab) => () => [{ label, sub, allowAway: route === 'newspaper' || route === 'map', run: ({ go }) => go(route, tab) }];
 
   // ---- Möbel
   const bed = (x, z, rot, small = false, col = pal.accent) => { const g = group(x, z, rot); const s = small ? 0.7 : 1; box(2.2 * s, 0.5, 1.4 * s + 0.4, 0x6b4a2a, 0, 0, 0, g); box(2.0 * s, 0.35, 1.3 * s + 0.3, 0xf2efe6, 0, 0.5, 0, g); box(0.5, 0.2, 0.9 * s + 0.2, 0xffffff, -0.7 * s, 0.85, 0, g); box(1.2 * s, 0.1, 1.3 * s + 0.3, col, 0.4 * s, 0.85, 0, g); box(0.15, 1.1, 1.4 * s + 0.4, 0x5a3d22, -1.1 * s, 0, 0, g); return g; };
@@ -113,12 +114,12 @@ export function buildRoom(T, b, ctx, { enhanced=false, hour=new Date().getHours(
   const counter = (x, z, len = 4, rot = 0, col = 0x7a5535, top = 0xd8d2c0) => { const g = group(x, z, rot); box(len, 1.1, 0.9, col, 0, 0, 0, g); box(len + 0.2, 0.1, 1.1, top, 0, 1.1, 0, g); return g; };
   const desk = (x, z, rot = 0) => { const g = group(x, z, rot); box(2.0, 0.1, 1.0, 0x7a5535, 0, 1.0, 0, g); box(0.1, 1.0, 0.9, 0x5a3d22, -0.9, 0, 0, g); box(0.1, 1.0, 0.9, 0x5a3d22, 0.9, 0, 0, g); box(0.6, 0.02, 0.45, 0xffffff, -0.4, 1.1, 0.1, g); box(0.5, 0.02, 0.35, 0xe8e0c8, 0.4, 1.1, -0.1, g); if (era >= 3) { box(0.7, 0.45, 0.06, 0x222222, 0.3, 1.1, -0.25, g); box(0.2, 0.05, 0.2, 0x222222, 0.3, 1.1, -0.2, g); } box(0.7, 0.1, 0.6, 0x4a3a2a, 0, 0.55, 1.0, g); box(0.7, 0.8, 0.1, 0x4a3a2a, 0, 0.6, 1.3, g); return g; };
   const plant = (x, z) => { const g = group(x, z); cyl(0.3, 0.25, 0.5, 0xb4623a, 0, 0, 0, g); sph(0.55, 0x3f7a35, 0, 1.0, 0, g); sph(0.4, 0x4f8f40, 0.25, 1.4, 0.1, g); return g; };
-  const people = [], walkers = [];
+  const people = [], walkers = [], workers = []; let ownerFigure = null;
   const HAIR = [0x2a1d14, 0x5a3a20, 0x8a6a3a, 0x1a1a1a, 0xb8a070, 0x6a2a1a];
   const person = (x, z, col = 0x3a5a8a, rot = 0, skin = 0xe0b896, hat = '') => { const g = group(x, z, rot); if(enhanced){
     box(.43,.6,.28,col,0,.66,0,g);cyl(.09,.08,.6,0x343b40,-.13,.08,0,g);cyl(.09,.08,.6,0x343b40,.13,.08,0,g);
-    cyl(.09,.075,.52,col,-.3,.68,0,g,{rot:[0,0,-.12]});cyl(.09,.075,.52,col,.3,.68,0,g,{rot:[0,0,.12]});
-    sph(.09,skin,-.33,.68,0,g);sph(.09,skin,.33,.68,0,g);box(.19,.1,.34,0x302b26,-.13,0,.06,g);box(.19,.1,.34,0x302b26,.13,0,.06,g);
+    g.userData.arms = [-1,1].map(side => { const arm = new T.Group(); arm.position.set(side*.3,1.2,0); arm.rotation.z=side*.12; g.add(arm); cyl(.09,.075,.52,col,0,-.52,0,arm); sph(.09,skin,0,-.52,0,arm); return arm; });
+    box(.19,.1,.34,0x302b26,-.13,0,.06,g);box(.19,.1,.34,0x302b26,.13,0,.06,g);
     sph(.275, HAIR[Math.abs(Math.round(x * 7 + z * 13)) % HAIR.length], 0, 1.43, -.03, g, { noShadow: true });
     if (hat === 'chef') { cyl(.24, .22, .34, 0xffffff, 0, 1.58, 0, g, { noShadow: true }); sph(.3, 0xffffff, 0, 1.98, 0, g, { noShadow: true }); box(.46, .42, .06, 0xffffff, 0, .35, .15, g, { noShadow: true }); }
     else if (hat === 'cap') { box(.5, .1, .5, 0x3a3a46, 0, 1.6, .02, g, { noShadow: true }); box(.4, .05, .24, 0x2a2a32, 0, 1.58, .3, g, { noShadow: true }); }
@@ -249,7 +250,22 @@ export function buildRoom(T, b, ctx, { enhanced=false, hour=new Date().getHours(
       cl.members.slice(0, 7).forEach((m2, i2) => { const col = m2.band === 'bad' ? 0xd9534f : m2.band === 'low' ? 0xe68a3c : m2.band === 'ok' ? 0xf2d24b : 0x5fd6a4; box(0.14, 0.06 + 0.3 * m2.mood / 100, 0.04, col, -0.66 + i2 * 0.22, 0.16, 0.1, bdG, { noShadow: true }); });
       spot(bdG, 'board', 'Aushang – Betriebsklima', () => { const k = live(); const ops = k && k.ops; if (!ops) return []; const c2 = ops.climate; const A = ops.actions; const out = [{ label: c2.avg == null ? 'Keine Mitarbeiter' : `Betriebsklima: ${c2.name} (${Math.round(c2.avg)})`, sub: c2.avg == null ? 'Stelle Mitarbeiter ein – dann siehst du hier ihre Stimmung' : `Wirkung auf den Umsatz: ${c2.effectPct > 0 ? '+' : c2.effectPct < 0 ? '−' : '±'}${Math.abs(c2.effectPct).toString().replace('.', ',')} %`, disabled: true }]; if (!A || c2.avg == null) return out; return out.concat([{ label: 'Team loben', sub: A.praise.cd ? `Wieder möglich in ${A.praise.cd} Tagen` : 'Kostet nichts', disabled: !A.praise.ok, run: ({ act }) => act('bizPraise', { id: k.id, mid: 'all' }) }, { label: 'Prämie für das Team', sub: fm(A.bonus.perHead * c2.members.length), disabled: A.bonus.cd > 0, run: ({ act }) => act('bizBonus', { id: k.id, mid: 'all' }) }, { label: A.party.christmas ? 'Weihnachtsfeier' : 'Betriebsfest', sub: A.party.cd ? `Wieder möglich in ${A.party.cd} Tagen` : fm(A.party.cost), disabled: A.party.cd > 0, run: ({ act }) => act('bizParty', { id: k.id }) }, { label: 'Mitarbeiter einzeln führen …', sub: 'Lob, Geschenk, Prämie', run: ({ go }) => go('business') }]); }, 'Lob, Prämie, Betriebsfest');
     }
-    if (c) staffFigs(c.staff, [-1.5, 3.0], undefined, chain === 'baecker' ? 'chef' : chain === 'wirt' ? 'apron' : 'cap'); if (c && (c.owner || b.own)) person(w / 4 + 1, -d / 2 + 2.6, 0x333333, 0.5);
+    if (enhanced && c) {
+      const count = Math.min(8, tablesG.length * 2, businessLife(c).workers);
+      for (let i = 0; i < count; i++) {
+        const station = tablesG[i % tablesG.length];
+        const back = i < tablesG.length;
+        const g = person(station.position.x, station.position.z + (back ? -.95 : .95), [0x3a5a8a,0x8a3a3a,0x3a7a5a,0x7a5a2a][i%4], back ? 0 : Math.PI, undefined, chain === 'baecker' ? 'chef' : chain === 'wirt' ? 'apron' : 'cap');
+        if (back) {
+          if (chain === 'baecker') { const dough = sph(.22,0xd8b87a,0,1.22,0,station); dough.scale.set(1.5,.5,1); }
+          else if (chain === 'tischler') box(1.1,.08,.4,0xbd905b,0,1.12,0,station);
+          else if (chain === 'schmied') { box(.5,.15,.28,0x45494e,0,1.12,0,station); const arm=g.userData.arms[1]; cyl(.025,.025,.42,0x8a603c,0,-.7,0,arm); box(.26,.1,.1,0x45494e,0,-.72,0,arm); }
+        }
+        people.pop(); workers.push({g, phase:i*1.7, index:i});
+      }
+      ownerFigure = person(w / 4 + 1, -d / 2 + 2.6, 0x333333, Math.PI);
+      people.pop(); workers.push({g:ownerFigure,phase:.8,owner:true});
+    } else { if (c) staffFigs(c.staff, [-1.5, 3.0]); if (c && (c.owner || b.own)) person(w / 4 + 1, -d / 2 + 2.6, 0x333333, 0.5); }
     if (c && c.manager) person(w / 2 - 2.6, d / 2 - 2.6, 0x1a1a2a, -2.2);
     if ((b.tier || 0) >= 1) { chandelier(0, 0); plant(-w / 2 + 0.8, d / 2 - 1); }
     if (b.abandoned) { box(w, 0.4, 0.1, 0x6b5a3a, 0, 1.0, d / 2 - 0.5, props, { rot: [0, 0, 0.1] }); }
@@ -262,7 +278,7 @@ export function buildRoom(T, b, ctx, { enhanced=false, hour=new Date().getHours(
   }
 
   // ---- Spielfiguren (Spieler selbst)
-  person(-0.5, d / 2 - 2.2, pal.accent, 0.3, 0xf0c8a0);
+  const playerFigure = person(-0.5, d / 2 - 2.2, pal.accent, 0.3, 0xf0c8a0);
 
   // ---- Namensschild, Kundschaft, Aktionsleiste
   if (enhanced) {
@@ -272,12 +288,33 @@ export function buildRoom(T, b, ctx, { enhanced=false, hour=new Date().getHours(
     if (lane) { customer(lane[0], lane[1], lane[2], 0x6a4a8a, .5); if (['markt', 'bahnhof', 'rathaus', 'spielbank'].includes(t)) customer(lane[1], lane[0], lane[2] - .6, 0x3a7a5a, .38); }
   }
   const bar = (BAR[t] || []).map(([id, verb, icon, filter]) => ({ hot: hot.find((x) => x.id === id), verb, icon, filter })).filter((x) => x.hot);
+  const syncBusiness = () => {
+    const life = enhanced && t === 'biz' ? businessLife(v.companies.find(c => c.id === b.ref)) : null;
+    if (life) {
+      playerFigure.visible = !life.owner;
+      for (const worker of workers) {
+        worker.g.visible = worker.owner ? life.owner : worker.index < life.workers;
+        if (!life.active) { worker.g.rotation.x=0; for (const arm of worker.g.userData.arms || []) arm.rotation.x=0; }
+      }
+      for (const visitor of walkers) visitor.g.visible = life.active;
+    }
+    return life;
+  };
+  syncBusiness();
   const update = (time) => {
+    const life = syncBusiness();
+    if (life?.active) for (const worker of workers) {
+      const beat = time * .003 * life.pace + worker.phase;
+      worker.g.rotation.x = Math.sin(beat) * .035;
+      (worker.g.userData.arms || []).forEach((arm,i) => { arm.rotation.x = -.65 + Math.sin(beat+i*.6)*.4; });
+    }
     for (const p of people) { p.g.position.y = Math.abs(Math.sin(time * .0022 + p.ph)) * .018; p.g.rotation.y = p.base + Math.sin(time * .0008 + p.ph) * .14; }
     for (const k of walkers) { const len = Math.abs(k.x1 - k.x0) || 1, s = (time * .001 * k.speed + k.ph) % (2 * len), q = s < len ? s / len : 2 - s / len, dir = (k.x1 - k.x0) * (s < len ? 1 : -1); k.g.position.set(k.x0 + (k.x1 - k.x0) * q, Math.abs(Math.sin(time * .007 + k.ph)) * .05, k.z); k.g.rotation.y = dir >= 0 ? Math.PI / 2 : -Math.PI / 2; }
   };
 
-  return { scene, hotspots: hot, dims: { w, d, ht }, pal, bar, update, animated: people.length + walkers.length > 0 && enhanced };
+  return { scene, hotspots: hot, dims: { w, d, ht }, pal, bar, update, syncBusiness,
+    businessStats: () => ({ state:syncBusiness(), workers:workers.filter(x=>x.g.visible).length, poses:workers.filter(x=>x.g.visible).map(x=>(x.g.userData.arms || []).map(a=>a.rotation.x)) }),
+    animated: people.length + walkers.length + workers.length > 0 && enhanced };
 }
 
 /** Marken für das Minispiel (Positionsraster im Raum) */

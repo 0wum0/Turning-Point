@@ -2,6 +2,7 @@
 import { html, mount, esc, icon, api, toast, money, sleep } from './ui.js';
 import { isV2 } from './design.js';
 import { buildRoom, tokenSpots } from './rooms.js';
+import { businessBrief } from './business-brief.js';
 
 const REWARD_LABEL = { efs: (n) => `+${n} EFS`, rest: (n) => `${n > 0 ? '+' : ''}${n} Erholung`, wellbeing: (n) => `+${n} Wohlbefinden`, health: (n) => `+${n} Gesundheit`, influence: (n) => `+${n} Einfluss`, money: () => 'Trinkgeld', childSat: () => 'Kinder froh', bizCash: () => 'Extra-Umsatz' };
 const rewardText = (r) => Object.entries(r || {}).map(([k, n]) => (REWARD_LABEL[k] ? REWARD_LABEL[k](n) : '')).filter(Boolean).join(' · ');
@@ -65,9 +66,20 @@ export async function openInterior(ctx, b, data) {
     if (alive) renderTasks();
   };
   const api2 = {
-    go: (route, tab) => { cleanup(); if (tab) ctx.ui.newsTab = tab; ctx.go(route); },
-    act: async (name, input) => { try { await ctx.act(name, input, { noRender: true }); } catch (_) { /* Toast kommt aus act */ } if (alive) { await refreshCity(); showActions(currentHot); } },
+    go: (route, tab) => { cleanup(); if (tab) ctx.ui.newsTab = tab; if (route === 'newspaper') ctx.ui.newsCity = data.city.id; if (route === 'business' && b.type === 'biz') ctx.ui.simFocus = { route, entity: `firm:${b.ref}` }; ctx.go(route); },
+    act: async (name, input) => { try { await ctx.act(name, input, { noRender: true }); } catch (_) { /* Toast kommt aus act */ } if (alive) { await refreshCity(); refreshBusiness(); room?.syncBusiness?.(); invalidate(); showActions(currentHot); } },
   };
+
+  const refreshBusiness = () => {
+    if (!v2 || b.type !== 'biz') return;
+    const intro = root.querySelector('.int-object-intro');
+    const expanded = !!intro.querySelector('details[open]');
+    mount(intro, businessBrief(ctx.view.companies.find(c => c.id === b.ref), ctx.view.currency));
+    if (expanded) intro.querySelector('details')?.setAttribute('open', '');
+    const manage = intro.querySelector('[data-business-manage]');
+    if (manage) manage.onclick = () => api2.go('business');
+  };
+  refreshBusiness();
 
   // ---- Aktionspanel
   let currentHot = null, currentFilter = null; let barEntries = [];
@@ -98,7 +110,7 @@ export async function openInterior(ctx, b, data) {
     const acts = resolveActions(h).filter((a) => !currentFilter || currentFilter.test(a.label || ''));
     mount(panel, html`<div class="row spread"><b class="serif" style="font-size:1.15rem">${h.label}</b><button class="btn ghost sm" id="pClose" aria-label="Schließen">${icon('x')}</button></div>
       ${acts.length ? html`<div class="stack mt" style="--gap:.5rem">${acts.map((a, i) => html`<button class="btn block act" data-i="${i}" ${a.disabled || (!here && !a.allowAway) ? 'disabled' : ''}><span class="grow" style="text-align:left"><b>${a.label}</b>${a.sub ? html`<div class="dim small" style="font-weight:500;white-space:normal">${a.sub}</div>` : ''}</span></button>`)}</div>` : html`<div class="dim mt">Hier gibt es gerade nichts zu tun.</div>`}
-      ${!here ? html`<div class="small dim mt">Du bist nicht in dieser Stadt – Aktionen sind nur vor Ort möglich.</div>` : ''}`);
+      ${!here ? html`<div class="small dim mt">Du besuchst diese Stadt. Zeitung und Karte kannst du ansehen; Aufgaben und Einkäufe sind nur an deinem Wohnort möglich.</div>` : ''}`);
     panel.classList.remove('hide');
     panel.querySelector('#pClose').onclick = () => showActions(null);
     if (v2) { panel.querySelector('#pClose').setAttribute('aria-label','Zur Gegenständeübersicht'); if (previousHot !== h) panel.querySelector('#pClose').focus({ preventScroll:true }); }
@@ -111,6 +123,7 @@ export async function openInterior(ctx, b, data) {
   if (!alive) return;
   if (T) {
     room = buildRoom(T, b, ctx, { enhanced:v2, hour:data.visualHour });
+    root.__room = room; // Same scene/state used by interaction and regression checks.
     try { renderer = new T.WebGLRenderer({ canvas, antialias: true, alpha: false }); } catch (_) { renderer = null; }
   }
   roomReady = true; renderTasks();

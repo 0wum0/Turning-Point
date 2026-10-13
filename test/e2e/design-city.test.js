@@ -12,7 +12,7 @@ test('V2 city: camera, building selection, spacious interiors, actions, fallback
   const errors=[],writes=[];page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(r.method()==='POST')writes.push(r.url());});
   await page.goto(`http://127.0.0.1:${server.address().port}/play#/city`);await page.waitForSelector('.bl-item');
   const change=async value=>{await page.locator('[data-design-settings]').click();await page.locator(`input[name="game-design"][value="${value}"]`).check();await page.locator('.modal [data-close="1"]').click();};
-  await change('v2');await page.waitForSelector('.sim-city-nav');
+  await change('v2');await page.waitForSelector('.sim-city-nav');await page.locator('[data-city-view="2d"]').click();
   await page.locator('#citySearch').fill('Rathaus');assert.equal(await page.locator('[data-focus]:visible').count(),1);await page.locator('#citySearch').fill('');
   await page.locator('[data-focus]').filter({hasText:'Rathaus'}).click();await page.waitForTimeout(700);
   const selected=page.locator('.bld.sel .pinbg');await selected.click();assert.equal(await page.locator('.interior').count(),0,'single scene click selects before entering');

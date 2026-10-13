@@ -45,10 +45,12 @@ app.get('/api/transport',(_,res)=>res.json(transport));
 app.post('/api/transport/route/701/active',(req,res)=>{route.active=req.body.on;res.json({ok:true});});
 app.get('/api/transport/policy',(_,res)=>res.json({ok:true,enabled:false}));
 app.get('/api/archive',(_,res)=>res.json({ok:true,lives:[]}));
-app.get('/api/newspaper',(req,res)=>res.json({ok:true,here:true,edition:edition(w,state,Number(req.query.cityId)||state.cityId)}));
+app.get('/api/newspaper',(req,res)=>{const id=Number(req.query.cityId)||state.cityId;res.json({ok:true,here:id===state.cityId,edition:edition(w,state,id)});});
 app.get('/api/city',(req,res)=>{
- const cityId=Number(req.query.cityId)||state.cityId,c=w.city(cityId)||w.city(state.cityId);
- const buildings=placeGame.buildingsFor(w,state,c.id).map(b=>({...b,tasks:placeGame.tasksOf(w,b).map(t=>placeGame.taskStatus(w,state,b,t,Date.now()))}));
+ const cityId=Number(req.query.cityId)||state.cityId,row=world.cityRows.find(r=>r[0]===cityId);
+ const c=w.city(cityId)||(row?{id:row[0],name:row[1],state:states[row[2]],size_tier:row[5]}:w.city(state.cityId));
+ const cityWorld={...w,city:id=>id===c.id?c:w.city(id)};
+ const buildings=placeGame.buildingsFor(cityWorld,state,c.id).map(b=>({...b,tasks:placeGame.tasksOf(w,b).map(t=>placeGame.taskStatus(w,state,b,t,Date.now()))}));
  res.json({ok:true,here:cityId===state.cityId,city:{id:c.id,name:c.name,state:c.state,tier:c.size_tier},buildings,playerFirms:[]});
 });
 app.get('/api/social/leaderboard',(_,res)=>res.json({ok:true,cats:[{key:'wealth',label:'Vermögen'}],cat:'wealth',scope:'all',rows:[],total:0,hint:'Testwelt',unit:'money'}));

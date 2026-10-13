@@ -100,7 +100,7 @@ test('V2: legible light/dark forms and stable pins during mouse and touch pannin
     await p.waitForSelector('.sim-cluster-list');
     assert.equal(await p.locator('[data-cluster-city]').count(), Number(label.split(' ')[0]));
     await p.locator('[data-cluster-city]').first().click();
-    await p.waitForSelector('#enterCity');
+    await p.waitForSelector('#city3dHost canvas');
     assert.deepEqual(errors, []);
   } finally {
     if (browser) await browser.close();

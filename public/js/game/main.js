@@ -184,7 +184,8 @@ async function renderPage(animate) {
   syncSimulator(ctx);
   if (isV2() && ctx.route === 'map') {
     ++pageSeq;
-    const panel = document.getElementById('page'); if (panel) panel.dataset.route = 'map';
+    const panel = document.getElementById('page');
+    if (panel) { panel.__dispose?.(); delete panel.__dispose; panel.replaceChildren(); panel.dataset.route = 'map'; }
     await ensureWorld(ctx, !animate); return;
   }
   let root = document.getElementById('page'); if (!root) return;

@@ -99,7 +99,7 @@ export function openHelp(ctx) {
 
 /* ---------- „Zeig mir’s“: Seite öffnen und die richtige Schaltfläche hervorheben ---------- */
 const soc = (ctx, tab) => { ctx.ui.soc = Object.assign(ctx.ui.soc || { cat: 'wealth', scope: 'all', box: 'in', page: 1 }, { tab }); };
-const news = (tabName) => (ctx) => { ctx.ui.newsTab = tabName; };
+const news = (tabName) => (ctx) => { ctx.ui.newsTab = tabName; ctx.ui.newsCity = ctx.view.city.id; };
 /* spot -> { sel: CSS-Auswahl der Schaltfläche(n), pre: Vorbereitung vor dem Öffnen, text: Hinweis im Hinweisfeld } */
 export const SPOTS = {
   'nav:newspaper': { nav: 'newspaper', text: 'Tippe auf „Zeitung“.' },
@@ -164,9 +164,15 @@ function spotOn(els, text) {
 export function showMe(ctx, { tab, spot }) {
   clearSpot();
   const def = SPOTS[spot] || {};
+  if (document.documentElement.dataset.gameDesign === 'v2') {
+    // Guided actions must reveal their real controls, even after a section was collapsed.
+    ctx.ui.simSection ||= {}; ctx.ui.simSection[tab] = 'all';
+    if (tab === 'city' && spot === 'prices') ctx.ui.cityTab = 'economy';
+    if (tab === 'newspaper') ctx.ui.newsCity = ctx.view.city.id;
+  }
   if (def.nav) { const el = document.querySelector(`#side [data-nav="${def.nav}"]`); if (el) spotOn([el], def.text); else ctx.go(tab); return; }
   if (def.pre) def.pre(ctx);
-  if (tab && ctx.route !== tab) ctx.go(tab); else if (def.pre) ctx.rerender();
+  if (tab && ctx.route !== tab) ctx.go(tab); else if (def.pre || document.documentElement.dataset.gameDesign === 'v2') ctx.rerender();
   if (!def.sel) return;
   let tries = 0;
   spotTimer = setInterval(() => {
