@@ -80,7 +80,7 @@ test('Simulator: production place density, every module, interactions and revers
     await page.locator('[data-nav="household"]').click();
     await page.waitForSelector('[data-food="0"]');
     await page.locator('[data-food="0"]').click();
-    await page.waitForFunction(() => [...document.querySelectorAll('.toast')].some(e => e.textContent.includes('Einkauf abgeschlossen')));
+    await page.waitForFunction(() => [...document.querySelectorAll('.toast')].some(e => e.textContent.includes('Vorratspaket')));
     assert.ok(writes.some(r => r.url.endsWith('/api/action/buyFood') && r.data.tier === 0));
     await page.locator('[data-nav="family"]').click();
     await page.waitForSelector('#page[data-route="family"]');

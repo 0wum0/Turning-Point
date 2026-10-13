@@ -25,8 +25,12 @@ Funktionen lassen sich gezielt öffnen. Beim Wechsel zu Classic werden die
 ursprünglichen Positionen und Grid-Container wiederhergestellt. Spielregeln,
 Freischaltungen, Preise, Datenbank und API-Aktionen bleiben unverändert.
 
-Chat, Benachrichtigungen und Einstellungen stehen im HUD; Hilfe, Konto, Ton,
-Animationen, Sprache, Farbschema und Abmelden im Zusatzmenü. Stadt-Luftansicht,
+Der V2-Header zeigt von links Coins, Geld, Charakter/Jahr und den Gesamtwert
+der eigenen Unternehmen und Immobilien. Der Jahresring wächst mit der Spielzeit
+und wechselt seine Farbe mit der Jahreszeit. Es gibt drei anklickbare Anzeigen:
+Vorrat, Energie und Gesundheit. Einstellungen bleiben direkt erreichbar; EFS,
+Chat, Benachrichtigungen, Hilfe, Konto, Ton, Animationen, Sprache, Farbschema
+und Abmelden stehen im Zusatzmenü. Stadt-Luftansicht,
 Gebäude, Zeitung, Multiplayer-Reiter und Dialoge verwenden weiterhin ihre echten
 Spielmodule. Einführung und Hilfen bleiben über „Spielhilfe“ zugänglich.
 
@@ -177,3 +181,13 @@ Prüfung: `test/city-journey.test.js` und `test/e2e/design-city-flow.test.js` de
 - Prüfung: `test/business-life.test.js` prüft echte Presenter-Zustände, Streik, Ausfall und Lagerdeckung. `test/e2e/design-business-life.test.js` prüft reale WebGL-Posen, Stillstand nach Serverantwort, reduzierte Bewegung, Firmenauswahl und Handy-Layout.
 
 Weiter offen laut `ROADMAP-GILDE.md`: frei steuerbare Familienfiguren, erweitertes Werben, Ausstattung/EP und die zusätzlichen Amts-/Gerichtsrollen. Dieser Ausbau schließt diese Roadmap-Schritte nicht ab.
+
+
+## Versorgung, Schäden und Standorte
+
+- Jeder Lebensmittelkauf fügt **100 Vorratseinheiten** hinzu. Die Anzeige nennt den gesamten Bestand und die Reichweite für den Haushalt; der Kreis bleibt auf 100 % begrenzt. Qualität wird über den gesamten Bestand gewichtet. Bestehende Spielstände behalten ihren Vorrat.
+- Alle drei Versorgungskreise öffnen einen Dialog mit echtem Warenbestand: Lebensmittel/Getränke kaufen und einzeln verbrauchen. Obst und Mahlzeiten stärken Gesundheit, Kaffee/Energy-Drink geben Energie; Wasser und Mahlzeiten unterstützen beides. Energy-Drinks sind ab 1987 verfügbar. Schlafen am vorhandenen Schlafplatz gibt einmal pro Spieltag bis zu 35 Energie. Diese Aktionen heilen keine Diagnose und verlängern keine Lebensdauer.
+- Der Butler bestellt bei weniger als sieben Tagen Vorrat bis zu einem Monatsbedarf nach – auch während eines Jahresvorsprungs. Gewählte Qualität und örtliche Preise gelten; bei Geldmangel wird günstiger bzw. kleiner eingekauft. Ohne ausreichendes Geld gibt es keine kostenlose Versorgung. Andere wichtige Lebensereignisse dürfen das Vorspulen weiterhin unterbrechen.
+- Gebäudeschäden treffen standardmäßig deutlich seltener (Sturm 0,005 / Feuer 0,001 je passendem Stadtereignis); pro Immobilie liegen mindestens 365 Spieltage zwischen Schäden. Die Gebäudeversicherung organisiert die Reparatur automatisch, bewahrt den Zustand und den Wohnbedarf, und löst keinen Vorspul-Stopp oder dringlichen Dialog aus. Mieteinnahmen können während der Reparatur ausfallen. Migration 036 passt die bisherigen Standardchancen an; individuelle Werte bleiben erhalten.
+- Im Gründungsdialog kann jeder verfügbare deutsche Ort ausgewählt werden. Preise/Nachfrage beziehen sich auf die Zielstadt, die Serveraktion prüft Stadt, Qualifikation und Budget erneut. Stadtansicht und lokale Zeitung führen direkt zur Gründung oder zum Immobilienmarkt. Fernkäufe verändern den Wohnort nicht; dort selbst arbeiten erfordert weiterhin Anwesenheit.
+- Automatisierte Prüfung: `test/provisions.test.js` (Bestand, Preise, Effekte, Butler, Schäden, Fernkäufe, Altstände/Migration) und `test/e2e/design-provisions.test.js` (echte Aktionen im lokalen Testserver, Header in Hoch-/Querformat und ab 320 px, Dialoge und Gründungsort). Die vorhandenen Design-Tests prüfen weiterhin Classic/V2, Karte und Stadt.

@@ -230,17 +230,40 @@ A.autoMaintain = ({ state, input }) => { state.flags.autoMaintain = !!input.on; 
 A.buyFood = ({ world, state, input }) => {
   const tier = Math.floor(Number(input.tier));
   if (!(tier >= 0 && tier <= 3)) fail('Unbekannte Qualitätsstufe.');
-  const pct = clamp(100 - state.meters.fridge, 0, 100);
-  if (pct < 5) fail('Der Kühlschrank ist schon voll.');
-  const cost = Math.round(world.econ.food[tier].perPct * pct * world.idx(yr(state)) * cityFactor(world, state));
+  const food = require('./provisions');
+  const count = input.count == null ? 1 : Number(input.count);
+  if (!Number.isInteger(count) || count < 1 || count > 365) fail('Wähle 1 bis 365 Vorratspakete.');
+  const units = 100 * count, cost = food.price(world,state,tier,units);
+  if (food.stockOf(state) + units > 1000000) fail('Dein Vorratslager ist voll.');
   if (state.money < cost) fail('Dafür reicht dein Geld nicht.');
-  pay(state, cost);
-  const m = state.meters;
-  m.fridgeQ = (m.fridge * m.fridgeQ + pct * (tier + 1)) / 100;
-  m.fridge = 100;
-  state.hunger = 0;
-  state.flags.foodTier = tier;
-  return { msg: `Kühlschrank aufgefüllt (${world.econ.food[tier].name}).` };
+  pay(state,cost); food.addStock(state,units,tier+1); state.flags.foodTier=tier;
+  return {msg:`${count} Vorratspaket(e) gekauft (${world.econ.food[tier].name}).`};
+};
+
+A.buyProvision = ({world,state,input}) => {
+  const food=require('./provisions'),item=food.catalogue(world,state).find(i=>i.key===input.key);
+  if(!item) fail('Dieses Lebensmittel ist nicht verfügbar.');
+  const count=input.count==null?1:Number(input.count);
+  if(!Number.isInteger(count)||count<1||count>100) fail('Wähle 1 bis 100 Stück.');
+  const inventory=state.provisions||(state.provisions={}),old=Number(inventory[item.key])||0;
+  if(old+count>10000) fail('Davon hast du bereits genug Vorrat.');
+  const cost=item.cost*count;if(state.money<cost)fail('Dafür reicht dein Geld nicht.');
+  pay(state,cost);inventory[item.key]=old+count;return {msg:`${count} × ${item.name} gekauft.`};
+};
+A.useProvision = ({world,state,input}) => {
+  const food=require('./provisions'),item=food.catalogue(world,state).find(i=>i.key===input.key);
+  if(!item || item.count<1)fail('Davon hast du nichts im Vorrat.');
+  state.provisions[item.key]--; if(item.food)food.addStock(state,item.food,3);
+  state.meters.health=clamp(state.meters.health+item.health,0,100);
+  state.meters.rest=clamp(state.meters.rest+item.rest,0,100);
+  return {msg:`${item.name} verbraucht.`};
+};
+A.restNow = ({state}) => {
+  if(state.housing.type==='street')fail('Du brauchst zuerst einen Schlafplatz.');
+  if(state.pending.restDay===state.day)fail('Du hast dich heute bereits ausgeschlafen.');
+  if(state.meters.rest>=100)fail('Du bist bereits ausgeruht.');
+  state.pending.restDay=state.day;state.meters.rest=clamp(state.meters.rest+35,0,100);
+  return {msg:'Ausgeschlafen: +35 Energie.'};
 };
 
 A.buyCards = ({ world, state, input, user }) => {
@@ -509,7 +532,6 @@ const needActive = (c) => { if (c.abandoned) fail('Der Betrieb steht leer. Reakt
 A.buyBiz = ({ world, state, input }) => {
   const l = resolveListing(world, state, input.listingId);
   if (!l || l.type !== 'biz') fail('Dieses Angebot ist nicht mehr aktuell.');
-  if (l.cityId !== state.cityId) fail('Du musst in dieser Stadt wohnen.');
   if ((state.companies || []).length >= world.econ.companies.maxCompanies) fail('Du besitzt bereits die maximale Anzahl an Unternehmen.');
   if (!biz.qualification(world, state, l.pkey, l.tier).ok) fail('Dir fehlt die Qualifikation für diesen Betrieb.');
   if (state.money < l.price) fail('Dafür reicht dein Geld nicht.');

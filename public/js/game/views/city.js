@@ -1,6 +1,7 @@
 import { html, raw, icon, infoBtn, api, on, mount, toast, esc } from '../ui.js';
 import { cityJourney, cityJourneyShortcut, bindCityJourney } from '../city-journey.js';
 import { rememberCity } from '../city-context.js';
+import {openFound} from '../found.js';
 import { businessLife } from '../business-life.js';
 import { isV2 } from '../design.js';
 import { createCityCamera } from '../city-camera.js';
@@ -24,9 +25,9 @@ export default {
     const row = (b) => html`<button class="bl-item ${b.own ? 'own' : ''}" data-focus="${b.key}"><span class="bl-ic">${icon(b.icon || 'landmark')}</span><span class="grow">${b.name}</span>${b.tasks.some((t) => t.ready) ? html`<i class="rdy" title="Aufgabe verfügbar"></i>` : ''}</button>`;
     return html`
     <div class="panel-head"><div><h2>${c.name}</h2><p>${c.state} · Luftansicht – ziehen zum Verschieben, Mausrad zum Zoomen, Gebäude auswählen und die Stadt entdecken.</p></div>
-      <div class="row">${data.here ? html`<span class="chip good">${icon('map-pin')} Hier wohnst du</span>` : html`<span class="chip warn">${icon('eye')} Du bist nicht vor Ort</span>`}<button class="btn sm sim-city-only" data-city-paper>${icon('newspaper')} Zeitung aus ${c.name}</button><button class="btn sm" data-go="map">${icon('map')} Zur Karte</button>
+      <div class="row">${data.here ? html`<span class="chip good">${icon('map-pin')} Hier wohnst du</span>` : html`<span class="chip warn">${icon('eye')} Du bist nicht vor Ort</span>`}<button class="btn sm" data-city-found>${icon('plus')} Betrieb gründen</button><button class="btn sm" data-city-estate>${icon('house')} Immobilien kaufen</button><button class="btn sm sim-city-only" data-city-paper>${icon('newspaper')} Zeitung aus ${c.name}</button><button class="btn sm" data-go="map">${icon('map')} Zur Karte</button>
       ${infoBtn(['Das ist deine Stadt aus der Vogelperspektive. Öffentliche Orte wie Rathaus, Markthalle oder Bahnhof sind immer da – dazu alles, was dir selbst gehört.', 'In jedem Gebäude findest du Aufgaben und Möglichkeiten. Aufgaben bringen zusätzliche EFS und kleine Vorteile. Interaktionen sind nur in der Stadt möglich, in der du wohnst.', 'Klicke ein Gebäude an, schau dich um (ziehen zum Drehen) und klicke auf leuchtende Dinge.'], 'Stadtansicht')}</div></div>
-    ${data.here ? '' : html`<div class="alert info">${icon('info')}<div>Du erkundest ${c.name}. Dein Wohnort bleibt ${v.city.name}. Aufgaben und Einkäufe sind dort möglich; umziehen kannst du über die Karte.</div></div>`}
+    ${data.here ? '' : html`<div class="alert info">${icon('info')}<div>Du erkundest ${c.name}. Dein Wohnort bleibt ${v.city.name}. Aufgaben erledigst du am Wohnort. Betriebe und Immobilien kannst du auch hier erwerben.</div></div>`}
     ${cityJourneyShortcut(ctx, data)}
     <div class="city-layout">
       <section class="card aerial-card"><div class="map-tools"><button class="btn sm" id="azin" aria-label="Vergrößern">${icon('plus')}</button><button class="btn sm" id="azout" aria-label="Verkleinern">${icon('minus')}</button><button class="btn sm" id="azreset" aria-label="Zentrieren">${icon('refresh-cw')}</button><button class="btn sm sim-city-only" id="azfull" aria-pressed="false" aria-label="Vollbild" title="Vollbild">${icon('maximize')}</button></div>
@@ -131,6 +132,8 @@ export default {
     on(svg, 'click', '.bld', (e, t) => { if (!camera.dragged) select(t.dataset.key); });
     on(svg, 'keydown', '.bld', (e, t) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(t.dataset.key); } });
     on(root, 'click', '[data-focus]', (e, t) => { const s = spots[t.dataset.focus]; if (s) centerOn(s.x, s.y, 2.4); select(t.dataset.focus); });
+    root.querySelector('[data-city-found]').onclick=()=>openFound(ctx,data.city.id);
+    root.querySelector('[data-city-estate]').onclick=()=>{ctx.ui.newsCity=data.city.id;ctx.ui.newsTab='housing';ctx.go('newspaper');};
     bindCityJourney(root, ctx);
     bindEcon(root, ctx, data.city.id);
     bindDirectory(root, ctx, data.city.id);

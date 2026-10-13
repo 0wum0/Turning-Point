@@ -88,7 +88,7 @@ export async function openInterior(ctx, b, data) {
     const out = [];
     for (const a of list) {
       if (a.kind === 'food') {
-        for (const [i, tier] of ctx.view.food.tiers.entries()) out.push({ label: `${h.id === 'fridge' ? 'Kühlschrank/Vorrat auffüllen' : 'Lebensmittel kaufen'} – ${tier.name}`, sub: h.id === 'fridge' ? money(tier.cost, ctx.view.currency) : `${money(tier.cost, ctx.view.currency)} · Vorrat auffüllen`, disabled: ctx.view.meters.fridge >= 95 || ctx.view.money < tier.cost, run: ({ act }) => act('buyFood', { tier: i }) });
+        for (const [i, tier] of ctx.view.food.tiers.entries()) out.push({ label: `${h.id === 'fridge' ? 'Kühlschrank/Vorrat auffüllen' : 'Lebensmittel kaufen'} – ${tier.name}`, sub: h.id === 'fridge' ? money(tier.cost, ctx.view.currency) : `${money(tier.cost, ctx.view.currency)} · Vorrat auffüllen`, disabled: ctx.view.money < tier.cost, run: ({ act }) => act('buyFood', { tier: i }) });
       } else if (a.kind === 'task') {
         const t = a.task; const st = !here ? 'Du bist nicht in dieser Stadt.' : t.blocked || (!t.ready ? `Wieder verfügbar in ${t.cooldownLeft} Min.` : '');
         out.push({ label: `Aufgabe: ${t.name}`, sub: st || `${t.desc} (${rewardText(t.reward)})`, disabled: !t.ready || !here, run: () => runTask(t) });

@@ -185,7 +185,18 @@ export async function createCity3D(host, aerial, opts) {
     button.onclick = () => { focus(b.key); onSelect(b.key); }; labels.append(button);
     const anchor = toWorld(b.x, b.y); anchor.y = (info.get(b.key)?.height || 4) + 1.4; return { button, anchor, key: b.key };
   });
-  const paintPins = () => { const r = host.getBoundingClientRect(); for (const pin of pins) { const p = pin.anchor.clone().project(camera); pin.button.hidden = p.z > 1 || p.z < -1 || Math.abs(p.x) > .94 || Math.abs(p.y) > .88; pin.button.style.left = `${(p.x + 1) * .5 * r.width}px`; pin.button.style.top = `${(1 - p.y) * .5 * r.height}px`; pin.button.setAttribute('aria-pressed', String(pin.key === focusKey)); pin.button.dataset.hover = String(pin.key === hoverKey); } };
+  const controls = [...(host.closest('.aerial-card')?.querySelectorAll('.city-view-mode,.map-tools') || [])];
+  const paintPins = () => {
+    const r = host.getBoundingClientRect(), blocked = controls.filter(el=>el.offsetWidth && el.offsetHeight).map(el=>el.getBoundingClientRect());
+    for (const pin of pins) {
+      const p = pin.anchor.clone().project(camera), x=(p.x+1)*.5*r.width, y=(1-p.y)*.5*r.height;
+      // Markers remain anchored to the building; the city list also exposes those behind camera controls.
+      const covered=blocked.some(b=>x+r.left+20>b.left && x+r.left-20<b.right && y+r.top+20>b.top && y+r.top-20<b.bottom);
+      pin.button.hidden=p.z>1 || p.z< -1 || Math.abs(p.x)>.94 || Math.abs(p.y)>.88 || covered;
+      pin.button.style.left=`${x}px`;pin.button.style.top=`${y}px`;
+      pin.button.setAttribute('aria-pressed',String(pin.key===focusKey));pin.button.dataset.hover=String(pin.key===hoverKey);
+    }
+  };
   const highlight = (key, on) => { const i = info.get(key); if (!i) return; i.litMaterial.emissive.setHex(on ? 0x3b3010 : 0x000000); };
   const placeRing = (mesh, key, pad) => { const i = info.get(key); if (!i) return; const r = Math.max(i.b.w, i.b.d) * UNIT * pad; mesh.position.set(i.pos.x, .12, i.pos.z); mesh.scale.set(r, r, 1); mesh.visible = true; };
   const showTip = (key, x, y) => {

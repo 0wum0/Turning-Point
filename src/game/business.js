@@ -327,10 +327,10 @@ function foundKeys(world, state, year) {
  * Gründungsoptionen: für jede Betriebsart, die der Spieler führen darf, die Stufen mit Preis (fest, ohne Zufall).
  * Preis = Stufenpreis × Stadtfaktor × Preisindex. Eine Option je Beruf (höchste erlaubte Stufe) mit allen erlaubten Stufen darunter.
  */
-function foundOptions(world, state) {
+function foundOptions(world, state, cityId = state.cityId) {
   const year = yearOf(state.day, state.startYear);
   const idx = world.idx(year);
-  const city = world.city(state.cityId);
+  const city = world.city(cityId);
   const econ = world.econ.companies;
   const tiers = tiersOf(world);
   const goods = require('./goods');
@@ -363,7 +363,7 @@ function foundOptions(world, state) {
   }
   options.sort((a, b) => a.price - b.price || a.profession.localeCompare(b.profession, 'de'));
   const cheapest = options.length ? Math.min(...options.map((o) => Math.min(...o.tiers.map((x) => x.price)))) : null;
-  return { cityId: state.cityId, city: city ? city.name : null, count, max: econ.maxCompanies, full, options, cheapest, canAfford: cheapest != null && state.money >= cheapest, nameMin: NAME_MIN, nameMax: NAME_MAX };
+  return { cityId: city ? city.id : cityId, city: city ? city.name : null, count, max: econ.maxCompanies, full, options, cheapest, canAfford: cheapest != null && state.money >= cheapest, nameMin: NAME_MIN, nameMax: NAME_MAX };
 }
 
 /** Gründung prüfen (gleiche Regeln wie der Kauf aus der Zeitung); wirft nicht, sondern liefert { ok, err | c-Daten }. */
@@ -375,8 +375,9 @@ function checkFound(world, state, input) {
   const year = yearOf(state.day, state.startYear);
   const p = foundKeys(world, state, year).find((x) => x.pkey === pkey);
   if (!p) return { ok: false, err: 'Diese Betriebsart kannst du nicht gründen.' };
-  const city = world.city(state.cityId);
-  if (!city) return { ok: false, err: 'Du musst in einer Stadt wohnen.' };
+  const cityId = inp.cityId == null ? state.cityId : Number(inp.cityId);
+  const city = Number.isInteger(cityId) ? world.city(cityId) : null;
+  if (!city) return { ok: false, err: 'Unbekannte Stadt.' };
   if ((state.companies || []).length >= world.econ.companies.maxCompanies) return { ok: false, err: 'Du besitzt bereits die maximale Anzahl an Unternehmen.' };
   if (!qualification(world, state, pkey, tier).ok) return { ok: false, err: 'Dir fehlt die Qualifikation für diesen Betrieb.' };
   const nm = inp.name == null || inp.name === '' ? { ok: true, name: suggestName(world, state, pkey, tier) } : validName(state, inp.name);

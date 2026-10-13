@@ -76,7 +76,7 @@ function residenceProperty(state) {
 /** Effektive Wohnform (beschädigtes Haus zählt schlechter). */
 function effectiveHousing(state) {
   const p = residenceProperty(state);
-  if (p && p.closedUntil > state.day) return HOUSING.damaged;
+  if (p && p.closedUntil > state.day && !(p.insuredRepairUntil > state.day)) return HOUSING.damaged;
   return HOUSING[state.housing.type];
 }
 function roomsAvailable(state) {

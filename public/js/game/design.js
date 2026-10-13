@@ -82,7 +82,7 @@ export function decorateDesign(hud, side, route, ctx) {
   const utility = document.createElement('details'); utility.className = 'sim-utility';
   utility.innerHTML = `<summary aria-label="${text('Weitere Funktionen', 'More controls')}" title="${text('Weitere Funktionen', 'More controls')}">${icon('menu').__raw}</summary><div class="sim-utility-menu"></div>`;
   const tray = utility.lastElementChild;
-  for (const selector of ['[data-help]', 'a[href="/account"]', '[data-motion-toggle]', '[data-sound]', 'a[data-i18n-skip]', '[data-theme-toggle]', '.logout']) {
+  for (const selector of ['.efs', '[data-chat]', '[data-bell]', '[data-help]', 'a[href="/account"]', '[data-motion-toggle]', '[data-sound]', 'a[data-i18n-skip]', '[data-theme-toggle]', '.logout']) {
     const control = hud.querySelector(selector); if (!control) continue;
     const label = control.getAttribute('title') || control.getAttribute('aria-label') || text('Abmelden', 'Sign out');
     const target = control.matches('form') ? control.querySelector('button') : control;

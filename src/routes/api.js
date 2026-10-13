@@ -101,6 +101,14 @@ router.get('/newspaper', wrap(async (req, res) => {
   res.json({ ok: true, edition: ed, here: cityId === p.state.cityId });
 }));
 
+router.get('/found-options', wrap(async (req,res) => {
+  const p=await service.peek(req.user.id);
+  if(!p?.state || p.state.status!=='alive')return res.status(400).json({ok:false,error:'Kein lebender Charakter.'});
+  const cityId=req.query.cityId==null?p.state.cityId:Number(req.query.cityId);
+  if(!Number.isInteger(cityId)||!p.w.city(cityId))return res.status(404).json({ok:false,error:'Unbekannte Stadt.'});
+  res.json({ok:true,found:require('../game/business').foundOptions(p.w,p.state,cityId)});
+}));
+
 router.get('/city', wrap(async (req, res) => {
   const p = await service.peek(req.user.id);
   if (!p || !p.state) return res.status(400).json({ ok: false, error: 'Kein Charakter.' });

@@ -7,20 +7,20 @@ export default {
   id: 'household', label: 'Haushalt', icon: 'shopping-basket',
   render(ctx) {
     const v = ctx.view; const cur = v.currency; const m = v.meters;
-    const full = m.fridge >= 95;
+
     return html`
     <div class="panel-head"><div><h2>Haushalt &amp; Gesundheit</h2><p>Essen, Versicherungen und Vorsorge – unabhängig davon, wo du wohnst.</p></div></div>
 
     ${epiBanner(ctx, { full: true })}
     <section class="card glow">
       <div class="row spread"><div class="card-title" style="margin:0">${icon('refrigerator')} Kühlschrank ${infoBtn(['Der Kühlschrank verbraucht täglich Vorrat – mit Partner und Kindern mehr.', 'Ist er leer, hast du Hunger: Wohlbefinden und Gesundheit sinken täglich. Gute Qualität hebt Stimmung und Gesundheit.', 'Fülle ihn rechtzeitig auf. Später kann ein Butler das übernehmen.'], 'Kühlschrank')}</div>
-        <span class="chip">${icon('refresh-cw')} Verbrauch ${v.food.consumption} % / Tag</span></div>
-      <div class="fridge-bar mt">${bar(m.fridge, m.fridge < 25 ? 'bad' : 'good')}<div class="row spread small dim"><span>${m.fridge} % gefüllt</span><span>Qualität Ø ${m.fridgeQ} / 4</span></div></div>
+        <span class="chip">${icon('refresh-cw')} Verbrauch ${v.food.consumption} / Tag</span></div>
+      <div class="fridge-bar mt">${bar(m.fridge, m.fridge < 25 ? 'bad' : 'good')}<div class="row spread small dim"><span>${v.food.stock ?? m.fridge} Vorrat · ca. ${v.food.days ?? 0} Tage</span><span>Qualität Ø ${m.fridgeQ} / 4</span></div></div>
       <div class="grid c4 mt" style="--gap:.7rem">
-        ${v.food.tiers.map((t, i) => html`<button class="tier" data-food="${i}" ${full || v.money < t.cost ? 'disabled' : ''}>
-          ${icon(TIER_ICONS[i], 'lg')}<b>${t.name}</b><span class="mono">${money(t.cost, cur)}</span><small class="dim">auffüllen · ≈ ${money(t.perDay, cur)} / Tag · hält ca. ${t.lasts} Tage</small></button>`)}
+        ${v.food.tiers.map((t, i) => html`<button class="tier" data-food="${i}" ${v.money < t.cost ? 'disabled' : ''}>
+          ${icon(TIER_ICONS[i], 'lg')}<b>${t.name}</b><span class="mono">${money(t.cost, cur)}</span><small class="dim">+100 Vorrat · ≈ ${money(t.perDay, cur)} / Tag · hält ca. ${t.lasts} Tage</small></button>`)}
       </div>
-      ${full ? html`<div class="dim small mt">Der Kühlschrank ist voll.</div>` : ''}
+<p class="dim small mt">Jeder Einkauf wird zum vorhandenen Bestand hinzugefügt.</p>
     </section>
 
     <div class="grid c3 mt" style="--gap:1rem">
@@ -30,7 +30,7 @@ export default {
 
     ${seasonCard(ctx)}
     <section class="card mt">
-      <div class="card-title">${icon('shield')} Versicherungen ${infoBtn(['Versicherungen ersetzen Schäden durch Einbruch, Feuer, Sturm oder Krankheit.', 'Sie verhindern aber nicht die Ausfallzeit – ein vom Blitz getroffenes Haus bleibt trotzdem für eine Weile unbenutzbar.', 'Die Zeitung warnt vor Unwettern und Einbruchserien.'], 'Versicherung')}</div>
+      <div class="card-title">${icon('shield')} Versicherungen ${infoBtn(['Versicherungen ersetzen Schäden durch Einbruch, Feuer, Sturm oder Krankheit.', 'Bei versicherten Gebäudeschäden wird die Reparatur automatisch geregelt. Dein Wohnbedarf bleibt gedeckt und das Vorspulen läuft weiter; Mieten können während der Reparatur ausfallen.', 'Die Zeitung warnt vor Unwettern und Einbruchserien.'], 'Versicherung')}</div>
       <div class="grid c3" style="--gap:.8rem">${v.insurance.map((i) => html`<div class="card flat stack" style="--gap:.4rem"><div class="row spread nowrap"><b>${i.name}</b><span class="chip ${i.on ? 'good' : ''}">${i.on ? 'aktiv' : 'aus'}</span></div>
         <div class="dim small">schützt vor: ${i.covers.map((c) => ({ burglary: 'Einbruch', fire: 'Feuer', storm: 'Sturm/Blitz', illness: 'Arztkosten', interruption: 'Betriebsunterbrechung' }[c] || c)).join(', ')}</div>
         <div class="mono small">${i.perDay ? money(i.perDay, cur) + ' / Tag' : (i.key === 'betrieb' ? 'nur mit Betrieb' : 'nur mit Immobilie')}</div>
@@ -47,7 +47,7 @@ export default {
 
     <section class="card mt">
       <div class="card-title">${icon('crown')} Butler</div>
-      ${v.butler ? html`<div class="row spread"><div>Dein Butler füllt den Kühlschrank automatisch. <span class="dim">${money(v.butler.perDay, cur)} / Tag</span></div><button class="btn sm danger" data-butler="0">Entlassen</button></div>`
+      ${v.butler ? html`<div class="row spread"><div>Dein Butler kauft Vorräte für den ganzen Haushalt nach – auch beim Vorspulen. <span class="dim">${money(v.butler.perDay, cur)} / Tag</span></div><button class="btn sm danger" data-butler="0">Entlassen</button></div>`
         : html`<div class="row spread"><div class="dim">Für großes Haus oder Villa: Ein Butler übernimmt das tägliche Einkaufen. Du wechselst vom Selbermachen zum Management deines Lebenswerks.</div><button class="btn sm" data-butler="1">Einstellen</button></div>`}
     </section>`;
   },

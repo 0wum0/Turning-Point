@@ -85,7 +85,7 @@ function bizCard(b, v, here) {
     <div class="grow"><div class="row nowrap spread"><h4>${b.name}</h4><span class="chip accent">${b.tierName}</span></div>
       <div class="dim small">${b.rooms} Räume · benötigt: ${b.profession}${b.minLevel ? ' (Stufe ' + ['Anfänger', 'Geselle', 'Fachkraft', 'Meister', 'Altmeister'][b.minLevel] + ')' : ''}</div>
       <div class="row small" style="margin-top:.4rem"><b class="mono">${money(b.price, v.currency)}</b>${!b.qualified ? html`<span class="chip bad">Qualifikation fehlt</span>` : ''}${b.comp ? html`<span class="chip ${b.comp.factor < 0.9 ? 'warn' : ''}" title="Betriebe dieser Art in der Stadt (Spieler)">Konkurrenz: ${b.comp.firms} · Nachfrage ${b.comp.total}/${b.comp.cap}</span>` : ''}${!afford ? html`<span class="chip bad">${money(b.price - v.money, v.currency)} fehlen</span>` : ''}</div></div>
-    <button class="btn primary sm" data-act="buyBiz" data-id="${b.id}" ${(!here || !afford || !b.qualified) ? 'disabled' : ''}>Kaufen</button></article>`;
+    <button class="btn primary sm" data-act="buyBiz" data-id="${b.id}" ${(!afford || !b.qualified) ? 'disabled' : ''}>Kaufen</button></article>`;
 }
 
 function partnerCard(p, v, here) {
@@ -142,7 +142,7 @@ export default {
     on(root, 'click', '[data-gosoc]', (ev, t) => { ctx.ui.soc = ctx.ui.soc || {}; ctx.ui.soc.tab = t.dataset.gosoc; ctx.go('social'); });
     on(root, 'click', '[data-profile]', (ev, t) => { ev.preventDefault(); openProfile(ctx, Number(t.dataset.profile)); });
     on(root, 'click', '[data-read]', (ev, t) => { const n = data._list[Number(t.dataset.read)]; if (n) openReader(n, data.edition); });
-    on(root, 'click', '[data-go-found]', () => { ctx.ui.openFound = true; ctx.go('business'); });
+    on(root, 'click', '[data-go-found]', () => { ctx.ui.foundCityId = data.edition.city.id; ctx.ui.openFound = true; ctx.go('business'); });
     on(root, 'click', '[data-tab]', (e, t) => { ctx.ui.newsTab = t.dataset.tab; ctx.rerender(); });
     bindPlaceSearch(root.querySelector('#nCity'), root.querySelector('#nCityRes'), ctx, { year: ctx.view.date.year, onPick: (c) => { ctx.ui.newsCity = c.id; ctx.rerender(); } });
     const nh = root.querySelector('#nHome'); if (nh) nh.onclick = () => { ctx.ui.newsCity = ctx.view.city.id; ctx.rerender(); };

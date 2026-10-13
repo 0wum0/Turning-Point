@@ -1,3 +1,5 @@
+import {simulatorHud,updateYearRing} from './v2-hud.js';
+import {openProvisions} from './provision-dialog.js';
 import { startSplash } from './splash.js';
 import { syncSimulator, ensureWorld } from './simulator.js';
 import { isV2, openDesignSettings, decorateDesign, decoratePageDesign } from './design.js';
@@ -141,7 +143,7 @@ function renderHud() {
   if (!hud || !ctx.view) return;
   const v = ctx.view; const m = v.meters;
   mount(hud, html`
-    <a class="brand" href="/" title="Zur Startseite"><span class="mark">${icon('hourglass')}</span></a>
+    ${isV2() ? simulatorHud(v) : html`    <a class="brand" href="/" title="Zur Startseite"><span class="mark">${icon('hourglass')}</span></a>
     <div class="hud-id"><b class="serif">${v.person.name}</b><small>${v.season && v.season.on ? html`<button class="hud-season s${v.season.idx}" data-go="overview" title="${v.season.name}: ${v.season.tip}" aria-label="${v.season.name}">${icon(v.season.icon)}${v.season.epi && v.season.epi.active ? html`<i class="bdot"></i>` : ''}</button>` : ''}${v.date.label} · ${v.person.age} Jahre · ${v.date.era}</small></div>
     <span class="grow"></span>
     <div class="hud-res">
@@ -152,6 +154,7 @@ function renderHud() {
     <div class="hud-meters">
       ${[['fridge', 'Kühlschrank', 'refrigerator'], ['wellbeing', 'Wohlbefinden', 'smile'], ['rest', 'Erholung', 'moon'], ['health', 'Gesundheit', 'heart-pulse']].map((x) => html`<button class="meter" data-meter="${x[0]}" aria-label="${x[1]}: ${m[x[0]]} %">${ring(m[x[0]], x[1], x[2], { size: 44 })}<span class="mlabel">${x[1]}</span></button>`)}
     </div>
+`}
     <button class="btn ghost sm hud-help" data-help aria-label="Hilfe" title="Hilfe und Einführung"><b>?</b></button>
     <a class="btn ghost sm" href="/account" aria-label="Mein Konto" title="Mein Konto">${icon('user')}</a>
     <button class="btn ghost sm hud-bell" data-chat aria-label="Stadtplatz-Chat" title="Stadtplatz-Chat">${icon('message-circle')}${chatUnread(ctx.social) ? html`<i class="bdot"></i>` : ''}</button>
@@ -168,6 +171,7 @@ function renderHud() {
   const label = (p) => (p.id === 'newspaper' && v.date.medium === 'web' ? 'Web' : p.label);
   mount(side, html`${PAGES.map((p) => html`<a href="#/${p.id}" class="nav ${ctx.route === p.id ? 'on' : ''} ${hintLevel[p.id] ? 'hint-' + hintLevel[p.id] : ''} ${gated(p.id) ? 'locked' : ''}" data-nav="${p.id}" ${gated(p.id) ? html`title="${lockHint(ctx, GATES[p.id])}"` : ''}>${icon(gated(p.id) ? 'lock' : p.icon)}<span>${label(p)}</span>${p.id === 'overview' && unseen ? html`<i class="dot">${unseen}</i>` : p.id === 'social' && ctx.social && ctx.social.total ? html`<i class="dot">${ctx.social.total}</i>` : hintLevel[p.id] ? html`<i class="dot soft"></i>` : ''}</a>`)}`);
   decorateDesign(hud, side, ctx.route, ctx);
+  updateYearRing(v,ctx.__viewAt);
   const on = !isV2() && side.querySelector('.nav.on'); if (on && on.scrollIntoView) { try { on.scrollIntoView({ inline: 'center', block: 'nearest' }); } catch (_) { /* ältere Browser */ } }
 }
 
@@ -299,6 +303,7 @@ window.addEventListener('unhandledrejection', (ev) => {
 document.addEventListener('click', (e) => {
   const g = e.target.closest('[data-go]'); if (g && g.closest('#hud')) { e.preventDefault(); go(g.dataset.go); }
   const mt = e.target.closest('[data-meter]');
+  if (mt && ['fridge','rest','health'].includes(mt.dataset.meter)) { openProvisions(ctx,mt.dataset.meter); return; }
   if (mt) { const k = mt.dataset.meter; const lab = { fridge: 'Kühlschrank', wellbeing: 'Wohlbefinden', rest: 'Erholung', health: 'Gesundheit' }[k]; modal(html`<h3>${icon('info')} ${lab}: ${ctx.view.meters[k]} %</h3><ol class="info-steps">${['Was ist das?', 'Warum ist das wichtig?', 'Was kann ich tun?'].map((t, i) => html`<li><div><b>${t}</b>${METER_INFO[k][i]}</div></li>`)}</ol><div class="row end mt"><button class="btn primary" data-close="1">Verstanden</button></div>`); }
   if (e.target.closest('#hud [data-chat]')) openChatModal(ctx);
   if (e.target.closest('#hud [data-bell]')) openBell(ctx);
@@ -393,3 +398,5 @@ document.addEventListener('click', async (e) => {
     if (window.tpI18n && code[1] === 'en') window.tpI18n.refresh();
   } catch (err) { location.href = a.href; } finally { langBusy = false; }
 });
+
+setInterval(()=>{if(!document.hidden && isV2())updateYearRing(ctx.view,ctx.__viewAt);},1000);

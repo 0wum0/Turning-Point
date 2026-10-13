@@ -59,7 +59,7 @@ function createCharacter(world, input, user, { cycle = 1 } = {}) {
     skills: { learned: [], days: {} },
     properties: [], nextPropId: 1, companies: [], nextCompanyId: 1, politics: { term: null, completed: {} }, career: { applied: {}, hire: null, lastRaise: -9999, courses: {}, course: null, benefit: null },
     insurance: { hausrat: false, gebaeude: false, gesundheit: false, betrieb: false },
-    cards: { health: 0 }, butler: null,
+    cards: { health: 0 }, butler: null, foodReserve: 0, provisions: {},
     partner: null, plan: { target: 3 }, children: [], nextChildId: 1,
     tree: newTree(),
     life: {
@@ -120,6 +120,8 @@ function upgradeState(s) {
   if (s.insurance && s.insurance.betrieb == null) s.insurance.betrieb = false; // Betrieb 2.0: Betriebsversicherung
   for (const c of s.companies) require('./operations').normalize(c); // Betrieb 2.0: alter Sicherheitsdienst-Schalter → Schutz Stufe 1 (idempotent)
   require('./character').ensure(s); // Charakterblatt: xp = 0, keine Ausstattung, Rang 1 (idempotent; vorhandene Werte werden nur bereinigt)
+  s.foodReserve=Number.isFinite(s.foodReserve)?Math.max(0,s.foodReserve):0;
+  if(!s.provisions || typeof s.provisions!=='object' || Array.isArray(s.provisions))s.provisions={};
   onboarding.ensure(s); // Altstände: Einsteiger-Aufgaben werden beim nächsten Abgleich still nachgeführt (kein Belohnungsregen)
   return s;
 }

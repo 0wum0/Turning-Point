@@ -622,3 +622,10 @@ Alle Archetypen liegen im Mittel innerhalb ±10 %; einzelne Samen der Vermieter 
 **Gewinne der Betriebe (Anhebung):** `economy.companies.tiers[].incomePerRoom` von 420/520/680 auf 525/650/850 (≈ +25 %). Ein normal besetzter Betrieb mit Manager erreicht damit etwa 19–25 % Jahresrendite auf den Kaufpreis (kleine Stufen) statt vorher 5–10 %; große Betriebe (Stufe 3, 50 Räume) ≈ 10 %. Langzeitsimulation (`tools/econ-sim.js`, Archetyp „Unternehmer“): Nettovermögen nach 85 Jahren ≈ 1,9 Mio statt 0,4 Mio (1945-DM). Ein im Admin gespeicherter `economy`-Wert überschreibt diese Standardwerte.
 
 - **Anfänger-Schutz:** In den ersten `game.newbie_protect_days` (90) Spieltagen – etwa sechs Stunden echte Zeit – läuft die Spieluhr im Schutzmodus (kein Verhungern, keine Insolvenz, Essen und Fixkosten laufen automatisch), damit niemand stirbt, während er noch liest und lernt.
+
+
+### Haushaltsvorräte und standortunabhängige Käufe
+
+Lebensmittelpakete stapeln sich bei jedem Einkauf (+100 Einheiten); Haushalt und Versorgungsdialog zeigen die verbleibenden Spieltage. Der Butler kauft während des Vorspulens automatisch und kostenpflichtig nach. Die drei V2-Kreise öffnen Einkauf/Verbrauch für Vorrat, Gesundheit und Energie; Kaffee, zeitgemäße Energy-Drinks und einmal tägliches Schlafen unterstützen die Erholung. Der Header enthält Coins, Geld, Name/Jahresring und den gemeinsamen Unternehmens-/Immobilienwert.
+
+Gebäudeschäden sind seltener und haben einen Abstand von mindestens einem Spieljahr je Immobilie. Versicherte Reparaturen laufen ohne Vorspul-Unterbrechung und ohne Wohnbedarfsverlust; Mieten können während der Reparatur ausfallen. Migration 036 aktualisiert bisherige Standardrisiken ohne individuelle Einstellungen zu überschreiben. Betriebsgründungen, Betriebskäufe und Immobilienkäufe sind in anderen deutschen Städten möglich, ohne umzuziehen; Qualifikations- und Geldprüfungen bleiben bestehen. Details und Prüfungen: [Design V2](docs/DESIGN-V2.md#versorgung-schäden-und-standorte).

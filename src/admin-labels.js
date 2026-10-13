@@ -18,6 +18,7 @@ const SETTINGS = {
 };
 // Schlüssel im JSON-Editor (gelten in jeder Ebene)
 const TREE = {
+  damageCooldownDays: 'Mindestabstand zwischen Gebäudeschäden (Spieltage)',
   seasons: 'Jahreszeiten', festivals: 'Feste', harvest: 'Ernte', epidemics: 'Seuchen', amp: 'Ausschlag je Branche (mittelwertfrei)', heating: 'Heizkosten', health: 'Gesundheit und Stimmung',
   gastro: 'Gastronomie', tourism: 'Ausflug & Reisen', heat: 'Heizung & Energie', bau: 'Bau', retail: 'Einzelhandel', agrar: 'Landwirtschaft', share: 'Anteil an Miete/Unterhalt',
   kohle: 'Kohleofen (Faktor)', zentral: 'Zentralheizung (Faktor)', waerme: 'Wärmepumpe (Faktor)', illness: 'Krankheitschance ±', mood: 'Stimmung ±', boostPct: 'Umsatzplus (%)', well: 'Stimmung (Punkte)',

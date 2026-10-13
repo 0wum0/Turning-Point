@@ -1182,6 +1182,17 @@ const MIGRATIONS = [
     // gesellschaftlicher Rang (1–7) und Auftreten (0–100) im öffentlichen Profil und im Verzeichnis
     'ALTER TABLE player_stats ADD COLUMN rank_lv TINYINT NOT NULL DEFAULT 1, ADD COLUMN look TINYINT NOT NULL DEFAULT 0',
   ] },
+  { id: '036_household_damage', up: [async (db) => {
+    const rows=await db.query("SELECT value FROM settings WHERE `key` = 'economy'"); if(!rows.length)return;
+    let o;try{o=JSON.parse(rows[0].value);}catch(_){return;}
+    if(!o || typeof o!=='object')return;
+    o.events=o.events||{};const t=o.events.town||(o.events.town={});
+    // Migrate stock defaults while preserving deliberately lower/custom rates.
+    if(t.stormHitChance==null || t.stormHitChance===0.02)t.stormHitChance=0.005;
+    if(t.fireHitChance==null || t.fireHitChance===0.005)t.fireHitChance=0.001;
+    if(t.damageCooldownDays==null)t.damageCooldownDays=365;
+    await db.query("UPDATE settings SET value = ? WHERE `key` = 'economy'",[JSON.stringify(o)]);
+  }] },
 ];
 
 async function ensureTable(db) {

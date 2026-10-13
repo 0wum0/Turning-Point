@@ -105,7 +105,6 @@ function present(world, state, user, now) {
   const h = effectiveHousing(state);
   const occ = state.occupation;
   const occProf = occ ? world.prof(occ.pkey) : null;
-  const curCityFactor = require('./core').foodFactor(world, state, year);
   const age = ageYears(state.person.birthDay, state.day);
   const span = lifespanDays(state, year);
 
@@ -129,6 +128,7 @@ function present(world, state, user, now) {
     city: city ? { id: city.id, name: city.name, state: city.state, image: city.image } : null,
     money: state.money,
     worth: netWorth(world, state),
+    assetValue: state.properties.reduce((sum,p)=>sum+propertyValue(world,state,p,year),0)+biz.netBusinessValue(world,state,year),
     meters: {
       fridge: round(state.meters.fridge), fridgeQ: Math.round(state.meters.fridgeQ * 10) / 10,
       wellbeing: round(state.meters.wellbeing), rest: round(state.meters.rest), health: round(state.meters.health),
@@ -162,8 +162,12 @@ function present(world, state, user, now) {
     })(),
     flows: { income: flows.income, expense: flows.expense, net: flows.net, inc: flows.inc, exp: flows.exp },
     food: {
+      stock: Math.round(require('./provisions').stockOf(state)*10)/10,
+      days: Math.floor(require('./provisions').stockOf(state)/(consumption(state)*satiety(state.meters.fridgeQ))),
+      items: require('./provisions').catalogue(world,state),
+      canRest: state.housing.type!=='street' && state.pending.restDay!==state.day && state.meters.rest<100,
       consumption: Math.round(consumption(state) * satiety(state.meters.fridgeQ) * 10) / 10,
-      tiers: econ.food.map((t, i) => ({ key: t.key, name: t.name, cost: round(t.perPct * Math.max(0, 100 - state.meters.fridge) * idx * curCityFactor), perDay: foodCostPerDay(world, state, i), lasts: Math.round(100 / (consumption(state) * satiety(i + 1))) })),
+      tiers: econ.food.map((t, i) => ({ key: t.key, name: t.name, cost: require('./provisions').price(world,state,i,100), perDay: foodCostPerDay(world, state, i), lasts: Math.round(100 / (consumption(state) * satiety(i + 1))) })),
     },
     learned,
     credit: require('./credit').view(world, state),

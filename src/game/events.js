@@ -70,34 +70,40 @@ function applyTownEvents(ctx) {
       const d = describeTownEvent(ev, city);
       if (ev.type === 'storm') {
         for (const p of state.properties.filter((x) => x.cityId === cid)) {
+          if (p.closedUntil > state.day || (p.lastDamageDay != null && state.day-p.lastDamageDay < (T.damageCooldownDays ?? 365))) continue;
           if (!chance(r, T.stormHitChance)) continue;
+          p.lastDamageDay=state.day;
           const cost = Math.round(propertyValue(world, state, p, year) * T.stormCostPct / 100);
           const insured = state.insurance.gebaeude;
           const pay = insured ? 0 : Math.min(cost, Math.max(0, state.money));
           state.money -= pay; state.stats.spent += pay;
-          p.condition = Math.max(5, p.condition - (insured ? 12 : 20) - (pay < cost ? 15 : 0));
+          if (!insured) p.condition = Math.max(5, p.condition - 20 - (pay < cost ? 15 : 0));
           p.closedUntil = state.day + T.stormClosedDays;
+          if (insured) p.insuredRepairUntil=p.closedUntil;
           press.story(world, state, 'storm', { prop: p.name, cityId: cid });
           notice(state, {
-            level: 'bad', title: `Sturmschaden: ${p.name}`, tab: 'housing',
-            text: insured ? 'Deine Gebäudeversicherung ersetzt den Schaden. Das Haus ist trotzdem für etwa 14 Tage nicht voll nutzbar.' : `Die Reparatur kostet dich ${formatMoney(pay, world.currency(year))} und das Haus ist etwa 14 Tage nicht voll nutzbar.`,
+            level: insured ? 'info' : 'bad', title: `Sturmschaden: ${p.name}`, tab: 'housing',
+            text: insured ? `Die Versicherung organisiert die Reparatur (${T.stormClosedDays} Tage). Dein Wohnbedarf bleibt gedeckt; Vorspulen läuft weiter.` : `Die Reparatur kostet dich ${formatMoney(pay, world.currency(year))}; Ausfallzeit: ${T.stormClosedDays} Tage.`,
             info: ['Ein Unwetter hat dein Gebäude beschädigt.', 'Ohne Gebäudeversicherung zahlst du die Reparatur selbst. Auch mit Versicherung bleibt die Ausfallzeit.', 'Schließe eine Gebäudeversicherung ab und lies die Zeitung – Unwetter werden vorher angekündigt.'],
           });
         }
       } else if (ev.type === 'fire') {
         for (const p of state.properties.filter((x) => x.cityId === cid)) {
+          if (p.closedUntil > state.day || (p.lastDamageDay != null && state.day-p.lastDamageDay < (T.damageCooldownDays ?? 365))) continue;
           if (!chance(r, T.fireHitChance)) continue;
+          p.lastDamageDay=state.day;
           const cost = Math.round(propertyValue(world, state, p, year) * T.fireCostPct / 100);
           const insured = state.insurance.gebaeude;
           const pay = insured ? 0 : Math.min(cost, Math.max(0, state.money));
           state.money -= pay; state.stats.spent += pay;
-          p.condition = Math.max(5, p.condition - 35);
+          if (!insured) p.condition = Math.max(5, p.condition - 35);
           p.closedUntil = state.day + T.fireClosedDays;
+          if (insured) p.insuredRepairUntil=p.closedUntil;
           chronicle(state, `Feuer in ${p.name} (${city.name}).`, 'event');
           press.story(world, state, 'fire', { prop: p.name, cityId: cid });
           notice(state, {
-            level: 'bad', title: `Feuer: ${p.name}`, tab: 'housing', interrupt: true,
-            text: insured ? 'Die Versicherung bezahlt die Reparatur. Das Gebäude fällt etwa 60 Tage aus.' : 'Du trägst den Schaden selbst. Das Gebäude fällt etwa 60 Tage aus.',
+            level: insured ? 'info' : 'bad', title: `Feuer: ${p.name}`, tab: 'housing', interrupt: !insured,
+            text: insured ? `Die Versicherung organisiert die Reparatur (${T.fireClosedDays} Tage). Dein Wohnbedarf bleibt gedeckt; Vorspulen läuft weiter.` : `Du trägst den Schaden selbst. Das Gebäude fällt ${T.fireClosedDays} Tage aus.`,
             info: ['Ein Feuer hat dein Gebäude schwer beschädigt.', 'Versicherung ersetzt Kosten, aber nicht die Ausfallzeit.', 'Eine Gebäudeversicherung lohnt sich besonders bei teuren Häusern.'],
           });
         }

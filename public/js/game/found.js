@@ -1,7 +1,9 @@
 /* Unternehmen gründen: zweistufiger Dialog (1 Betriebsart wählen, 2 Name + Zusammenfassung + Bestätigen).
  * Alle Preise und Regeln kommen vom Server (v.found); geprüft wird dort erneut (Aktion foundBiz).
  * Jeder dynamische Wert steht in einem eigenen Element, damit die englische Oberfläche jeden Textknoten einzeln übersetzen kann. */
-import { html, icon, money, modal, on, signed, mount } from './ui.js';
+import { html, icon, money, modal, on, signed, mount, api, toast } from './ui.js';
+
+import {bindPlaceSearch} from './places.js';
 
 const LEVELS = ['Anfänger', 'Geselle', 'Fachkraft', 'Meister', 'Altmeister'];
 const names = (list) => list.map((x, i) => html`${i ? ', ' : ''}<span>${x.name}</span>`);
@@ -48,7 +50,7 @@ function step1(v) {
       </span></button>`;
   });
   return html`<h3>${icon('store')} Unternehmen gründen</h3>
-    <div class="small dim">Schritt 1 von 2 – Was für ein Betrieb soll es werden?</div>
+    <div class="small dim">Schritt 1 von 2 – Was für ein Betrieb soll es werden?</div><div class="pl-wrap field mt"><label for="found-city">Gründungsort suchen</label><input id="found-city" type="search" placeholder="Stadt suchen …" autocomplete="off"><div class="pl-res" id="found-results"></div></div>
     <div class="small mt"><span>Ort der Gründung:</span> <b data-i18n-skip>${f.city}</b></div>
     <div class="small dim"><span>Diese Betriebsarten erlaubt dir deine Qualifikation:</span></div>
     <div class="found-grid mt">${cards}</div>
@@ -64,6 +66,7 @@ function step2(v, o, tierIdx, name) {
     ${o.tiers.length > 1 ? html`<div class="field mt"><label>Größe</label><div class="row" style="gap:.4rem;flex-wrap:wrap">${o.tiers.map((x) => html`<button type="button" class="chip-btn ${x.tier === t.tier ? 'on' : ''}" data-found-tier="${x.tier}" ${v.money >= x.price ? '' : 'disabled'}><span>${x.tierName}</span> · ${money(x.price, cur)}</button>`)}</div></div>` : ''}
     <div class="field mt"><label for="found-name">Name deines Unternehmens</label><input id="found-name" type="text" minlength="${v.found.nameMin}" maxlength="${v.found.nameMax}" value="${name}" autocomplete="off" spellcheck="false"><div class="small dim"><span>${v.found.nameMin} bis ${v.found.nameMax} Zeichen, keine Internetadressen.</span></div></div>
     <dl class="kv small mt">
+      <dt>Gründungsort</dt><dd data-i18n-skip>${v.found.city}</dd>
       <dt>Gründungspreis</dt><dd><b>${money(t.price, cur)}</b></dd>
       <dt>Räume</dt><dd>${t.rooms}</dd>
       <dt>Unterhalt pro Tag</dt><dd class="neg">${money(t.upkeep, cur)}</dd>
@@ -74,27 +77,32 @@ function step2(v, o, tierIdx, name) {
     ${t.market ? html`<div class="found-market mt"><div class="small dim"><b>Nachfrage vor Ort</b></div><div class="mt0">${marketChip(t.market)}</div>
       <div class="small dim"><span>${t.market.firms} Betriebe dieser Art in der Stadt · Nachfrage ${t.market.total} von ${t.market.cap} Räumen</span></div>
       ${t.market.sector ? html`<div class="small"><span>Preisniveau der Branche</span>: <span>${t.market.sectorName}</span> <b>${t.market.level >= 1 ? '+' : '−'}${Math.round(Math.abs(t.market.level - 1) * 100)} %</b> <span class="dim">(wirkt auf deinen Umsatz)</span></div>` : ''}</div>` : ''}
-    ${t.profit != null ? html`<div class="small dim mt"><span>* Bei voller Besetzung, nach Zutaten, Löhnen, Unterhalt und Steuern. Zu Beginn hast du noch keine Mitarbeiter: Arbeite zuerst selbst im Betrieb und stelle dann nach und nach Leute ein.</span> <span>Nötige Mitarbeiter:</span> <span>${t.staff}</span> <span>und ein Manager.</span></div>` : ''}
+    ${t.profit != null ? html`<div class="small dim mt"><span>* Bei voller Besetzung, nach Zutaten, Löhnen, Unterhalt und Steuern. Zu Beginn hast du noch keine Mitarbeiter. Stelle Personal und einen Manager ein. Selbst arbeiten kannst du an deinem Wohnort.</span> <span>Nötige Mitarbeiter:</span> <span>${t.staff}</span> <span>und ein Manager.</span></div>` : ''}
     ${can ? '' : html`<div class="alert warn small mt">${icon('triangle-alert')}<div><span>Dir fehlen</span> <b>${money(Math.max(0, t.price - v.money), cur)}</b></div></div>`}
     <div id="found-err" class="small neg mt" role="alert"></div>
     <div class="row end mt"><button class="btn ghost" data-found-back="1">Zurück</button><button class="btn primary" id="found-go" ${can ? '' : 'disabled'}>${icon('check')} <span>Gründen für</span> ${money(t.price, cur)}</button></div>`;
 }
 
 /** Öffnet den Gründungsdialog. */
-export function openFound(ctx) {
-  const v = ctx.view; const f = v.found;
+export async function openFound(ctx, cityId=ctx.ui.foundCityId ?? ctx.view.city.id) {
+  let result;
+  try { result=await api('GET',`/api/found-options?cityId=${cityId}`); } catch(e) {toast(e.message,'bad');return;}
+  const v={...ctx.view,found:result.found}, f=v.found;
+  if(f)ctx.ui.foundCityId=f.cityId;
   if (!f || !f.options.length) {
     const d = modal(explainNoQualification(v));
     on(d.el, 'click', '[data-found-go]', (e, t) => { d.close(); ctx.go(t.dataset.foundGo); });
     return;
   }
   const dlg = modal(step1(v), { wide: true });
+  const bindCity=()=>bindPlaceSearch(dlg.el.querySelector('#found-city'),dlg.el.querySelector('#found-results'),ctx,{year:v.date.year,onPick:c=>{dlg.close();openFound(ctx,c.id);}});
+  bindCity();
   const cur = { o: null, tier: 0, name: '', touched: false };
   const show = (h) => { mount(dlg.el, h); const x = dlg.el.querySelector('input, button.primary, button'); if (x) x.focus({ preventScroll: true }); };
   const toStep2 = (o, tier) => {
     cur.o = o; cur.tier = tier;
     if (!cur.touched) cur.name = o.tiers.find((x) => x.tier === tier).suggest;
-    show(step2(ctx.view, o, tier, cur.name));
+    show(step2({...ctx.view,found:f}, o, tier, cur.name));
     const inp = dlg.el.querySelector('#found-name'); if (inp) inp.addEventListener('input', () => { cur.name = inp.value; cur.touched = true; });
   };
   on(dlg.el, 'click', '[data-found-pick]', (e, t) => {
@@ -103,11 +111,11 @@ export function openFound(ctx) {
     cur.touched = false; toStep2(o, pick.tier);
   });
   on(dlg.el, 'click', '[data-found-tier]', (e, t) => toStep2(cur.o, Number(t.dataset.foundTier)));
-  on(dlg.el, 'click', '[data-found-back]', () => { show(step1(ctx.view)); });
+  on(dlg.el, 'click', '[data-found-back]', () => { show(step1({...ctx.view,found:f})); bindCity(); });
   on(dlg.el, 'click', '#found-go', async (e, btn) => {
     const name = (dlg.el.querySelector('#found-name') || {}).value || '';
     btn.disabled = true; const err = dlg.el.querySelector('#found-err');
-    try { await ctx.act('foundBiz', { pkey: cur.o.pkey, tier: cur.tier, name }); dlg.close(); }
+    try { await ctx.act('foundBiz', { pkey: cur.o.pkey, tier: cur.tier, name, cityId:f.cityId }); dlg.close(); }
     catch (er) { if (err) err.textContent = er.message || 'Das hat nicht geklappt.'; btn.disabled = false; }
   });
 }
