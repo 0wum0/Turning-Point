@@ -105,7 +105,7 @@ function levelBtn(s, l, cur) {
   const reason = whyText(l);
   const label = s.kind === 'service' ? html`<span>${l.name}</span> · ${money(l.dayCost, cur)} <span>pro Tag</span>` : html`<span>${s.lv ? 'Wechseln zu:' : 'Kaufen:'}</span> ${l.name} · ${money(l.price, cur)}`;
   if (l.current) return html`<div class="ch-lv cur"><span class="chip good small">${icon('check')} <span>Aktuell</span></span> <b>${l.name}</b></div>`;
-  return html`<button class="btn sm ${l.ok ? '' : ''}" ${s.kind === 'service' ? `data-ch-svc="${s.key}:${l.lv}"` : `data-ch-buy="${s.key}:${l.lv}"`} ${l.ok ? '' : 'disabled'} title="${reason || l.text}">${icon(s.kind === 'service' ? 'handshake' : 'shopping-basket')} ${label}</button>`;
+  return html`<button class="btn sm ${l.ok ? '' : ''}" ${s.kind === 'service' ? html`data-ch-svc="${s.key}:${l.lv}"` : html`data-ch-buy="${s.key}:${l.lv}"`} ${l.ok ? '' : 'disabled'} title="${reason || l.text}">${icon(s.kind === 'service' ? 'handshake' : 'shopping-basket')} ${label}</button>`;
 }
 
 function slotHtml(s, cur, infoOf) {

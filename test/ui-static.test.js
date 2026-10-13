@@ -136,6 +136,7 @@ test('Charakterblatt: Knöpfe sind verdrahtet, Aktionen existieren, Glossar/Spot
   const sels = new Set([...ch.matchAll(/on\(root, '(?:click|change)', '\[(data-[a-z-]+)\]'/g)].map((m) => m[1]));
   assert.ok(sels.size >= 8, [...sels].join());
   for (const a of sels) assert.ok(new RegExp(`${a}(=|[ >])`).test(ch), `Kein Knopf mit ${a}`);
+  assert.ok(!/(?<!html)`data-[a-z-]+=/.test(ch), 'Attribute dürfen nicht als Text in html`` stehen (würden maskiert)');
   const A = require('../src/game/actions').ACTIONS;
   const used = new Set([...ch.matchAll(/run\('([A-Za-z]+)'/g)].map((m) => m[1]));
   for (const n of used) assert.ok(A.includes(n), `Aktion ${n} fehlt im Server`);

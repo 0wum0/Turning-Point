@@ -563,7 +563,7 @@ describe('E2E Turning Point', { concurrency: false }, () => {
       await L.navOpen(f, 'character');
       await f.page.waitForSelector('[data-ch-rank] .char-rank-chip');
       const T0 = await text(f, '#page');
-      assert.match(T0, /Charakterblatt/); assert.match(T0, /Rang\s*\d/); assert.match(T0, /Erfahrungspunkte/); assert.match(T0, /Ausstattung/); assert.match(T0, /Kurz-Lebenslauf/);
+      assert.match(T0, /Charakterblatt/i); assert.match(T0, /Rang\s*\d/i); assert.match(T0, /Erfahrungspunkte/i); assert.match(T0, /Ausstattung/i); assert.match(T0, /Kurz-Lebenslauf/i);
       assert.equal(await f.page.locator('[data-ch-slot]').count(), 7); assert.equal(await f.page.locator('[data-ch-train]').count(), 6);
       // Erfahrung: „Beste Wahl“
       const t0 = await xp(); const bal0 = t0.xp.bal; assert.ok(bal0 >= 12 - 1e-9);
@@ -619,10 +619,10 @@ describe('E2E Turning Point', { concurrency: false }, () => {
       try {
         await L.navOpen(f, 'character'); await f.page.waitForSelector('[data-ch-slot]');
         const T = await text(f, '#page');
-        assert.match(T, /Character sheet/); assert.match(T, /Experience points/i); assert.match(T, /Equipment/); assert.match(T, /Short CV/);
-        assert.doesNotMatch(T, /\b(Erfahrung|Ausstattung|Kaufen|Wechseln|Verkaufen|Aufarbeiten|Auftreten|Talente|Weiche Vorteile|Laufende Kosten|Lebenslauf|Zustand|Dienstleistung|Sonntagsanzug|Maßanzug|Aktentasche|Wachdienst)\w*/, `Deutscher Rest:\n${T}`);
+        assert.match(T, /Character sheet/i); assert.match(T, /Experience points/i); assert.match(T, /Equipment/i); assert.match(T, /Short CV/i);
+        assert.doesNotMatch(T, /\b(Erfahrung|Ausstattung|Kaufen|Wechseln|Verkaufen|Aufarbeiten|Auftreten|Talente|Weiche Vorteile|Laufende Kosten|Lebenslauf|Zustand|Dienstleistung|Sonntagsanzug|Maßanzug|Aktentasche|Wachdienst)\w*/i, `Deutscher Rest:\n${T}`);
         await f.page.click('[data-ch-info="fahrzeug"]'); await f.page.waitForSelector('.modal .ops-lvs');
-        const M = await text(f, '.modal'); assert.match(M, /Vehicle/); assert.doesNotMatch(M, /\b(Stufen|Fahrzeug|Kleinwagen|Motorroller|Verständnis)\w*/, `Deutscher Rest:\n${M}`);
+        const M = await text(f, '.modal'); assert.match(M, /Vehicle/i); assert.doesNotMatch(M, /\b(Stufen|Fahrzeug|Kleinwagen|Motorroller|Verständnis)\w*/i, `Deutscher Rest:\n${M}`);
         await L.closeModals(f);
         noErrors(f);
       } finally {
