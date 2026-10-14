@@ -84,6 +84,7 @@ export default {
       }
       catch (e) { toast(e.message, 'bad'); } finally { entering = false; host3d.classList.remove('city-entering'); }
     };
+    if(ctx.ui.enterOffice){const id=ctx.ui.enterOffice;delete ctx.ui.enterOffice;queueMicrotask(()=>{if(root.isConnected)enter(`biz:${id}`);});}
     const select = (key) => {
       if (!isV2()) return enter(key);
       const b = data.buildings.find(x => x.key === key); if (!b) return;

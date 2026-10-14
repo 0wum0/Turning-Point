@@ -687,7 +687,7 @@ html[data-game-design="v2"] .city-business-status { border-left:3px solid #82d1a
 :root[data-game-design="v2"] .sim-identity { display:flex; gap:9px; align-items:center; flex:1; min-width:0; border:0; background:none; color:#f0f5f1; text-align:left; cursor:pointer; font:inherit; }
 :root[data-game-design="v2"] .sim-identity > span:last-child { min-width:0; }
 :root[data-game-design="v2"] .sim-identity b { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:clamp(14px,1.4vw,20px); }
-:root[data-game-design="v2"] .sim-identity small { color:#c0d2c8; font-size:12px; }
+:root[data-game-design="v2"] .sim-identity small { display:block; color:#c0d2c8; font-size:12px; }
 :root[data-game-design="v2"] .sim-year-ring { position:relative; display:grid; place-items:center; width:40px; height:40px; flex:none; color:var(--season-color,#a8ddec); }
 .sim-year-ring > svg { position:absolute; inset:0; width:40px; height:40px; transform:rotate(-90deg); fill:none; stroke-width:4; }
 .sim-year-ring .year-track { stroke:#65736e; opacity:.5; }
@@ -779,4 +779,28 @@ html[data-game-design="v2"] .city-business-status { border-left:3px solid #82d1a
  .sim-interior .int-room-nav { top:10px; }
  .sim-interior .int-mini { left:270px; right:10px; top:72px; }
  .sim-interior .int-walk { bottom:84px; }
+}
+
+/* Concept 1.4: keep the actual status bar and its actions in every room. */
+.sim-interior.has-shared-hud { grid-template-rows:auto auto minmax(0,1fr); }
+.sim-interior.has-shared-hud > #hud { position:relative; inset:auto; grid-column:1/-1; grid-row:1; width:100%; z-index:5; padding-inline:16px; }
+:root[data-game-design="v2"] body.game .sim-interior > #hud > .btn { padding:4px; min-height:30px; border-radius:4px; }
+.sim-interior.has-shared-hud .int-top { grid-row:2; padding:10px 18px; }
+.sim-interior.has-shared-hud .int-stage,.sim-interior.has-shared-hud .int-sidebar { grid-row:3; }
+.sim-interior.has-shared-hud .int-title b { font-size:20px; }
+.sim-interior.has-shared-hud .int-mini { top:calc(var(--hud-h,80px) + 78px); }
+.business-bank { padding:14px 16px; border:1px solid #7299aa55; border-radius:10px; background:#0c26352b; line-height:1.6; }
+.business-bank p { margin:5px 0; }
+@media(max-width:900px) {
+ :root[data-game-design="v2"] body.game .hud .sim-assets { grid-column:1/5; }
+ :root[data-game-design="v2"] body.game .hud .hud-meters { grid-column:5/12; gap:0; margin-right:14px; }
+ :root[data-game-design="v2"] body.game .hud .meter { min-width:38px; }
+ :root[data-game-design="v2"] .sim-identity [data-hud-season] { display:none; }
+}
+@media(max-width:650px) and (orientation:portrait) {
+ .sim-interior.has-shared-hud { grid-template-rows:auto auto minmax(240px,40svh) minmax(0,1fr); }
+ .sim-interior.has-shared-hud .int-stage { grid-row:3; }
+ .sim-interior.has-shared-hud .int-sidebar { grid-row:4; }
+ .sim-interior.has-shared-hud .int-top { padding:8px 12px; }
+ .sim-interior.has-shared-hud .int-title b { font-size:16px; }
 }

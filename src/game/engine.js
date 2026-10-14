@@ -210,6 +210,7 @@ function dayStep(ctx) {
   familyDaily(ctx, flows);
   businessDaily(ctx);
   require('./trade').daily(ctx); // Handelsrouten: Abfahrt, Ankunft, Erlös in die Firmenkasse
+  require('./business-banking').automaticTransfers(ctx); // nach Betriebskosten und Fracht; niemals EFS
   society.politicsDaily(ctx);
   CIV.daily(ctx); // Gesellschaft: Bildungstöpfe der Stadt, verfallende Trauerfeiern
   CHR.daily(ctx); // Charakterblatt: Abnutzung, laufende Kosten der Ausstattung, Erfahrung aus Tätigkeiten, Rang

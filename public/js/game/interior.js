@@ -10,6 +10,7 @@ const rewardText = (r) => Object.entries(r || {}).map(([k, n]) => (REWARD_LABEL[
 
 export async function openInterior(ctx, b, data) {
   let T, room, onResize = () => {}, markReady = () => {}, invalidate = () => {}, focusRoom = () => {}, changeRoom = () => {};
+  const requestedRoom=ctx.ui.interiorRoom;delete ctx.ui.interiorRoom;
   const v2 = isV2(); const previousFocus = document.activeElement; const previousOverflow = document.body.style.overflow;
   const app = document.getElementById('app'); const wasInert = app?.inert;
   const root = document.createElement('div'); root.className = `interior${v2 ? ' sim-interior' : ''}`; root.setAttribute('role', 'dialog'); root.setAttribute('aria-modal', 'true'); root.setAttribute('aria-label', b.name);
@@ -28,6 +29,8 @@ export async function openInterior(ctx, b, data) {
   root.querySelector('#intBack').focus();
   if(v2){const breadcrumb=document.createElement('div');breadcrumb.className='int-breadcrumb';breadcrumb.textContent=`${data.city.name} / ${b.name}`;root.querySelector('.int-title').prepend(breadcrumb);}
   const canvas = root.querySelector('canvas'); const tip = root.querySelector('.int-tip'); const panel = root.querySelector('.int-panel'); const mini = root.querySelector('.int-mini');
+  let sharedHud=null,hudAnchor=null;
+  if(v2){sharedHud=document.getElementById('hud');if(sharedHud){hudAnchor=document.createComment('interior-hud-home');sharedHud.before(hudAnchor);root.prepend(sharedHud);root.classList.add('has-shared-hud');}}
   let renderer; let alive = true; let rafId = 0; let needs = true; let minigame = null;
   let pendingTask = false; let roomReady = false; let resizeObserver;
   const disposeObject = obj => obj?.traverse(m => { m.geometry?.dispose(); for (const material of (Array.isArray(m.material) ? m.material : [m.material])) { if (!material) continue; for (const value of Object.values(material)) if (value?.isTexture) value.dispose(); material.dispose(); } });
@@ -35,12 +38,16 @@ export async function openInterior(ctx, b, data) {
     if (!alive) return;
     alive = false; cancelAnimationFrame(rafId); window.removeEventListener('resize', onResize); document.removeEventListener('keydown', onKey); window.removeEventListener('hashchange', onHash);
     resizeObserver?.disconnect(); disposeObject(room?.scene); if (renderer) { renderer.dispose(); }
+    window.removeEventListener('tp-design-change',onDesignChange);
+    if(sharedHud && hudAnchor?.isConnected)hudAnchor.replaceWith(sharedHud);
     root.remove(); document.body.style.overflow = previousOverflow; if (app) app.inert = wasInert; if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
   };
+  const onDesignChange=()=>{if(!isV2()){cleanup();ctx.rerender();}};
+  window.addEventListener('tp-design-change',onDesignChange);
   const close = () => { cleanup(); ctx.rerender(); };
   root.querySelector('#intBack').onclick = close;
   const onKey = (e) => { if (e.key === 'Escape' && !document.querySelector('.modal-backdrop')) { e.preventDefault(); if (minigame) stopMini(); else if (v2 && currentHot) showActions(null); else close(); } };
-  root.addEventListener('keydown', e => { if (e.key !== 'Tab') return; const all = [...root.querySelectorAll('button:not(:disabled), input, [tabindex="0"]')].filter(el => el.getClientRects().length); const first = all[0], last = all.at(-1); if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); } else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); } });
+  root.addEventListener('keydown', e => { if (e.key !== 'Tab' || document.querySelector('.modal-backdrop')) return; const all = [...root.querySelectorAll('button:not(:disabled), input:not(:disabled), select:not(:disabled), a[href], summary, [tabindex="0"]')].filter(el => el.getClientRects().length); const first = all[0], last = all.at(-1); if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); } else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); } });
   document.addEventListener('keydown', onKey);
   const onHash = () => cleanup(); window.addEventListener('hashchange', onHash); // Zurück-Taste / Menü: Innenansicht schließen
 
@@ -68,7 +75,7 @@ export async function openInterior(ctx, b, data) {
   };
   const api2 = {
     go: (route, tab) => { cleanup(); if (tab) ctx.ui.newsTab = tab; if (route === 'newspaper') ctx.ui.newsCity = data.city.id; if (route === 'business' && b.type === 'biz') ctx.ui.simFocus = { route, entity: `firm:${b.ref}` }; ctx.go(route); },
-    act: async (name, input) => { try { await ctx.act(name, input, { noRender: true }); } catch (_) { /* Toast kommt aus act */ } if (alive) { await refreshCity(); refreshBusiness(); room?.syncBusiness?.(); invalidate(); showActions(currentHot); } },
+    act: async (name, input) => { try { await ctx.act(name, input, { noRender: true }); } catch (_) { /* Toast kommt aus act */ } if (ctx.view.status!=='alive'){cleanup();return;} if (alive) { await refreshCity(); refreshBusiness(); room?.syncBusiness?.(); invalidate(); showActions(currentHot); } },
   };
 
   const refreshBusiness = () => {
@@ -113,7 +120,7 @@ export async function openInterior(ctx, b, data) {
     const acts = resolveActions(h).filter((a) => !currentFilter || currentFilter.test(a.label || ''));
     mount(panel, html`<div class="row spread"><b class="serif" style="font-size:1.15rem">${h.label}</b><button class="btn ghost sm" id="pClose" aria-label="Schließen">${icon('x')}</button></div>
       ${acts.length ? html`<div class="stack mt" style="--gap:.5rem">${acts.map((a, i) => html`<button class="btn block act" data-i="${i}" ${a.disabled || (!here && !a.allowAway) ? 'disabled' : ''}><span class="grow" style="text-align:left"><b>${a.label}</b>${a.sub ? html`<div class="dim small" style="font-weight:500;white-space:normal">${a.sub}</div>` : ''}</span></button>`)}</div>` : html`<div class="dim mt">Hier gibt es gerade nichts zu tun.</div>`}
-      ${!here ? html`<div class="small dim mt">Du besuchst diese Stadt. Zeitung und Karte kannst du ansehen; Aufgaben und Einkäufe sind nur an deinem Wohnort möglich.</div>` : ''}`);
+      ${!here ? html`<div class="small dim mt">Du besuchst diese Stadt. Dein Wohnsitz bleibt unverändert. Eigene Betriebsbüros kannst du verwalten und Einnahmen abholen; allgemeine Aufgaben erledigst du am Wohnort.</div>` : ''}`);
     panel.classList.remove('hide');
     panel.querySelector('#pClose').onclick = () => showActions(null);
     if (v2) { panel.querySelector('#pClose').setAttribute('aria-label','Zur Gegenständeübersicht'); if (previousHot !== h) panel.querySelector('#pClose').focus({ preventScroll:true }); }
@@ -357,6 +364,7 @@ export async function openInterior(ctx, b, data) {
   }
   // Testhilfe: Bildschirmpositionen der Marken (für automatisierte Tests)
   root._tokenScreen = () => { const r = canvas.getBoundingClientRect(); return tokens.slice().sort((a, b) => a.num - b.num).map((k) => { const p = k.mesh.position.clone().project(camera); return [r.left + ((p.x + 1) / 2) * r.width, r.top + ((1 - p.y) / 2) * r.height]; }); };
+  if(room.immersive&&requestedRoom)changeRoom(requestedRoom);
   invalidate();
   // Zeit sparen: Akku-schonend – gerendert wird nur bei Bewegung/Minispiel
 }

@@ -24,7 +24,7 @@ test('V2 workshop: actual server state, moving workers, outage stops work, preci
   changed.companies[0].flows.income=0;changed.companies[0].supply.outputs.forEach(x=>x.units=0);
   changed.companies[0].profitAll=-(changed.companies[0].flows.wages+changed.companies[0].flows.upkeep);
   let action;await page.route('**/api/action/bizCollect',async route=>{action=route.request().postDataJSON();await route.fulfill({json:{ok:true,view:changed}});});
-  await page.locator('[data-bar]').filter({hasText:'Kasse leeren'}).click();await page.locator('.int-panel .act').filter({hasText:'Firmenkasse leeren'}).click();
+  await page.locator('[data-bar]').filter({hasText:'Einnahmen'}).click();await page.locator('.int-panel .act').filter({hasText:'Einnahmen im Büro abholen'}).click();
   await page.waitForFunction(()=>document.querySelector('.interior').__room.businessStats().state.active===false);
   assert.deepEqual(action,{id:1});assert.ok((await stats()).poses.every(p=>p.every(x=>x===0)),'workers stop in neutral poses after the server update');
   await page.locator('#pClose').click();assert.equal(await page.locator('.int-business').getAttribute('data-business-state'),'stopped');

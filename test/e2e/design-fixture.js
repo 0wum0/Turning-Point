@@ -55,9 +55,10 @@ app.get('/api/city',(req,res)=>{
 });
 app.get('/api/social/leaderboard',(_,res)=>res.json({ok:true,cats:[{key:'wealth',label:'Vermögen'}],cat:'wealth',scope:'all',rows:[],total:0,hint:'Testwelt',unit:'money'}));
 app.get('/api/found-options',(req,res)=>res.json({ok:true,found:require(R+'/src/game/business').foundOptions(w,state,Number(req.query.cityId)||state.cityId)}));
-for(const action of ['buyFood','buyProvision','useProvision','restNow','foundBiz'])app.post('/api/action/'+action,(req,res)=>{
+for(const action of ['buyFood','buyProvision','useProvision','restNow','foundBiz','bizCollect','bizBank'])app.post('/api/action/'+action,(req,res)=>{
  try {
   const result=require(R+'/src/game/actions').run(action,{world:w,state,user,input:req.body,now:Date.now()});
+  if(['bizCollect','bizBank'].includes(action)){user.coins+=state.fx.coins||0;user.efs_pool+=state.fx.efs||0;state.fx.coins=0;state.fx.efs=0;}
   const updated=present(w,state,user,Date.now());updated.onboarding=view.onboarding;Object.assign(view,updated);
   res.json({ok:true,view,coins:user.coins,efsPool:user.efs_pool,message:result.msg});
  } catch(e) {res.status(400).json({ok:false,error:e.message});}
@@ -67,4 +68,4 @@ app.post('/api/action/taskFinish',(_,res)=>res.json({ok:true,view,message:'Aufga
 app.post('/api/action/collect',(_,res)=>res.json({ok:true,view,coins:25,efsPool:40,message:'+10 EFS'}));
 app.get('/api/reputation',(_,res)=>res.json({ok:true,level:0,localLevel:0,score:0,top:[],ledger:[],progress:{next:10,pct:0}}));
 app.use('/api',(_,res)=>res.json({ok:true,enabled:false,rows:[],items:[]}));
-module.exports = { app, view, world, transport, state };
+module.exports = { app, view, world, transport, state, user, gameWorld:w };

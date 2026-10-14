@@ -22,13 +22,16 @@ enthält fünf einzeln gefasste, illustrierte Bereichsknöpfe; sämtliche bisher
 Funktionsmenüs verschieben vorhandene DOM-Abschnitte einschließlich ihrer
 Eingaben und Ereignishandler. Die Gesamtübersicht zeigt alle Abschnitte; einzelne
 Funktionen lassen sich gezielt öffnen. Beim Wechsel zu Classic werden die
-ursprünglichen Positionen und Grid-Container wiederhergestellt. Spielregeln,
-Freischaltungen, Preise, Datenbank und API-Aktionen bleiben unverändert.
+ursprünglichen Positionen und Grid-Container wiederhergestellt. Der reine Designwechsel
+ändert keine Spielregeln, Freischaltungen oder Preise. Die gemeinsamen Regeln des
+Zielkonzepts 1.4 sind in [CONCEPT-1.4.md](CONCEPT-1.4.md) getrennt dokumentiert.
 
-Der V2-Header zeigt von links Coins, Geld, Charakter/Jahr und den Gesamtwert
-der eigenen Unternehmen und Immobilien. Der Jahresring wächst mit der Spielzeit
-und wechselt seine Farbe mit der Jahreszeit. Es gibt drei anklickbare Anzeigen:
-Vorrat, Energie und Gesundheit. Einstellungen bleiben direkt erreichbar; EFS,
+Der V2-Header zeigt von links Coins, Geld, Charakter/Datum, EFS/Jahrestag und das
+bestehende Nettovermögen (Geld, Firmenkassen/-werte und Immobilien minus Kredite).
+Der Jahresring wächst mit der Spielzeit und wechselt seine Farbe mit der Jahreszeit.
+Es gibt vier anklickbare Anzeigen: Vorrat, Energie, Wohlbefinden und Gesundheit.
+Dieselbe echte Leiste bleibt auch im V2-Innenraum bedienbar. Einstellungen bleiben
+direkt erreichbar; die EFS-Navigation,
 Chat, Benachrichtigungen, Hilfe, Konto, Ton, Animationen, Sprache, Farbschema
 und Abmelden stehen im Zusatzmenü. Stadt-Luftansicht,
 Gebäude, Zeitung, Multiplayer-Reiter und Dialoge verwenden weiterhin ihre echten

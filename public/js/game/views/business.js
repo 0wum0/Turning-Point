@@ -1,5 +1,6 @@
 import { html, icon, money, infoBtn, bar, on, signed } from '../ui.js';
 import { supplyBox, cyclePanel, bindSupply, contractsSection, contractsPanel } from '../supply.js';
+import { bankSummary } from '../business-banking.js';
 import { foundBar, bindFound } from '../found.js';
 import { firmTeam, bindFirmTalents } from '../talents.js';
 import { opsBox, bindOps } from '../ops.js';
@@ -29,8 +30,9 @@ function card(c, v, ctx) {
     ${supplyBox(c, v, ctx)}
     ${contractsSection(c, v, ctx)}
     <dl class="kv small mt"><dt>Umsatz / Tag</dt><dd>${money(f.income, cur)}</dd>${c.inputs > 0 ? html`<dt>Wareneinkauf</dt><dd class="neg">${money(c.inputs, cur)}</dd>` : ''}<dt>Löhne + Unterhalt</dt><dd class="neg">${money(f.wages + f.upkeep, cur)}</dd>${c.vat ? html`<dt>Mehrwertsteuer</dt><dd class="${c.vat > 0 ? 'neg' : 'pos'}">${c.vat > 0 ? '' : '+'}${money(Math.abs(c.vat), cur)}</dd>` : ''}${f.tax > 0 ? html`<dt>Steuern</dt><dd class="neg">${money(f.tax, cur)}</dd>` : ''}${c.contractIncome > 0 ? html`<dt>Einnahmen aus Lieferverträgen</dt><dd class="pos">${money(c.contractIncome, cur)}</dd>` : ''}<dt><b>Gewinn / Tag</b></dt><dd class="${c.profitAll >= 0 ? 'pos' : 'neg'}">${signed(c.profitAll, cur)}</dd><dt>Firmenkasse</dt><dd>${money(c.cash, cur)}</dd><dt>Wert</dt><dd>${money(c.value, cur)}</dd></dl>
+    ${bankSummary(c,v)}
     <div class="row mt">
-      <button class="btn sm primary" data-b="bizCollect" data-id="${c.id}" ${c.cash > 0 ? '' : 'disabled'}>${icon('hand-coins')} Abholen</button>
+      <button class="btn sm primary" data-office="${c.id}">${icon('hand-coins')} Büro besuchen</button>
       ${c.owner ? '' : html`<button class="btn sm" data-b="bizWork" data-id="${c.id}" ${c.cityId === v.city.id ? '' : 'disabled'}>${icon('hammer')} Selbst arbeiten</button>`}
       <button class="btn sm" data-b="bizManager" data-id="${c.id}" data-on="${c.manager ? 0 : 1}">${icon('crown')} ${c.manager ? 'Manager entlassen' : 'Manager einstellen'}</button>
     </div>
@@ -56,7 +58,7 @@ export default {
     ${foundBar(v)}
     ${epiBanner(ctx)}
     <div class="mt">${contractsPanel(v)}</div>
-    ${cs.length ? html`<div class="grid c3 mt" data-sim-metrics style="--gap:1rem"><div class="card flat"><div class="card-title">Betriebe</div><div class="big-money">${cs.length}</div></div><div class="card flat"><div class="card-title">Gewinn / Tag</div><div class="big-money ${profit >= 0 ? 'pos' : 'neg'}">${signed(profit, cur)}</div></div><div class="card flat"><div class="card-title">Firmenkassen</div><div class="big-money">${money(cash, cur)}</div>${cash > 0 ? html`<button class="btn sm primary mt" data-b="bizCollect" data-id="all">Alles abholen</button>` : ''}</div></div>
+    ${cs.length ? html`<div class="grid c3 mt" data-sim-metrics style="--gap:1rem"><div class="card flat"><div class="card-title">Betriebe</div><div class="big-money">${cs.length}</div></div><div class="card flat"><div class="card-title">Gewinn / Tag</div><div class="big-money ${profit >= 0 ? 'pos' : 'neg'}">${signed(profit, cur)}</div></div><div class="card flat"><div class="card-title">Firmenkassen</div><div class="big-money">${money(cash, cur)}</div><p class="small dim">Einnahmen im jeweiligen Büro abholen.</p></div></div>
       <div class="mt">${cyclePanel(v, ctx)}</div>
       <div class="grid auto mt" style="--gap:1rem;grid-template-columns:repeat(auto-fill,minmax(340px,1fr))">${cs.map((c) => card(c, v, ctx))}</div>`
     : html`<div class="card empty-note mt">${icon('store', 'lg')}<span>Du besitzt noch keinen Betrieb. Gründe dein eigenes Unternehmen mit dem Knopf oben – oder schau, ob in der Zeitung unter „Gewerbe“ ein Betrieb zum Verkauf steht.</span><button class="btn sm" data-go="newspaper">Zur Zeitung</button></div>`}`;
@@ -68,6 +70,7 @@ export default {
     bindFirmTalents(root, ctx);
     bindOps(root, ctx);
     on(root, 'click', '[data-go]', (e, t) => { ctx.ui.newsTab = 'biz'; ctx.go(t.dataset.go); });
+    on(root,'click','[data-office]',(e,t)=>{const c=ctx.view.companies.find(c=>c.id===Number(t.dataset.office));if(!c)return;ctx.ui.cityId=c.cityId;ctx.ui.cityBuilding=`biz:${c.id}`;ctx.ui.interiorRoom='office';ctx.ui.enterOffice=c.id;ctx.go('city');});
     on(root, 'click', '[data-b]', (e, t) => {
       const input = { id: t.dataset.id === 'all' ? 'all' : Number(t.dataset.id) };
       if (t.dataset.on != null) input.on = t.dataset.on === '1';

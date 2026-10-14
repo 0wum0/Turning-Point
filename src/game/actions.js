@@ -607,12 +607,27 @@ A.bizUpgrade = ({ world, state, input }) => {
   return { msg: `Ausbau abgeschlossen: ${biz.tierName(world, c)}.` };
 };
 A.bizCollect = ({ state, input }) => {
-  const list = input.id === 'all' ? state.companies : [company(state, input.id)];
-  let sum = 0;
-  for (const c of list) { sum += c.cash; c.cash = 0; }
-  if (sum <= 0) fail('Es liegt kein Geld in der Firmenkasse.');
-  state.money += sum; state.stats.earned += sum;
-  return { msg: 'Gewinn abgeholt.' };
+  if(input.id==='all')fail('Besuche das Büro des jeweiligen Betriebs. Eine Sammelabholung ist nicht möglich.');
+  const c=company(state,input.id);
+  if(!Number.isSafeInteger(c.cash)||c.cash<=0)fail('Es liegt kein Geld in der Firmenkasse.');
+  const sum=c.cash;c.cash=0;
+  state.money+=sum;state.stats.earned+=sum;state.fx.efs+=1;
+  return {msg:`Einnahmen von ${c.name} abgeholt · +1 EFS.`,efs:1};
+};
+A.bizBank = ({ world,state,input,user }) => {
+  const c=company(state,input.id);needActive(c);
+  if(typeof input.on!=='boolean')fail('Wähle, ob die Bankautomatik aktiv sein soll.');
+  const bank=require('./business-banking').view(world,state,c);
+  if(!bank.available)fail(`Die Bankverwaltung wird ab ${bank.fromYear} verfügbar.`);
+  if(input.on&&!bank.unlocked){
+    if((user.coins||0)+(state.fx.coins||0)<bank.coins)fail(`Für diesen Betrieb fehlen Coins (${bank.coins} benötigt).`);
+    state.fx.coins-=bank.coins;
+    c.bankAdministration={unlocked:true,active:true,since:state.day};
+    return {msg:`Bankautomatik für ${c.name} eingerichtet · ${bank.coins} Coins. Andere Betriebe bleiben unverändert.`};
+  }
+  if(!bank.unlocked)fail('Für diesen Betrieb ist noch keine Bankautomatik eingerichtet.');
+  c.bankAdministration.active=input.on;
+  return {msg:input.on?'Automatische Überweisungen aktiviert. Dafür gibt es keine EFS.':'Automatische Überweisungen pausiert. Einnahmen bleiben in der Firmenkasse.'};
 };
 A.bizSell = ({ world, state, input }) => {
   const c = company(state, input.id);

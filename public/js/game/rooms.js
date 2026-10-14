@@ -9,6 +9,7 @@ const PAL = {
 import { makeTextures } from './textures.js';
 import { signTexture } from './signs.js';
 import { businessLife } from './business-life.js';
+import { officeActions } from './business-banking.js';
 const hex = (n) => `#${n.toString(16).padStart(6, '0')}`;
 
 /** Aktionsleiste im Raum: [Gegenstand-ID, Verb, Symbol, optionaler Filter auf die echten Aktionen]. Ruft ausschließlich vorhandene Spielaktionen auf. */
@@ -23,7 +24,7 @@ const BAR = {
   zeitung: [['press', 'Lesen', 'newspaper'], ['proof', 'Arbeiten', 'hammer']],
   lotto: [['counter', 'Tippen', 'ticket']],
   spielbank: [['roulette', 'Spielen', 'dices']],
-  biz: [['cash', 'Kasse leeren', 'coins'], ['tables', 'Arbeiten', 'hammer'], ['office', 'Einstellen & Verwalten', 'users', /Betrieb verwalten/], ['office', 'Selbst arbeiten', 'briefcase', /Selbst|arbeitest/], ['stock', 'Lager', 'package'], ['safety', 'Schutz & Brand', 'shield'], ['board', 'Betriebsklima', 'smile']],
+  biz: [['office', 'Einnahmen abholen', 'coins', /Einnahmen/], ['office', 'Bankverwaltung', 'landmark', /Bankautomatik/], ['tables', 'Arbeiten', 'hammer'], ['office', 'Einstellen & Verwalten', 'users', /Betrieb verwalten/], ['office', 'Selbst arbeiten', 'briefcase', /Selbst|arbeitest/], ['stock', 'Lager', 'package'], ['safety', 'Schutz & Brand', 'shield'], ['board', 'Betriebsklima', 'smile']],
   work: [['bench', 'Arbeiten', 'hammer'], ['boss', 'Karriere', 'briefcase'], ['cot', 'Schlafen', 'bed']],
 };
 
@@ -209,8 +210,7 @@ export function buildRoom(T, b, ctx, { enhanced=false, hour=new Date().getHours(
   } else if (t === 'biz') {
     const live = () => v.companies.find((x) => x.id === b.ref); const c = live(); const chain = b.pkey;
     const accent = { wirt: 0x8a3a2a, baecker: 0xc9944a, tischler: 0x8a6a3a, schmied: 0x4a4a52, landwirt: 0x5a7a3a }[chain] || pal.accent;
-    const cashAct = () => { const c = live(); return (c ? [{ label: 'Firmenkasse leeren', sub: `${(c.cash / 100).toFixed(2).replace('.', ',')} ${v.currency === 'EUR' ? '€' : 'DM'} liegen bereit`, disabled: c.cash <= 0, run: ({ act }) => act('bizCollect', { id: c.id }) }] : []); };
-    const cnt = counter(-w / 4, -d / 2 + 1.6, 4.4, 0, accent); spot(cnt, 'cash', 'Theke & Kasse', () => cashAct().concat(taskAct('serve', 'orders', 'inventory')()), 'Kasse, Betreuung, Aufträge');
+    const cnt = counter(-w / 4, -d / 2 + 1.6, 4.4, 0, accent); spot(cnt, 'cash', 'Theke & Aufträge', taskAct('serve', 'orders', 'inventory'), 'Betreuung und Aufträge · Einnahmen im Büro');
     if (chain === 'wirt') { for (let i = 0; i < 3; i++) cyl(0.07, 0.07, 0.5, 0xc9c9c9, -w / 4 - 1 + i * 0.7, 1.2, -d / 2 + 1.6, props, { noShadow: true }); for (let i = 0; i < 6; i++) cyl(0.12, 0.1, 0.3, 0xe6b800, -w / 4 - 1.6 + i * 0.6, 1.2, -d / 2 + 1.9, props, { noShadow: true }); }
     else if (chain === 'baecker') { box(2.2, 1.6, 1.2, 0x8a4a3a, w / 4, 0, -d / 2 + 1.0); box(1.2, 0.6, 0.1, 0x222222, w / 4, 0.4, -d / 2 + 1.62, props, { noShadow: true }); for (let i = 0; i < 4; i++) { box(2.4, 0.08, 0.6, 0x7a5535, -w / 2 + 1.5, 0.5 + i * 0.6, -d / 2 + 0.5); for (let k = 0; k < 4; k++) sph(0.2, 0xd8a050, -w / 2 + 0.8 + k * 0.5, 0.7 + i * 0.6, -d / 2 + 0.5, props, { noShadow: true }); } }
     else if (chain === 'tischler') { box(3.2, 0.9, 1.2, 0x9a7a4a, w / 4, 0, -d / 2 + 1.2); for (let i = 0; i < 5; i++) box(0.12, 0.1, 2.6, 0xc9a56a, -w / 2 + 1 + i * 0.2, 0.1 + i * 0.12, -d / 2 + 2); }
@@ -219,7 +219,7 @@ export function buildRoom(T, b, ctx, { enhanced=false, hour=new Date().getHours(
     const nT = Math.min(8, 2 + Math.floor(rooms / 2));
     const tablesG = []; for (let i = 0; i < nT; i++) tablesG.push(table(-w / 2 + 2.2 + (i % 4) * 2.6, 0.6 + Math.floor(i / 4) * 2.8, 1.6, 1.0, 2, accent));
     spot(tablesG[0], 'tables', chain === 'wirt' ? 'Gästetische – bedienen' : 'Arbeitsfläche – anpacken', taskAct('serve'), 'Aufgabe: Betrieb betreuen');
-    const off = desk(w / 2 - 1.6, d / 2 - 1.6, Math.PI * 0.8); spot(off, 'office', 'Büro – Unternehmen verwalten', () => { const c = live(); return (c ? [{ label: 'Betrieb verwalten (Mitarbeiter, Manager, Ausbau)', run: ({ go }) => go('business') }, { label: c.owner ? 'Du arbeitest hier bereits selbst' : 'Selbst im Betrieb arbeiten', disabled: c.owner || c.abandoned, run: ({ act }) => act('bizWork', { id: c.id }) }] : []); });
+    const off = desk(w / 2 - 1.6, d / 2 - 1.6, Math.PI * 0.8); spot(off, 'office', 'Büro – Unternehmen verwalten', () => { const c = live(); return (c ? [...officeActions(c,v), { label: 'Betrieb verwalten (Mitarbeiter, Manager, Ausbau)', allowAway:true, run: ({ go }) => go('business') }, { label: c.owner ? 'Du arbeitest hier bereits selbst' : 'Selbst im Betrieb arbeiten', disabled: c.owner || c.abandoned, run: ({ act }) => act('bizWork', { id: c.id }) }] : []); });
     // ---- Betrieb 2.0: Lager (Regale mit Füllstand), Schutz & Brand (Feuerlöscher, Alarmtafel, Kamera), Aushang Betriebsklima
     if (c && c.ops && c.ops.on && !b.abandoned) {
       const fm = (cents) => `${(cents / 100).toFixed(2).replace('.', ',')} ${v.currency === 'EUR' ? '€' : 'DM'}`;

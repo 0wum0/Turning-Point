@@ -77,6 +77,17 @@ export function encloseRoom(T,base,b,ctx,{hour=12}={}) {
     }else if(zone.id==='office'){
       shelf(shell,-w/2+1.55,-d/2+.5);const rug=box(shell,w*.55,.018,d*.5,material('carpet',0x634c39,[1,1]),0,.009,.3);rug.castShadow=false;
       const cabinet=group(shell,w/2-1.6,0,-d/2+.45);solids.push(cabinet);box(cabinet,2.5,1.6,.55,wood,0,0,0);for(let i=0;i<4;i++){box(cabinet,2.3,.31,.05,trim,0,.12+i*.36,.30);box(cabinet,.22,.035,.05,brass,0,.24+i*.36,.34);}
+      const firm=b.type==='biz'?ctx.view.companies.find(c=>c.id===b.ref):null;
+      for(const [i,cert] of (firm?.certificates||[]).entries()){
+        const frame=group(shell,-w*.15-i*1.8,2.05,-d/2+.22);
+        box(frame,1.5,1.18,.09,trim,0,0,0);box(frame,1.38,1.06,.04,brass,0,.06,.06);
+        for(const [j,text]of [cert.title,cert.profession,cert.holder,cert.level].entries()){
+          const sheet=new T.Mesh(new T.PlaneGeometry(1.26,.22),new T.MeshStandardMaterial({map:signTexture(T,text,{bg:'#eadfbd',fg:'#24313c',border:'#eadfbd'}),roughness:.9}));sheet.position.set(0,.95-j*.23,.092);frame.add(sheet);
+        }
+        const h={obj:frame,id:`certificate-${cert.pkey}`,label:`${cert.title} – ${cert.profession}`,hint:cert.holder,roomId:zone.id,
+          actions:()=>[{label:`${cert.title}: ${cert.profession}`,sub:`${cert.holder} · ${cert.level}`,disabled:true},{label:'Berufliche Entwicklung ansehen',allowAway:true,run:({go})=>go('work')}]};
+        hotspots.push(h);assigned.set(h,zone.id);
+      }
     }else if(zone.id==='bedroom'){
       box(shell,w*.52,.018,d*.5,material('carpet',0x77775c),0,.009,0);const bedside=box(shell,.55,.62,.6,wood,-w*.25+1.6,0,-d*.15);candle(shell,bedside.position.x,.64,bedside.position.z);
     }

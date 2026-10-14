@@ -394,6 +394,7 @@ const DEFAULTS = {
     gambling: { ticket: 200, casinoMinAge: 21, casinoFromYear: 1950 },
     companies: {
       maxCompanies: 30,
+      bankAdministration: { fromYear: 1990, unlockCoins: 10 }, // vorläufiger Coin-Preis, pro Objekt
       staffWage: 500,          // Cent/Tag je Mitarbeiter (Index 1)
       managerWage: 600,
       upkeepYearPct: 1,

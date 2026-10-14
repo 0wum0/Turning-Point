@@ -2,7 +2,7 @@
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const {app,view,state,world}=require('./design-fixture');
 const {chromium}=require(process.env.TP_PLAYWRIGHT_PATH || 'playwright');
-test('V2 header and supplies: responsive, three working meters, stacked purchases and remote founding',{timeout:120000},async()=>{
+test('V2 header and supplies: responsive, four working meters, stacked purchases and remote founding',{timeout:120000},async()=>{
  const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));let browser;
  try {
   state.meters.rest=40;state.meters.health=50;state.housing={type:'pension',base:100};view.meters.rest=40;view.meters.health=50;view.food.canRest=true;
@@ -11,7 +11,7 @@ test('V2 header and supplies: responsive, three working meters, stacked purchase
   const page=await browser.newPage({viewport:{width:1440,height:900}}),errors=[],writes=[];page.setDefaultTimeout(12000);page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(r.method()==='POST')writes.push({url:r.url(),body:r.postDataJSON()});});
   await page.addInitScript(()=>localStorage.setItem('tp-game-design','v2'));
   await page.goto(`http://127.0.0.1:${server.address().port}/play#/map`);await page.waitForSelector('.sim-year-ring');
-  assert.deepEqual(await page.locator('.hud [data-meter]').evaluateAll(es=>es.map(e=>e.dataset.meter)),['fridge','rest','health']);
+  assert.deepEqual(await page.locator('.hud [data-meter]').evaluateAll(es=>es.map(e=>e.dataset.meter)),['fridge','rest','wellbeing','health']);
   assert.equal(await page.locator('.sim-year-ring').getAttribute('aria-valuenow'),'50');assert.equal(await page.locator('[data-hud-season]').textContent(),'Sommer');
   for(const [width,height] of [[1440,900],[915,412],[690,1536],[412,915],[320,700]]){
    await page.setViewportSize({width,height});await page.waitForTimeout(100);

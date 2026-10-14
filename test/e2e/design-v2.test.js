@@ -92,7 +92,7 @@ test('Simulator: production place density, every module, interactions and revers
     await page.locator('[data-sim-open="business"][data-entity="firm:1"]').click();
     await page.waitForSelector('[data-sim-entity="firm:1"].sim-entity-focus');
     assert.equal(await page.locator('.sim-workspace-content > .sim-section:visible').count(), 1);
-    assert.ok(await page.locator('[data-b="bizCollect"][data-id="1"]').isVisible(), 'original company controls remain accessible');
+    assert.ok(await page.locator('[data-office="1"]').isVisible(), 'company office remains accessible');
     // V2 section navigation must never overwrite hidden flags owned by game modules.
     await page.locator('[data-section="all"]').click();
     await page.evaluate(() => { const el = document.querySelector('.sim-section'); el.hidden = true; window.hiddenByGame = el; });
