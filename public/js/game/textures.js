@@ -5,6 +5,26 @@ const S = 256;
 const g = (v) => `rgb(${v | 0},${v | 0},${v | 0})`;
 
 const PAINT = {
+  limewash(c, r) {
+    c.fillStyle=g(220);c.fillRect(0,0,S,S);
+    for(let i=0;i<28000;i++){const v=r()<.5?0:255;c.fillStyle=`rgba(${v},${v},${v},${r()*.085})`;c.fillRect(r()*S,r()*S,1+r()*3,1+r()*2);}
+    for(let i=0;i<9;i++){c.strokeStyle='rgba(85,77,65,.08)';c.lineWidth=.6;c.beginPath();let x=r()*S,y=r()*S;c.moveTo(x,y);for(let k=0;k<7;k++){x+=(r()-.5)*12;y+=r()*5;c.lineTo(x,y);}c.stroke();}
+  },
+  oak(c,r) {
+    c.fillStyle=g(200);c.fillRect(0,0,S,S);
+    for(let y=0;y<S;y++){c.strokeStyle=g(170+r()*42);c.lineWidth=.7;c.beginPath();c.moveTo(0,y);for(let x=0;x<=S;x+=8)c.lineTo(x,y+Math.sin(x*.025+y*.15)*1.3);c.stroke();}
+    for(let row=0;row<4;row++){c.fillStyle='rgba(20,14,9,.34)';c.fillRect(0,row*64,S,1.6);const x=(row%2)*128;c.fillRect(x,row*64,1.5,64);c.fillStyle='rgba(255,255,255,.13)';c.fillRect(0,row*64+2,S,1);}
+    for(let i=0;i<8;i++){c.fillStyle='rgba(25,18,12,.15)';c.fillRect(r()*S,r()*S,18+r()*50,.6);}
+  },
+  flagstone(c,r) {
+    c.fillStyle=g(95);c.fillRect(0,0,S,S);
+    for(let row=0;row<4;row++)for(let col=-1;col<3;col++){const x=col*128+(row%2)*64,y=row*64,v=172+r()*47;c.fillStyle=g(v);c.fillRect(x+2,y+2,124,60);c.strokeStyle='rgba(255,255,255,.15)';c.lineWidth=2;c.strokeRect(x+3,y+3,122,58);for(let i=0;i<130;i++){c.fillStyle=`rgba(25,22,18,${r()*.11})`;c.fillRect(x+3+r()*120,y+3+r()*55,1+r()*6,1+r()*3);}}
+  },
+  roof(c,r) {
+    c.fillStyle=g(90);c.fillRect(0,0,S,S);
+    for(let row=0;row<8;row++)for(let col=-1;col<8;col++){const x=col*36+(row%2)*18,y=row*32,v=178+r()*40;const grad=c.createLinearGradient(x,y,x+33,y);grad.addColorStop(0,g(v*.78));grad.addColorStop(.5,g(v));grad.addColorStop(1,g(v*.86));c.fillStyle=grad;c.fillRect(x+1,y+1,34,29);c.fillStyle='rgba(15,12,10,.3)';c.fillRect(x,y+29,36,3);}
+  },
+
   wood(c, r) {
     c.fillStyle = g(205); c.fillRect(0, 0, S, S);
     for (let y = 0; y < S; y++) { const ph = r() * 0.02; c.fillStyle = g(188 + Math.sin(y * 0.55 + ph) * 14 + (r() - 0.5) * 16); c.fillRect(0, y, S, 1); }

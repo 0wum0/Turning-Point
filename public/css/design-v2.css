@@ -724,3 +724,59 @@ html[data-game-design="v2"] .city-business-status { border-left:3px solid #82d1a
 
 .provision-feedback:empty { display:none; }
 .provision-feedback { color:var(--good); font-size:14px; padding:8px 0; }
+
+/* V2 walk-in interiors: a quiet navy console frames the architectural scene. */
+.sim-interior { grid-template-columns:320px minmax(0,1fr); background:#071922; }
+.sim-interior .int-stage { grid-column:2; grid-row:2; background:#171b1c; }
+.sim-interior .int-sidebar { grid-column:1; grid-row:2; border-left:0; border-right:1px solid #7494aa55; background:linear-gradient(150deg,#0d2736,#081b27); padding:18px; }
+.sim-interior .int-top { background:linear-gradient(110deg,#102b3a,#071a26); border-color:#7393a84d; }
+.sim-interior .int-navigation { background:#03131d; }
+.sim-interior .int-navigation button[aria-pressed="true"] { color:#d8f6ff; background:#22658055; border-color:#73bdd766; }
+.sim-interior .int-object { border-color:#7596ad33; background:#233c482b; }
+.sim-interior .int-object small,.sim-interior .int-object-intro p,.sim-interior .int-title .small { color:#bacdd8; }
+.sim-interior .int-breadcrumb { color:#a9cfdd; }
+.sim-interior .int-room-nav { position:absolute; top:14px; left:14px; right:170px; display:flex; gap:4px; padding:5px; width:fit-content; max-width:calc(100% - 184px); overflow-x:auto; border:1px solid #6c97ac66; border-radius:10px; background:#071b28ed; scrollbar-width:thin; }
+.sim-interior .int-room-nav button { flex:none; min-height:40px; padding:9px 12px; color:#c7dbe6; background:transparent; border:1px solid transparent; border-radius:6px; font:600 13px var(--font-ui); cursor:pointer; }
+.sim-interior .int-room-nav button[aria-pressed="true"] { color:#ecfbff; background:#245e78; border-color:#83bfda77; }
+.sim-interior .int-room-labels { position:absolute; inset:0; pointer-events:none; }
+.sim-interior .int-room-pin { position:absolute; transform:translate(-50%,-50%); display:flex; align-items:center; gap:10px; max-width:205px; padding:8px 12px 8px 8px; min-height:48px; border:1px solid #7395aa; border-radius:10px; background:#061a29f5; color:#f1f7fc; text-align:left; box-shadow:0 4px 14px #0006; font:500 13px/1.35 var(--font-ui); pointer-events:auto; cursor:pointer; }
+.sim-interior .int-room-pin > span:first-child { width:30px; height:30px; flex:none; display:grid; place-items:center; border:1px solid #8eafc3; border-radius:50%; color:#b6e7fc; }
+.sim-interior .int-room-pin svg { width:18px; height:18px; }
+.sim-interior .int-room-pin small { display:block; color:#b8cdd9; font-size:11px; margin-top:2px; }
+.sim-interior .int-room-pin::after { content:''; position:absolute; bottom:-6px; left:22px; width:10px; height:10px; background:#061a29; border-right:1px solid #7395aa; border-bottom:1px solid #7395aa; transform:rotate(45deg); }
+.sim-interior .int-room-pin[hidden],.sim-interior .int-walk[hidden] { display:none; }
+.sim-interior .int-room-pin:hover { background:#134961; border-color:#bbecff; }
+.sim-interior .int-scene-selection { top:76px; left:14px; background:#08212fe8; border-color:#83bdd58c; }
+.sim-interior .int-actionbar { background:linear-gradient(#0f2936f5,#071b28f5); border-color:#81a9bc66; border-radius:12px; }
+.sim-interior .int-stage-caption { bottom:100px; left:14px; right:14px; width:fit-content; max-width:calc(100% - 180px); padding:8px 12px; border-radius:7px; background:#061a29dc; color:#d4e6ef; line-height:1.5; font-size:11px; }
+.sim-interior .int-walk { position:absolute; right:14px; bottom:102px; display:grid; grid-template-columns:repeat(3,38px); gap:3px; }
+.sim-interior .int-walk button { min-height:36px; border:1px solid #7498ae88; border-radius:6px; background:#081f2eea; color:#edf8ff; font:700 19px var(--font-ui); cursor:pointer; }
+.sim-interior .int-walk [data-walk="forward"] { grid-column:2; }
+.sim-interior .int-walk [data-walk="left"] { grid-row:2; }
+.sim-interior .int-walk [data-walk="back"] { grid-row:2; grid-column:2; }
+.sim-interior .int-walk [data-walk="right"] { grid-row:2; grid-column:3; }
+.sim-interior .int-mini { left:340px; right:20px; }
+.sim-interior.int-no-3d :is(.int-room-nav,.int-walk,.int-room-labels) { display:none; }
+:root[data-game-design="v2"] body.game .sim-interior .int-camera .btn { background:#092231ef; border-color:#7c9bad77; }
+.sim-interior :is(.int-room-pin,.int-room-nav button,.int-walk button):focus-visible { outline:3px solid #c3ebff; outline-offset:3px; }
+@media(max-width:1050px) { .sim-interior { grid-template-columns:280px minmax(0,1fr); } .sim-interior .int-mini { left:294px; } .sim-interior .int-stage-caption { display:none; } }
+@media(max-width:650px) and (orientation:portrait) {
+ .sim-interior { grid-template-columns:minmax(0,1fr); grid-template-rows:auto minmax(260px,47svh) minmax(0,1fr); }
+ .sim-interior .int-stage { grid-column:1; grid-row:2; }
+ .sim-interior .int-sidebar { grid-column:1; grid-row:3; border-right:0; border-top:1px solid #7494aa55; }
+ .sim-interior .int-room-nav { top:10px; left:10px; right:10px; max-width:calc(100% - 20px); }
+ .sim-interior .int-camera { top:69px; right:10px; gap:4px; }
+ .sim-interior .int-camera .btn { min-width:36px; }
+ .sim-interior .int-room-pin { font-size:12px; max-width:155px; padding:7px 9px 7px 7px; }
+ .sim-interior .int-room-pin > span:first-child { width:26px; height:26px; }
+ .sim-interior .int-room-pin small { display:none; }
+ .sim-interior .int-scene-selection { top:70px; left:10px; max-width:calc(100% - 152px); font-size:12px; }
+ .sim-interior .int-walk { right:10px; bottom:89px; grid-template-columns:repeat(3,36px); opacity:.9; }
+ .sim-interior .int-mini { left:10px; right:10px; }
+}
+@media(max-height:550px) and (orientation:landscape) {
+ .sim-interior { grid-template-columns:260px minmax(0,1fr); }
+ .sim-interior .int-room-nav { top:10px; }
+ .sim-interior .int-mini { left:270px; right:10px; top:72px; }
+ .sim-interior .int-walk { bottom:84px; }
+}

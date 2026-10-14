@@ -197,7 +197,7 @@ export async function createCity3D(host, aerial, opts) {
       pin.button.setAttribute('aria-pressed',String(pin.key===focusKey));pin.button.dataset.hover=String(pin.key===hoverKey);
     }
   };
-  const highlight = (key, on) => { const i = info.get(key); if (!i) return; i.litMaterial.emissive.setHex(on ? 0x3b3010 : 0x000000); };
+  const highlight = (key, on) => { const i = info.get(key); if (!i) return; for (const mat of i.surfaceMaterials || [i.litMaterial]) mat.emissive.setHex(on ? 0x3b3010 : 0x000000); };
   const placeRing = (mesh, key, pad) => { const i = info.get(key); if (!i) return; const r = Math.max(i.b.w, i.b.d) * UNIT * pad; mesh.position.set(i.pos.x, .12, i.pos.z); mesh.scale.set(r, r, 1); mesh.visible = true; };
   const showTip = (key, x, y) => {
     const d = key && describe(key); if (!d) { tip.hidden = true; return; }

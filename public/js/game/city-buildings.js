@@ -4,6 +4,7 @@
 // zusammengefasst; keine Bilddateien.
 import { createBatches, seeded, hashString } from './mesh-batch.js';
 import { signTexture, iconTexture } from './signs.js';
+import { makeTextures } from './textures.js';
 
 const UNIT = .1;
 const C = {
@@ -33,7 +34,7 @@ export function buildLandmark(T, b, env, shared) {
   if (style === 'work') style = era >= 4 ? 'warehouse' : 'press';
   const W = b.w * UNIT, D = b.d * UNIT;
   const rnd = seeded(hashString(b.key));
-  const B = createBatches(T, ['lit', 'on', 'off']);
+  const B = createBatches(T, ['lit', 'roof', 'masonry', 'on', 'off']);
   const chimneys = [], lights = [];
   const STYLE_ROOF = { bakery: 0xb4553a, inn: 0x8a4a38, forge: 0x4e545b, workshop: 0x8a5a3a, schule: 0x9a4f3a, press: 0x5d6870, barn: 0x4a4540 };
   const SHOP_ROOFS = [0xb4553a, 0x7a5a45, 0x8a4a38, 0x4f6a7a];
@@ -41,10 +42,11 @@ export function buildLandmark(T, b, env, shared) {
   const trim = C.timber;
   let top = 0;
   const up = (y) => { if (y > top) top = y; };
-  const box = (w, h, d, col, x, y, z, o) => { B.box('lit', w, h, d, col, x, y, z, o); up(y + h); };
+  const masonryColors = new Set([C.plaster,C.plasterWhite,C.ochre,C.rose,C.stone,C.stoneDark,C.brick,C.brickDark]);
+  const box = (w, h, d, col, x, y, z, o) => { B.box(masonryColors.has(col)?'masonry':'lit', w, h, d, col, x, y, z, o); up(y + h); };
   const cyl = (r, h, col, x, y, z, o) => { B.cyl('lit', r, h, col, x, y, z, o); up(y + h); };
   const cone = (r, h, col, x, y, z, o) => { B.cone('lit', r, h, col, x, y, z, o); up(y + h); };
-  const gable = (w, h, d, col, x, y, z, o) => { B.gable('lit', w, h, d, col, x, y, z, o); up(y + h); };
+  const gable = (w, h, d, col, x, y, z, o) => { B.gable('roof', w, h, d, col, x, y, z, o); up(y + h); };
   // Fenster: face f (+z), b (-z), l (-x), r (+x). Mittelpunkt liegt auf der Wandfläche.
   const FACE = { f: [0, 0, 1], b: [Math.PI, 0, -1], l: [-Math.PI / 2, -1, 0], r: [Math.PI / 2, 1, 0] };
   const win = (face, x, y, z, w = .5, h = .7, lit) => {
@@ -52,6 +54,9 @@ export function buildLandmark(T, b, env, shared) {
     B.box('lit', w + .16, h + .16, .06, trim, x + nx * .01, y - .08, z + nz * .01, { ry });
     B.box(on ? 'on' : 'off', w, h, .08, on ? 0xffd88a : C.glass, x + nx * .04, y, z + nz * .04, { ry });
     B.box('lit', .05, h, .1, trim, x + nx * .06, y, z + nz * .06, { ry }); B.box('lit', w, .05, .1, trim, x + nx * .06, y + h / 2 - .02, z + nz * .06, { ry });
+    // A projecting sill and lintel give the openings depth even at street level.
+    B.box('lit',w+.24,.09,.20,C.stone,x+nx*.10,y-.11,z+nz*.10,{ry});
+    B.box('lit',w+.18,.08,.10,C.stoneDark,x+nx*.06,y+h+.07,z+nz*.06,{ry});
     if (b.abandoned) for (let k = 0; k < 2; k++) B.box('lit', w + .3, .09, .06, 0x7a5a38, x + nx * .1, y + (k ? .2 : -.15), z + nz * .1, { ry, rz: k ? .12 : -.1 });
   };
   /** Fensterreihen an allen vier Seiten eines Quaders (Mitte cx/cz, Maße bw/bd). */
@@ -296,6 +301,22 @@ export function buildLandmark(T, b, env, shared) {
   const m1 = new T.Mesh(litGeo, litMat); m1.castShadow = true; m1.receiveShadow = true; group.add(m1);
   if (onGeo) { const m = new T.Mesh(onGeo, shared.glassOn); group.add(m); }
   if (offGeo) { const m = new T.Mesh(offGeo, shared.glassOff); group.add(m); }
+  if(!shared.architecture){const tex=makeTextures(T);shared.architecture={roof:tex.get('roof'),masonry:tex.get('limewash')};}
+  const surfaceMaterials=[litMat];
+  for(const kind of ['roof','masonry']){
+    const geo=B.build(kind);if(!geo)continue;
+    const P=geo.attributes.position,N=geo.attributes.normal,uv=[];
+    for(let i=0;i<P.count;i++){
+      const nx=Math.abs(N.getX(i)),ny=Math.abs(N.getY(i)),nz=Math.abs(N.getZ(i));
+      // Meter-based coordinates keep detail size consistent between small homes and factories.
+      if(ny>nx&&ny>nz)uv.push(P.getX(i)*.5,P.getZ(i)*.5);
+      else if(nx>nz)uv.push(P.getZ(i)*.5,P.getY(i)*.5);
+      else uv.push(P.getX(i)*.5,P.getY(i)*.5);
+    }
+    geo.setAttribute('uv',new T.Float32BufferAttribute(uv,2));
+    const tx=shared.architecture[kind],mat=new T.MeshStandardMaterial({vertexColors:true,map:tx.map,bumpMap:tx.bump,bumpScale:kind==='roof'?.055:.025,roughness:.9,side:T.DoubleSide});
+    const mesh=new T.Mesh(geo,mat);mesh.castShadow=true;mesh.receiveShadow=true;group.add(mesh);surfaceMaterials.push(mat);
+  }
   B.dispose();
   const signW = Math.min(W * .62, 4.6), signH = signW / 5.3;
   const signZ = style === 'rathaus' ? D * .43 + 1.55 : style === 'bahnhof' ? D * .5 + .6 : style === 'markt' ? D * .39 + .25 : D * .39 + .12;
@@ -313,5 +334,5 @@ export function buildLandmark(T, b, env, shared) {
   }
   group.userData.height = top; group.userData.size = [W, D];
   group.traverse((m) => { if (m.isMesh) { m.userData.key = b.key; } });
-  return { group, litMaterial: litMat, height: top, chimneys, lights, flags, style };
+  return { group, litMaterial: litMat, surfaceMaterials, height: top, chimneys, lights, flags, style };
 }

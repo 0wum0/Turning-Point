@@ -312,7 +312,7 @@ export function buildRoom(T, b, ctx, { enhanced=false, hour=new Date().getHours(
     for (const k of walkers) { const len = Math.abs(k.x1 - k.x0) || 1, s = (time * .001 * k.speed + k.ph) % (2 * len), q = s < len ? s / len : 2 - s / len, dir = (k.x1 - k.x0) * (s < len ? 1 : -1); k.g.position.set(k.x0 + (k.x1 - k.x0) * q, Math.abs(Math.sin(time * .007 + k.ph)) * .05, k.z); k.g.rotation.y = dir >= 0 ? Math.PI / 2 : -Math.PI / 2; }
   };
 
-  return { scene, hotspots: hot, dims: { w, d, ht }, pal, bar, update, syncBusiness,
+  return { scene, props, hotspots: hot, dims: { w, d, ht }, pal, bar, update, syncBusiness,
     businessStats: () => ({ state:syncBusiness(), workers:workers.filter(x=>x.g.visible).length, poses:workers.filter(x=>x.g.visible).map(x=>(x.g.userData.arms || []).map(a=>a.rotation.x)) }),
     animated: people.length + walkers.length + workers.length > 0 && enhanced };
 }

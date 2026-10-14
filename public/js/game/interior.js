@@ -2,13 +2,14 @@
 import { html, mount, esc, icon, api, toast, money, sleep } from './ui.js';
 import { isV2 } from './design.js';
 import { buildRoom, tokenSpots } from './rooms.js';
+import { encloseRoom } from './interior-architecture.js';
 import { businessBrief } from './business-brief.js';
 
 const REWARD_LABEL = { efs: (n) => `+${n} EFS`, rest: (n) => `${n > 0 ? '+' : ''}${n} Erholung`, wellbeing: (n) => `+${n} Wohlbefinden`, health: (n) => `+${n} Gesundheit`, influence: (n) => `+${n} Einfluss`, money: () => 'Trinkgeld', childSat: () => 'Kinder froh', bizCash: () => 'Extra-Umsatz' };
 const rewardText = (r) => Object.entries(r || {}).map(([k, n]) => (REWARD_LABEL[k] ? REWARD_LABEL[k](n) : '')).filter(Boolean).join(' · ');
 
 export async function openInterior(ctx, b, data) {
-  let T, room, onResize = () => {}, markReady = () => {}, invalidate = () => {}, focusRoom = () => {};
+  let T, room, onResize = () => {}, markReady = () => {}, invalidate = () => {}, focusRoom = () => {}, changeRoom = () => {};
   const v2 = isV2(); const previousFocus = document.activeElement; const previousOverflow = document.body.style.overflow;
   const app = document.getElementById('app'); const wasInert = app?.inert;
   const root = document.createElement('div'); root.className = `interior${v2 ? ' sim-interior' : ''}`; root.setAttribute('role', 'dialog'); root.setAttribute('aria-modal', 'true'); root.setAttribute('aria-label', b.name);
@@ -21,7 +22,7 @@ export async function openInterior(ctx, b, data) {
     sidebar.innerHTML = '<nav class="int-navigation" aria-label="Im Gebäude"><button data-room-tab="objects" aria-pressed="true">Gegenstände</button><button data-room-tab="tasks" aria-pressed="false">Aufgaben</button></nav><div class="int-objects"><div class="int-object-intro"><span class="city-eyebrow">ENTDECKEN & INTERAGIEREN</span><h2>Dein nächster Schritt</h2><p>Wähle einen Gegenstand im Raum oder hier in der Übersicht.</p></div><div class="int-object-list" aria-live="polite">Raum wird vorbereitet …</div></div>';
     sidebar.append(root.querySelector('.int-tasks'), root.querySelector('.int-panel'));
     root.append(stage, sidebar);
-    stage.insertAdjacentHTML('beforeend', '<div class="int-scene-selection" hidden></div><nav class="int-actionbar" aria-label="Aktionen im Gebäude" hidden></nav><div class="int-camera" aria-label="Raumansicht"><button class="btn" data-camera="in" aria-label="Raum vergrößern">+</button><button class="btn" data-camera="out" aria-label="Raum verkleinern">−</button><button class="btn" data-camera="reset" aria-label="Ansicht zurücksetzen" title="Ansicht zurücksetzen">' + icon('refresh-cw').__raw + '</button></div><div class="int-stage-caption">Ziehen zum Umsehen · Gegenstände auswählen</div>');
+    stage.insertAdjacentHTML('beforeend', '<nav class="int-room-nav" aria-label="Räume"></nav><div class="int-room-labels"></div><nav class="int-walk" aria-label="Im Raum bewegen"><button data-walk="forward" aria-label="Vorwärts gehen">↑</button><button data-walk="left" aria-label="Nach links gehen">←</button><button data-walk="back" aria-label="Rückwärts gehen">↓</button><button data-walk="right" aria-label="Nach rechts gehen">→</button></nav><div class="int-scene-selection" hidden></div><nav class="int-actionbar" aria-label="Aktionen im Gebäude" hidden></nav><div class="int-camera" aria-label="Raumansicht"><button class="btn" data-camera="in" aria-label="Raum vergrößern">+</button><button class="btn" data-camera="out" aria-label="Raum verkleinern">−</button><button class="btn" data-camera="reset" aria-label="Ansicht zurücksetzen" title="Ansicht zurücksetzen">' + icon('refresh-cw').__raw + '</button></div><div class="int-stage-caption">Ziehen zum Umsehen · Gegenstände auswählen</div>');
   }
   document.body.appendChild(root); document.body.style.overflow = 'hidden'; if (app) app.inert = true;
   root.querySelector('#intBack').focus();
@@ -98,6 +99,8 @@ export async function openInterior(ctx, b, data) {
   };
   const showActions = (h, filter) => {
     if (!alive) return;
+    if (h?.door) { changeRoom(h.roomId); return; }
+    if (h?.roomId && room?.immersive && room.activeRoom() !== h.roomId && (room.activeRoom() !== 'overview' || !room.activeHotspots().includes(h))) changeRoom(h.roomId);
     if (filter !== undefined || h !== currentHot) currentFilter = filter || null;
     const previousHot = currentHot; currentHot = h;
     root.querySelectorAll('[data-bar]').forEach((btn) => { const e = barEntries[Number(btn.dataset.bar)]; btn.setAttribute('aria-pressed', String(!!h && e.hot === h && (e.filter || null) === currentFilter)); });
@@ -123,6 +126,7 @@ export async function openInterior(ctx, b, data) {
   if (!alive) return;
   if (T) {
     room = buildRoom(T, b, ctx, { enhanced:v2, hour:data.visualHour });
+    if (v2) room = encloseRoom(T, room, b, ctx, { hour: data.visualHour });
     root.__room = room; // Same scene/state used by interaction and regression checks.
     try { renderer = new T.WebGLRenderer({ canvas, antialias: true, alpha: false }); } catch (_) { renderer = null; }
   }
@@ -154,22 +158,88 @@ export async function openInterior(ctx, b, data) {
   const sprite = (tex, size) => { const s = new T.Sprite(new T.SpriteMaterial({ map: tex, depthTest: false, transparent: true })); s.scale.set(size, size, 1); s.renderOrder = 10; return s; };
   const camera = new T.PerspectiveCamera(42, 1, 0.1, 100);
   const cam = { az: 0.42, el: 0.78, dist: Math.max(dims.w, dims.d) * (v2 ? 1.5 : 1.35), target: new T.Vector3(0, 1.1, 0.4) };
-  const minD = 5; const maxD = Math.max(dims.w, dims.d) * 2;
+  const inside = () => !!room.immersive && room.activeRoom() !== 'overview';
+  let minD = inside() ? .7 : 5; let maxD = Math.max(dims.w, dims.d) * 2;
+  const resetCamera = () => {
+    minD = inside() ? .7 : 5; maxD = inside() ? 1.3 : Math.max(dims.w,dims.d)*2;
+    if (inside()) { const p=room.startPose(); cam.az=p.az; cam.el=p.el; cam.dist=1; cam.target.set(p.x,1.65,p.z); }
+    else { cam.az=.42; cam.el=.78; cam.dist=Math.max(dims.w,dims.d)*(v2?1.5:1.35); cam.target.set(0,1.1,.4); }
+  };
+  if (inside()) resetCamera();
   const renderedTarget=cam.target.clone();
   const reducedNow = () => matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.dataset.motion === 'off';
-  const renderedCam = v2 && !reducedNow() ? { az:cam.az - .45, el:cam.el * .62, dist:cam.dist * 1.65 } : { az:cam.az, el:cam.el, dist:cam.dist }; let cameraTime = 0, roomTime = 0;
-  const placeCam = () => { const ce = Math.cos(renderedCam.el), distance = renderedCam.dist * Math.max(1, .85 / camera.aspect); camera.position.set(renderedTarget.x + distance * ce * Math.sin(renderedCam.az), renderedTarget.y + distance * Math.sin(renderedCam.el), renderedTarget.z + distance * ce * Math.cos(renderedCam.az)); camera.lookAt(renderedTarget); };
+  const renderedCam = v2 && !inside() && !reducedNow() ? { az:cam.az - .45, el:cam.el * .62, dist:cam.dist * 1.65 } : { az:cam.az, el:cam.el, dist:cam.dist }; let cameraTime = 0, roomTime = 0;
+  const placeCam = () => {
+    if (inside()) {
+      camera.fov=62*renderedCam.dist; camera.updateProjectionMatrix(); camera.position.copy(renderedTarget);
+      camera.lookAt(renderedTarget.clone().add(new T.Vector3(Math.sin(renderedCam.az)*Math.cos(renderedCam.el),Math.sin(renderedCam.el),-Math.cos(renderedCam.az)*Math.cos(renderedCam.el))));
+    } else { camera.fov=42; camera.updateProjectionMatrix(); const ce=Math.cos(renderedCam.el),distance=renderedCam.dist*Math.max(1,.85/camera.aspect); camera.position.set(renderedTarget.x+distance*ce*Math.sin(renderedCam.az),renderedTarget.y+distance*Math.sin(renderedCam.el),renderedTarget.z+distance*ce*Math.cos(renderedCam.az)); camera.lookAt(renderedTarget); }
+  };
   invalidate = () => { needs = true; if (!rafId) rafId = requestAnimationFrame(frame); };
   onResize = () => { const r = (root.querySelector('.int-stage') || root).getBoundingClientRect(); if (!r.width || !r.height) return; renderer.setSize(r.width, r.height, false); camera.aspect = r.width / r.height; camera.updateProjectionMatrix(); invalidate(); };
   window.addEventListener('resize', onResize);
   resizeObserver = new ResizeObserver(onResize); resizeObserver.observe(root.querySelector('.int-stage') || root);
-  root.querySelectorAll('[data-camera]').forEach(btn => { btn.onclick = () => { if (btn.dataset.camera === 'reset') { cam.az = .42; cam.el = .78; cam.target.set(0,1.1,.4); cam.dist = Math.max(dims.w, dims.d) * (v2 ? 1.5 : 1.35); } else cam.dist = Math.max(minD, Math.min(maxD, cam.dist * (btn.dataset.camera === 'in' ? .85 : 1.18))); invalidate(); }; });
+  root.querySelectorAll('[data-camera]').forEach(btn => { btn.onclick = () => { if (btn.dataset.camera==='reset') resetCamera(); else cam.dist=Math.max(minD,Math.min(maxD,cam.dist*(btn.dataset.camera==='in'?.85:1.18))); invalidate(); }; });
+  let pins=[];
+  const labels=root.querySelector('.int-room-labels');
+  const syncRoomUi=()=>{
+    if(!room.immersive)return;
+    root.dataset.activeRoom=room.activeRoom();
+    root.querySelectorAll('[data-enter-room]').forEach(btn=>btn.setAttribute('aria-pressed',String(btn.dataset.enterRoom===room.activeRoom())));
+    root.querySelector('.int-walk').hidden=!inside();
+    const name=room.plan.find(p=>p.id===room.activeRoom())?.name||'Hausübersicht';
+    root.querySelector('.int-stage-caption').textContent=`${name} · ${inside()?'Ziehen zum Umsehen · WASD / Pfeile zum Gehen':'Ziehen zum Drehen · Gegenstände auswählen'}`;
+    root.querySelector('.int-breadcrumb').textContent=`${data.city.name} / ${b.name} / ${name}`;
+    labels.replaceChildren();pins=[];
+    if(!inside())return;
+    for(const h of room.activeHotspots()){
+      const btn=document.createElement('button');btn.className='int-room-pin';btn.type='button';btn.dataset.roomHotspot=h.id;
+      if(h.door)btn.dataset.roomDoor=h.roomId;
+      btn.innerHTML=`<span aria-hidden="true">${icon(h.door?'arrow-right':'sparkles').__raw}</span><span><b>${esc(h.label.split(' – ')[0])}</b><small>${h.door?'Raum betreten':'Möglichkeiten ansehen'}</small></span>`;
+      btn.onclick=()=>h.door?changeRoom(h.roomId):showActions(h);labels.append(btn);pins.push({h,btn});
+    }
+  };
+  changeRoom=id=>{
+    if(minigame||!room.setRoom?.(id))return;
+    currentHot=null;currentFilter=null;root.classList.remove('has-selection');panel.classList.add('hide');root.querySelector('.int-scene-selection').hidden=true;
+    selectedRing.visible=false;root.querySelectorAll('[data-object],[data-bar]').forEach(btn=>btn.setAttribute('aria-pressed','false'));
+    resetCamera();Object.assign(renderedCam,{az:cam.az,el:cam.el,dist:cam.dist});renderedTarget.copy(cam.target);syncRoomUi();markReady();invalidate();
+    if(!reducedNow())canvas.animate([{opacity:.15},{opacity:1}],{duration:260,easing:'ease-out'});
+  };
+  if(room.immersive){
+    const nav=root.querySelector('.int-room-nav');nav.innerHTML=room.plan.map(p=>`<button data-enter-room="${p.id}" aria-pressed="false">${esc(p.name)}</button>`).join('')+'<button data-enter-room="overview" aria-pressed="false">Übersicht</button>';
+    nav.querySelectorAll('button').forEach(btn=>btn.onclick=()=>changeRoom(btn.dataset.enterRoom));syncRoomUi();
+    canvas.tabIndex=0;canvas.setAttribute('aria-label','Raumansicht. Ziehen zum Umsehen, WASD oder Pfeiltasten zum Gehen.');
+    root.querySelector('.int-title .small').textContent='Räume betreten · Ziehen zum Umsehen · WASD zum Gehen';
+    const walk=dir=>{
+      if(!inside()||minigame)return;
+      const angle=cam.az+({forward:0,back:Math.PI,left:-Math.PI/2,right:Math.PI/2})[dir],step=.35;
+      const x=cam.target.x+Math.sin(angle)*step,z=cam.target.z-Math.cos(angle)*step;
+      if(room.canMove(x,z))cam.target.set(x,1.65,z);invalidate();
+    };
+    root.querySelectorAll('[data-walk]').forEach(btn=>btn.onclick=()=>walk(btn.dataset.walk));
+    canvas.addEventListener('keydown',e=>{const dir=({w:'forward',s:'back',a:'left',d:'right',ArrowUp:'forward',ArrowDown:'back',ArrowLeft:'left',ArrowRight:'right'})[e.key.length===1?e.key.toLowerCase():e.key];if(dir){e.preventDefault();walk(dir);}});
+    root.__cameraPosition=()=>({x:cam.target.x,y:cam.target.y,z:cam.target.z,az:cam.az});
+  }
+  const projectLabels=()=>{
+    if(!labels||!inside())return;
+    scene.updateMatrixWorld(true);camera.updateMatrixWorld(true);
+    const width=canvas.clientWidth,height=canvas.clientHeight,stageBounds=canvas.getBoundingClientRect();
+    const placed=[...root.querySelectorAll('.int-room-nav,.int-camera,.int-walk,.int-actionbar,.int-scene-selection')].filter(el=>!el.hidden&&el.getClientRects().length).map(el=>{const r=el.getBoundingClientRect();return{left:r.left-stageBounds.left,right:r.right-stageBounds.left,top:r.top-stageBounds.top,bottom:r.bottom-stageBounds.top};});
+    for(const {h,btn}of [...pins].sort((a,b)=>Number(b.h.door)-Number(a.h.door))){
+      const bounds=new T.Box3().setFromObject(h.obj),pos=bounds.getCenter(new T.Vector3());pos.y=h.door?1.8:Math.min(2.2,bounds.max.y+.18);
+      const p=pos.clone().project(camera),bw=btn.offsetWidth||165,bh=btn.offsetHeight||48,x=(p.x+1)*width/2,y=(1-p.y)*height/2;
+      const rect={left:x-bw/2,right:x+bw/2,top:y-bh/2,bottom:y+bh/2};
+      const visible=p.z>-1&&p.z<1&&rect.left>8&&rect.right<width-8&&rect.top>70&&rect.bottom<height-110&&!placed.some(r=>rect.left<r.right+10&&rect.right>r.left-10&&rect.top<r.bottom+8&&rect.bottom>r.top-8);
+      btn.hidden=!visible;if(visible){btn.style.left=`${x}px`;btn.style.top=`${y}px`;placed.push(rect);}
+    }
+  };
   const selectedRing = new T.Mesh(new T.RingGeometry(1,1.035,64),new T.MeshBasicMaterial({color:0x8effbf,side:T.DoubleSide,transparent:true,opacity:.85,depthWrite:false}));selectedRing.rotation.x=-Math.PI/2;selectedRing.visible=false;scene.add(selectedRing);
   focusRoom = h => {
     if(!v2)return;
     selectedRing.visible=!!h;
-    if(h){scene.updateMatrixWorld(true);const bounds=new T.Box3().setFromObject(h.obj), center=bounds.getCenter(new T.Vector3()), size=bounds.getSize(new T.Vector3());selectedRing.position.set(center.x,.035,center.z);const radius=Math.max(.7,Math.hypot(size.x,size.z)*.55);selectedRing.scale.set(radius,radius,1);cam.target.set(center.x*.4,1.1,center.z*.4+.25);}
-    else cam.target.set(0,1.1,.4);
+    if(h){scene.updateMatrixWorld(true);const bounds=new T.Box3().setFromObject(h.obj), center=bounds.getCenter(new T.Vector3()), size=bounds.getSize(new T.Vector3());selectedRing.position.set(center.x,.035,center.z);const radius=Math.max(.7,Math.hypot(size.x,size.z)*.55);selectedRing.scale.set(radius,radius,1);if(inside()){const dx=center.x-cam.target.x,dz=center.z-cam.target.z;const angle=Math.atan2(dx,-dz);cam.az+=Math.atan2(Math.sin(angle-cam.az),Math.cos(angle-cam.az));cam.el=Math.max(-.5,Math.min(.45,Math.atan2(center.y-1.65,Math.hypot(dx,dz))));}else cam.target.set(center.x*.4,1.1,center.z*.4+.25);}
+    else if(!inside()) cam.target.set(0,1.1,.4);
     invalidate();
   };
   const tokens = [];
@@ -183,15 +253,15 @@ export async function openInterior(ctx, b, data) {
     if (tokens.length && !matchMedia('(prefers-reduced-motion: reduce)').matches && document.documentElement.dataset.motion !== 'off') { tokens.forEach((k, i) => { k.mesh.position.y = k.y0 + Math.sin(t / 380 + i) * 0.12; k.mesh.rotation.y = t / 700 + i; }); needs = true; }
     const lifeOn = movingAllowed && room.animated && !document.hidden;
     if (lifeOn && t - roomTime >= 33) { roomTime = t; room.update(t); needs = true; }
-    if (needs) { needs = false; placeCam(); renderer.render(scene, camera); }
+    if (needs) { needs = false; placeCam(); renderer.render(scene, camera); projectLabels(); }
     if (moving || (tokens.length && movingAllowed) || lifeOn) rafId = requestAnimationFrame(frame); else cameraTime=0;
   }
   onResize();
 
   // ---- Hotspots: Raycast, Hover, Klick
   const ray = new T.Raycaster(); const ptr = new T.Vector2();
-  const hotOf = (obj) => { let o = obj; while (o) { const h = hotspots.find((x) => x.obj === o); if (h) return h; o = o.parent; } return null; };
-  const pickAt = (e) => { const r = canvas.getBoundingClientRect(); ptr.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1); ray.setFromCamera(ptr, camera); return ray.intersectObjects(scene.children, true); };
+  const hotOf = (obj) => { let o = obj; while (o) { const h = (room.activeHotspots?.()||hotspots).find((x) => x.obj === o); if (h) return h; o = o.parent; } return null; };
+  const pickAt = (e) => { const r = canvas.getBoundingClientRect(); ptr.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1); ray.setFromCamera(ptr, camera); return ray.intersectObjects(scene.children, true).filter(hit=>{for(let o=hit.object;o;o=o.parent)if(!o.visible)return false;return true;}); };
   let hoverHot = null;
   const setEmissive = (h, on) => { h.obj.traverse((m) => { if (m.isMesh && m.material && m.material.emissive) { if (on) { m.userData._e = m.material.emissive.getHex(); m.material.emissive.setHex(0x553a10); } else if (m.userData._e != null) m.material.emissive.setHex(m.userData._e); } }); };
   // Gegenstände mit Aufgabe leuchten sanft, damit man sie findet
@@ -203,6 +273,7 @@ export async function openInterior(ctx, b, data) {
       setEmissive(h, false);
       if (here && h.actions().some((a) => a.kind === 'task' && a.task.ready)) {
         setEmissive(h, true);
+        if(inside())return;
         const m = sprite(numTex('!', '#5fd6a4', '#06281c'), 0.8); m.position.set(h.obj.position.x, 3.1, h.obj.position.z); scene.add(m); markers.push(m);
       }
     });
@@ -210,16 +281,16 @@ export async function openInterior(ctx, b, data) {
   markReady();
 
   let drag = null;
-  canvas.addEventListener('pointerdown', (e) => { canvas.setPointerCapture(e.pointerId); if (drag) { drag.pts.set(e.pointerId, [e.clientX, e.clientY]); drag.moved = 99; return; } drag = { x: e.clientX, y: e.clientY, moved: 0, az: cam.az, el: cam.el, pts: new Map([[e.pointerId, [e.clientX, e.clientY]]]), pinch: 0 }; });
+  canvas.addEventListener('pointerdown', (e) => { canvas.focus({preventScroll:true}); canvas.setPointerCapture(e.pointerId); if (drag) { drag.pts.set(e.pointerId, [e.clientX, e.clientY]); drag.moved = 99; return; } drag = { x: e.clientX, y: e.clientY, moved: 0, az: cam.az, el: cam.el, pts: new Map([[e.pointerId, [e.clientX, e.clientY]]]), pinch: 0 }; });
   canvas.addEventListener('pointermove', (e) => {
     if (drag && drag.pts.has(e.pointerId)) {
       drag.pts.set(e.pointerId, [e.clientX, e.clientY]);
       if (drag.pts.size === 2) { const [a, c] = [...drag.pts.values()]; const dd = Math.hypot(a[0] - c[0], a[1] - c[1]); if (drag.pinch) { cam.dist = Math.max(minD, Math.min(maxD, cam.dist * (drag.pinch / dd))); invalidate(); } drag.pinch = dd; drag.moved = 99; return; }
       const dx = e.clientX - drag.x; const dy = e.clientY - drag.y; drag.moved = Math.max(drag.moved, Math.abs(dx) + Math.abs(dy));
-      if (drag.moved > 5) { cam.az = Math.max(-0.45, Math.min(1.15, drag.az - dx * 0.005)); cam.el = Math.max(0.35, Math.min(1.25, drag.el + dy * 0.004)); invalidate(); }
+      if (drag.moved > 5) { cam.az = inside()?drag.az-dx*.005:Math.max(-0.45,Math.min(1.15,drag.az-dx*.005)); cam.el = inside()?Math.max(-.65,Math.min(.65,drag.el+dy*.004)):Math.max(.35,Math.min(1.25,drag.el+dy*.004)); invalidate(); }
       return;
     }
-    const hit = pickAt(e).find((i) => hotOf(i.object)); const h = hit ? hotOf(hit.object) : null;
+    const found=pickAt(e); const hit = inside() ? (hotOf(found[0]?.object)?found[0]:null) : found.find((i) => hotOf(i.object)); const h = hit ? hotOf(hit.object) : null;
     if (h !== hoverHot) { if (hoverHot) markReady(); hoverHot = h; if (h) setEmissive(h, true); invalidate(); }
     canvas.style.cursor = h ? 'pointer' : 'grab';
     if (h) { tip.textContent = h.label + (h.hint ? ` · ${h.hint}` : ''); tip.classList.remove('hide'); tip.style.left = `${Math.max(8, Math.min(e.clientX + 14, innerWidth - tip.offsetWidth - 8))}px`; tip.style.top = `${Math.max(8, Math.min(e.clientY + 14, innerHeight - tip.offsetHeight - 8))}px`; } else tip.classList.add('hide');
@@ -235,7 +306,7 @@ export async function openInterior(ctx, b, data) {
   function clickAt(e) {
     const hits = pickAt(e);
     if (minigame) { const t = hits.find((i) => tokens.some((k) => k.mesh === i.object || k.mesh === i.object.parent)); if (t) collectToken(tokens.find((k) => k.mesh === t.object || k.mesh === t.object.parent)); return; }
-    const hit = hits.find((i) => hotOf(i.object));
+    const hit = inside() ? (hotOf(hits[0]?.object)?hits[0]:null) : hits.find((i) => hotOf(i.object));
     if (hit) { const h = hotOf(hit.object); showActions(h); const acts = resolveActions(h); if (acts.length === 1 && !acts[0].disabled && h.autorun) acts[0].run(api2); } else showActions(null);
   }
 
@@ -256,7 +327,9 @@ export async function openInterior(ctx, b, data) {
     try { const r = await api('POST', '/api/action/taskFinish', { building: b.key, task: t.id }); ctx.setView(r.view); toast(r.message, r.level); ctx.hud(); } catch (e) { toast(e.message, 'bad'); }
     pendingTask = false; if (!alive) return; mini.classList.add('hide'); await refreshCity(); markReady(); invalidate();
   }
+  let previousMiniRoom=null;
   function startMini(t) {
+    if(room.immersive){previousMiniRoom=room.activeRoom();changeRoom('overview');}
     const n = Math.max(4, Math.ceil(t.minSeconds / 1.3)); const started = performance.now();
     const spots = tokenSpots(dims, n, Date.now() % 1000);
     const hunt = t.mini === 'hunt'; const seq = t.mini === 'sequence' || hunt;
@@ -271,7 +344,7 @@ export async function openInterior(ctx, b, data) {
     mini.classList.remove('hide'); mini.innerHTML = `<b>${esc(t.name)}</b> – ${hunt ? 'Die Marke taucht jeweils nur an einer Stelle auf – schnapp sie dir' : seq ? 'Klicke die Zahlen der Reihe nach (1, 2, 3 …)' : 'Sammle alle goldenen Marken'}: <span id="mc">0 / ${n}</span> <button class="btn sm ghost" id="mx">Abbrechen</button>`;
     mini.querySelector('#mx').onclick = stopMini; invalidate();
   }
-  function stopMini() { tokens.splice(0).forEach((k) => { scene.remove(k.mesh); disposeObject(k.mesh); }); minigame = null; pendingTask = false; renderTasks(); mini.classList.add('hide'); invalidate(); }
+  function stopMini() { tokens.splice(0).forEach((k) => { scene.remove(k.mesh); disposeObject(k.mesh); }); minigame = null; if(previousMiniRoom){changeRoom(previousMiniRoom);previousMiniRoom=null;} pendingTask = false; renderTasks(); mini.classList.add('hide'); invalidate(); }
   async function collectToken(k) {
     if (minigame.seq && k.num !== minigame.got + 1) { minigame.wrong++; toast(`Falsche Reihenfolge – als Nächstes die ${minigame.got + 1}!`, 'warn'); return; }
     scene.remove(k.mesh); disposeObject(k.mesh); tokens.splice(tokens.indexOf(k), 1); minigame.got++;
@@ -279,7 +352,7 @@ export async function openInterior(ctx, b, data) {
     const mc = mini.querySelector('#mc'); if (mc) mc.textContent = `${minigame.got} / ${minigame.total}`; invalidate();
     if (minigame.got >= minigame.total) {
       const { t, started } = minigame; const wait = Math.max(0, t.minSeconds * 1000 - (performance.now() - started) + 350);
-      mini.innerHTML = '<b>Geschafft!</b> Ergebnis wird verbucht …'; minigame = null; await sleep(wait); mini.classList.add('hide'); await finishTask(t);
+      mini.innerHTML = '<b>Geschafft!</b> Ergebnis wird verbucht …'; minigame = null; if(previousMiniRoom){changeRoom(previousMiniRoom);previousMiniRoom=null;} await sleep(wait); mini.classList.add('hide'); await finishTask(t);
     }
   }
   // Testhilfe: Bildschirmpositionen der Marken (für automatisierte Tests)
