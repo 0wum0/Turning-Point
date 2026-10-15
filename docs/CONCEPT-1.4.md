@@ -1,6 +1,6 @@
 # Turning Point – Zielkonzept 1.4
 
-Stand: 14. Oktober 2026. Grundlage ist das vom Projektinhaber vorgegebene Gesamtkonzept 1.4. Dieses Dokument unterscheidet Zielbild, bereits vorhandene Systeme und noch ausstehende Arbeit. Es erklärt nicht die gesamte Version für fertig.
+Stand: 15. Oktober 2026. Grundlage ist das vom Projektinhaber vorgegebene Gesamtkonzept 1.4. Dieses Dokument unterscheidet Zielbild, bereits vorhandene Systeme und noch ausstehende Arbeit. Es erklärt nicht die gesamte Version für fertig.
 
 ## Leitlinie
 
@@ -21,7 +21,7 @@ Die obere Statusleiste soll dieselben Daten und Aktionen in allen drei Ansichten
 - Die Bankautomatik wird pro Gewerbeobjekt mit Coins freigeschaltet, nicht mit Spielgeld. Andere Objekte werden dadurch nicht freigeschaltet. Automatische Überweisungen geben 0 EFS.
 - Vorläufige Bankkonfiguration: ab 1990, einmalig 10 Coins pro Betrieb. Der Coinpreis ist eine technische Startkonfiguration, keine vom Konzept endgültig festgelegte Balance. Unter Wirtschaft → Unternehmen sind `bankAdministration.fromYear` und `bankAdministration.unlockCoins` einstellbar. Pausieren und erneutes Aktivieren einer erworbenen Lizenz kosten keine weiteren Coins.
 - Die Automatik überweist die positive Firmenkasse nach der täglichen Wirtschafts- und Handelsabrechnung. Der gesamte Kassenbestand wird übertragen. Für Handelsrouten, die einen Kassenbestand benötigen, kann sie pausiert werden. Eine spätere konfigurierbare Betriebsreserve ist noch nicht umgesetzt.
-- Zielregel für Gegenstandsbestellungen: 1 EFS pro tatsächlich bestelltem Gegenstand, unabhängig von der Aufteilung auf Bestellungen. Fünf Betten ergeben fünf EFS. Gegenstände müssen einem Raum zugeordnet werden. Dies ist noch kein vorhandenes Möbelbestellsystem; bestehende Lebensmittelpakete, abstrakte Materialvorräte und Sofortausbauten werden nicht nachträglich als Möbelbestellungen umgedeutet.
+- Einrichtungsbestellungen: 1 EFS pro tatsächlich gekauftem Gegenstand, unabhängig von der Aufteilung auf Bestellungen. Fünf Betten ergeben fünf EFS. Der Warenkorb kann mehrere Räume umfassen; Geld, Einrichtung und EFS werden gemeinsam gebucht. Fehlgeschlagene oder wiederholte Anfragen erzeugen keine weiteren Buchungen. Kostenloses Umstellen und Einlagern gibt keine EFS. Lebensmittelpakete, abstrakte Materialvorräte und Sofortausbauten behalten ihre bisherigen Regeln. Details: [FURNISHING.md](FURNISHING.md).
 - Arbeit und weitere berufliche beziehungsweise städtische Aktivitäten können EFS geben. Zusätzliche Werte sind noch abzustimmen. Die bereits vorhandene Echtzeituhr und der Offlinefortschritt bleiben bestehen; EFS erlaubt zusätzliches Vorspulen.
 
 ## Gebäude, Qualifikation und Entwicklung
@@ -46,20 +46,19 @@ Vorläufige Bauzeiten des Konzepts: ein bis drei Spieljahre für zusätzliche R�
 | --- | --- | --- |
 | Zeit | 1 EFS = 1 Tag, 365-Tage-Jahr; bestehender Offline-/Echtzeitfortschritt | Zusätzliche Stadtaktivitäten und endgültige Arbeitsbelohnungen |
 | Firmenkasse | Einzelabholung im Büro, genau 1 EFS; gesonderte Coinlizenz je Betrieb; tägliche Automatik ohne EFS | Optionale Liquiditätsreserve und weitergehende zentrale Finanzverwaltung |
-| Innenräume | V2-Einzelräume, Türen, begrenzte WASD-/Touch-Kamera; Büro direkt aus Firmenübersicht erreichbar | Frei bestellbare, platzierbare Möbel und Geräte; umfangreiche neue Modelle |
+| Innenräume | V2-Einzelräume, Türen, begrenzte WASD-/Touch-Kamera; acht bestellbare Möbel/Geräte mit Raumzuordnung und eigenen 3D-Modellen; Einlagern und Umstellen | Freie Platzierung statt fester Stellplätze; umfangreichere Epochenmodelle |
 | Nachweise | Passende echte Berufs-/Meisterqualifikation in jedem zugehörigen V2-Büro | Zusätzliche künftige Abschlussarten |
 | Statusleiste | Echte gemeinsame V2-Leiste auch im Innenraum; vier bedienbare Zustandsanzeigen; Datum/Jahresring | Vollständige Bewertung sämtlicher Materialien, Gegenstände und externer Aktienpositionen |
-| Vermögen | Bestehendes Nettovermögen aus Geld, Firmenwerten/-kassen und Immobilien abzüglich Krediten, entsprechend beschriftet | Bewertungsregeln ohne Doppelzählung für alle übrigen Vermögensarten |
+| Vermögen | Nettovermögen aus Geld, Firmenwerten/-kassen und Immobilien inklusive zusätzlicher Einrichtung abzüglich Krediten | Bewertungsregeln ohne Doppelzählung für alle übrigen Vermögensarten |
 | Welt und Stadt | Karte, 3D-Stadt, eigene Gebäude, standortbezogene Aktionen und Versorgung | Durchgängiges Besitzfenster/rechte Seitenleiste/Minikarte nach Referenz; deutlich detailliertere Epochenmodelle |
 | Ausbau | Bestehende qualifikationsabhängige Erweiterungen und Betriebsstufen | Mehrjährige persistente Bauaufträge und damit verknüpfte sichtbare Umbauten |
 | Beruf, Studium, Kredit, Vermietung, Familie, Ämter | Bereits vorhandene Systeme bleiben nutzbar | Einzelabgleich mit endgültigen Regeln und Balancing von 1.4 |
 
 ## Nächste zusammenhängende Arbeitspakete
 
-1. Raumgebundene Einrichtungsbestellungen: Gegenstandskatalog, Preise/Verfügbarkeit, Mengen, konkrete Raumzuordnung, atomare Buchung und EFS pro Stück. Keine EFS für fehlgeschlagene oder doppelt verarbeitete Bestellungen.
-2. Persistente Bauaufträge mit Vorschau, Voraussetzungen und Fortschritt; dieselbe Fertigstellung bei normaler Zeit, Offlinefortschritt und EFS-Vorspulen.
-3. Einheitliche Besitznavigation und Minikarte in Land-, Stadt- und Innenansicht, mobil einklappbar und ohne Überdeckung von Aktionen.
-4. Vollständige Vermögensbewertung und nachvollziehbare Aufschlüsselung; keine doppelte Bewertung von börsennotierten Firmen und deren Aktien.
-5. Epochenabhängige Modelle und Infrastruktur weiter ausbauen; Tutorial und nächste sinnvolle Handlung an den aktuellen Lebensweg anpassen.
+1. Persistente Bauaufträge mit Vorschau, Voraussetzungen und Fortschritt; dieselbe Fertigstellung bei normaler Zeit, Offlinefortschritt und EFS-Vorspulen.
+2. Einheitliche Besitznavigation und Minikarte in Land-, Stadt- und Innenansicht, mobil einklappbar und ohne Überdeckung von Aktionen.
+3. Vollständige Vermögensbewertung und nachvollziehbare Aufschlüsselung; keine doppelte Bewertung von börsennotierten Firmen und deren Aktien.
+4. Epochenabhängige Modelle und Infrastruktur weiter ausbauen; Tutorial und nächste sinnvolle Handlung an den aktuellen Lebensweg anpassen.
 
 Offen bleiben insbesondere die vierte Besitzkategorie, konkrete zusätzliche EFS-Werte, Bauzeitberechnung, Löhne/Preise, Studienzeiten, Erfahrungsstufen, Kreditkonditionen, Kinderregistrierung und Krankenhausregeln. Vorläufige Zahlen werden als solche konfiguriert und nicht als endgültige historische Wahrheit ausgegeben.

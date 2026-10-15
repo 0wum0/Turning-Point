@@ -804,3 +804,10 @@ html[data-game-design="v2"] .city-business-status { border-left:3px solid #82d1a
  .sim-interior.has-shared-hud .int-top { padding:8px 12px; }
  .sim-interior.has-shared-hud .int-title b { font-size:16px; }
 }
+
+/* Door names remain readable when several rooms share the back wall. */
+.sim-interior .int-room-pin[data-room-door] { padding:7px 8px; gap:5px; min-height:44px; }
+.sim-interior .int-room-pin[data-room-door] > span:first-child { width:22px; height:22px; border:0; }
+.sim-interior .int-room-pin[data-room-door] small { display:none; }
+:root[data-game-design="v2"] body.game .furnish-dialog .btn { min-height:44px; font-size:14px; border-radius:9px; padding:10px 12px; }
+:root[data-game-design="v2"] body.game .furnish-dialog.card { border-radius:16px; }

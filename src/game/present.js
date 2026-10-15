@@ -179,6 +179,7 @@ function present(world, state, user, now) {
       value: propertyValue(world, state, p, year), closed: p.closedUntil > state.day ? p.closedUntil - state.day : 0,
       repairCost: p.closedUntil > state.day ? round(propertyValue(world, state, p, year) * Math.min(0.08, 0.015 + 0.0006 * (p.closedUntil - state.day))) : 0, maintainCost: round(propertyValue(world, state, p, year) * ((100 - p.condition) / 100) * 0.3), residence: state.housing.propertyId === p.id,
       lease: require('./landlord').viewOf(world, state, p, year),
+      furnishing: require('./furnishing').objectView(world,state,'prop',p),
     })),
     companies: (state.companies || []).map((c) => {
       const t = biz.tiersOf(world)[c.tier]; const nt = biz.tiersOf(world)[c.tier + 1]; const f = biz.companyFlows(world, state, c, year); const city = world.city(c.cityId);
@@ -188,6 +189,7 @@ function present(world, state, user, now) {
         rooms: c.rooms, maxRooms: t.maxRooms, staff: c.staff, needed: f.needed || biz.staffNeeded(world, c), manager: c.manager, cash: c.cash, abandoned: !!c.abandoned,
         operation: { strikeDays: Math.max(0, (c.strikeUntil || 0) - state.day), playerStaff: (c.playerStaff || []).length, managed: !!(c.manager || c.playerManager || state.occupation?.ownCompanyId === c.id) },
         value: biz.companyValue(world, state, c, year), flows: f, comp: f.comp, security: !!c.security, mods: { lager: OPS.level(c, 'lager'), brand: OPS.level(c, 'brand'), schutz: OPS.level(c, 'schutz'), arbeit: OPS.level(c, 'arbeit') }, ops: OPS.firmView(world, state, c, idx, year, f), stock: c.stock ? { id: c.stock.id, div: c.stock.divPct, outside: c.stock.outside || 0 } : null, hit: c.hit && state.day < c.hit.until ? { days: c.hit.until - state.day, pct: Math.round((1 - c.hit.factor) * 100) } : null, outage: c.outageUntil && state.day < c.outageUntil ? c.outageUntil - state.day : 0, owner: !!(state.occupation && state.occupation.ownCompanyId === c.id),
+        furnishing: require('./furnishing').objectView(world,state,'biz',c),
         bank: require('./business-banking').view(world,state,c), certificates: require('./business-banking').certificates(world,state,c),
         roomCost, roomCoins: biz.tiersOf(world)[c.tier].roomCoins, roomStep: state.discounts[`room:${c.id}`] || 0,
         qualified: biz.qualification(world, state, c.pkey, c.tier).ok,

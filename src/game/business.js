@@ -37,7 +37,7 @@ function companyValue(world, state, c, year) {
     const yrs = (state.day - c.abandoned.day) / 365;
     v *= Math.max(0.2, 1 - (0.8 * yrs) / world.econ.companies.abandonYears);
   }
-  return Math.round(v);
+  return Math.round(v) + require('./furnishing').value(world,c,year);
 }
 
 function staffNeeded(world, c) { return Math.ceil(c.rooms / tiersOf(world)[c.tier].roomsPerStaff); }

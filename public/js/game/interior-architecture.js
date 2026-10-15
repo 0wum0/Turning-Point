@@ -2,8 +2,11 @@
  * Each door changes the visible spatial zone, never the player's simulation state. */
 import {makeTextures} from './textures.js';
 import {signTexture} from './signs.js';
+import {furnitureModel} from './furniture-models.js';
+import {furnishingOf} from './furnishing.js';
 
 export function roomPlan(b) {
+  if(b.roomPlan?.length)return b.roomPlan;
   if(b.type==='home')return [
     {id:'main',name:'Wohnzimmer',icon:'home',items:['leisure','family','shelf','mail','tidy']},
     {id:'kitchen',name:'Küche',icon:'utensils',items:['fridge','stove']},
@@ -20,7 +23,8 @@ export function roomPlan(b) {
 }
 
 export function encloseRoom(T,base,b,ctx,{hour=12}={}) {
-  const scene=base.scene,plan=roomPlan(b),{w,d}=base.dims,H=4.25,early=ctx.view.date.eraKey<=2;
+  const custom=!!b.roomPlan?.length;
+  const scene=base.scene,plan=roomPlan(b),w=base.dims.w,d=base.dims.d+(custom?6:0),H=4.25,early=ctx.view.date.eraKey<=2;
   const old=new T.Group();old.name='Classic room';for(const child of [...scene.children])old.add(child);scene.add(old);
   const props=base.props,original=props.children.map(obj=>({obj,pos:obj.position.clone(),rot:obj.rotation.clone(),scale:obj.scale.clone()}));
   props.traverse(m=>{if(m.material?.bumpMap)m.material.bumpScale=Math.min(.045,m.material.bumpScale);});
@@ -69,11 +73,11 @@ export function encloseRoom(T,base,b,ctx,{hour=12}={}) {
     if(zone.id==='kitchen'){
       shelf(shell,-w/2+1.5,-d/2+.55,0,true);shelf(shell,w/2-1.5,-d/2+.55,0,true);
       const cook=group(shell,w/2-1.5,0,-.65,-Math.PI/2);solids.push(cook);box(cook,3.1,.92,.85,iron,0,0,0);box(cook,3.25,.10,.95,iron,0,.92,0);for(const x of [-.95,0,.95]){cylinder(cook,.25,.25,.02,iron,x,1.03,0);pot(cook,x,1.05,0,.25);box(cook,.64,.48,.05,trim,x,.27,.46);box(cook,.45,.055,.085,brass,x,.73,.49);}box(cook,3.4,.18,1.1,iron,0,2.28,0);box(cook,2.8,.75,.8,iron,0,2.46,-.1);box(cook,.68,1.1,.6,iron,0,3.15,-.12);
-      const prep=table(shell,-1,0,true);box(prep,.8,.035,.45,wood,0,1.0,0);for(let k=0;k<7;k++)sphere(prep,.09,new T.MeshStandardMaterial({color:k%2?0x929448:0x984738,roughness:.7}),-.34+k*.1,1.08,-.1+(k%3)*.08);
+      const prep=table(shell,-1,custom?-1.3:0,true);box(prep,.8,.035,.45,wood,0,1.0,0);for(let k=0;k<7;k++)sphere(prep,.09,new T.MeshStandardMaterial({color:k%2?0x929448:0x984738,roughness:.7}),-.34+k*.1,1.08,-.1+(k%3)*.08);
       if(b.type==='biz') {const task=hotspots.find(h=>h.id==='tables');if(task){const h={...task,obj:prep,id:'preparation',label:'Zubereitung',hint:'Betrieb betreuen',roomId:zone.id};hotspots.push(h);assigned.set(h,zone.id);}}
     }else if(zone.id==='stock'){
       shelf(shell,-w/2+1.6,-d/2+.5,0,true);shelf(shell,w/2-1.6,-d/2+.5);shelf(shell,-w/2+.55,0,Math.PI/2,true);
-      for(let k=0;k<5;k++){const x=w/2-1.2-(k%2)*1.0,z=-.8+Math.floor(k/2)*1.0;const barrel=group(shell,x,0,z);solids.push(barrel);cylinder(barrel,.37,.4,.9,wood,0,0,0);for(const y of [.12,.68])cylinder(barrel,.405,.405,.055,iron,0,y,0);grounding(shell,x,z,1.2,1.2);}
+      for(let k=0;k<5;k++){const x=w/2-1.2-(k%2)*1.0,z=(custom?-2.3:-.8)+Math.floor(k/2)*1.0;const barrel=group(shell,x,0,z);solids.push(barrel);cylinder(barrel,.37,.4,.9,wood,0,0,0);for(const y of [.12,.68])cylinder(barrel,.405,.405,.055,iron,0,y,0);grounding(shell,x,z,1.2,1.2);}
     }else if(zone.id==='office'){
       shelf(shell,-w/2+1.55,-d/2+.5);const rug=box(shell,w*.55,.018,d*.5,material('carpet',0x634c39,[1,1]),0,.009,.3);rug.castShadow=false;
       const cabinet=group(shell,w/2-1.6,0,-d/2+.45);solids.push(cabinet);box(cabinet,2.5,1.6,.55,wood,0,0,0);for(let i=0;i<4;i++){box(cabinet,2.3,.31,.05,trim,0,.12+i*.36,.30);box(cabinet,.22,.035,.05,brass,0,.24+i*.36,.34);}
@@ -99,17 +103,36 @@ export function encloseRoom(T,base,b,ctx,{hour=12}={}) {
     if(id==='overview')return true;
     const zone=zones.get(id);
     if(id==='main'){
-      for(const s of original){const h=hotspots.find(h=>h.obj===s.obj);if(h&&h.roomId!=='main')continue;zone.furnishing.add(s.obj);}
+      for(const s of original){const h=hotspots.find(h=>h.obj===s.obj);if(h&&h.roomId!=='main')continue;zone.furnishing.add(s.obj);if(custom)s.obj.position.z-=3;}
     }else{
       const items=hotspots.filter(h=>h.roomId===id&&original.some(s=>s.obj===h.obj));
       for(const [i,h]of items.entries()){
         zone.furnishing.add(h.obj);h.obj.rotation.set(0,0,0);
         const placements={bed:[-w*.23,0,-d*.14,Math.PI/2],wardrobe:[w*.25,0,-d*.24,0],fridge:[-w*.35,0,d*.14,Math.PI/2],stove:[w*.18,0,-d*.24,0],desk:[0,0,-d*.15,Math.PI],office:[0,0,-d*.15,Math.PI],stock:[-w*.26,0,0,Math.PI/2],board:[w*.22,1.7,-d/2+.26,0]};
-        const a=placements[h.id]||[(i-.5)*2,0,-1,0];h.obj.position.set(a[0],a[1],a[2]);h.obj.rotation.y=a[3];
+        const a=placements[h.id]||[(i-.5)*2,0,-1,0];h.obj.position.set(a[0],a[1],a[2]-(custom&&h.id!=='board'?1.5:0));h.obj.rotation.y=a[3];
       }
     }
     scene.background=new T.Color(0x1b1511);return true;
   }
+  let furnitureRevision=-1;const purchased=[];
+  const syncFurnishing=()=>{
+    const saved=furnishingOf(ctx,b.key);if(!saved||saved.revision===furnitureRevision)return false;
+    furnitureRevision=saved.revision;
+    for(const h of purchased){h.obj.removeFromParent();h.obj.userData.dispose?.();const at=hotspots.indexOf(h);if(at>=0)hotspots.splice(at,1);const si=solids.indexOf(h.obj);if(si>=0)solids.splice(si,1);}
+    purchased.length=0;
+    for(const item of saved.items){
+      const zone=zones.get(item.room);if(!zone)continue;
+      const obj=furnitureModel(T,item);obj.position.set((item.slot%3-1)*w*.30,0,d/2-4.7+Math.floor(item.slot/3)*2.6);zone.shell.add(obj);solids.push(obj);
+      const def=saved.catalogue.find(x=>x.key===item.key),sourceId=item.key==='desk'&&b.type==='home'?'desk':item.key==='stove'&&b.type==='biz'?'preparation':def?.action;
+      const h={obj,id:`furniture-${item.id}`,roomId:item.room,label:item.name,hint:'Deine Einrichtung',purchased:true,actions:()=>{
+        const source=hotspots.find(h=>!h.purchased&&h.id===sourceId);
+        return [...(item.key==='fridge'?[{label:'Haushaltsvorrat öffnen',allowAway:true,run:({provisions})=>provisions('fridge')}]:source?.actions()||[]),{label:'Einrichtung verwalten',sub:'Umstellen, einlagern oder weitere Stücke bestellen',allowAway:true,run:({furnish})=>furnish()}];
+      }};
+      purchased.push(h);hotspots.push(h);
+    }
+    return true;
+  };
+  syncFurnishing();
   const activeHotspots=()=>active==='overview'?hotspots.filter(h=>original.some(s=>s.obj===h.obj)):hotspots.filter(h=>h.roomId===active).concat(zones.get(active)?.doors||[]);
   const canMove=(x,z)=>{
     if(Math.abs(x)>w/2-.6||Math.abs(z)>d/2-.6)return false;
@@ -122,8 +145,8 @@ export function encloseRoom(T,base,b,ctx,{hour=12}={}) {
     }
     return true;
   };
-  const startPose=()=>({x:Math.min(w*(active==='main'?.28:.1),w/2-.7),z:d/2-.85,az:active==='main'?-.23:-.12,el:-.04});
+  const startPose=()=>({x:Math.min(w*(custom?.15:active==='main'?.28:.1),w/2-.7),z:d/2-.85,az:active==='main'?-.23:-.12,el:-.04});
   const update=time=>{base.update(time);for(const [i,f]of flames.entries())f.scale.y=f.userData.height*(1+Math.sin(time*.005+i)*.12);for(const [i,l]of lights.entries())l.intensity=24+Math.sin(time*.004+i)*2;};
   setRoom('main');
-  return {...base,immersive:true,plan,setRoom,activeRoom:()=>active,activeHotspots,startPose,canMove,update,animated:true,dims:{w,d,ht:H}};
+  return {...base,immersive:true,plan,setRoom,activeRoom:()=>active,activeHotspots,startPose,canMove,update,syncFurnishing,overviewDims:base.dims,animated:true,dims:{w,d,ht:H}};
 }

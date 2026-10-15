@@ -54,7 +54,7 @@ function levelIndex(state, key) {
 
 function propertyValue(world, state, p, year) {
   const idx = world.idx(year);
-  return Math.round(p.base * idx * (0.2 + 0.8 * (p.condition / 100)) * require('./economy').realEstateFactor(year) * require('./cityecon').propertyMult(p.cityId, year));
+  return Math.round(p.base * idx * (0.2 + 0.8 * (p.condition / 100)) * require('./economy').realEstateFactor(year) * require('./cityecon').propertyMult(p.cityId, year)) + require('./furnishing').value(world,p,year);
 }
 /** Preisfaktor für Lebensmittel am Wohnort: fester Stadtfaktor (abgeschwächt) × Stadtindex Lebensmittel. */
 function foodFactor(world, state, year) {

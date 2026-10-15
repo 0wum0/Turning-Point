@@ -38,7 +38,12 @@ function buildingsFor(world, state, cityId) {
     const p = world.prof(o.pkey);
     list.push({ key: 'work', type: 'work', name: o.employer, icon: (p && p.icon) || 'briefcase', own: true, pkey: o.pkey, lodging: !!o.lodging, kind: o.kind });
   }
-  return list;
+  return list.map(b=>{
+    const type=b.key.startsWith('prop:')?'prop':b.key.startsWith('biz:')?'biz':null;
+    if(!type)return b;
+    const obj=(type==='prop'?state.properties:state.companies).find(x=>x.id===b.ref);
+    return {...b,roomPlan:require('./furnishing').rooms(type,obj),furnishable:!obj.abandoned};
+  });
 }
 
 /* ---------------- Aufgaben ---------------- */

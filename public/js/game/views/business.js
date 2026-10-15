@@ -1,3 +1,4 @@
+import {openFurnishing} from '../furnishing.js';
 import { html, icon, money, infoBtn, bar, on, signed } from '../ui.js';
 import { supplyBox, cyclePanel, bindSupply, contractsSection, contractsPanel } from '../supply.js';
 import { bankSummary } from '../business-banking.js';
@@ -32,6 +33,7 @@ function card(c, v, ctx) {
     <dl class="kv small mt"><dt>Umsatz / Tag</dt><dd>${money(f.income, cur)}</dd>${c.inputs > 0 ? html`<dt>Wareneinkauf</dt><dd class="neg">${money(c.inputs, cur)}</dd>` : ''}<dt>Löhne + Unterhalt</dt><dd class="neg">${money(f.wages + f.upkeep, cur)}</dd>${c.vat ? html`<dt>Mehrwertsteuer</dt><dd class="${c.vat > 0 ? 'neg' : 'pos'}">${c.vat > 0 ? '' : '+'}${money(Math.abs(c.vat), cur)}</dd>` : ''}${f.tax > 0 ? html`<dt>Steuern</dt><dd class="neg">${money(f.tax, cur)}</dd>` : ''}${c.contractIncome > 0 ? html`<dt>Einnahmen aus Lieferverträgen</dt><dd class="pos">${money(c.contractIncome, cur)}</dd>` : ''}<dt><b>Gewinn / Tag</b></dt><dd class="${c.profitAll >= 0 ? 'pos' : 'neg'}">${signed(c.profitAll, cur)}</dd><dt>Firmenkasse</dt><dd>${money(c.cash, cur)}</dd><dt>Wert</dt><dd>${money(c.value, cur)}</dd></dl>
     ${bankSummary(c,v)}
     <div class="row mt">
+      <button class="btn sm" data-furnishing="biz:${c.id}">Einrichtung</button>
       <button class="btn sm primary" data-office="${c.id}">${icon('hand-coins')} Büro besuchen</button>
       ${c.owner ? '' : html`<button class="btn sm" data-b="bizWork" data-id="${c.id}" ${c.cityId === v.city.id ? '' : 'disabled'}>${icon('hammer')} Selbst arbeiten</button>`}
       <button class="btn sm" data-b="bizManager" data-id="${c.id}" data-on="${c.manager ? 0 : 1}">${icon('crown')} ${c.manager ? 'Manager entlassen' : 'Manager einstellen'}</button>
@@ -64,6 +66,7 @@ export default {
     : html`<div class="card empty-note mt">${icon('store', 'lg')}<span>Du besitzt noch keinen Betrieb. Gründe dein eigenes Unternehmen mit dem Knopf oben – oder schau, ob in der Zeitung unter „Gewerbe“ ein Betrieb zum Verkauf steht.</span><button class="btn sm" data-go="newspaper">Zur Zeitung</button></div>`}`;
   },
   bind(root, ctx) {
+    on(root,'click','[data-furnishing]',(e,t)=>openFurnishing(ctx,t.dataset.furnishing,{onClose:changed=>{if(changed)ctx.rerender();}}));
     bindSupply(root, ctx);
     bindSeasons(root, ctx);
     bindFound(root, ctx);

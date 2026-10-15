@@ -194,3 +194,14 @@ Weiter offen laut `ROADMAP-GILDE.md`: frei steuerbare Familienfiguren, erweitert
 - Gebäudeschäden treffen standardmäßig deutlich seltener (Sturm 0,005 / Feuer 0,001 je passendem Stadtereignis); pro Immobilie liegen mindestens 365 Spieltage zwischen Schäden. Die Gebäudeversicherung organisiert die Reparatur automatisch, bewahrt den Zustand und den Wohnbedarf, und löst keinen Vorspul-Stopp oder dringlichen Dialog aus. Mieteinnahmen können während der Reparatur ausfallen. Migration 036 passt die bisherigen Standardchancen an; individuelle Werte bleiben erhalten.
 - Im Gründungsdialog kann jeder verfügbare deutsche Ort ausgewählt werden. Preise/Nachfrage beziehen sich auf die Zielstadt, die Serveraktion prüft Stadt, Qualifikation und Budget erneut. Stadtansicht und lokale Zeitung führen direkt zur Gründung oder zum Immobilienmarkt. Fernkäufe verändern den Wohnort nicht; dort selbst arbeiten erfordert weiterhin Anwesenheit.
 - Automatisierte Prüfung: `test/provisions.test.js` (Bestand, Preise, Effekte, Butler, Schäden, Fernkäufe, Altstände/Migration) und `test/e2e/design-provisions.test.js` (echte Aktionen im lokalen Testserver, Header in Hoch-/Querformat und ab 320 px, Dialoge und Gründungsort). Die vorhandenen Design-Tests prüfen weiterhin Classic/V2, Karte und Stadt.
+
+
+## Raumgebundene Einrichtung (Konzept 1.4)
+
+Eigene Wohnungen/Häuser und Betriebe öffnen über **Einrichtung** einen gemeinsamen Katalog. Die Auswahl enthält acht Möbel-/Gerätetypen, verfügbare Räume, Stückzahlen und einen Warenkorb mit genauem Gesamtpreis. Die Bestellung verteilt die Gegenstände auf feste freie Stellplätze. In V2 erscheinen eigene 3D-Modelle im zugewiesenen Raum; ein Klick öffnet passende vorhandene Spielaktionen und die Einrichtungsverwaltung. Umstellen und Einlagern aktualisiert die offene Szene ohne erneuten Gebäudeeinstieg.
+
+Die Grundausstattung bleibt bestehen. Zusätzliche Möbel erweitern nicht automatisch Produktions-, Schlaf- oder Lagerkapazitäten. Classic bietet dieselbe Verwaltung; seine bisherige Innenraumdarstellung bleibt erhalten. Öffentliche Gebäude und fremde Mietwohnungen sind nicht individuell einrichtbar.
+
+Die bestellbaren Innenräume haben Platz für zwei Reihen mit je drei zusätzlichen Stellplätzen und einen begehbaren Mittelgang. Türbeschriftungen werden vor Objektbeschriftungen platziert; optionale Hotspots weichen bei Überdeckung. Raumreiter und Objektliste bleiben als zusätzliche Navigation verfügbar.
+
+Prüfung: `test/furnishing.test.js` prüft Kauf, Mengen/EFS, Voraussetzungen, Revisionen, Besitz, alte Spielstände und Wertberechnung. `test/e2e/design-furnishing.test.js` prüft einen echten Mehrraumkauf, Doppelanfrage, tatsächliche 3D-Modelle ohne gegenseitige Überschneidung, Einlagern/Umstellen, Classic und Viewports bis 320 px. Innenraum-, Firmenkassen- und Betriebsalltagstests prüfen die bisherigen Aktionen weiter. Siehe [FURNISHING.md](FURNISHING.md) für Speicherformat und Konfiguration.

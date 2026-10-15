@@ -4,12 +4,14 @@ import { isV2 } from './design.js';
 import { buildRoom, tokenSpots } from './rooms.js';
 import { encloseRoom } from './interior-architecture.js';
 import { businessBrief } from './business-brief.js';
+import { openFurnishing } from './furnishing.js';
+import { openProvisions } from './provision-dialog.js';
 
 const REWARD_LABEL = { efs: (n) => `+${n} EFS`, rest: (n) => `${n > 0 ? '+' : ''}${n} Erholung`, wellbeing: (n) => `+${n} Wohlbefinden`, health: (n) => `+${n} Gesundheit`, influence: (n) => `+${n} Einfluss`, money: () => 'Trinkgeld', childSat: () => 'Kinder froh', bizCash: () => 'Extra-Umsatz' };
 const rewardText = (r) => Object.entries(r || {}).map(([k, n]) => (REWARD_LABEL[k] ? REWARD_LABEL[k](n) : '')).filter(Boolean).join(' · ');
 
 export async function openInterior(ctx, b, data) {
-  let T, room, onResize = () => {}, markReady = () => {}, invalidate = () => {}, focusRoom = () => {}, changeRoom = () => {};
+  let T, room, onResize = () => {}, markReady = () => {}, invalidate = () => {}, focusRoom = () => {}, changeRoom = () => {}, refreshFurnitureUi = () => {}, renderObjects = () => {};
   const requestedRoom=ctx.ui.interiorRoom;delete ctx.ui.interiorRoom;
   const v2 = isV2(); const previousFocus = document.activeElement; const previousOverflow = document.body.style.overflow;
   const app = document.getElementById('app'); const wasInert = app?.inert;
@@ -73,7 +75,11 @@ export async function openInterior(ctx, b, data) {
     try { const r = await api('GET', `/api/city?cityId=${data.city.id}`); const nb = r.buildings.find((x) => x.key === b.key); if (nb) b.tasks = nb.tasks; } catch (_) { /* ignorieren */ }
     if (alive) renderTasks();
   };
+  const manageFurnishing=()=>{if(minigame||!alive)return;openFurnishing(ctx,b.key,{room:room?.activeRoom?.()||'main',onVisit:target=>changeRoom(target),onChange:()=>{if(alive){room?.syncFurnishing?.();renderObjects();refreshFurnitureUi();}}});};
+  if(b.furnishable){const btn=document.createElement('button');btn.className='btn sm';btn.dataset.interiorFurnishing='1';btn.textContent='Einrichtung';btn.onclick=manageFurnishing;root.querySelector('#intTasksBtn').before(btn);}
   const api2 = {
+    furnish:manageFurnishing,
+    provisions:kind=>openProvisions(ctx,kind),
     go: (route, tab) => { cleanup(); if (tab) ctx.ui.newsTab = tab; if (route === 'newspaper') ctx.ui.newsCity = data.city.id; if (route === 'business' && b.type === 'biz') ctx.ui.simFocus = { route, entity: `firm:${b.ref}` }; ctx.go(route); },
     act: async (name, input) => { try { await ctx.act(name, input, { noRender: true }); } catch (_) { /* Toast kommt aus act */ } if (ctx.view.status!=='alive'){cleanup();return;} if (alive) { await refreshCity(); refreshBusiness(); room?.syncBusiness?.(); invalidate(); showActions(currentHot); } },
   };
@@ -141,8 +147,8 @@ export async function openInterior(ctx, b, data) {
   if (v2 || !renderer) {
     let list = root.querySelector('.int-object-list');
     if (!list) { list = document.createElement('div'); list.className = 'int-fallback-objects'; root.append(list); }
-    mount(list, html`${(room?.hotspots || []).map((h, i) => html`<button class="int-object" data-object="${i}"><span class="int-object-symbol">${icon('sparkles')}</span><span><b>${h.label}</b><small>${h.hint || 'Möglichkeiten ansehen'}</small></span><span aria-hidden="true">›</span></button>`)}`);
-    list.querySelectorAll('[data-object]').forEach(btn => { btn.onclick = () => showActions(room.hotspots[Number(btn.dataset.object)]); });
+    renderObjects=()=>{mount(list, html`${(room?.hotspots || []).map((h, i) => html`<button class="int-object" data-object="${i}"><span class="int-object-symbol">${icon('sparkles')}</span><span><b>${h.label}</b><small>${h.hint || 'Möglichkeiten ansehen'}</small></span><span aria-hidden="true">›</span></button>`)}`);
+    list.querySelectorAll('[data-object]').forEach(btn => { btn.onclick = () => showActions(room.hotspots[Number(btn.dataset.object)]); });};renderObjects();
   }
   if (v2 && room?.bar?.length) {
     barEntries = room.bar; const nav = root.querySelector('.int-actionbar'); nav.hidden = false;
@@ -170,7 +176,7 @@ export async function openInterior(ctx, b, data) {
   const resetCamera = () => {
     minD = inside() ? .7 : 5; maxD = inside() ? 1.3 : Math.max(dims.w,dims.d)*2;
     if (inside()) { const p=room.startPose(); cam.az=p.az; cam.el=p.el; cam.dist=1; cam.target.set(p.x,1.65,p.z); }
-    else { cam.az=.42; cam.el=.78; cam.dist=Math.max(dims.w,dims.d)*(v2?1.5:1.35); cam.target.set(0,1.1,.4); }
+    else { const bounds=room.overviewDims||dims;cam.az=.42; cam.el=.78; cam.dist=Math.max(bounds.w,bounds.d)*(v2?1.5:1.35); cam.target.set(0,1.1,.4); }
   };
   if (inside()) resetCamera();
   const renderedTarget=cam.target.clone();
@@ -206,6 +212,7 @@ export async function openInterior(ctx, b, data) {
       btn.onclick=()=>h.door?changeRoom(h.roomId):showActions(h);labels.append(btn);pins.push({h,btn});
     }
   };
+  refreshFurnitureUi=()=>{showActions(null);syncRoomUi();markReady();if(inside()&&!room.canMove(cam.target.x,cam.target.z))resetCamera();invalidate();};
   changeRoom=id=>{
     if(minigame||!room.setRoom?.(id))return;
     currentHot=null;currentFilter=null;root.classList.remove('has-selection');panel.classList.add('hide');root.querySelector('.int-scene-selection').hidden=true;
@@ -233,11 +240,12 @@ export async function openInterior(ctx, b, data) {
     scene.updateMatrixWorld(true);camera.updateMatrixWorld(true);
     const width=canvas.clientWidth,height=canvas.clientHeight,stageBounds=canvas.getBoundingClientRect();
     const placed=[...root.querySelectorAll('.int-room-nav,.int-camera,.int-walk,.int-actionbar,.int-scene-selection')].filter(el=>!el.hidden&&el.getClientRects().length).map(el=>{const r=el.getBoundingClientRect();return{left:r.left-stageBounds.left,right:r.right-stageBounds.left,top:r.top-stageBounds.top,bottom:r.bottom-stageBounds.top};});
-    for(const {h,btn}of [...pins].sort((a,b)=>Number(b.h.door)-Number(a.h.door))){
+    for(const {h,btn}of [...pins].sort((a,b)=>Number(!!b.h.door)-Number(!!a.h.door))){
+      btn.hidden=false; // Measure the current compact label even if the previous frame hid it.
       const bounds=new T.Box3().setFromObject(h.obj),pos=bounds.getCenter(new T.Vector3());pos.y=h.door?1.8:Math.min(2.2,bounds.max.y+.18);
       const p=pos.clone().project(camera),bw=btn.offsetWidth||165,bh=btn.offsetHeight||48,x=(p.x+1)*width/2,y=(1-p.y)*height/2;
       const rect={left:x-bw/2,right:x+bw/2,top:y-bh/2,bottom:y+bh/2};
-      const visible=p.z>-1&&p.z<1&&rect.left>8&&rect.right<width-8&&rect.top>70&&rect.bottom<height-110&&!placed.some(r=>rect.left<r.right+10&&rect.right>r.left-10&&rect.top<r.bottom+8&&rect.bottom>r.top-8);
+      const visible=p.z>-1&&p.z<1&&rect.left>8&&rect.right<width-8&&rect.top>70&&rect.bottom<height-110&&!placed.some(r=>rect.left<r.right+8&&rect.right>r.left-8&&rect.top<r.bottom+8&&rect.bottom>r.top-8);
       btn.hidden=!visible;if(visible){btn.style.left=`${x}px`;btn.style.top=`${y}px`;placed.push(rect);}
     }
   };
@@ -338,7 +346,7 @@ export async function openInterior(ctx, b, data) {
   function startMini(t) {
     if(room.immersive){previousMiniRoom=room.activeRoom();changeRoom('overview');}
     const n = Math.max(4, Math.ceil(t.minSeconds / 1.3)); const started = performance.now();
-    const spots = tokenSpots(dims, n, Date.now() % 1000);
+    const spots = tokenSpots(room.overviewDims||dims, n, Date.now() % 1000);
     const hunt = t.mini === 'hunt'; const seq = t.mini === 'sequence' || hunt;
     spots.forEach((p, idx) => {
       const m = new T.Mesh(new T.SphereGeometry(seq ? 0.34 : 0.28, 16, 12), new T.MeshBasicMaterial({ color: 0xffd54a })); m.position.set(p[0], p[1], p[2]); scene.add(m);

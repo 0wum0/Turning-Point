@@ -392,6 +392,7 @@ const DEFAULTS = {
       work: [{ id: 'tools', name: 'Werkzeug vorbereiten', desc: 'Bringe die Arbeitsschritte in die richtige Reihenfolge.', mini: 'sequence', minSeconds: 7, cooldownMin: 100, reward: { efs: 56, wellbeing: 2 } }, { id: 'shift', name: 'Zusatzschicht', desc: 'Pack bei der Arbeit mit an.', mini: 'collect', minSeconds: 9, cooldownMin: 90, reward: { efs: 84, money: 400, rest: -4 } }, { id: 'meeting', name: 'Besprechung vorbereiten', desc: 'Finde die Unterlagen für die Runde.', mini: 'hunt', minSeconds: 7, cooldownMin: 110, reward: { efs: 63, influence: 1 } }],
     },
     gambling: { ticket: 200, casinoMinAge: 21, casinoFromYear: 1950 },
+    furnishing: { roomSlots: 6, items: {} }, // Preise/Verfügbarkeit: Standardkatalog in game/furnishing.js
     companies: {
       maxCompanies: 30,
       bankAdministration: { fromYear: 1990, unlockCoins: 10 }, // vorläufiger Coin-Preis, pro Objekt

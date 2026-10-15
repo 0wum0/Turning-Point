@@ -659,6 +659,7 @@ require('./operations-actions').install(A, fail, { yr, pay }); // Betrieb 2.0: M
 require('./character-actions').install(A, fail, { yr, pay }); // Charakterblatt: Erfahrung verteilen, Ausstattung kaufen/wechseln/verkaufen, Dienstleistungen buchen
 require('./season-actions').install(A, fail, { yr, pay }); // Seuchen: Schutz mit einem Klick
 require('./places').install(A, fail, { yr, pay, settings });
+require('./furnishing').install(A, fail);
 
 /* ---------------- Meldungen ---------------- */
 A.readNotices = ({ state, input }) => {
