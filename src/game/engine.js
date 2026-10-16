@@ -52,6 +52,8 @@ function dayStep(ctx) {
   if (date.doy === 0) newYear(ctx, year, econ);
   if (state.status !== 'alive') return;
 
+  require('./construction').daily(ctx);
+
   // ---- Einkommen / Beschäftigung ----
   const flows = dailyFlows(world, state);
   const m = state.meters;

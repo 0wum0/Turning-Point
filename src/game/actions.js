@@ -575,6 +575,8 @@ A.bizSupply = ({ state, input }) => {
 };
 A.bizExpand = ({ world, state, input, user }) => {
   const c = company(state, input.id); needActive(c);
+  require('./construction').validate(c,input,fail);
+  if(!biz.qualification(world,state,c.pkey,c.tier).ok)fail('Dir fehlt die Qualifikation für diesen Betrieb.');
   const t = biz.tiersOf(world)[c.tier];
   if (c.rooms >= t.maxRooms) fail('Auf dieser Stufe sind alle Räume freigeschaltet. Baue den Betrieb aus (Stufe erhöhen).');
   const idx = world.idx(yr(state));
@@ -584,13 +586,13 @@ A.bizExpand = ({ world, state, input, user }) => {
   const coins = ladder(t.roomCoins, state.discounts[key] || 0);
   if (state.money < cost) fail('Dafür reicht dein Geld nicht.');
   if (user.coins + state.fx.coins < coins) fail('Dir fehlen Coins. Sieh Werbung an, um den Preis zu senken.');
+  if(input.expectedCost!==cost||input.expectedCoins!==coins||input.expectedDays!==require('./construction').duration(world,c,'room'))fail('Baupreis oder Bauzeit haben sich geändert. Öffne die Bauplanung erneut.');
   pay(state, cost); state.fx.coins -= coins; delete state.discounts[key];
-  c.rooms++; c.base += Math.round(cost / idx * 0.8);
-  award(state, 'buy_property', `room:${c.id}:${c.rooms}`);
-  return { msg: `Neuer Raum freigeschaltet (${c.rooms} / ${t.maxRooms}).` };
+  return require('./construction').start(world,state,c,'room',cost,coins);
 };
 A.bizUpgrade = ({ world, state, input }) => {
   const c = company(state, input.id); needActive(c);
+  require('./construction').validate(c,input,fail);
   const tiers = biz.tiersOf(world);
   if (c.tier >= tiers.length - 1) fail('Das ist bereits die höchste Stufe.');
   const nt = tiers[c.tier + 1];
@@ -598,13 +600,9 @@ A.bizUpgrade = ({ world, state, input }) => {
   const idx = world.idx(yr(state)); const city = world.city(c.cityId);
   const cost = Math.max(0, Math.round((nt.price - tiers[c.tier].price) * idx * (city ? city.price_factor : 1) * require('./cityecon').buildMult(c.cityId, yr(state))));
   if (state.money < cost) fail('Dafür reicht dein Geld nicht.');
+  if(input.expectedCost!==cost||input.expectedDays!==require('./construction').duration(world,c,'upgrade'))fail('Baupreis oder Bauzeit haben sich geändert. Öffne die Bauplanung erneut.');
   pay(state, cost);
-  c.tier++; c.rooms = Math.max(c.rooms, nt.rooms); c.base += Math.round(cost / idx);
-  const old = c.name; c.name = c.name.replace(/^\S+/, biz.chainNames(world, c.pkey)[c.tier].split(' ')[0]);
-  award(state, 'buy_property', `tier:${c.id}:${c.tier}`);
-  chronicle(state, `${old} wird zu ${c.name} ausgebaut.`, 'business');
-  press.story(world, state, 'business_expand', { firm: c.name, from: old, cityId: c.cityId });
-  return { msg: `Ausbau abgeschlossen: ${biz.tierName(world, c)}.` };
+  return require('./construction').start(world,state,c,'upgrade',cost,0);
 };
 A.bizCollect = ({ state, input }) => {
   if(input.id==='all')fail('Besuche das Büro des jeweiligen Betriebs. Eine Sammelabholung ist nicht möglich.');
@@ -660,6 +658,7 @@ require('./character-actions').install(A, fail, { yr, pay }); // Charakterblatt:
 require('./season-actions').install(A, fail, { yr, pay }); // Seuchen: Schutz mit einem Klick
 require('./places').install(A, fail, { yr, pay, settings });
 require('./furnishing').install(A, fail);
+require('./construction').install(A, fail);
 
 /* ---------------- Meldungen ---------------- */
 A.readNotices = ({ state, input }) => {

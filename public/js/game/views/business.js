@@ -1,3 +1,4 @@
+import {openConstruction,constructionSummary} from '../construction.js';
 import {openFurnishing} from '../furnishing.js';
 import { html, icon, money, infoBtn, bar, on, signed } from '../ui.js';
 import { supplyBox, cyclePanel, bindSupply, contractsSection, contractsPanel } from '../supply.js';
@@ -16,6 +17,7 @@ function card(c, v, ctx) {
       <dl class="kv small mt"><dt>Aktueller Wert</dt><dd>${money(c.value, cur)}</dd><dt>Reaktivierung</dt><dd>${money(c.reactivateCost, cur)}</dd></dl>
       <div class="row mt"><button class="btn primary sm" data-b="bizReactivate" data-id="${c.id}" ${c.qualified ? '' : 'disabled'}>Wiederbeleben</button><button class="btn sm" data-psell="${c.id}" data-name="${c.name}" data-value="${Math.round(c.value / (v.idx || 1))}">An Spieler …</button><button class="btn sm danger" data-sell="${c.id}">Verkaufen</button></div>
       ${c.qualified ? '' : html`<div class="small neg mt">Dir fehlt die Qualifikation (${c.profession}).</div>`}
+      ${constructionSummary(c)}${c.construction?html`<button class="btn mt" data-construction="${c.id}">Pausierten Bauauftrag ansehen</button>`:''}
       ${contractsSection(c, v, ctx)}</article>`;
   }
   return html`<article class="card biz ${c.profitAll < 0 ? 'loss' : ''}" data-sim-entity="firm:${c.id}">
@@ -32,6 +34,8 @@ function card(c, v, ctx) {
     ${contractsSection(c, v, ctx)}
     <dl class="kv small mt"><dt>Umsatz / Tag</dt><dd>${money(f.income, cur)}</dd>${c.inputs > 0 ? html`<dt>Wareneinkauf</dt><dd class="neg">${money(c.inputs, cur)}</dd>` : ''}<dt>Löhne + Unterhalt</dt><dd class="neg">${money(f.wages + f.upkeep, cur)}</dd>${c.vat ? html`<dt>Mehrwertsteuer</dt><dd class="${c.vat > 0 ? 'neg' : 'pos'}">${c.vat > 0 ? '' : '+'}${money(Math.abs(c.vat), cur)}</dd>` : ''}${f.tax > 0 ? html`<dt>Steuern</dt><dd class="neg">${money(f.tax, cur)}</dd>` : ''}${c.contractIncome > 0 ? html`<dt>Einnahmen aus Lieferverträgen</dt><dd class="pos">${money(c.contractIncome, cur)}</dd>` : ''}<dt><b>Gewinn / Tag</b></dt><dd class="${c.profitAll >= 0 ? 'pos' : 'neg'}">${signed(c.profitAll, cur)}</dd><dt>Firmenkasse</dt><dd>${money(c.cash, cur)}</dd><dt>Wert</dt><dd>${money(c.value, cur)}</dd></dl>
     ${bankSummary(c,v)}
+    ${constructionSummary(c)}
+    <button class="btn mt" data-construction="${c.id}">${icon('hammer')} ${c.construction?'Bauauftrag ansehen':'Bauplanung öffnen'}</button>
     <div class="row mt">
       <button class="btn sm" data-furnishing="biz:${c.id}">Einrichtung</button>
       <button class="btn sm primary" data-office="${c.id}">${icon('hand-coins')} Büro besuchen</button>
@@ -40,10 +44,10 @@ function card(c, v, ctx) {
     </div>
     <div class="row mt">
       <button class="btn sm" data-b="bizHire" data-id="${c.id}" data-delta="1" title="Stellt die Bewerbung mit der besten Passung ein">+ Mitarbeiter (beste Wahl)</button><button class="btn sm" data-b="bizHire" data-id="${c.id}" data-delta="-1" ${c.staff ? '' : 'disabled'}>− Mitarbeiter</button>
-      <button class="btn sm" data-b="bizExpand" data-id="${c.id}" ${c.rooms >= c.maxRooms ? 'disabled' : ''}>${icon('plus')} Raum · ${money(c.roomCost, cur)} + ${Math.max(1, Math.ceil(c.roomCoins / 2 ** c.roomStep))} ${icon('coins')}</button>
+      <button class="btn sm" data-build="room" data-id="${c.id}" ${c.construction || c.rooms >= c.maxRooms ? 'disabled' : ''}>${icon('plus')} Raum · ${money(c.roomCost, cur)} + ${c.roomCoins>0?Math.max(1, Math.ceil(c.roomCoins / 2 ** c.roomStep)):0} ${icon('coins')}</button>
       ${c.roomCoins > 1 ? html`<button class="btn sm ghost" data-ad="${c.id}" title="Werbung ansehen, Coin-Preis senken">${icon('circle-play')}</button>` : ''}
     </div>
-    <div class="row mt">${c.next ? html`<button class="btn sm" data-b="bizUpgrade" data-id="${c.id}" ${c.next.qualified && v.money >= c.next.cost ? '' : 'disabled'}>${icon('trending-up')} Zu ${c.next.name} ausbauen · ${money(c.next.cost, cur)}</button>` : ''}${c.stock ? html`<span class="chip accent" title="Börsennotiert, ${c.stock.div} % Ausschüttung">${icon('trending-up')} Börse</span><button class="btn sm" data-ipo="${c.id}" data-listed="1">Börse …</button>` : html`<button class="btn sm" data-psell="${c.id}" data-name="${c.name}" data-value="${Math.round(c.value / (v.idx || 1))}">An Spieler …</button><button class="btn sm" data-ipo="${c.id}">${icon('trending-up')} Börsengang</button><button class="btn sm danger" data-sell="${c.id}">Verkaufen</button>`}</div>
+    <div class="row mt">${c.next ? html`<button class="btn sm" data-build="upgrade" data-id="${c.id}" ${!c.construction && c.next.qualified && v.money >= c.next.cost ? '' : 'disabled'}>${icon('trending-up')} Zu ${c.next.name} ausbauen · ${money(c.next.cost, cur)}</button>` : ''}${c.stock ? html`<span class="chip accent" title="Börsennotiert, ${c.stock.div} % Ausschüttung">${icon('trending-up')} Börse</span><button class="btn sm" data-ipo="${c.id}" data-listed="1">Börse …</button>` : html`<button class="btn sm" data-psell="${c.id}" data-name="${c.name}" data-value="${Math.round(c.value / (v.idx || 1))}">An Spieler …</button><button class="btn sm" data-ipo="${c.id}">${icon('trending-up')} Börsengang</button><button class="btn sm danger" data-sell="${c.id}">Verkaufen</button>`}</div>
     ${c.next && !c.next.qualified ? html`<div class="small dim mt">Ausbau braucht Berufsstufe ${['Anfänger', 'Geselle', 'Fachkraft', 'Meister', 'Altmeister'][c.next.minLevel]}.</div>` : ''}
   </article>`;
 }
@@ -56,7 +60,7 @@ export default {
     const cash = cs.reduce((s, c) => s + c.cash, 0);
     return html`
     <div class="panel-head"><div><h2>Unternehmen</h2><p>Vom Wirtshaus zum Hotel: Qualifikation, Räume, Mitarbeiter, Manager.</p></div>
-      ${infoBtn(['Betriebe darfst du nur mit passender Qualifikation führen – etwa Wirt → Wirtshaus → Restaurant → Hotel. Der Beruf des Partners kann Betriebe der Einstiegsstufe eröffnen.', 'Du kannst zuerst selbst arbeiten und später Mitarbeiter und Manager einsetzen. Verlierst du die Qualifikation (z. B. durch Trennung oder beim Erben), wird der Betrieb zum Lost Place und verfällt über etwa zehn Jahre.', 'Du gründest selbst mit „Unternehmen gründen“ (Betriebsart und Name frei wählbar) oder kaufst einen bestehenden Betrieb aus der Zeitung unter „Gewerbe“. Räume schaltest du mit Geld und Coins frei.'], 'Unternehmen')}</div>
+      ${infoBtn(['Betriebe darfst du nur mit passender Qualifikation führen – etwa Wirt → Wirtshaus → Restaurant → Hotel. Der Beruf des Partners kann Betriebe der Einstiegsstufe eröffnen.', 'Du kannst zuerst selbst arbeiten und später Mitarbeiter und Manager einsetzen. Verlierst du die Qualifikation (z. B. durch Trennung oder beim Erben), wird der Betrieb zum Lost Place und verfällt über etwa zehn Jahre.', 'Du gründest selbst mit „Unternehmen gründen“ (Betriebsart und Name frei wählbar) oder kaufst einen bestehenden Betrieb aus der Zeitung unter „Gewerbe“. Räume und Umbauten werden im Büro geplant. Zusätzliche Räume dauern ein bis drei Spieljahre, Umbauten vorläufig fünf; Geld und gegebenenfalls Coins bezahlst du bei Beauftragung.'], 'Unternehmen')}</div>
     ${foundBar(v)}
     ${epiBanner(ctx)}
     <div class="mt">${contractsPanel(v)}</div>
@@ -66,6 +70,7 @@ export default {
     : html`<div class="card empty-note mt">${icon('store', 'lg')}<span>Du besitzt noch keinen Betrieb. Gründe dein eigenes Unternehmen mit dem Knopf oben – oder schau, ob in der Zeitung unter „Gewerbe“ ein Betrieb zum Verkauf steht.</span><button class="btn sm" data-go="newspaper">Zur Zeitung</button></div>`}`;
   },
   bind(root, ctx) {
+    on(root,'click','[data-construction],[data-build]',(e,t)=>openConstruction(ctx,Number(t.dataset.construction||t.dataset.id),{kind:t.dataset.build||'room',onClose:changed=>{if(changed)ctx.rerender();}}));
     on(root,'click','[data-furnishing]',(e,t)=>openFurnishing(ctx,t.dataset.furnishing,{onClose:changed=>{if(changed)ctx.rerender();}}));
     bindSupply(root, ctx);
     bindSeasons(root, ctx);

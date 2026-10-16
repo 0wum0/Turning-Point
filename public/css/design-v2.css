@@ -811,3 +811,5 @@ html[data-game-design="v2"] .city-business-status { border-left:3px solid #82d1a
 .sim-interior .int-room-pin[data-room-door] small { display:none; }
 :root[data-game-design="v2"] body.game .furnish-dialog .btn { min-height:44px; font-size:14px; border-radius:9px; padding:10px 12px; }
 :root[data-game-design="v2"] body.game .furnish-dialog.card { border-radius:16px; }
+:root[data-game-design="v2"] body.game .construction-dialog.card { border-radius:16px; }
+:root[data-game-design="v2"] body.game .construction-dialog.card .btn { min-height:44px; padding:10px 14px; font-size:14px; border-radius:9px; }

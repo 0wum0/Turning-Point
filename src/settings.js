@@ -395,6 +395,7 @@ const DEFAULTS = {
     furnishing: { roomSlots: 6, items: {} }, // Preise/Verfügbarkeit: Standardkatalog in game/furnishing.js
     companies: {
       maxCompanies: 30,
+      construction: { roomYears: [1, 2, 3], upgradeYears: 5 }, // vorläufige Spieljahre nach Konzept 1.4
       bankAdministration: { fromYear: 1990, unlockCoins: 10 }, // vorläufiger Coin-Preis, pro Objekt
       staffWage: 500,          // Cent/Tag je Mitarbeiter (Index 1)
       managerWage: 600,

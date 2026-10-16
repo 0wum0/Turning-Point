@@ -46,17 +46,18 @@ test('Ohne Qualifikation kein Kauf; Verlust der Qualifikation → Lost Place', (
   assert.ok(f.companyValue(w, t, t.companies[0], 1945) < v0, 'Wert verfällt');
 });
 
-test('Räume: Geld + Coins, Ausbau braucht Berufsstufe', () => {
+test('Räume und Stufen werden erst nach ihrem Bauauftrag freigeschaltet', () => {
   const s = setup();
   act(s, 'buyBiz', { listingId: edition(w, s, s.cityId).biz.find((x) => x.pkey === 'wirt').id });
-  const usr = u();
-  act(s, 'bizExpand', { id: 1 }, usr);
-  assert.strictEqual(s.companies[0].rooms, 4);
-  assert.strictEqual(s.fx.coins, -1);
-  assert.throws(() => act(s, 'bizUpgrade', { id: 1 }), /Qualifikation/);
-  s.skills.days.wirt = 2000; // Fachkraft
-  act(s, 'bizUpgrade', { id: 1 });
-  assert.strictEqual(s.companies[0].tier, 1);
+  const view=()=>require('../src/game/present').present(w,s,u()).companies[0];
+  const c=view();act(s,'bizExpand',{id:1,constructionRevision:0,expectedCost:c.roomCost,expectedCoins:c.roomCoins,expectedDays:c.constructionTimes.roomDays});
+  assert.strictEqual(s.companies[0].rooms,3);assert.strictEqual(s.fx.coins,-1);
+  s.companies[0].construction.elapsedDays=364;s.day++;require('../src/game/construction').daily({world:w,state:s});
+  assert.strictEqual(s.companies[0].rooms,4);
+  const q=()=>({id:1,constructionRevision:view().constructionRevision,expectedCost:view().next.cost,expectedDays:view().constructionTimes.upgradeDays});
+  assert.throws(()=>act(s,'bizUpgrade',q()),/Qualifikation/);
+  s.skills.days.wirt=2000;act(s,'bizUpgrade',q());assert.strictEqual(s.companies[0].tier,0);
+  s.companies[0].construction.elapsedDays=1824;s.day++;require('../src/game/construction').daily({world:w,state:s});assert.strictEqual(s.companies[0].tier,1);
 });
 
 test('Erbe: Betrieb geht in den Pflichtanteil; ohne Qualifikation wird er Lost Place', () => {

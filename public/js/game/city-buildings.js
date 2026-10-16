@@ -294,6 +294,21 @@ export function buildLandmark(T, b, env, shared) {
     for (let k = 0; k < (b.mods.lager || 0); k++) box(.62, .5, .5, k % 2 ? 0xb58a4f : 0xc9a56a, -mw / 2 - .75, k * .5, -md * .1 + k * .06, { ry: .2 * k });
     if (b.mods.arbeit >= 1) box(.9, .08, .6, 0x7a5d3a, mw / 2 + .55, .45, md * .1);
   }
+  // Paid construction is visible without replacing the still operating building.
+  const constructionStage=b.construction?Math.min(3,Math.floor(b.construction.percent/25)):null;
+  if(b.construction){
+    const scaffoldH=Math.min(top,3.0+constructionStage*1.2),z=D*.45;
+    for(const x of [-W*.42,-W*.22,W*.22,W*.42]){
+      box(.10,scaffoldH,.10,era12?C.wood:C.metal,x,0,z);
+      box(.10,scaffoldH,.10,era12?C.wood:C.metal,x,0,z+.7);
+    }
+    for(let y=1.3;y<scaffoldH;y+=1.3){
+      box(W*.88,.10,.85,C.wood,0,y,z+.35);
+      box(W*.88,.08,.08,C.metal,0,y+.65,z+.73);
+    }
+    for(const x of [-W*.38,W*.38]){box(.14,.9,.14,C.wood,x,0,z+1.1);box(W*.28,.22,.12,b.construction.paused?0xa99874:0xe9ad35,x,.55,z+1.1);}
+    for(let i=0;i<3-constructionStage;i++)crate(-W*.4+i*.6,-D*.45,0,.5,C.brick);
+  }
   if (b.burning) { lights.push({ x: 0, y: 2.4, z: D * .5, color: 0xff6a2a }); lights.push({ x: W * .3, y: 3.2, z: -D * .1, color: 0xff8a3a }); }
   const group = new T.Group(); group.userData.key = b.key;
   const litGeo = B.build('lit'), onGeo = B.build('on'), offGeo = B.build('off');
@@ -332,6 +347,7 @@ export function buildLandmark(T, b, env, shared) {
       if (style === 'inn') hang.rotation.y = Math.PI / 2 * 0; group.add(hang);
     }
   }
+  group.userData.constructionStage=constructionStage;
   group.userData.height = top; group.userData.size = [W, D];
   group.traverse((m) => { if (m.isMesh) { m.userData.key = b.key; } });
   return { group, litMaterial: litMat, surfaceMaterials, height: top, chimneys, lights, flags, style };

@@ -649,3 +649,21 @@ html { scroll-padding-top: calc(var(--hud-h, 62px) + 10px); }
 .furnish-owned .btn { min-height:44px; }
 @media(max-width:720px) { .furnish-dialog { padding:18px; }.furnish-layout { grid-template-columns:1fr; }.furnish-catalogue { grid-template-columns:1fr; }.furnish-card { padding:16px; }.furnish-owned { flex-wrap:wrap; }.furnish-owned > span { flex-basis:100%; }.furnish-owned label { flex:1; }.furnish-heading h3 { font-size:23px; } }
 .furnish-dialog .btn { min-height:44px; }
+
+/* Shared construction planning: Classic and V2 use the same real order. */
+.construction-dialog { max-width:760px; }
+.construction-dialog h4 { margin:24px 0 16px; }
+.construction-dialog .btn { min-height:44px; white-space:normal; }
+.construction-status { padding:16px; margin:16px 0; border:1px solid var(--border); border-radius:12px; background:#16304322; }
+.construction-status p { margin:8px 0 0; }
+.construction-status progress { display:block; width:100%; height:12px; margin:12px 0; accent-color:#58d5af; }
+.construction-steps { padding:0; list-style:none; display:grid; gap:14px; margin:22px 0; }
+.construction-steps li { display:grid; gap:5px; padding:14px; border:1px solid var(--border); border-radius:10px; }
+.construction-steps span { line-height:1.55; }
+.construction-dialog .kv { grid-template-columns:minmax(0,1fr) auto; gap:10px 20px; }
+.construction-dialog .kv dt,.construction-dialog .kv dd { min-width:0; overflow-wrap:anywhere; }
+@media(max-width:520px){
+ .construction-dialog .kv { grid-template-columns:minmax(0,1fr); gap:4px; }
+ .construction-dialog .kv dd { margin:0 0 12px; text-align:left; font-weight:700; }
+ .construction-dialog .construction-status { padding:12px; }
+}

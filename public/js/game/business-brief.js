@@ -1,3 +1,4 @@
+import {constructionSummary} from './construction.js';
 import { html, icon, money, signed } from './ui.js';
 import { businessLife } from './business-life.js';
 
@@ -9,6 +10,7 @@ export function businessBrief(c, currency) {
     <span class="city-eyebrow">DEIN BETRIEBSALLTAG</span>
     <h2 class="${life.tone}">${icon(life.active ? 'factory' : 'triangle-alert')} ${life.status}</h2><p>${life.why}</p>
     <ol class="business-cycle"><li><span>Zutaten</span><b>${c.supply?.on ? Math.round(life.supplied * 100) + ' %' : 'Direkteinkauf'}</b></li><li><span>Auslastung</span><b>${Math.round(life.efficiency * 100)} %</b></li><li><span>Gewinn / Tag</span><b class="${life.profit < 0 ? 'neg' : 'pos'}">${signed(life.profit, currency)}</b></li></ol>
+    ${constructionSummary(c)}
     <details class="business-ledger"><summary>Waren &amp; Team ansehen</summary>
       <p>${life.workers} Mitarbeiter${life.owner ? ' + du' : ''} · ${c.operation?.managed || c.manager || c.owner ? 'Betrieb geführt' : 'Ohne Betriebsleitung'}</p>
       ${life.inputs.length ? html`<b>Zutaten pro Spieltag</b><ul>${life.inputs.map(n => html`<li>${n.name}: ${qty(n.need)} ${n.unit}</li>`)}</ul>` : html`<p>${c.supply?.on ? 'Keine Rezeptzutaten erforderlich.' : 'Einkauf und Verkauf erfolgen direkt über den Betrieb.'}</p>`}

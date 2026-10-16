@@ -59,6 +59,7 @@ function attach(world, state, kind, snap, { force = false } = {}) {
     it.id = state.nextPropId++; it.closedUntil = state.day + (rel.closed || 0); it.bought = state.day; state.properties.push(it);
   } else {
     if (!force && (state.companies || []).length >= world.econ.companies.maxCompanies) fail('Der Käufer besitzt schon die maximale Anzahl an Unternehmen.');
+    if(it.construction)it.construction.lastDay=state.day;
     it.id = state.nextCompanyId++; it.since = state.day; it.cash = 0; it.manager = !!it.manager;
     if (rel.strike) it.strikeUntil = state.day + rel.strike; else delete it.strikeUntil;
     if (rel.abandoned != null) it.abandoned = { day: state.day - rel.abandoned };

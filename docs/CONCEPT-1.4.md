@@ -1,6 +1,6 @@
 # Turning Point – Zielkonzept 1.4
 
-Stand: 15. Oktober 2026. Grundlage ist das vom Projektinhaber vorgegebene Gesamtkonzept 1.4. Dieses Dokument unterscheidet Zielbild, bereits vorhandene Systeme und noch ausstehende Arbeit. Es erklärt nicht die gesamte Version für fertig.
+Stand: 16. Oktober 2026. Grundlage ist das vom Projektinhaber vorgegebene Gesamtkonzept 1.4. Dieses Dokument unterscheidet Zielbild, bereits vorhandene Systeme und noch ausstehende Arbeit. Es erklärt nicht die gesamte Version für fertig.
 
 ## Leitlinie
 
@@ -28,7 +28,7 @@ Die obere Statusleiste soll dieselben Daten und Aktionen in allen drei Ansichten
 
 Eigene Gebäude sollen eingerichtet, erweitert und umgebaut werden können, etwa Schenke → Wirtshaus/Restaurant/Pension/Hotel oder Werkstatt → Fabrik. Ausbauvoraussetzungen berücksichtigen Erfahrung und gegebenenfalls Meisterqualifikation. Im Büro jedes passenden Betriebs werden die echten beruflichen Nachweise der Spielfigur gezeigt. Ein Nachweis eines anderen Gewerbes oder nur die Qualifikation eines Partners erzeugt keinen eigenen Meisterbrief.
 
-Vorläufige Bauzeiten des Konzepts: ein bis drei Spieljahre für zusätzliche Räume, etwa fünf Spieljahre für grundlegende Umbauten. Diese Zeiten sind noch nicht in die bestehenden Sofortausbauten eingebaut. Dafür sind persistente Bauaufträge, Fortschrittsdarstellung, Abbruchregeln, Speichermigration und Prüfungen für Offline-/EFS-Fortschritt erforderlich.
+Betriebsräume entstehen jetzt über persistente Bauaufträge: vorläufig ein bis drei Spieljahre für einen zusätzlichen Raum, fünf für einen Stufenumbau. Normale Zeit, Offlinezeit und EFS-Vorspulen nutzen dieselbe Fertigstellung. Fortschritt, Qualifikationspausen, Abbruch mit anteiliger Erstattung und Gerüste sind umgesetzt. Details: [CONSTRUCTION.md](CONSTRUCTION.md). Wohngebäude-Ausbau, separate Versorgungsmodule und frei gestaltete Grundrisse sind noch nicht in dieses Bausystem überführt.
 
 ## Lebenswege und öffentliche Einrichtungen
 
@@ -51,12 +51,12 @@ Vorläufige Bauzeiten des Konzepts: ein bis drei Spieljahre für zusätzliche R�
 | Statusleiste | Echte gemeinsame V2-Leiste auch im Innenraum; vier bedienbare Zustandsanzeigen; Datum/Jahresring | Vollständige Bewertung sämtlicher Materialien, Gegenstände und externer Aktienpositionen |
 | Vermögen | Nettovermögen aus Geld, Firmenwerten/-kassen und Immobilien inklusive zusätzlicher Einrichtung abzüglich Krediten | Bewertungsregeln ohne Doppelzählung für alle übrigen Vermögensarten |
 | Welt und Stadt | Karte, 3D-Stadt, eigene Gebäude, standortbezogene Aktionen und Versorgung | Durchgängiges Besitzfenster/rechte Seitenleiste/Minikarte nach Referenz; deutlich detailliertere Epochenmodelle |
-| Ausbau | Bestehende qualifikationsabhängige Erweiterungen und Betriebsstufen | Mehrjährige persistente Bauaufträge und damit verknüpfte sichtbare Umbauten |
+| Ausbau | Mehrjährige Betriebsbauaufträge, verbindliche Vorschau, Qualifikationspausen, Abbruch, Fortschritt und Gerüste | Wohngebäude-Bauaufträge, Versorgungsmodule, individuelle Grundrisse und detaillierte neue Raum-/Gebäudemodelle |
 | Beruf, Studium, Kredit, Vermietung, Familie, Ämter | Bereits vorhandene Systeme bleiben nutzbar | Einzelabgleich mit endgültigen Regeln und Balancing von 1.4 |
 
 ## Nächste zusammenhängende Arbeitspakete
 
-1. Persistente Bauaufträge mit Vorschau, Voraussetzungen und Fortschritt; dieselbe Fertigstellung bei normaler Zeit, Offlinefortschritt und EFS-Vorspulen.
+1. Bausystem auf Wohngebäude und weitere Module ausweiten; individuelle Räume und detailliertere Umbau-Modelle verbinden.
 2. Einheitliche Besitznavigation und Minikarte in Land-, Stadt- und Innenansicht, mobil einklappbar und ohne Überdeckung von Aktionen.
 3. Vollständige Vermögensbewertung und nachvollziehbare Aufschlüsselung; keine doppelte Bewertung von börsennotierten Firmen und deren Aktien.
 4. Epochenabhängige Modelle und Infrastruktur weiter ausbauen; Tutorial und nächste sinnvolle Handlung an den aktuellen Lebensweg anpassen.

@@ -37,7 +37,7 @@ function companyValue(world, state, c, year) {
     const yrs = (state.day - c.abandoned.day) / 365;
     v *= Math.max(0.2, 1 - (0.8 * yrs) / world.econ.companies.abandonYears);
   }
-  return Math.round(v) + require('./furnishing').value(world,c,year);
+  return Math.round(v + (c.construction?.baseAdded || 0) * idx) + require('./furnishing').value(world,c,year);
 }
 
 function staffNeeded(world, c) { return Math.ceil(c.rooms / tiersOf(world)[c.tier].roomsPerStaff); }
@@ -79,7 +79,7 @@ function companyFlows(world, state, c, year) {
   const sell = goods.sellPlan(world, state, c, year, rAct, ar, gw, tfx.rel);
   const income = Math.round(rAct * sell.npcShare);
   const wages = Math.round(((tfx.wageUnits == null ? c.staff : tfx.wageUnits) * econ.staffWage * idx + (c.manager ? econ.managerWage * idx : 0)) * ce.wageMult(c.cityId, year) + ps.reduce((s, x) => s + x.wage * idx, 0) + (c.playerManager ? c.playerManager.wage * idx : 0));
-  const upkeep = Math.round((companyValue(world, state, c, year) * econ.upkeepYearPct) / 100 / 365) + OPS.upkeepDay(world, state, c, year); // Module (Lager, Brandschutz, Schutz, Arbeitsplätze)
+  const upkeep = Math.round(((companyValue(world, state, c, year) - (c.construction?.baseAdded || 0) * idx) * econ.upkeepYearPct) / 100 / 365) + OPS.upkeepDay(world, state, c, year); // Module (Lager, Brandschutz, Schutz, Arbeitsplätze)
   const inputs = lg.cost;
   const vat = Math.round((ef.vat / 100) * Math.max(0, income - inputs));
   const pretax = income - wages - upkeep - inputs - vat;

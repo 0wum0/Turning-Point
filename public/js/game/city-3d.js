@@ -330,7 +330,7 @@ export async function createCity3D(host, aerial, opts) {
   return {
     focus, flyTo, zoom, reset, invalidate,
     /** Kennzahlen für Tests und die Leistungsbeurteilung */
-    stats() { const i = renderer.info; return { calls: i.render.calls, triangles: i.render.triangles, geometries: i.memory.geometries, textures: i.memory.textures, fps, hour: atmo.hour, season: season.key, ...life.count }; },
+    stats() { const i = renderer.info; return { calls: i.render.calls, triangles: i.render.triangles, geometries: i.memory.geometries, textures: i.memory.textures, fps, construction:buildings.filter(b=>b.userData.constructionStage!==null).map(b=>({key:b.userData.key,stage:b.userData.constructionStage})), hour: atmo.hour, season: season.key, ...life.count }; },
     dispose() {
       alive = false; cancelAnimationFrame(raf); observer.disconnect(); overlayObserver.disconnect(); motionObserver.disconnect(); motionMedia.removeEventListener('change', wake); document.removeEventListener('visibilitychange', wake); if (textureURL) URL.revokeObjectURL(textureURL);
       life.dispose(); scene.traverse((m) => { m.geometry?.dispose(); for (const material of Array.isArray(m.material) ? m.material : [m.material]) { if (!material) continue; for (const value of Object.values(material)) if (value?.isTexture) value.dispose(); material.dispose(); } });
