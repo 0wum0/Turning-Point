@@ -35,7 +35,7 @@ export function buildLandmark(T, b, env, shared) {
   const W = b.w * UNIT, D = b.d * UNIT;
   const rnd = seeded(hashString(b.key));
   const B = createBatches(T, ['lit', 'roof', 'masonry', 'on', 'off']);
-  const chimneys = [], lights = [];
+  const chimneys = [], lights = [], extensions = [];
   const STYLE_ROOF = { bakery: 0xb4553a, inn: 0x8a4a38, forge: 0x4e545b, workshop: 0x8a5a3a, schule: 0x9a4f3a, press: 0x5d6870, barn: 0x4a4540 };
   const SHOP_ROOFS = [0xb4553a, 0x7a5a45, 0x8a4a38, 0x4f6a7a];
   const roofCol = b.abandoned ? 0x625a50 : (STYLE_ROOF[style] ?? (b.type === 'biz' ? SHOP_ROOFS[hashString(b.key) % SHOP_ROOFS.length] : new T.Color(b.roof || '#a4503a').getHex()));
@@ -203,7 +203,8 @@ export function buildLandmark(T, b, env, shared) {
     case 'pension': case 'home': {
       const villa = b.villa || (b.rooms || 0) >= 12;
       const sc = b.type === 'home' ? Math.min(1.25, .85 + (b.rooms || 2) / 28) : 1;
-      const bw = W * .78 * sc / (b.type === 'home' ? Math.max(1, sc * .8) : 1), bd = D * .78; const fl = style === 'pension' ? 3 : villa ? 3 : 2; const fh = 1.7;
+      const added=b.type==='home'?(b.extensions||[]).slice(0,4):[];
+      const bw = added.length?W*.56:W * .78 * sc / (b.type === 'home' ? Math.max(1, sc * .8) : 1), bd = D * .78; const fl = style === 'pension' ? 3 : villa ? 3 : 2; const fh = 1.7;
       plinth(bw, bd);
       if (era12 || style === 'pension') {
         box(bw, fl * fh, bd, C.plaster, 0, .3, 0); windows(0, 0, bw, bd, .3, fl, fh, { gap: 1.5 }); timbering(0, 0, bw, bd, .3, fl, fh);
@@ -220,6 +221,23 @@ export function buildLandmark(T, b, env, shared) {
       }
       door(bw * .12, bd / 2, C.door, 1.0, 1.7);
       if (villa) { box(bw * .35, 2.6, bd * .6, C.plasterWhite, bw / 2 + bw * .15, .3, bd * .05); gable(bd * .6 + .5, 1.2, bw * .35 + .4, roofCol, bw / 2 + bw * .15, 2.9, bd * .05, { ry: Math.PI / 2 }); windows(bw / 2 + bw * .15, bd * .05, bw * .35, bd * .6, .3, 1, 2.4, { door: false, gap: 1.3, back: false }); box(2, .12, 1.0, C.stone, -bw * .25, 1.6, bd / 2 + .5); for (const sx of [-1, 1]) cyl(.07, 1.3, C.white, -bw * .25 + sx * .85, .3, bd / 2 + .9, { n: 6 }); }
+      // Completed rooms form a compact two-bay side wing, then a second storey.
+      // The wing remains within the reserved landmark footprint.
+      for(const [i,r]of added.entries()){
+        const aw=W*.24,ad=D*.32,x=-W*.37,z=(i%2?1:-1)*D*.19,y=.3+Math.floor(i/2)*fh;
+        const upper=added[i+2],wall=era>=4?C.plasterWhite:r.kind==='office'?C.ochre:C.plaster;
+        if(i<2)plinth(aw,ad,x,z);
+        box(aw,fh,ad,wall,x,y,z);
+        const broad=r.kind==='main',glassW=Math.min(ad*(broad?.25:.35),broad?.55:.8);
+        for(const offset of broad?[-ad*.23,ad*.23]:[0])win('l',x-aw/2,y+.44,z+offset,glassW,r.kind==='office'?.92:.72);
+        win(i%2?'f':'b',x,y+.45,z+(i%2?1:-1)*ad/2,Math.min(.7,aw*.5),.72);
+        if(r.kind==='bedroom'&&era<4)for(const side of [-1,1])box(.10,.82,.18,C.green,x-aw/2-.08,y+.4,z+side*(glassW/2+.15));
+        if(r.kind==='office')box(.42,.09,ad*.65,era<4?C.woodDark:C.metal,x-aw/2-.12,y+1.38,z);
+        if(r.kind==='main')box(.25,.16,ad*.72,C.wood,x-aw/2-.1,y+.30,z);
+        if(upper||era>=4)box(aw+.12,.14,ad+.12,era>=4?C.metal:C.timber,x,y+fh,z);
+        else gable(ad+.16,.7,aw+.16,roofCol,x,y+fh,z,{ry:Math.PI/2});
+        extensions.push({id:r.id,kind:r.kind,x,y,z,w:aw,d:ad,h:fh,roof:upper?'floor':era>=4?'flat':'gable'});
+      }
       for (let k = 0; k < 4; k++) B.sphere('lit', .22, [0xd9402a, 0xf0b92a, 0xe6a1c0, 0xf0ece0][k], -bw / 2 + .6 + k * .7, .55, bd / 2 + .25, { sy: .16 });
       break;
     }
@@ -348,6 +366,7 @@ export function buildLandmark(T, b, env, shared) {
     }
   }
   group.userData.constructionStage=constructionStage;
+  group.userData.extensions=extensions;
   group.userData.height = top; group.userData.size = [W, D];
   group.traverse((m) => { if (m.isMesh) { m.userData.key = b.key; } });
   return { group, litMaterial: litMat, surfaceMaterials, height: top, chimneys, lights, flags, style };

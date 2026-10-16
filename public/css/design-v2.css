@@ -823,3 +823,7 @@ html[data-game-design="v2"] .city-business-status { border-left:3px solid #82d1a
  .sim-interior [data-interior-furnishing] { grid-column:1; grid-row:2; }
  .sim-interior [data-interior-construction] { grid-column:2; grid-row:2; justify-self:start; }
 }
+
+.sim-interior .int-room-chooser { display:flex; align-items:center; gap:10px; padding:0 8px; color:#c7dbe6; font-size:13px; min-width:0; }
+.sim-interior .int-room-chooser select { min-height:44px; width:260px; max-width:100%; min-width:0; padding:8px 12px; border:1px solid #83bfda77; border-radius:6px; background:#102b3a; color:#ecfbff; font:600 13px var(--font-ui); }
+@media(max-width:650px) { .sim-interior .int-room-chooser select { width:210px; } }

@@ -51,12 +51,12 @@ Betriebsräume entstehen jetzt über persistente Bauaufträge: vorläufig ein bi
 | Statusleiste | Echte gemeinsame V2-Leiste auch im Innenraum; vier bedienbare Zustandsanzeigen; Datum/Jahresring | Vollständige Bewertung sämtlicher Materialien, Gegenstände und externer Aktienpositionen |
 | Vermögen | Nettovermögen aus Geld, Firmenwerten/-kassen und Immobilien inklusive zusätzlicher Einrichtung abzüglich Krediten | Bewertungsregeln ohne Doppelzählung für alle übrigen Vermögensarten |
 | Welt und Stadt | Karte, 3D-Stadt, eigene Gebäude, standortbezogene Aktionen und Versorgung | Durchgängiges Besitzfenster/rechte Seitenleiste/Minikarte nach Referenz; deutlich detailliertere Epochenmodelle |
-| Ausbau | Mehrjährige Betriebs- und Wohnbauaufträge, Vorschau, Pausen, Abbruch, Fortschritt und Gerüste; zusätzliche Wohnräume mit eigenen Türen und Einrichtung | Versorgungsmodule, individuelle Betriebsräume, freie Grundrisse und detaillierte Außenmodelle der Anbauten |
+| Ausbau | Mehrjährige Betriebs- und Wohnbauaufträge, Vorschau, Pausen, Abbruch, Fortschritt und Gerüste; zusätzliche Wohn- und Betriebsräume mit eigenen Türen und Einrichtung; sichtbare Wohnhaus-Anbauten | Versorgungsmodule, freie Grundrisse und individuelle Gewerbeflügel |
 | Beruf, Studium, Kredit, Vermietung, Familie, Ämter | Bereits vorhandene Systeme bleiben nutzbar | Einzelabgleich mit endgültigen Regeln und Balancing von 1.4 |
 
 ## Nächste zusammenhängende Arbeitspakete
 
-1. Bausystem auf weitere Module ausweiten; individuelle Betriebsräume und detailliertere Außenmodelle der Umbauten verbinden.
+1. Bausystem auf weitere Module ausweiten; sichtbare Gewerbeflügel und detailliertere Epochenmodelle der Umbauten verbinden.
 2. Einheitliche Besitznavigation und Minikarte in Land-, Stadt- und Innenansicht, mobil einklappbar und ohne Überdeckung von Aktionen.
 3. Vollständige Vermögensbewertung und nachvollziehbare Aufschlüsselung; keine doppelte Bewertung von börsennotierten Firmen und deren Aktien.
 4. Epochenabhängige Modelle und Infrastruktur weiter ausbauen; Tutorial und nächste sinnvolle Handlung an den aktuellen Lebensweg anpassen.

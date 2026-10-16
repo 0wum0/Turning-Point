@@ -33,7 +33,7 @@ function rooms(type,obj){
     ...(obj.pkey==='wirt'?[{id:'kitchen',name:'Küche',icon:'utensils',items:[]}]:[]),
     {id:'stock',name:obj.pkey==='wirt'?'Vorratskeller':'Lager',icon:'package',items:['stock']},
     {id:'office',name:'Büro',icon:'briefcase',items:['office','board']},
-  ];
+  ].concat((obj.extensions||[]).map(r=>({...r,items:[]})));
 }
 function allowed(item,type,obj,room){return item.types.includes(type)&&item.rooms.includes(rooms(type,obj).find(r=>r.id===room)?.kind||room)&&(!item.professions||item.professions.includes(obj.pkey));}
 function read(obj){return obj.furnishing||{revision:0,nextId:1,items:[]};}

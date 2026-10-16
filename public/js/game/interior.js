@@ -77,7 +77,14 @@ export async function openInterior(ctx, b, data) {
     try { const r = await api('GET', `/api/city?cityId=${data.city.id}`); const nb = r.buildings.find((x) => x.key === b.key); if (nb) b.tasks = nb.tasks; } catch (_) { /* ignorieren */ }
     if (alive) renderTasks();
   };
-  const manageFurnishing=()=>{if(minigame||!alive)return;openFurnishing(ctx,b.key,{room:room?.activeRoom?.()||'main',onVisit:target=>changeRoom(target),onChange:()=>{if(alive){room?.syncFurnishing?.();renderObjects();refreshFurnitureUi();}}});};
+  const visitFurnishedRoom=async target=>{
+    if(!v2||room?.plan?.some(r=>r.id===target)){changeRoom(target);return;}
+    // A construction can finish while this interior is open. Rebuild from the
+    // authoritative city before entering a newly available room.
+    try{const fresh=await api('GET',`/api/city?cityId=${data.city.id}`),building=fresh.buildings.find(x=>x.key===b.key);if(!alive)return;if(!building)throw new Error('Das Gebäude ist nicht mehr verfügbar.');cleanup();ctx.ui.interiorRoom=target;await openInterior(ctx,building,{...data,...fresh});}
+    catch(e){toast(e.message,'bad');}
+  };
+  const manageFurnishing=()=>{if(minigame||!alive)return;openFurnishing(ctx,b.key,{room:room?.activeRoom?.()||'main',onVisit:visitFurnishedRoom,onChange:()=>{if(alive){room?.syncFurnishing?.();renderObjects();refreshFurnitureUi();}}});};
   if(b.furnishable){const btn=document.createElement('button');btn.className='btn sm';btn.dataset.interiorFurnishing='1';btn.textContent='Einrichtung';btn.onclick=manageFurnishing;root.querySelector('#intTasksBtn').before(btn);}
   const api2 = {
     construction:()=>(b.type==='home'?openHomeConstruction:openConstruction)(ctx,b.ref,{onChange:()=>{if(alive){refreshBusiness();invalidate();}}}),
@@ -203,6 +210,7 @@ export async function openInterior(ctx, b, data) {
   const syncRoomUi=()=>{
     if(!room.immersive)return;
     root.dataset.activeRoom=room.activeRoom();
+    const chooser=root.querySelector('[data-room-select]');if(chooser)chooser.value=room.activeRoom();
     root.querySelectorAll('[data-enter-room]').forEach(btn=>btn.setAttribute('aria-pressed',String(btn.dataset.enterRoom===room.activeRoom())));
     root.querySelector('.int-walk').hidden=!inside();
     const name=room.plan.find(p=>p.id===room.activeRoom())?.name||'Hausübersicht';
@@ -220,13 +228,15 @@ export async function openInterior(ctx, b, data) {
   refreshFurnitureUi=()=>{showActions(null);syncRoomUi();markReady();if(inside()&&!room.canMove(cam.target.x,cam.target.z))resetCamera();invalidate();};
   changeRoom=id=>{
     if(minigame||!room.setRoom?.(id))return;
-    currentHot=null;currentFilter=null;root.classList.remove('has-selection');panel.classList.add('hide');root.querySelector('.int-scene-selection').hidden=true;
+    renderObjects();currentHot=null;currentFilter=null;root.classList.remove('has-selection');panel.classList.add('hide');root.querySelector('.int-scene-selection').hidden=true;
     selectedRing.visible=false;root.querySelectorAll('[data-object],[data-bar]').forEach(btn=>btn.setAttribute('aria-pressed','false'));
     resetCamera();Object.assign(renderedCam,{az:cam.az,el:cam.el,dist:cam.dist});renderedTarget.copy(cam.target);syncRoomUi();markReady();invalidate();
     if(!reducedNow())canvas.animate([{opacity:.15},{opacity:1}],{duration:260,easing:'ease-out'});
   };
   if(room.immersive){
-    const nav=root.querySelector('.int-room-nav');nav.innerHTML=room.plan.map(p=>`<button data-enter-room="${p.id}" aria-pressed="false">${esc(p.name)}</button>`).join('')+'<button data-enter-room="overview" aria-pressed="false">Übersicht</button>';
+    const nav=root.querySelector('.int-room-nav');
+    nav.innerHTML=(room.plan.length>10?'<label class="int-room-chooser">Raum<select data-room-select aria-label="Raum betreten">'+room.plan.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')+'<option value="overview">Hausübersicht</option></select></label>':room.plan.map(p=>`<button data-enter-room="${p.id}" aria-pressed="false">${esc(p.name)}</button>`).join('')+'<button data-enter-room="overview" aria-pressed="false">Übersicht</button>');
+    const chooser=nav.querySelector('[data-room-select]');if(chooser)chooser.onchange=()=>changeRoom(chooser.value);
     nav.querySelectorAll('button').forEach(btn=>btn.onclick=()=>changeRoom(btn.dataset.enterRoom));syncRoomUi();
     canvas.tabIndex=0;canvas.setAttribute('aria-label','Raumansicht. Ziehen zum Umsehen, WASD oder Pfeiltasten zum Gehen.');
     root.querySelector('.int-title .small').textContent='Räume betreten · Ziehen zum Umsehen · WASD zum Gehen';

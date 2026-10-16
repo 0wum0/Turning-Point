@@ -18,7 +18,7 @@ Die Bauplanung ist in der Unternehmensverwaltung und am Schreibtisch des Betrieb
 
 Verwaltung und Innenraum zeigen denselben serverseitigen Fortschritt mit Resttagen, Ziel und Fertigstellungsdatum. Auf der 3D-Stadtansicht stehen Gerüste und Absperrungen am betroffenen Gebäude; die Gerüststufe ändert sich pro Viertel des Baufortschritts. Nach Fertigstellung verschwindet das Gerüst, das vorhandene Modell berücksichtigt die neue Stufe und Raumzahl. Beim Verlassen des Büros wird die Stadt mit aktuellen Daten neu aufgebaut.
 
-Die Zahl der Betriebsräume ist weiterhin die wirtschaftliche Kapazität des vorhandenen Systems. Die räumlichen Bedienbereiche (Werkstatt/Gastraum, Lager, Büro, gegebenenfalls Küche) sind keine Eins-zu-eins-Liste sämtlicher Produktionsräume. Dieses Paket erzeugt noch keinen individuell begehbaren Raum für jede neue Kapazitätseinheit und keine frei gezeichneten Grundrisse.
+Die Zahl der Betriebsräume bleibt die wirtschaftliche Kapazität des vorhandenen Systems. Bereits vorhandene Räume bleiben in ihren bisherigen Bedienbereichen zusammengefasst. Neu fertiggestellte Raumausbauten und die zusätzliche Kapazität von Stufenumbauten erhalten jetzt jeweils einen eigenen begehbaren Raum; siehe unten. Frei gezeichnete Grundrisse bleiben offen.
 
 ## Abbruch, Wert und Besitzwechsel
 
@@ -56,7 +56,7 @@ Die Immobilienverwaltung und der Schreibtisch eigener Häuser öffnen „Wohnrau
 - Jeder fertige Anbau besitzt eine stabile Raum-ID, einen Typ und einen eigenen Namen. In V2 verbindet ein zusätzlicher Flur die ursprünglichen Wohnbereiche mit den Anbauten. Es ist stets nur ein Raum sichtbar. Türen, Raumregister und Einrichtungskatalog erreichen dieselben Räume. Der Flur ist ein Bedienbereich, zählt nicht als zusätzlicher Wohnraum und lässt sich nicht mit Möbeln blockieren.
 - Neue Räume haben ihre zum Typ passende räumliche Gestaltung; Möbel werden separat gekauft. Bis zu sechs Stellplätze je Raum, maximal 48 gekaufte Gegenstände je Gebäude. Schlafzimmer nehmen beispielsweise Betten auf, Arbeitszimmer Schreibtische. Bestehende Möbelfunktionen und Stück-EFS gelten auch hier. Die alten Wohnbereiche werden nicht umbenannt oder entfernt.
 - Classic erhält dieselbe Bauplanung, Fortschrittsanzeige und Einrichtungsauswahl. Die einzeln betretenen 3D-Räume gehören zu V2.
-- Während des Baus sind dieselben Gerüstphasen wie bei Betrieben sichtbar. Nach Fertigstellung berücksichtigt das bestehende Außenmodell die neue Zimmerzahl; es entsteht noch keine individuell modellierte Außenfassade je Raumtyp.
+- Während des Baus sind dieselben Gerüstphasen wie bei Betrieben sichtbar. Nach Fertigstellung entstehen am Außenmodell eigene Anbauteile: zwei seitliche Bereiche und bei weiteren Räumen eine zweite Etage. Schlafräume erhalten frühzeitliche Fensterläden, Büros größere Fenster mit Überdachung, Wohnräume breitere Fenstergruppen. Frühe Epochen verwenden Satteldächer; moderne Epochen Flachdächer. Die Form bleibt innerhalb der reservierten Gebäudefläche. Das ist eine prozedurale Darstellung des Ausbaus, kein frei gezeichneter Bauplan.
 
 Abbruch mit zweiter Bestätigung erstattet nur den noch ungenutzten, aktuell indexierten Geldanteil. Alte Räume und Möbel bleiben erhalten. Der finanzierte Ausbau zählt einmal zum Vermögen; bei Fertigstellung geht derselbe Basiswert in das Gebäude über. Bauverträge, fertige Raum-IDs und Möbel bleiben bei Verkauf und Vererbung am Objekt. Beim Spielerhandel wird der Tagesanker auf den Käuferkalender gesetzt.
 
@@ -71,3 +71,16 @@ Konfiguration unter Wirtschaft → Wohnraumausbau (`economy.homeConstruction`):
 `maxExtensions` ist auf 1–4, `pricePct` auf 10–200 und jede Bauzeit auf 1–3 Jahre begrenzt. Änderungen gelten nur für neue Verträge. Alte Spielstände benötigen keine Migration und erhalten keine kostenlosen Anbauten. Bestehende wirtschaftliche Zimmerzahlen werden nicht rückwirkend in beliebig viele 3D-Räume aufgeteilt.
 
 Technik: `src/game/home-construction.js`, `property.construction`, `property.constructionRevision` und `property.extensions`; gemeinsame Raumdefinitionen in `furnishing.js`. Tests: `test/home-construction.test.js` und `test/e2e/design-home-construction.test.js`. Die Multiplayer-Kapazitätsabstimmung ist zusätzlich mit einem Datenbankstub geprüft; ein Produktionsdatenbanktest wird dadurch nicht ersetzt.
+
+
+## Individuelle Betriebsräume
+
+Bei einem zusätzlichen Raum lässt sich jetzt vor Beauftragung die räumliche Nutzung wählen: ein zum Gewerbe benannter Arbeitsraum (z. B. Backstube, Schmiedewerkstatt oder Salon), Lagerraum oder Büro; im Gastgewerbe zusätzlich Küche. Diese Wahl verändert keine Löhne, Produktionsmultiplikatoren oder Lagerkapazitäten. Wirtschaftliche Kapazität wächst weiterhin nur durch die bestehende Raumzahl. Die separaten Lager-/Versorgungsmodule bleiben erforderlich.
+
+Der angenommene Vertrag speichert `addedRooms` mit festen IDs, Namen und Raumtypen. Bei Fertigstellung gehen sie in `company.extensions` über. Stufenumbauten erzeugen genau so viele neue Arbeitsräume, wie wirtschaftliche Raumkapazität hinzukommt. Bestehende Raum-IDs und Möbel bleiben erhalten. Alte laufende Verträge ohne dieses Feld erhalten bei Abschluss passende Arbeitsräume; alte abgeschlossene Kapazitäten werden beim bloßen Laden nicht umgeschrieben.
+
+Die Räume besitzen eigene Einrichtung, passende Arbeitsflächen und Zugänge zu vorhandenen Spielaktionen. Zusätzliche Büros verwenden dieselbe Firmenkasse und Banklizenz und zeigen die echten Qualifikationsnachweise. Eine zweite Abholstelle dupliziert weder Geld noch EFS. Küchen nutzen bestehende Betreuungsaufgaben und unterstützen passende Küchenmöbel.
+
+Je vier Zusatzräume teilen sich einen Flurabschnitt. Die Flure sind verbunden und führen zurück zum Hauptraum; höchstens sieben Türen stehen in einem Abschnitt. Zusätzliche Raumgeometrie wird erst beim Betreten aufgebaut. Bei vielen Räumen ersetzen beschriftete Auswahllisten die langen Buttonreihen in Innenansicht und Einrichtung. Das bestehende Maximum von 50 Betriebsräumen wird damit unterstützt; die bisherige Gesamtgrenze von 48 gekauften Möbelstücken je Gebäude bleibt bestehen. Ein Stufenumbau bleibt über das bestehende Außenmodell sichtbar; eigene zusätzliche Gewerbeflügel sind weiterhin offen.
+
+Prüfungen: `test/business-rooms.test.js` sowie `test/e2e/design-business-rooms.test.js` (Raumauswahl, echte Geldabholung, Einrichtung, 50 Räume, verbundene Flure und Mobilansicht). Der Wohnhaus-Browsertest prüft außerdem die neuen Anbauteile und ihre Dächer in frühen und modernen Epochen.

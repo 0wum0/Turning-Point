@@ -667,3 +667,6 @@ html { scroll-padding-top: calc(var(--hud-h, 62px) + 10px); }
  .construction-dialog .kv dd { margin:0 0 12px; text-align:left; font-weight:700; }
  .construction-dialog .construction-status { padding:12px; }
 }
+
+.furnish-room-chooser { display:grid; gap:8px; width:100%; font-weight:600; }
+.furnish-room-chooser select { width:100%; min-height:44px; }

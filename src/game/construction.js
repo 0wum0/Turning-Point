@@ -22,18 +22,19 @@ function view(world,state,c){
   revision:c.constructionRevision||0,durationDays:p.durationDays,elapsedDays:p.elapsedDays,remainingDays:remaining,
   percent:Math.min(100,Math.floor(p.elapsedDays/p.durationDays*100)),paused:reason,
   finishDate:reason?null:formatDate(state.day+remaining,state.startYear),refund:Math.floor(paid*remaining/p.durationDays),paid,coins:p.coins,
-  targetRooms:p.targetRooms,targetTier:p.targetTier};
+  targetRooms:p.targetRooms,targetTier:p.targetTier,addedRooms:p.addedRooms||require('./business-rooms').planned(c,p.targetRooms)};
 }
 function validate(c,input,fail){
  if(!Number.isSafeInteger(input.constructionRevision)||input.constructionRevision!==(c.constructionRevision||0))fail('Der Bauplan hat sich geändert. Öffne die Bauplanung erneut.');
  if(c.construction)fail('Für diesen Betrieb läuft bereits ein Bauauftrag.');
 }
-function start(world,state,c,kind,cost,coins){
+function start(world,state,c,kind,cost,coins,roomKind='main'){
  const tiers=require('./business').tiersOf(world),targetTier=c.tier+(kind==='upgrade'?1:0);
  c.constructionRevision=(c.constructionRevision||0)+1;
  c.construction={kind,durationDays:duration(world,c,kind),elapsedDays:0,lastDay:state.day,paid:cost,basePaid:cost/world.idx(yearOf(state.day,state.startYear)),coins,
   targetTier,targetRooms:kind==='room'?c.rooms+1:Math.max(c.rooms,tiers[targetTier].rooms),
   baseAdded:Math.round(cost/world.idx(require('./calendar').yearOf(state.day,state.startYear))*(kind==='room'?.8:1))};
+ c.construction.addedRooms=require('./business-rooms').planned(c,c.construction.targetRooms,roomKind);
  return {msg:`Bauauftrag erteilt: ${view(world,state,c).title}. Bauzeit ${c.construction.durationDays/365} Spieljahre. Der bestehende Betrieb arbeitet weiter.`};
 }
 function daily({world,state}){
@@ -45,6 +46,7 @@ function daily({world,state}){
   c.construction.elapsedDays++;
   if(c.construction.elapsedDays<c.construction.durationDays)continue;
   const old=c.name;
+  require('./business-rooms').complete(c,p);
   c.rooms=p.targetRooms;c.tier=p.targetTier;c.base+=p.baseAdded;
   if(p.kind==='upgrade')c.name=c.name.replace(/^\S+/,require('./business').chainNames(world,c.pkey)[c.tier].split(' ')[0]);
   delete c.construction;c.constructionRevision=(c.constructionRevision||0)+1;

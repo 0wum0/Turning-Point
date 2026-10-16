@@ -587,8 +587,10 @@ A.bizExpand = ({ world, state, input, user }) => {
   if (state.money < cost) fail('Dafür reicht dein Geld nicht.');
   if (user.coins + state.fx.coins < coins) fail('Dir fehlen Coins. Sieh Werbung an, um den Preis zu senken.');
   if(input.expectedCost!==cost||input.expectedCoins!==coins||input.expectedDays!==require('./construction').duration(world,c,'room'))fail('Baupreis oder Bauzeit haben sich geändert. Öffne die Bauplanung erneut.');
+  const roomKind=input.roomKind===undefined?'main':input.roomKind;
+  if(!require('./business-rooms').types(c).some(r=>r.kind===roomKind))fail('Dieser Raumtyp passt nicht zu deinem Gewerbe.');
   pay(state, cost); state.fx.coins -= coins; delete state.discounts[key];
-  return require('./construction').start(world,state,c,'room',cost,coins);
+  return require('./construction').start(world,state,c,'room',cost,coins,roomKind);
 };
 A.bizUpgrade = ({ world, state, input }) => {
   const c = company(state, input.id); needActive(c);

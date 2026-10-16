@@ -42,7 +42,7 @@ function buildingsFor(world, state, cityId) {
     const type=b.key.startsWith('prop:')?'prop':b.key.startsWith('biz:')?'biz':null;
     if(!type)return b;
     const obj=(type==='prop'?state.properties:state.companies).find(x=>x.id===b.ref);
-    return {...b,construction:require(type==='biz'?'./construction':'./home-construction').view(world,state,obj),roomPlan:require('./furnishing').rooms(type,obj),furnishable:!obj.abandoned};
+    return {...b,extensions:(obj.extensions||[]).map(r=>({id:r.id,kind:r.kind,name:r.name})),construction:require(type==='biz'?'./construction':'./home-construction').view(world,state,obj),roomPlan:require('./furnishing').rooms(type,obj),furnishable:!obj.abandoned};
   });
 }
 
