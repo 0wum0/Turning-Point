@@ -813,3 +813,13 @@ html[data-game-design="v2"] .city-business-status { border-left:3px solid #82d1a
 :root[data-game-design="v2"] body.game .furnish-dialog.card { border-radius:16px; }
 :root[data-game-design="v2"] body.game .construction-dialog.card { border-radius:16px; }
 :root[data-game-design="v2"] body.game .construction-dialog.card .btn { min-height:44px; padding:10px 14px; font-size:14px; border-radius:9px; }
+
+/* Keep the room title readable when an owned home exposes both management tools. */
+@media (max-width:650px) {
+ .sim-interior .int-top { display:grid; grid-template-columns:auto minmax(0,1fr); }
+ .sim-interior #intBack { grid-column:1; grid-row:1; }
+ .sim-interior .int-title { grid-column:2; grid-row:1; }
+ .sim-interior .int-title b,.sim-interior .int-breadcrumb { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+ .sim-interior [data-interior-furnishing] { grid-column:1; grid-row:2; }
+ .sim-interior [data-interior-construction] { grid-column:2; grid-row:2; justify-self:start; }
+}

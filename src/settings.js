@@ -354,6 +354,7 @@ const DEFAULTS = {
       house_large: { name: 'Großes Haus', rooms: 8, price: 4500000, rest: 50 },
       villa: { name: 'Villa', rooms: 15, price: 15000000, rest: 60 },
     },
+    homeConstruction: {maxExtensions:4, pricePct:50, years:{bedroom:1,office:2,main:3}}, // vorläufige Wohnraumausbauten
     upkeepYearPct: 1.2,
     // Seltene Gebäudeschäden: geringe Trefferchance je Stadtereignis; mindestens ein Jahr Abstand je Immobilie.
     events: { ...EVENT_DEFAULTS, town: { ...EVENT_DEFAULTS.town, stormHitChance: 0.005, stormCostPct: 2, stormClosedDays: 7, fireHitChance: 0.001, fireCostPct: 10, fireClosedDays: 30, damageCooldownDays: 365 } },

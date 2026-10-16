@@ -53,6 +53,7 @@ function dayStep(ctx) {
   if (state.status !== 'alive') return;
 
   require('./construction').daily(ctx);
+  require('./home-construction').daily(ctx);
 
   // ---- Einkommen / Beschäftigung ----
   const flows = dailyFlows(world, state);

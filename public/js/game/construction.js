@@ -1,7 +1,7 @@
 import {html,icon,modal,mount,api} from './ui.js';
 export function constructionSummary(c){
  const p=c.construction;if(!p)return '';
- return html`<section class="construction-status" aria-label="Baufortschritt"><div class="row spread"><b>${icon('hammer')} ${p.title}</b><strong>${p.percent} %</strong></div><progress max="100" value="${p.percent}" aria-label="Baufortschritt ${p.percent} Prozent"></progress><p>${p.paused?html`<span class="warn">Pausiert: ${p.paused}</span>`:html`Voraussichtlich fertig: <b>${p.finishDate}</b>`}</p><p class="small dim">Noch ${p.remainingDays} Spieltage · Ziel: ${p.targetRooms} Betriebsräume. Der bestehende Betrieb arbeitet weiter, sofern er betriebsbereit ist.</p></section>`;
+ return html`<section class="construction-status" aria-label="Baufortschritt"><div class="row spread"><b>${icon('hammer')} ${p.title}</b><strong>${p.percent} %</strong></div><progress max="100" value="${p.percent}" aria-label="Baufortschritt ${p.percent} Prozent"></progress><p>${p.paused?html`<span class="warn">Pausiert: ${p.paused}</span>`:html`Voraussichtlich fertig: <b>${p.finishDate}</b>`}</p><p class="small dim">Noch ${p.remainingDays} Spieltage · Ziel: ${p.targetRooms} ${p.kind==='homeRoom'?'Zimmer. Der neue Raum wird nach Fertigstellung betretbar und einrichtbar.':'Betriebsräume. Der bestehende Betrieb arbeitet weiter, sofern er betriebsbereit ist.'}</p></section>`;
 }
 export function openConstruction(ctx,id,{kind='room',onChange=()=>{},onClose=()=>{}}={}){
  let busy=false,changed=false,error='',cancelReview=false;

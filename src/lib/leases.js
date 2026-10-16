@@ -104,6 +104,12 @@ async function reconcile(conn, user, state, world) {
   if (h && h.lessor) {
     const a = await conn.one("SELECT id FROM player_leases WHERE owner_id = ? AND prop_id = ? AND tenant_id = ? AND status = 'active'", [h.lessor.ownerId, h.lessor.propId, user.id]);
     if (!a) { state.housing = { type: 'street', cityId: state.cityId }; notice(state, { level: 'bad', title: 'Mietvertrag beendet', text: 'Dein Vermieter hat dir gekündigt oder die Wohnung ist nicht mehr verfügbar. Du wohnst jetzt auf der Straße.', tab: 'housing', interrupt: true }); }
+    else {
+      // Published owner state, read without taking a second player's character lock.
+      // Extra rooms change capacity, never the agreed rent or registered residence.
+      const p = await conn.one('SELECT rooms FROM player_props WHERE user_id = ? AND prop_id = ?', [h.lessor.ownerId, h.lessor.propId]);
+      if(p && Number.isSafeInteger(p.rooms) && p.rooms>0)h.rooms=p.rooms;
+    }
   }
 }
 

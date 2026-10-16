@@ -1,6 +1,6 @@
 # Mehrjährige Betriebsbauaufträge
 
-Stand: 16. Oktober 2026. Dieses Arbeitspaket ersetzt die bisherigen sofortigen Aktionen `bizExpand` und `bizUpgrade` durch gespeicherte Bauaufträge. Wohngebäude und die separaten Betriebsversorgungsmodule (`opsBuild`) behalten vorerst ihre bisherigen Regeln.
+Stand: 16. Oktober 2026. Dieses Arbeitspaket ersetzt die bisherigen sofortigen Aktionen `bizExpand` und `bizUpgrade` durch gespeicherte Bauaufträge. Wohngebäude nutzen ergänzend die unten beschriebenen Anbauaufträge. Die separaten Betriebsversorgungsmodule (`opsBuild`) behalten vorerst ihre bisherigen Regeln.
 
 ## Spielerablauf
 
@@ -43,3 +43,31 @@ Unter Wirtschaft → Betriebe & Politik:
 Raumbauzeiten sind auf ein bis drei Jahre begrenzt, Umbauzeiten auf ein bis zehn Jahre. Änderungen gelten für neue Aufträge. Alle Werte sind vorläufige Spielbalance gemäß Konzept 1.4.
 
 Prüfungen: `test/construction.test.js`, angepasster Ausbauabschnitt in `test/business.test.js` und `test/e2e/design-construction.test.js`. Die Browser-Fixture nutzt echte Spielaktionen und Presenter; eine echte Produktionsdatenbank ist nicht Teil dieser UI-Prüfung.
+
+
+## Wohngebäude: Bauauftrag und individuelle Räume
+
+Die Immobilienverwaltung und der Schreibtisch eigener Häuser öffnen „Wohnraum erweitern“. Auch kleine Wohnungen haben einen direkten Bauplanungsbutton im Innenraum. Mietwohnungen und öffentliche Gebäude lassen sich nicht auf eigene Rechnung erweitern.
+
+- Raumtyp wählen: Schlafzimmer (vorläufig 1 Jahr), Arbeitszimmer (2 Jahre), Wohnzimmer (3 Jahre). Preis und Dauer vor Zahlung prüfen. Es läuft ein Auftrag je Immobilie; Standard und technische Obergrenze sind vier zusätzliche Räume.
+- Der vorläufige Preis beträgt 50 % des ursprünglichen Zimmer-Basispreises des Gebäudetyps, skaliert nach Jahresindex, Stadt und Baukosten. Bereits gekaufte Möbel und frühere Anbauten verteuern die nächste Bestellung nicht zusätzlich. Es werden keine Coins verlangt.
+- Normale Tage, Offlinezeit und EFS-Vorspulen verwenden dieselbe Tagesfunktion. Gebäudesperre oder Zustand unter 30 % pausieren den Bau, ohne Tage nachträglich anzurechnen. Nach Reparatur läuft die vereinbarte Restzeit weiter. Der Abschluss erzeugt keinen zusätzlichen Vorspul-Stopp.
+- Erst die Fertigstellung erhöht `property.rooms` und den operativen Gebäudebasiswert. Der neue Wohnraum zählt dann für den eigenen Haushalt. Unterhalt, Versicherungsprämien und Instandsetzung berechnen sich während des Baus weiter aus dem bisherigen Gebäude und vorhandenen Möbeln. NPC-Marktmieten folgen erst danach dem erweiterten Gebäude. Bestehende Spieler-Mieten bleiben vertraglich unverändert; die neue Zimmerzahl wird bei der nächsten Vertragsabstimmung aus dem veröffentlichten Eigentümerstand übernommen.
+- Jeder fertige Anbau besitzt eine stabile Raum-ID, einen Typ und einen eigenen Namen. In V2 verbindet ein zusätzlicher Flur die ursprünglichen Wohnbereiche mit den Anbauten. Es ist stets nur ein Raum sichtbar. Türen, Raumregister und Einrichtungskatalog erreichen dieselben Räume. Der Flur ist ein Bedienbereich, zählt nicht als zusätzlicher Wohnraum und lässt sich nicht mit Möbeln blockieren.
+- Neue Räume haben ihre zum Typ passende räumliche Gestaltung; Möbel werden separat gekauft. Bis zu sechs Stellplätze je Raum, maximal 48 gekaufte Gegenstände je Gebäude. Schlafzimmer nehmen beispielsweise Betten auf, Arbeitszimmer Schreibtische. Bestehende Möbelfunktionen und Stück-EFS gelten auch hier. Die alten Wohnbereiche werden nicht umbenannt oder entfernt.
+- Classic erhält dieselbe Bauplanung, Fortschrittsanzeige und Einrichtungsauswahl. Die einzeln betretenen 3D-Räume gehören zu V2.
+- Während des Baus sind dieselben Gerüstphasen wie bei Betrieben sichtbar. Nach Fertigstellung berücksichtigt das bestehende Außenmodell die neue Zimmerzahl; es entsteht noch keine individuell modellierte Außenfassade je Raumtyp.
+
+Abbruch mit zweiter Bestätigung erstattet nur den noch ungenutzten, aktuell indexierten Geldanteil. Alte Räume und Möbel bleiben erhalten. Der finanzierte Ausbau zählt einmal zum Vermögen; bei Fertigstellung geht derselbe Basiswert in das Gebäude über. Bauverträge, fertige Raum-IDs und Möbel bleiben bei Verkauf und Vererbung am Objekt. Beim Spielerhandel wird der Tagesanker auf den Käuferkalender gesetzt.
+
+Für Wohnraumausbau werden vorläufig keine neuen EFS-Belohnungen eingeführt, da deren genaue Höhe im Konzept offen ist. Möbelbestellungen erzeugen weiterhin 1 EFS je gekauftem Gegenstand.
+
+Konfiguration unter Wirtschaft → Wohnraumausbau (`economy.homeConstruction`):
+
+```json
+{"maxExtensions":4,"pricePct":50,"years":{"bedroom":1,"office":2,"main":3}}
+```
+
+`maxExtensions` ist auf 1–4, `pricePct` auf 10–200 und jede Bauzeit auf 1–3 Jahre begrenzt. Änderungen gelten nur für neue Verträge. Alte Spielstände benötigen keine Migration und erhalten keine kostenlosen Anbauten. Bestehende wirtschaftliche Zimmerzahlen werden nicht rückwirkend in beliebig viele 3D-Räume aufgeteilt.
+
+Technik: `src/game/home-construction.js`, `property.construction`, `property.constructionRevision` und `property.extensions`; gemeinsame Raumdefinitionen in `furnishing.js`. Tests: `test/home-construction.test.js` und `test/e2e/design-home-construction.test.js`. Die Multiplayer-Kapazitätsabstimmung ist zusätzlich mit einem Datenbankstub geprüft; ein Produktionsdatenbanktest wird dadurch nicht ersetzt.

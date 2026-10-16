@@ -1,3 +1,5 @@
+import {openHomeConstruction} from '../home-construction.js';
+import {constructionSummary} from '../construction.js';
 import {openFurnishing} from '../furnishing.js';
 import { html, icon, money, infoBtn, bar, on, api, num, toast } from '../ui.js';
 
@@ -59,6 +61,8 @@ export default {
       <div class="mt small">Zustand ${p.condition} %</div>${bar(p.condition, p.condition < 50 ? 'bad' : 'good')}
       <dl class="kv small mt"><dt>Wert</dt><dd>${money(p.value, cur)}</dd>${p.closed ? html`<dt>Ausfall</dt><dd class="neg">noch ${p.closed} Tage</dd>` : ''}</dl>
       ${leaseBox(p, cur)}
+      ${constructionSummary(p)}
+      <button class="btn sm mt" data-home-construction="${p.id}">${icon('hammer')} ${p.construction?'Bauauftrag ansehen':'Wohnraum erweitern'}</button>
       <button class="btn sm mt" data-furnishing="prop:${p.id}">${icon('package')} Einrichtung</button>
       <div class="row mt">
         ${p.cityId === v.city.id && !p.residence ? html`<button class="btn sm primary" data-act="moveIn" data-id="${p.id}">Einziehen</button>` : ''}
@@ -70,6 +74,7 @@ export default {
     ${saleSection(ctx, ed)}`;
   },
   bind(root, ctx) {
+    on(root,'click','[data-home-construction]',(e,t)=>openHomeConstruction(ctx,Number(t.dataset.homeConstruction),{onClose:changed=>{if(changed)ctx.rerender();}}));
     on(root,'click','[data-furnishing]',(e,t)=>openFurnishing(ctx,t.dataset.furnishing,{onClose:changed=>{if(changed)ctx.rerender();}}));
     on(root, 'click', '[data-go]', (e, t) => ctx.go(t.dataset.go));
     on(root, 'click', '[data-psell]', (e, t) => import('../market.js').then((mod) => mod.openSell(ctx, 'prop', Number(t.dataset.psell), t.dataset.name, Number(t.dataset.value), null, () => ctx.rerender())));

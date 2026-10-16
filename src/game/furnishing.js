@@ -27,7 +27,7 @@ function rooms(type,obj){
     {id:'kitchen',name:'Küche',icon:'utensils',items:['fridge','stove']},
     {id:'bedroom',name:'Schlafzimmer',icon:'bed',items:['bed','wardrobe']},
     {id:'office',name:'Arbeitszimmer',icon:'briefcase',items:['desk']},
-  ].slice(0,Math.max(1,Math.min(4,obj.rooms||1)));
+  ].slice(0,Math.max(1,Math.min(4,(obj.rooms||1)-(obj.extensions||[]).length))).concat((obj.extensions||[]).map(r=>({...r,items:[]})));
   return [
     {id:'main',name:obj.pkey==='wirt'?'Gastraum':obj.pkey==='baecker'?'Backstube':'Werkstatt & Verkauf',icon:'store',items:['cash','tables','safety']},
     ...(obj.pkey==='wirt'?[{id:'kitchen',name:'Küche',icon:'utensils',items:[]}]:[]),
@@ -35,7 +35,7 @@ function rooms(type,obj){
     {id:'office',name:'Büro',icon:'briefcase',items:['office','board']},
   ];
 }
-function allowed(item,type,obj,room){return item.types.includes(type)&&item.rooms.includes(room)&&(!item.professions||item.professions.includes(obj.pkey));}
+function allowed(item,type,obj,room){return item.types.includes(type)&&item.rooms.includes(rooms(type,obj).find(r=>r.id===room)?.kind||room)&&(!item.professions||item.professions.includes(obj.pkey));}
 function read(obj){return obj.furnishing||{revision:0,nextId:1,items:[]};}
 function value(world,obj,year){
   return read(obj).items.reduce((sum,item)=>sum+Math.max(0,Math.round((item.baseValue||0)*world.idx(year)*.6*Math.max(.2,1-.04*Math.max(0,year-item.boughtYear)))),0);

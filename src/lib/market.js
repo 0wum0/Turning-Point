@@ -56,6 +56,7 @@ function detach(world, state, kind, id) {
 function attach(world, state, kind, snap, { force = false } = {}) {
   const it = JSON.parse(JSON.stringify(snap)); const rel = it.rel || {}; delete it.rel;
   if (kind === 'prop') {
+    if(it.construction)it.construction.lastDay=state.day;
     it.id = state.nextPropId++; it.closedUntil = state.day + (rel.closed || 0); it.bought = state.day; state.properties.push(it);
   } else {
     if (!force && (state.companies || []).length >= world.econ.companies.maxCompanies) fail('Der Käufer besitzt schon die maximale Anzahl an Unternehmen.');

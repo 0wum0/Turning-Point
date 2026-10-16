@@ -212,3 +212,10 @@ Prüfung: `test/furnishing.test.js` prüft Kauf, Mengen/EFS, Voraussetzungen, Re
 Die Bauplanung verbindet Firmenübersicht, Büro, Tagesfortschritt und 3D-Stadt: Aufträge zeigen verbindliche Kosten/Dauer, Fortschritt und ein voraussichtliches Datum. Ein fehlender Berufsabschluss oder Stilllegung pausiert den Auftrag. Im Stadtbild zeigen Gerüste vier Bauphasen; nach Fertigstellung gelten neue Stufe und Kapazität. Bestehende Produktion bleibt bis dahin unverändert. Classic bietet dieselben Bauaktionen.
 
 `test/e2e/design-construction.test.js` prüft Beauftragung ohne Sofortkapazität, Bürozugang, Gerüstphasen, Fertigstellung, Abbruchvorschau und mobile/Classic-Bedienung. Wirtschaftsregeln, Übertragung, Währungsbewertung und Grenzen sind in [CONSTRUCTION.md](CONSTRUCTION.md) beschrieben. Betriebsräume bleiben wirtschaftliche Kapazitätseinheiten; der räumliche Ausbau zu individuellen Grundrissen ist noch offen.
+
+
+### Wohnraumausbau und zusätzliche Innenräume
+
+Eigene Wohngebäude lassen sich über gespeicherte Bauaufträge erweitern. Nach Fertigstellung verbindet ein Flur bis zu vier zusätzliche Schlaf-, Arbeits- oder Wohnzimmer mit den vorhandenen Bereichen. Jeder Anbau hat eine eigene ID, Möbelstellplätze, einen passenden Katalog und echte Tür-Hotspots. Einrichtungsbestand, Wohnkapazität, Baufortschritt und Immobilienverwaltung verwenden denselben Objektstand. Der Flur belegt keine wirtschaftliche Zimmerkapazität. Türen verteilen sich auf Rück- und Seitenwand, damit auch der vollständige Ausbau erreichbar bleibt. Classic behält seine bisherige Übersicht und erhält dieselben Bau- und Einrichtungsmöglichkeiten als Dialoge.
+
+Siehe [CONSTRUCTION.md](CONSTRUCTION.md) für Bauzeiten, Vermietung, Bewertung, Übertragung und noch offene Außenmodelle. `test/e2e/design-home-construction.test.js` prüft maximalen Ausbau, Türgeometrie, Einzelraumdarstellung, Möbelkauf, mobile Dialoge und Classic.

@@ -177,9 +177,10 @@ function present(world, state, user, now) {
     properties: state.properties.map((p) => ({
       id: p.id, name: p.name, kind: p.kind, cityId: p.cityId, city: (world.city(p.cityId) || {}).name, rooms: p.rooms, condition: round(p.condition),
       value: propertyValue(world, state, p, year), closed: p.closedUntil > state.day ? p.closedUntil - state.day : 0,
-      repairCost: p.closedUntil > state.day ? round(propertyValue(world, state, p, year) * Math.min(0.08, 0.015 + 0.0006 * (p.closedUntil - state.day))) : 0, maintainCost: round(propertyValue(world, state, p, year) * ((100 - p.condition) / 100) * 0.3), residence: state.housing.propertyId === p.id,
+      repairCost: p.closedUntil > state.day ? round(propertyValue(world, state, p, year, {construction:false}) * Math.min(0.08, 0.015 + 0.0006 * (p.closedUntil - state.day))) : 0, maintainCost: round(propertyValue(world, state, p, year, {construction:false}) * ((100 - p.condition) / 100) * 0.3), residence: state.housing.propertyId === p.id,
       lease: require('./landlord').viewOf(world, state, p, year),
       furnishing: require('./furnishing').objectView(world,state,'prop',p),
+      construction:require('./home-construction').view(world,state,p),constructionRevision:p.constructionRevision||0,constructionOptions:require('./home-construction').options(world,state,p),
     })),
     companies: (state.companies || []).map((c) => {
       const t = biz.tiersOf(world)[c.tier]; const nt = biz.tiersOf(world)[c.tier + 1]; const f = biz.companyFlows(world, state, c, year); const city = world.city(c.cityId);
@@ -217,7 +218,7 @@ function present(world, state, user, now) {
     gambling: { ticket: scale(econ.gambling.ticket, idx), casino: year >= econ.gambling.casinoFromYear && age >= econ.gambling.casinoMinAge, casinoFrom: econ.gambling.casinoFromYear, minAge: econ.gambling.casinoMinAge, lost: state.stats.gambled || 0 },
     insurance: Object.entries(econ.insurance).map(([k, v]) => ({
       key: k, name: v.name, on: !!state.insurance[k], covers: v.covers,
-      perDay: v.perDay ? scale(v.perDay, idx) : v.yearPctOfCompanies != null ? OPS.premiumDay(world, state, year) : round((state.properties.reduce((s, p) => s + propertyValue(world, state, p, year), 0) * v.yearPctOfValue) / 100 / 365),
+      perDay: v.perDay ? scale(v.perDay, idx) : v.yearPctOfCompanies != null ? OPS.premiumDay(world, state, year) : round((state.properties.reduce((s, p) => s + propertyValue(world, state, p, year, {construction:false}), 0) * v.yearPctOfValue) / 100 / 365),
     })),
     cards: { health: state.cards.health, available: year >= 1960, price: scale(4000, idx), coinPrice: 2 },
     butler: state.butler ? { perDay: scale(state.butler.perDay, idx) } : null,

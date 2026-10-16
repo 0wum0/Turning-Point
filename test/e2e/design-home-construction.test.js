@@ -1,0 +1,42 @@
+'use strict';
+const {test}=require('node:test'),assert=require('node:assert/strict');
+const {app,view,state,user,gameWorld}=require('./design-fixture');
+const {present}=require('../../src/game/present'),construction=require('../../src/game/home-construction'),actions=require('../../src/game/actions');
+const {chromium}=require(process.env.TP_PLAYWRIGHT_PATH||'playwright');
+test('Residential extensions: reviewed construction, mobile forms, physical doors, distinct rooms, furniture, limits and Classic',{timeout:180000},async()=>{
+ const p=state.properties[0];p.cityId=state.cityId;state.housing={type:'own',propertyId:p.id};state.money=1e9;
+ const refresh=()=>{const onboarding=view.onboarding;Object.assign(view,present(gameWorld,state,user));view.onboarding=onboarding;};refresh();
+ const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));let browser,page;const errors=[];
+ try{
+  browser=await chromium.launch({headless:true,...(process.env.TP_CHROMIUM_PATH?{executablePath:process.env.TP_CHROMIUM_PATH}:{}),args:['--disable-gpu','--disable-dev-shm-usage']});
+  page=await browser.newPage({viewport:{width:1440,height:1000},reducedMotion:'reduce'});page.setDefaultTimeout(18000);page.on('pageerror',e=>errors.push(e.message));
+  await page.addInitScript(()=>{localStorage.setItem('tp-game-design','v2');document.addEventListener('DOMContentLoaded',()=>{document.documentElement.dataset.cityHour='12';},{once:true});});
+  const housing=`http://127.0.0.1:${server.address().port}/play#/housing`;
+  await page.goto(housing);await page.locator('[data-home-construction="1"]').click();const before=state.money;
+  await page.locator('[data-home-kind="office"]').click();assert.match(await page.locator('.construction-dialog').innerText(),/730 Tage/);assert.equal(state.money,before);
+  for(const [width,height]of [[412,915],[915,412],[320,640]]){await page.setViewportSize({width,height});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.equal(await page.locator('.construction-dialog').evaluate(el=>el.scrollWidth>el.clientWidth+1),false);assert.ok(await page.locator('.kv').last().evaluate(el=>[...el.querySelectorAll('dt')].every(dt=>{const a=dt.getBoundingClientRect(),b=dt.nextElementSibling.getBoundingClientRect();return a.right<=b.left+1||a.bottom<=b.top+1;})));}
+  await page.setViewportSize({width:412,height:915});await page.screenshot({path:'/tmp/tp-home-build-mobile.png'});
+  await page.locator('[data-home-start]').click();await page.waitForSelector('.construction-dialog progress');assert.equal(p.rooms,4);assert.equal(p.construction.durationDays,730);
+  await page.locator('[data-home-review-cancel]').click();const refund=view.properties[0].construction.refund;const money=state.money;await page.locator('[data-home-cancel]').click();await page.waitForSelector('[data-home-start]');assert.equal(state.money,money+refund);
+  await page.locator('[data-home-kind="bedroom"]').click();await page.locator('[data-home-start]').click();await page.waitForSelector('.construction-dialog progress');await page.locator('.construction-dialog [data-close]').click();
+  await page.setViewportSize({width:1440,height:1000});await page.locator('[data-furnishing="prop:1"]').click();assert.equal(await page.locator('[data-furnish-room="extension:1"]').count(),0);await page.locator('[data-furnish-visit]').click();await page.waitForSelector('.interior[data-active-room="main"]');
+  await page.locator('[data-interior-construction]').click();await page.waitForSelector('.construction-dialog progress');await page.locator('.construction-dialog [data-close]').click();await page.locator('#intBack').click();
+  await page.waitForFunction(()=>document.querySelector('#city3dHost')?.__city3d?.stats().construction?.some(c=>c.key==='prop:1'));
+  // Finish accepted contracts through the production daily handler. Build all supported room kinds.
+  const finish=()=>{p.construction.elapsedDays=p.construction.durationDays-1;state.day++;construction.daily({world:gameWorld,state});refresh();};finish();
+  for(const kind of ['office','main','bedroom']){const q=view.properties[0].constructionOptions.find(q=>q.kind===kind);actions.run('homeExpand',{world:gameWorld,state,user,input:{propertyId:1,constructionRevision:p.constructionRevision,roomKind:kind,expectedCost:q.cost,expectedDays:q.durationDays}});finish();}
+  await page.reload();await page.waitForFunction(()=>document.querySelector('#city3dHost')?.__city3d);assert.equal(await page.evaluate(()=>document.querySelector('#city3dHost').__city3d.stats().construction.length),0);
+  await page.goto(housing);await page.locator('[data-furnishing="prop:1"]').click();await page.locator('[data-furnish-room="extension:1"]').click();assert.equal(await page.locator('[data-furnish-add="desk"]').count(),0);await page.locator('[data-furnish-add="bed"]').click();await page.locator('[data-furnish-order]').click();await page.waitForFunction(()=>document.querySelector('.furnish-feedback')?.textContent.includes('1 Gegenstand geliefert'));
+  await page.locator('[data-furnish-visit]').click();await page.waitForSelector('.interior[data-active-room="extension:1"]');
+  assert.equal(await page.evaluate(()=>document.querySelector('.interior').__room.activeHotspots().filter(h=>h.purchased).length),1);
+  await page.screenshot({path:'/tmp/tp-home-extension-bedroom.png'});
+  await page.locator('[data-room-door="hallway"]').click();await page.waitForSelector('.interior[data-active-room="hallway"]');
+  const doorGeometry=await page.evaluate(async()=>{const T=await import('/vendor/three/three.min.js'),room=document.querySelector('.interior').__room;room.scene.updateMatrixWorld(true);const doors=room.activeHotspots().filter(h=>h.door),boxes=doors.map(h=>new T.Box3().setFromObject(h.obj));return {count:doors.length,separate:boxes.every((box,i)=>boxes.every((other,j)=>i===j||!box.intersectsBox(other))),canMove:room.canMove(room.startPose().x,room.startPose().z)};});assert.deepEqual(doorGeometry,{count:5,separate:true,canMove:true});
+  await page.screenshot({path:'/tmp/tp-home-extension-hallway.png'});
+  for(const id of ['extension:1','extension:2','extension:3','extension:4']){await page.locator(`[data-enter-room="${id}"]`).click();assert.equal(await page.locator('.interior').getAttribute('data-active-room'),id);assert.equal(await page.evaluate(()=>document.querySelector('.interior').__room.scene.children.filter(c=>c.visible&&c.name.includes('Anbau')).length),1);}
+  await page.locator('[data-enter-room="office"]').click();await page.locator('[data-object]').filter({hasText:'Schreibtisch – Finanzen'}).click();await page.locator('.int-panel .act').filter({hasText:'Wohnraum erweitern'}).click();assert.match(await page.locator('.construction-dialog').innerText(),/Alle zusätzlichen Räume/);assert.equal(await page.locator('[data-home-start]').isDisabled(),true);
+  await page.locator('.construction-dialog [data-close]').click();await page.locator('#pClose').click();await page.setViewportSize({width:412,height:915});await page.locator('[data-enter-room="extension:1"]').click();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.ok(await page.locator('.int-top').evaluate(el=>{const title=el.querySelector('.int-title').getBoundingClientRect();return [...el.querySelectorAll('button')].filter(b=>b.getClientRects().length).every(b=>{const r=b.getBoundingClientRect();return r.right<=title.left||r.left>=title.right||r.bottom<=title.top||r.top>=title.bottom;});}),'title and management buttons never overlap');await page.screenshot({path:'/tmp/tp-home-extension-mobile.png'});
+  await page.locator('#intBack').click();await page.goto(housing);await page.locator('[data-design-settings]').click();await page.locator('input[name="game-design"][value="classic"]').check();await page.locator('.modal [data-close]').click();await page.locator('[data-home-construction="2"]').click();assert.match(await page.locator('.construction-dialog').innerText(),/Wohnraum erweitern/);assert.equal(await page.locator('[data-home-start]').isDisabled(),false);assert.deepEqual(errors,[]);
+ }catch(e){if(page){console.error(errors);await page.screenshot({path:'/tmp/tp-home-build-failure.png'}).catch(()=>{});}throw e;}
+ finally{await browser?.close();server.closeAllConnections();await new Promise(r=>server.close(r));}
+});

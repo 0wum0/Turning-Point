@@ -6,7 +6,7 @@ import {furnitureModel} from './furniture-models.js';
 import {furnishingOf} from './furnishing.js';
 
 export function roomPlan(b) {
-  if(b.roomPlan?.length)return b.roomPlan;
+  if(b.roomPlan?.length)return b.roomPlan.some(r=>r.id.startsWith('extension:'))?[...b.roomPlan,{id:'hallway',name:'Flur zum Anbau',icon:'arrow-right',items:[]}]:b.roomPlan;
   if(b.type==='home')return [
     {id:'main',name:'Wohnzimmer',icon:'home',items:['leisure','family','shelf','mail','tidy']},
     {id:'kitchen',name:'Küche',icon:'utensils',items:['fridge','stove']},
@@ -56,9 +56,10 @@ export function encloseRoom(T,base,b,ctx,{hour=12}={}) {
   }
   function door(p,target,x,z,rot){const g=group(p,x,0,z,rot);box(g,1.48,2.75,.19,trim,0,0,-.03);box(g,1.25,2.58,.15,wood,0,0,.08);for(const y of [.28,1.34]){box(g,1.0,.9,.05,trim,0,y,.17);box(g,.91,.81,.07,wood,0,y+.045,.2);}for(const s of [-1,1])box(g,.14,2.82,.3,trim,s*.75,0,.07);box(g,1.7,.16,.3,trim,0,2.7,.07);sphere(g,.055,brass,.43,1.15,.25);box(g,.2,.03,.08,brass,.36,1.15,.28);const sign=new T.Mesh(new T.PlaneGeometry(1.25,.21),new T.MeshStandardMaterial({map:signTexture(T,target.name,{bg:'#243139',fg:'#ecd9b0',border:'#a58a58'}),roughness:.8}));sign.position.set(0,2.99,.16);g.add(sign);return {obj:g,id:`door-${target.id}`,label:target.name,hint:'Raum betreten',roomId:target.id,door:true,actions:()=>[]};}
   for(const zone of plan){
+    const kind=zone.kind||zone.id;
     const shell=new T.Group();shell.name=zone.name;scene.add(shell);shell.visible=false;const furnishing=new T.Group();shell.add(furnishing);
-    const wall=material(zone.id==='stock'?'brick':'plaster',early?0xb7a38a:0xd7d1be,[w/3,1.5]);
-    const floor=material(zone.id==='kitchen'||zone.id==='stock'?'tile':'wood',zone.id==='kitchen'?0x827969:early?0x8d704e:0xb59b76,[w/2,d/2]);
+    const wall=material(kind==='stock'?'brick':'plaster',early?0xb7a38a:0xd7d1be,[w/3,1.5]);
+    const floor=material(kind==='kitchen'||kind==='stock'?'tile':'wood',kind==='kitchen'?0x827969:early?0x8d704e:0xb59b76,[w/2,d/2]);
     box(shell,w,.15,d,floor,0,-.15,0);box(shell,w+.3,H,.22,wall,0,0,-d/2);box(shell,w+.3,H,.22,wall,0,0,d/2);box(shell,.22,H,d,wall,-w/2,0,0);box(shell,.22,H,d,wall,w/2,0,0);
     box(shell,w,.16,d,material('plaster',early?0x6d5842:0xc7c2ad,[3,3]),0,H,0);
     for(const sx of [-1,1]){box(shell,.12,.32,d,wood,sx*(w/2-.14),0,0);box(shell,w,.32,.12,wood,0,0,sx*(d/2-.14));box(shell,.15,.16,d,trim,sx*(w/2-.15),H-.18,0);box(shell,w,.16,.15,trim,0,H-.18,sx*(d/2-.15));}
@@ -68,17 +69,19 @@ export function encloseRoom(T,base,b,ctx,{hour=12}={}) {
     shell.add(new T.HemisphereLight(hour<6||hour>20?0xc5cee1:0xe7eff3,0x69523b,.64));
     const fill=new T.DirectionalLight(0xd6e5ef,hour<6||hour>20?.3:1.25);fill.castShadow=true;fill.shadow.mapSize.set(1024,1024);fill.shadow.camera.left=-w/2;fill.shadow.camera.right=w/2;fill.shadow.camera.top=d/2;fill.shadow.camera.bottom=-d/2;fill.shadow.bias=-.0005;fill.shadow.normalBias=.025;fill.position.set(-w/2,3,d*.18);fill.target.position.set(0,0,-1);shell.add(fill,fill.target);
     cylinder(shell,.025,.025,.4,iron,0,H-.5,0);const shade=new T.Mesh(new T.ConeGeometry(.49,.33,28,1,true),new T.MeshStandardMaterial({color:0x8c7550,side:T.DoubleSide,roughness:.65}));shade.position.set(0,H-.6,0);shell.add(shade);sphere(shell,.13,new T.MeshBasicMaterial({color:0xffe2ad}),0,H-.75,0);
-    const links=zone.id==='main'?plan.slice(1):[plan[0]],doors=links.map((link,i)=>door(shell,link,(i-(links.length-1)/2)*2.5,-d/2+.18,0));
+    const hallway=plan.find(r=>r.id==='hallway');
+    const links=zone.id==='main'?plan.filter(r=>r.id!=='main'&&!r.id.startsWith('extension:')):zone.id==='hallway'?[plan[0],...plan.filter(r=>r.id.startsWith('extension:'))]:[zone.id.startsWith('extension:')?hallway:plan[0]];
+    const backCount=Math.min(3,links.length),doors=links.map((link,i)=>i<3?door(shell,link,(i-(backCount-1)/2)*2.5,-d/2+.18,0):door(shell,link,w/2-.18,-d/2+3.2+(i-3)*2.5,-Math.PI/2));
     if(zone.id==='main'&&early&&['home','biz','pension'].includes(b.type))fireplace(shell,w/2-1.45,-d/2+1.05);
-    if(zone.id==='kitchen'){
+    if(kind==='kitchen'){
       shelf(shell,-w/2+1.5,-d/2+.55,0,true);shelf(shell,w/2-1.5,-d/2+.55,0,true);
       const cook=group(shell,w/2-1.5,0,-.65,-Math.PI/2);solids.push(cook);box(cook,3.1,.92,.85,iron,0,0,0);box(cook,3.25,.10,.95,iron,0,.92,0);for(const x of [-.95,0,.95]){cylinder(cook,.25,.25,.02,iron,x,1.03,0);pot(cook,x,1.05,0,.25);box(cook,.64,.48,.05,trim,x,.27,.46);box(cook,.45,.055,.085,brass,x,.73,.49);}box(cook,3.4,.18,1.1,iron,0,2.28,0);box(cook,2.8,.75,.8,iron,0,2.46,-.1);box(cook,.68,1.1,.6,iron,0,3.15,-.12);
       const prep=table(shell,-1,custom?-1.3:0,true);box(prep,.8,.035,.45,wood,0,1.0,0);for(let k=0;k<7;k++)sphere(prep,.09,new T.MeshStandardMaterial({color:k%2?0x929448:0x984738,roughness:.7}),-.34+k*.1,1.08,-.1+(k%3)*.08);
       if(b.type==='biz') {const task=hotspots.find(h=>h.id==='tables');if(task){const h={...task,obj:prep,id:'preparation',label:'Zubereitung',hint:'Betrieb betreuen',roomId:zone.id};hotspots.push(h);assigned.set(h,zone.id);}}
-    }else if(zone.id==='stock'){
+    }else if(kind==='stock'){
       shelf(shell,-w/2+1.6,-d/2+.5,0,true);shelf(shell,w/2-1.6,-d/2+.5);shelf(shell,-w/2+.55,0,Math.PI/2,true);
       for(let k=0;k<5;k++){const x=w/2-1.2-(k%2)*1.0,z=(custom?-2.3:-.8)+Math.floor(k/2)*1.0;const barrel=group(shell,x,0,z);solids.push(barrel);cylinder(barrel,.37,.4,.9,wood,0,0,0);for(const y of [.12,.68])cylinder(barrel,.405,.405,.055,iron,0,y,0);grounding(shell,x,z,1.2,1.2);}
-    }else if(zone.id==='office'){
+    }else if(kind==='office'){
       shelf(shell,-w/2+1.55,-d/2+.5);const rug=box(shell,w*.55,.018,d*.5,material('carpet',0x634c39,[1,1]),0,.009,.3);rug.castShadow=false;
       const cabinet=group(shell,w/2-1.6,0,-d/2+.45);solids.push(cabinet);box(cabinet,2.5,1.6,.55,wood,0,0,0);for(let i=0;i<4;i++){box(cabinet,2.3,.31,.05,trim,0,.12+i*.36,.30);box(cabinet,.22,.035,.05,brass,0,.24+i*.36,.34);}
       const firm=b.type==='biz'?ctx.view.companies.find(c=>c.id===b.ref):null;
@@ -92,7 +95,7 @@ export function encloseRoom(T,base,b,ctx,{hour=12}={}) {
           actions:()=>[{label:`${cert.title}: ${cert.profession}`,sub:`${cert.holder} · ${cert.level}`,disabled:true},{label:'Berufliche Entwicklung ansehen',allowAway:true,run:({go})=>go('work')}]};
         hotspots.push(h);assigned.set(h,zone.id);
       }
-    }else if(zone.id==='bedroom'){
+    }else if(kind==='bedroom'){
       box(shell,w*.52,.018,d*.5,material('carpet',0x77775c),0,.009,0);const bedside=box(shell,.55,.62,.6,wood,-w*.25+1.6,0,-d*.15);candle(shell,bedside.position.x,.64,bedside.position.z);
     }
     zones.set(zone.id,{...zone,shell,furnishing,doors});
@@ -122,7 +125,7 @@ export function encloseRoom(T,base,b,ctx,{hour=12}={}) {
     purchased.length=0;
     for(const item of saved.items){
       const zone=zones.get(item.room);if(!zone)continue;
-      const obj=furnitureModel(T,item);obj.position.set((item.slot%3-1)*w*.30,0,d/2-4.7+Math.floor(item.slot/3)*2.6);zone.shell.add(obj);solids.push(obj);
+      const obj=furnitureModel(T,item);obj.position.set((item.room.startsWith('extension:')?[0,-1,1][item.slot%3]:item.slot%3-1)*w*.30,0,d/2-4.7+Math.floor(item.slot/3)*2.6);zone.shell.add(obj);solids.push(obj);
       const def=saved.catalogue.find(x=>x.key===item.key),sourceId=item.key==='desk'&&b.type==='home'?'desk':item.key==='stove'&&b.type==='biz'?'preparation':def?.action;
       const h={obj,id:`furniture-${item.id}`,roomId:item.room,label:item.name,hint:'Deine Einrichtung',purchased:true,actions:()=>{
         const source=hotspots.find(h=>!h.purchased&&h.id===sourceId);
@@ -145,7 +148,7 @@ export function encloseRoom(T,base,b,ctx,{hour=12}={}) {
     }
     return true;
   };
-  const startPose=()=>({x:Math.min(w*(custom?.15:active==='main'?.28:.1),w/2-.7),z:d/2-.85,az:active==='main'?-.23:-.12,el:-.04});
+  const startPose=()=>({x:active.startsWith('extension:')?0:Math.min(w*(custom?.15:active==='main'?.28:.1),w/2-.7),z:d/2-.85,az:active.startsWith('extension:')?0:active==='main'?-.23:-.12,el:-.04});
   const update=time=>{base.update(time);for(const [i,f]of flames.entries())f.scale.y=f.userData.height*(1+Math.sin(time*.005+i)*.12);for(const [i,l]of lights.entries())l.intensity=24+Math.sin(time*.004+i)*2;};
   setRoom('main');
   return {...base,immersive:true,plan,setRoom,activeRoom:()=>active,activeHotspots,startPose,canMove,update,syncFurnishing,overviewDims:base.dims,animated:true,dims:{w,d,ht:H}};

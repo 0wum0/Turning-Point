@@ -52,9 +52,9 @@ function levelIndex(state, key) {
   return lv;
 }
 
-function propertyValue(world, state, p, year) {
+function propertyValue(world, state, p, year, {construction=true}={}) {
   const idx = world.idx(year);
-  return Math.round(p.base * idx * (0.2 + 0.8 * (p.condition / 100)) * require('./economy').realEstateFactor(year) * require('./cityecon').propertyMult(p.cityId, year)) + require('./furnishing').value(world,p,year);
+  return Math.round((p.base + (construction ? p.construction?.baseAdded||0 : 0)) * idx * (0.2 + 0.8 * (p.condition / 100)) * require('./economy').realEstateFactor(year) * require('./cityecon').propertyMult(p.cityId, year)) + require('./furnishing').value(world,p,year);
 }
 /** Preisfaktor für Lebensmittel am Wohnort: fester Stadtfaktor (abgeschwächt) × Stadtindex Lebensmittel. */
 function foodFactor(world, state, year) {
@@ -147,12 +147,12 @@ function dailyFlows(world, state) {
     if (ins.perDay) exp.insurance += scale(ins.perDay, idx);
     else if (ins.yearPctOfCompanies != null) exp.insurance += require('./operations').premiumDay(world, state, year); // Betriebsversicherung (Betrieb 2.0)
     else if (ins.yearPctOfValue) {
-      const total = state.properties.reduce((s, p) => s + propertyValue(world, state, p, year), 0);
+      const total = state.properties.reduce((s, p) => s + propertyValue(world, state, p, year, {construction:false}), 0);
       exp.insurance += Math.round((total * ins.yearPctOfValue) / 100 / 365);
     }
   }
   for (const p of state.properties) {
-    const v = propertyValue(world, state, p, year);
+    const v = propertyValue(world, state, p, year, {construction:false});
     exp.upkeep += Math.round((v * (econ.upkeepYearPct + (state.flags.autoMaintain ? 1 : 0))) / 100 / 365);
   }
   // Jahreszeit: Heizen macht einen Teil von Miete/Unterkunft und Unterhalt aus – im Winter teurer, im Sommer günstiger (Jahresmittel unverändert)

@@ -1,3 +1,4 @@
+import {openHomeConstruction} from './home-construction.js';
 import {openConstruction} from './construction.js';
 // 3D-Innenansicht eines Gebäudes: drehbar, Objekte anklickbar, Aufgaben & Minispiel.
 import { html, mount, esc, icon, api, toast, money, sleep } from './ui.js';
@@ -79,12 +80,14 @@ export async function openInterior(ctx, b, data) {
   const manageFurnishing=()=>{if(minigame||!alive)return;openFurnishing(ctx,b.key,{room:room?.activeRoom?.()||'main',onVisit:target=>changeRoom(target),onChange:()=>{if(alive){room?.syncFurnishing?.();renderObjects();refreshFurnitureUi();}}});};
   if(b.furnishable){const btn=document.createElement('button');btn.className='btn sm';btn.dataset.interiorFurnishing='1';btn.textContent='Einrichtung';btn.onclick=manageFurnishing;root.querySelector('#intTasksBtn').before(btn);}
   const api2 = {
-    construction:()=>openConstruction(ctx,b.ref,{onChange:()=>{if(alive){refreshBusiness();invalidate();}}}),
+    construction:()=>(b.type==='home'?openHomeConstruction:openConstruction)(ctx,b.ref,{onChange:()=>{if(alive){refreshBusiness();invalidate();}}}),
     furnish:manageFurnishing,
     provisions:kind=>openProvisions(ctx,kind),
     go: (route, tab) => { cleanup(); if (tab) ctx.ui.newsTab = tab; if (route === 'newspaper') ctx.ui.newsCity = data.city.id; if (route === 'business' && b.type === 'biz') ctx.ui.simFocus = { route, entity: `firm:${b.ref}` }; ctx.go(route); },
     act: async (name, input) => { try { await ctx.act(name, input, { noRender: true }); } catch (_) { /* Toast kommt aus act */ } if (ctx.view.status!=='alive'){cleanup();return;} if (alive) { await refreshCity(); refreshBusiness(); room?.syncBusiness?.(); invalidate(); showActions(currentHot); } },
   };
+
+  if(v2&&b.key.startsWith('prop:')){const btn=document.createElement('button');btn.className='btn sm';btn.dataset.interiorConstruction='1';btn.textContent='Bauplanung';btn.onclick=()=>api2.construction();root.querySelector('#intTasksBtn').before(btn);}
 
   const refreshBusiness = () => {
     if (!v2 || b.type !== 'biz') return;

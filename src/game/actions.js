@@ -200,7 +200,7 @@ A.loanRepay = ({ world, state, input }) => {
 A.maintain = ({ world, state, input, user }) => {
   const p = state.properties.find((x) => x.id === Number(input.propertyId));
   if (!p) fail('Immobilie nicht gefunden.');
-  const v = propertyValue(world, state, p, yr(state));
+  const v = propertyValue(world, state, p, yr(state), {construction:false});
   const cost = Math.round(v * ((100 - p.condition) / 100) * 0.3);
   if (cost <= 0) fail('Die Immobilie ist in bestem Zustand.');
   if (state.money < cost) fail('Dir fehlt das Geld für die Instandhaltung.');
@@ -215,7 +215,7 @@ A.repair = ({ world, state, input, user }) => {
   const left = p.closedUntil - state.day;
   if (!(left > 0)) fail('Hier ist nichts beschädigt.');
   if (left <= 10) fail('Die Instandsetzung ist ohnehin bald fertig.');
-  const v = propertyValue(world, state, p, yr(state));
+  const v = propertyValue(world, state, p, yr(state), {construction:false});
   const cost = Math.round(v * Math.min(0.08, 0.015 + 0.0006 * left));
   if (state.money < cost) fail('Dir fehlt das Geld für die Reparatur.');
   pay(state, cost);
@@ -659,6 +659,7 @@ require('./season-actions').install(A, fail, { yr, pay }); // Seuchen: Schutz mi
 require('./places').install(A, fail, { yr, pay, settings });
 require('./furnishing').install(A, fail);
 require('./construction').install(A, fail);
+require('./home-construction').install(A, fail);
 
 /* ---------------- Meldungen ---------------- */
 A.readNotices = ({ state, input }) => {

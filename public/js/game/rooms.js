@@ -146,7 +146,7 @@ export function buildRoom(T, b, ctx, { enhanced=false, hour=new Date().getHours(
       const st = group(-w / 2 + 2.3, -d / 2 + 0.8); box(1.4, 1.0, 0.9, 0x555555, 0, 0, 0, st); cyl(0.2, 0.2, 0.05, 0x222222, -0.3, 1.0, 0, st, { noShadow: true }); cyl(0.2, 0.2, 0.05, 0x222222, 0.3, 1.0, 0, st, { noShadow: true }); spot(st, 'stove', 'Herd – Kochen', taskAct('cook'), 'Aufgabe: Kochen'); table(-1.0, 0.5, 2.6, 1.5, 4);
       sofa(w / 4, d / 2 - 1.5, Math.PI, pal.accent);
       const sh = shelf(0.5, -d / 2 + 0.4); spot(sh, 'shelf', 'Bücherregal – Familienchronik', goAct('Familienchronik öffnen', 'legacy', 'Stammbaum, Chronik und frühere Leben'));
-      const ds = desk(-w / 2 + 1.6, d / 4, Math.PI / 2); spot(ds, 'desk', 'Schreibtisch – Finanzen', goAct('Finanzen ansehen', 'overview', 'Einnahmen, Ausgaben und Vermögen'));
+      const ds = desk(-w / 2 + 1.6, d / 4, Math.PI / 2); spot(ds, 'desk', 'Schreibtisch – Finanzen', () => [...goAct('Finanzen ansehen', 'overview', 'Einnahmen, Ausgaben und Vermögen')(), ...(b.key.startsWith('prop:')?[{label:'Wohnraum erweitern',sub:'Bauplanung und Fortschritt',allowAway:true,run:({construction})=>construction()}]:[])]);
       const bro = group(w / 2 - 0.7, d / 2 - 2.6); cyl(0.03, 0.03, 1.5, 0x8a6a3a, 0, 0, 0, bro, { rot: [0, 0, 0.2] }); box(0.4, 0.12, 0.2, 0xc9a23f, 0.2, 0, 0, bro); spot(bro, 'tidy', 'Besen', taskAct('tidy', 'repair'), 'Aufräumen');
       const mb = group(-w / 2 + 0.5, d / 2 - 0.6); box(0.5, 0.6, 0.3, 0xc9a23f, 0, 0.6, 0, mb); box(0.06, 0.6, 0.06, 0x555555, 0, 0, 0, mb); spot(mb, 'mail', 'Briefkasten – Post', goAct('Postfach öffnen', 'overview', 'Meldungen und Nachrichten'));
       const kids = Math.min(6, v.children.filter((c) => c.status === 'home').length);

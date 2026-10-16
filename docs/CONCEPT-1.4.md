@@ -28,7 +28,7 @@ Die obere Statusleiste soll dieselben Daten und Aktionen in allen drei Ansichten
 
 Eigene Gebäude sollen eingerichtet, erweitert und umgebaut werden können, etwa Schenke → Wirtshaus/Restaurant/Pension/Hotel oder Werkstatt → Fabrik. Ausbauvoraussetzungen berücksichtigen Erfahrung und gegebenenfalls Meisterqualifikation. Im Büro jedes passenden Betriebs werden die echten beruflichen Nachweise der Spielfigur gezeigt. Ein Nachweis eines anderen Gewerbes oder nur die Qualifikation eines Partners erzeugt keinen eigenen Meisterbrief.
 
-Betriebsräume entstehen jetzt über persistente Bauaufträge: vorläufig ein bis drei Spieljahre für einen zusätzlichen Raum, fünf für einen Stufenumbau. Normale Zeit, Offlinezeit und EFS-Vorspulen nutzen dieselbe Fertigstellung. Fortschritt, Qualifikationspausen, Abbruch mit anteiliger Erstattung und Gerüste sind umgesetzt. Details: [CONSTRUCTION.md](CONSTRUCTION.md). Wohngebäude-Ausbau, separate Versorgungsmodule und frei gestaltete Grundrisse sind noch nicht in dieses Bausystem überführt.
+Betriebsräume entstehen jetzt über persistente Bauaufträge: vorläufig ein bis drei Spieljahre für einen zusätzlichen Raum, fünf für einen Stufenumbau. Normale Zeit, Offlinezeit und EFS-Vorspulen nutzen dieselbe Fertigstellung. Fortschritt, Qualifikationspausen, Abbruch mit anteiliger Erstattung und Gerüste sind umgesetzt. Details: [CONSTRUCTION.md](CONSTRUCTION.md). Wohngebäude besitzen ebenfalls Bauaufträge: fertige Schlaf-, Arbeits- oder Wohnzimmer werden als individuelle, einrichtbare Räume über einen Flur erreichbar. Separate Versorgungsmodule und frei gestaltete Grundrisse bleiben offen.
 
 ## Lebenswege und öffentliche Einrichtungen
 
@@ -51,12 +51,12 @@ Betriebsräume entstehen jetzt über persistente Bauaufträge: vorläufig ein bi
 | Statusleiste | Echte gemeinsame V2-Leiste auch im Innenraum; vier bedienbare Zustandsanzeigen; Datum/Jahresring | Vollständige Bewertung sämtlicher Materialien, Gegenstände und externer Aktienpositionen |
 | Vermögen | Nettovermögen aus Geld, Firmenwerten/-kassen und Immobilien inklusive zusätzlicher Einrichtung abzüglich Krediten | Bewertungsregeln ohne Doppelzählung für alle übrigen Vermögensarten |
 | Welt und Stadt | Karte, 3D-Stadt, eigene Gebäude, standortbezogene Aktionen und Versorgung | Durchgängiges Besitzfenster/rechte Seitenleiste/Minikarte nach Referenz; deutlich detailliertere Epochenmodelle |
-| Ausbau | Mehrjährige Betriebsbauaufträge, verbindliche Vorschau, Qualifikationspausen, Abbruch, Fortschritt und Gerüste | Wohngebäude-Bauaufträge, Versorgungsmodule, individuelle Grundrisse und detaillierte neue Raum-/Gebäudemodelle |
+| Ausbau | Mehrjährige Betriebs- und Wohnbauaufträge, Vorschau, Pausen, Abbruch, Fortschritt und Gerüste; zusätzliche Wohnräume mit eigenen Türen und Einrichtung | Versorgungsmodule, individuelle Betriebsräume, freie Grundrisse und detaillierte Außenmodelle der Anbauten |
 | Beruf, Studium, Kredit, Vermietung, Familie, Ämter | Bereits vorhandene Systeme bleiben nutzbar | Einzelabgleich mit endgültigen Regeln und Balancing von 1.4 |
 
 ## Nächste zusammenhängende Arbeitspakete
 
-1. Bausystem auf Wohngebäude und weitere Module ausweiten; individuelle Räume und detailliertere Umbau-Modelle verbinden.
+1. Bausystem auf weitere Module ausweiten; individuelle Betriebsräume und detailliertere Außenmodelle der Umbauten verbinden.
 2. Einheitliche Besitznavigation und Minikarte in Land-, Stadt- und Innenansicht, mobil einklappbar und ohne Überdeckung von Aktionen.
 3. Vollständige Vermögensbewertung und nachvollziehbare Aufschlüsselung; keine doppelte Bewertung von börsennotierten Firmen und deren Aktien.
 4. Epochenabhängige Modelle und Infrastruktur weiter ausbauen; Tutorial und nächste sinnvolle Handlung an den aktuellen Lebensweg anpassen.
