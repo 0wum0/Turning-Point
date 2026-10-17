@@ -192,7 +192,7 @@ export default {
       if (simulator) ctx.ui.mapPanelCollapsed = false;
       panelToggle.setAttribute('aria-expanded', 'true');
       panelToggle.closest('.map-layout').dataset.panelCollapsed = 'false';
-      ctx.ui.mapCity = id; ctx.ui.mapRoute = null; scheduleDraw();
+      ctx.ui.mapCity = id; window.dispatchEvent(new Event('tp-map-city')); ctx.ui.mapRoute = null; scheduleDraw();
       const request = ++cityRequest;
       const c = ctx.world.cityById.get(id); if (!c) return;
       const v = ctx.view; const here = id === v.city.id;

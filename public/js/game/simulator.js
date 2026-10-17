@@ -1,3 +1,4 @@
+import {mountPossessions} from './possessions.js';
 import map from './views/map.js';
 import { html, icon, mount } from './ui.js';
 import { isV2 } from './design.js';
@@ -54,7 +55,7 @@ export async function ensureWorld(ctx, force = false) {
       const data = await map.load(ctx);
       if (!host.isConnected || !isV2()) return;
       host.__dispose?.(); mount(host, map.render(ctx, data));
-      map.bind(host, ctx, data); worldAt = Date.now(); worldKey = key;
+      map.bind(host, ctx, data); const disposeMap=host.__dispose;const disposeNav=mountPossessions(host,ctx,{surface:'map'});host.__dispose=()=>{disposeNav();disposeMap?.();}; worldAt = Date.now(); worldKey = key;
       ctx.ui.simMapData = data;
     } catch (err) {
       if (!host.isConnected) return;

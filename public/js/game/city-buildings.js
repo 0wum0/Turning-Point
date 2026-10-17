@@ -1,3 +1,4 @@
+import {buildBusinessAnnex} from './business-annex.js';
 // Prozedurale Wahrzeichen der 3D-Stadt: jeder Gebäudetyp hat eine eigene, wiedererkennbare Silhouette
 // (Rathaus mit Uhrenturm, Bahnhof mit Tonnendach, Markthalle mit Streifendach, Fachwerk-Wirtshaus mit Schild,
 // Schmiede mit Esse, Scheune …). Alles wird aus Primitiven erzeugt und je Gebäude zu wenigen Meshes
@@ -364,6 +365,12 @@ export function buildLandmark(T, b, env, shared) {
       const bwTotal = W * .8; hang.position.set(style === 'inn' ? bwTotal * .36 + .55 : signW / 2 + .5, style === 'inn' ? 2.25 : signY, style === 'inn' ? D * .39 + .3 : signZ + .12);
       if (style === 'inn') hang.rotation.y = Math.PI / 2 * 0; group.add(hang);
     }
+  }
+  if(b.type==='biz'&&b.extensions?.length){
+    const core=new T.Group();core.add(...group.children.slice());group.add(core);
+    core.scale.set(.76,1,.62);core.position.z=D*.12;
+    for(const points of [chimneys,lights,flags])for(const p of points){p.x*=.76;p.z=p.z*.62+D*.12;}
+    const annex=buildBusinessAnnex(T,b,era,shared);group.add(annex.group);extensions.push(...annex.wings);surfaceMaterials.push(...annex.materials);up(annex.height);
   }
   group.userData.constructionStage=constructionStage;
   group.userData.extensions=extensions;

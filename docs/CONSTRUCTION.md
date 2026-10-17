@@ -81,6 +81,15 @@ Der angenommene Vertrag speichert `addedRooms` mit festen IDs, Namen und Raumtyp
 
 Die Räume besitzen eigene Einrichtung, passende Arbeitsflächen und Zugänge zu vorhandenen Spielaktionen. Zusätzliche Büros verwenden dieselbe Firmenkasse und Banklizenz und zeigen die echten Qualifikationsnachweise. Eine zweite Abholstelle dupliziert weder Geld noch EFS. Küchen nutzen bestehende Betreuungsaufgaben und unterstützen passende Küchenmöbel.
 
-Je vier Zusatzräume teilen sich einen Flurabschnitt. Die Flure sind verbunden und führen zurück zum Hauptraum; höchstens sieben Türen stehen in einem Abschnitt. Zusätzliche Raumgeometrie wird erst beim Betreten aufgebaut. Bei vielen Räumen ersetzen beschriftete Auswahllisten die langen Buttonreihen in Innenansicht und Einrichtung. Das bestehende Maximum von 50 Betriebsräumen wird damit unterstützt; die bisherige Gesamtgrenze von 48 gekauften Möbelstücken je Gebäude bleibt bestehen. Ein Stufenumbau bleibt über das bestehende Außenmodell sichtbar; eigene zusätzliche Gewerbeflügel sind weiterhin offen.
+Je vier Zusatzräume teilen sich einen Flurabschnitt. Die Flure sind verbunden und führen zurück zum Hauptraum; höchstens sieben Türen stehen in einem Abschnitt. Zusätzliche Raumgeometrie wird erst beim Betreten aufgebaut. Bei vielen Räumen ersetzen beschriftete Auswahllisten die langen Buttonreihen in Innenansicht und Einrichtung. Das bestehende Maximum von 50 Betriebsräumen wird damit unterstützt; die bisherige Gesamtgrenze von 48 gekauften Möbelstücken je Gebäude bleibt bestehen. Ein Stufenumbau bleibt über das bestehende Außenmodell sichtbar. Fertiggestellte Zusatzräume bilden jetzt eigene Gewerbeflügel; Details siehe unten.
 
 Prüfungen: `test/business-rooms.test.js` sowie `test/e2e/design-business-rooms.test.js` (Raumauswahl, echte Geldabholung, Einrichtung, 50 Räume, verbundene Flure und Mobilansicht). Der Wohnhaus-Browsertest prüft außerdem die neuen Anbauteile und ihre Dächer in frühen und modernen Epochen.
+
+
+## Sichtbare Gewerbeflügel
+
+Die 3D-Außenansicht gruppiert fertiggestellte Zusatzräume nach ihrer gespeicherten Nutzung in bis zu vier kompakte Flügel: Arbeitsbereich, Büro, Lager und gegebenenfalls Küche. Anzahl und Nutzung bestimmen Fensterreihen, Tiefe und bis zu drei Geschosse. Lager erhalten ein Tor, Büros größere Fenster und Küchen sowie Back-/Schmiedearbeitsräume einen Abzug. Frühe Epochen verwenden Ziegeldächer, moderne Flach- beziehungsweise industrielle Sägezahndächer. Dach- und Fassadentexturen verwenden dieselben Materialien wie das Stammgebäude.
+
+Die Darstellung ist eine kompakte Außenansicht und kein maßstäblicher Grundriss jedes Innenraums. Alle fertiggestellten Raum-IDs sind ihren Flügeln zugeordnet. Laufende Aufträge erzeugen weiterhin nur das Gerüst; abgebrochene oder unfertige Räume erscheinen nicht als Flügel. Gebäude ohne gespeicherte Zusatzräume behalten ihr bisheriges Modell. Die bisherige wirtschaftliche Kapazität und alle Baukosten bleiben unverändert.
+
+Technik: `public/js/game/business-annex.js`, eingebunden in `city-buildings.js`. Browserprüfung: `test/e2e/design-possessions.test.js` prüft 47 zusätzliche Räume, unterschiedliche Gewerbe, Epochen, begrenzte Gebäudefläche und Altbestände.

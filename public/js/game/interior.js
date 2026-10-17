@@ -1,3 +1,4 @@
+import {mountPossessions} from './possessions.js';
 import {openHomeConstruction} from './home-construction.js';
 import {openConstruction} from './construction.js';
 // 3D-Innenansicht eines Gebäudes: drehbar, Objekte anklickbar, Aufgaben & Minispiel.
@@ -38,9 +39,10 @@ export async function openInterior(ctx, b, data) {
   let renderer; let alive = true; let rafId = 0; let needs = true; let minigame = null;
   let pendingTask = false; let roomReady = false; let resizeObserver;
   const disposeObject = obj => obj?.traverse(m => { m.geometry?.dispose(); for (const material of (Array.isArray(m.material) ? m.material : [m.material])) { if (!material) continue; for (const value of Object.values(material)) if (value?.isTexture) value.dispose(); material.dispose(); } });
+  let disposePossessions=()=>{};
   const cleanup = () => {
     if (!alive) return;
-    alive = false; cancelAnimationFrame(rafId); window.removeEventListener('resize', onResize); document.removeEventListener('keydown', onKey); window.removeEventListener('hashchange', onHash);
+    alive = false; disposePossessions(); cancelAnimationFrame(rafId); window.removeEventListener('resize', onResize); document.removeEventListener('keydown', onKey); window.removeEventListener('hashchange', onHash);
     resizeObserver?.disconnect(); disposeObject(room?.scene); if (renderer) { renderer.dispose(); }
     window.removeEventListener('tp-design-change',onDesignChange);
     if(sharedHud && hudAnchor?.isConnected)hudAnchor.replaceWith(sharedHud);
@@ -49,6 +51,7 @@ export async function openInterior(ctx, b, data) {
   const onDesignChange=()=>{if(!isV2()){cleanup();ctx.rerender();}};
   window.addEventListener('tp-design-change',onDesignChange);
   const close = () => { cleanup(); ctx.rerender(); };
+  if(v2)disposePossessions=mountPossessions(root.querySelector('.int-top'),ctx,{surface:'interior',cityId:data.city.id,building:b.key,beforeNavigate:cleanup});
   root.querySelector('#intBack').onclick = close;
   const onKey = (e) => { if (e.key === 'Escape' && !document.querySelector('.modal-backdrop')) { e.preventDefault(); if (minigame) stopMini(); else if (v2 && currentHot) showActions(null); else close(); } };
   root.addEventListener('keydown', e => { if (e.key !== 'Tab' || document.querySelector('.modal-backdrop')) return; const all = [...root.querySelectorAll('button:not(:disabled), input:not(:disabled), select:not(:disabled), a[href], summary, [tabindex="0"]')].filter(el => el.getClientRects().length); const first = all[0], last = all.at(-1); if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); } else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); } });
@@ -222,7 +225,8 @@ export async function openInterior(ctx, b, data) {
       const btn=document.createElement('button');btn.className='int-room-pin';btn.type='button';btn.dataset.roomHotspot=h.id;
       if(h.door)btn.dataset.roomDoor=h.roomId;
       btn.innerHTML=`<span aria-hidden="true">${icon(h.door?'arrow-right':'sparkles').__raw}</span><span><b>${esc(h.label.split(' – ')[0])}</b><small>${h.door?'Raum betreten':'Möglichkeiten ansehen'}</small></span>`;
-      btn.onclick=()=>h.door?changeRoom(h.roomId):showActions(h);labels.append(btn);pins.push({h,btn});
+      const leader=document.createElement('i');leader.className='int-pin-link';leader.hidden=true;leader.setAttribute('aria-hidden','true');
+      btn.onclick=()=>h.door?changeRoom(h.roomId):showActions(h);labels.append(leader,btn);pins.push({h,btn,leader});
     }
   };
   refreshFurnitureUi=()=>{showActions(null);syncRoomUi();markReady();if(inside()&&!room.canMove(cam.target.x,cam.target.z))resetCamera();invalidate();};
@@ -255,13 +259,19 @@ export async function openInterior(ctx, b, data) {
     scene.updateMatrixWorld(true);camera.updateMatrixWorld(true);
     const width=canvas.clientWidth,height=canvas.clientHeight,stageBounds=canvas.getBoundingClientRect();
     const placed=[...root.querySelectorAll('.int-room-nav,.int-camera,.int-walk,.int-actionbar,.int-scene-selection')].filter(el=>!el.hidden&&el.getClientRects().length).map(el=>{const r=el.getBoundingClientRect();return{left:r.left-stageBounds.left,right:r.right-stageBounds.left,top:r.top-stageBounds.top,bottom:r.bottom-stageBounds.top};});
-    for(const {h,btn}of [...pins].sort((a,b)=>Number(!!b.h.door)-Number(!!a.h.door))){
+    for(const {h,btn,leader}of [...pins].sort((a,b)=>Number(!!b.h.door)-Number(!!a.h.door))){
       btn.hidden=false; // Measure the current compact label even if the previous frame hid it.
       const bounds=new T.Box3().setFromObject(h.obj),pos=bounds.getCenter(new T.Vector3());pos.y=h.door?1.8:Math.min(2.2,bounds.max.y+.18);
       const p=pos.clone().project(camera),bw=btn.offsetWidth||165,bh=btn.offsetHeight||48,x=(p.x+1)*width/2,y=(1-p.y)*height/2;
-      const rect={left:x-bw/2,right:x+bw/2,top:y-bh/2,bottom:y+bh/2};
-      const visible=p.z>-1&&p.z<1&&rect.left>8&&rect.right<width-8&&rect.top>70&&rect.bottom<height-110&&!placed.some(r=>rect.left<r.right+8&&rect.right>r.left-8&&rect.top<r.bottom+8&&rect.bottom>r.top-8);
-      btn.hidden=!visible;if(visible){btn.style.left=`${x}px`;btn.style.top=`${y}px`;placed.push(rect);}
+      // The shared toolbar changes the viewport aspect. Keep nearby door labels
+      // accessible by stacking them vertically, with a line to the true anchor.
+      let rect=null,labelY=y;
+      for(const offset of h.door?[0,-bh-14,bh+14,-2*(bh+14),2*(bh+14)]:[0]){
+        const r={left:x-bw/2,right:x+bw/2,top:y+offset-bh/2,bottom:y+offset+bh/2};
+        if(p.z>-1&&p.z<1&&r.left>8&&r.right<width-8&&r.top>70&&r.bottom<height-110&&!placed.some(q=>r.left<q.right+8&&r.right>q.left-8&&r.top<q.bottom+8&&r.bottom>q.top-8)){rect=r;labelY=y+offset;break;}
+      }
+      btn.hidden=!rect;leader.hidden=!rect||labelY===y;
+      if(rect){btn.style.left=`${x}px`;btn.style.top=`${labelY}px`;placed.push(rect);if(labelY!==y){leader.style.left=`${x}px`;leader.style.top=`${Math.min(labelY,y)}px`;leader.style.height=`${Math.abs(labelY-y)}px`;}}
     }
   };
   const selectedRing = new T.Mesh(new T.RingGeometry(1,1.035,64),new T.MeshBasicMaterial({color:0x8effbf,side:T.DoubleSide,transparent:true,opacity:.85,depthWrite:false}));selectedRing.rotation.x=-Math.PI/2;selectedRing.visible=false;scene.add(selectedRing);

@@ -226,3 +226,14 @@ Siehe [CONSTRUCTION.md](CONSTRUCTION.md) für Bauzeiten, Vermietung, Bewertung, 
 Neu gebaute Betriebsräume sind einzeln begehbar und nach Nutzung einrichtbar. Vier Räume bilden jeweils einen verbundenen Flurabschnitt. Die zusätzlichen Szenen entstehen erst bei Betreten; auch bei 50 wirtschaftlichen Räumen wird nicht der gesamte Innenausbau vorab geladen. Raumregister und Einrichtung wechseln bei großen Gebäuden zu beschrifteten Auswahllisten. Zusätzliche Büros greifen auf dieselbe Firmenkasse, Banklizenz und echten Nachweise zu.
 
 Fertige Wohnanbauten bilden einen eigenen, zweigeschossig erweiterbaren Gebäudeflügel. Fenster, Fensterläden und Überdachungen unterscheiden die Nutzungsarten; frühe und moderne Epochen verwenden unterschiedliche Dachformen. Die Darstellung bleibt aus dem gespeicherten, tatsächlich fertiggestellten Ausbau abgeleitet. Gebäude ohne Anbauten behalten ihr bisheriges Modell.
+
+
+### Gemeinsame Besitznavigation
+
+Landkarte, Stadtansicht und Gebäude-Innenräume verwenden dieselbe Navigation „Besitz & Familie“. Die Kategorien Gewerbe, Wohngebäude und Familie lesen den aktuellen Spielstand. Die vorläufige vierte Kategorie „Haushalt“ führt zur vorhandenen Versorgung und Wohnverwaltung. Gebäude lassen sich nach Name oder Stadt filtern, direkt betreten oder in der jeweiligen Verwaltung öffnen. Die gewählte Kategorie bleibt beim Ansichtswechsel erhalten.
+
+Der Ortsknopf führt in die betrachtete Stadt; Landkarte, standortbezogene Zeitung und Shop sind rechts erreichbar. Ein Besuch verändert weder Wohnsitz noch die bestehenden Regeln für Aktionen am Wohnort. In Innenräumen wird vor einem Wechsel die alte Szene sauber geschlossen, einschließlich Kamera, Fokus und Ressourcen. Die vorhandene Statusleiste mit Einstellungen bleibt erhalten.
+
+Im ausgeklappten Besitzfenster sitzt unten eine kleine Deutschlandkarte mit dem betrachteten Standort, Wohnort und eigenen Standorten. Sie öffnet die große Karte. Dies ist eine Standortübersicht, noch keine lokale Stadt-Minimap mit Kamerafrustum. Lange Besitzlisten scrollen unabhängig von den Kategorien und der Standortkarte. Escape schließt zuerst das Besitzfenster; die Innenansicht bleibt dabei offen. Classic verwendet weiterhin seine bisherige Navigation.
+
+Prüfungen: `test/e2e/design-possessions.test.js` deckt entfernte Immobilien, direkte Innenraumzugänge, Zeitungskontext, mobile Suche, Escape, Haushalt/Shop und Classic ab. Die zusätzlichen Gewerbeflügel verwenden dieselben fertiggestellten Raumdaten wie der Innenausbau; siehe [CONSTRUCTION.md](CONSTRUCTION.md).

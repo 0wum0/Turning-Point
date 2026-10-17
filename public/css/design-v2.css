@@ -827,3 +827,79 @@ html[data-game-design="v2"] .city-business-status { border-left:3px solid #82d1a
 .sim-interior .int-room-chooser { display:flex; align-items:center; gap:10px; padding:0 8px; color:#c7dbe6; font-size:13px; min-width:0; }
 .sim-interior .int-room-chooser select { min-height:44px; width:260px; max-width:100%; min-width:0; padding:8px 12px; border:1px solid #83bfda77; border-radius:6px; background:#102b3a; color:#ecfbff; font:600 13px var(--font-ui); }
 @media(max-width:650px) { .sim-interior .int-room-chooser select { width:210px; } }
+
+/* Shared possession controls reserve their own row; drawers open only on demand. */
+.possession-nav { position:relative; display:flex; align-items:center; gap:10px; min-height:54px; padding:5px 10px; color:#ecf6ff; background:#0b2432; border:1px solid #5b819455; border-radius:9px; z-index:8; font:500 14px/1.4 var(--font-ui); }
+.possession-nav button,.possession-nav summary { display:flex; align-items:center; gap:8px; padding:9px 12px; min-height:42px; border:1px solid #7193a455; border-radius:7px; background:#183b4d; color:#ecf6ff; font:inherit; cursor:pointer; }
+.possession-nav summary { list-style:none; white-space:nowrap; font-weight:700; }
+.possession-nav summary::-webkit-details-marker { display:none; }
+.possession-nav summary::after { content:'⌄'; margin-left:8px; color:#a6d7e9; }
+.possession-nav .possession-location { min-width:0; flex:1; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; border:0; background:none; text-align:left; }
+.possession-utilities { display:flex; gap:5px; margin-left:auto; }
+.possession-utilities button { justify-content:center; width:42px; padding:8px; }
+.possession-panel { position:absolute; left:0; top:calc(100% + 6px); width:330px; max-width:calc(100vw - 34px); max-height:min(660px,calc(100dvh - var(--hud-h,80px) - 160px)); overflow:auto; overscroll-behavior:contain; padding:14px; border:1px solid #7ca5ba; border-radius:12px; background:#0a202e; box-shadow:0 15px 50px #0009; scrollbar-width:thin; }
+.possession-panel header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; font-size:18px; }
+.possession-panel header button { padding:8px; }
+.possession-tabs { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.possession-tabs button { justify-content:space-between; text-align:left; }
+.possession-tabs [aria-pressed="true"] { background:#256782; border-color:#9ad4eb; }
+.possession-tabs small { color:#d5e8ef; }
+.possession-search { display:grid; gap:6px; font-size:12px; margin:14px 0; color:#c9dce6; }
+.possession-search input { width:100%; min-height:44px; color:#f4fbff!important; background:#142e3d!important; border:1px solid #668b9e; border-radius:7px; padding:10px; font:inherit; font-size:14px; }
+.possession-search input::placeholder { color:#bacfd9!important; opacity:1; }
+.possession-list { display:flex; flex-direction:column; gap:8px; margin-top:12px; }
+.possession-item { border:1px solid #57768a66; border-radius:9px; overflow:hidden; background:#142e3d; }
+.possession-item.current { border-color:#9edcbf; }
+.possession-item > button:first-child { width:100%; text-align:left; border:0; background:none; padding:12px; }
+.possession-item button > span { flex:1; min-width:0; }
+.possession-item b { display:block; overflow-wrap:anywhere; }
+.possession-panel small { display:block; color:#bdd2df; font-size:12px; font-weight:400; margin-top:3px; }
+.possession-panel .possession-manage { border:0; border-top:1px solid #6c8e9c44; border-radius:0; width:100%; font-size:12px; justify-content:center; }
+.possession-empty { color:#c7d9e5; line-height:1.65; margin:5px 0 12px; }
+.possession-person { padding:10px; border-bottom:1px solid #6c8e9c44; }
+.possession-nav .possession-minimap { display:flex; width:100%; padding:10px; margin-top:16px; text-align:left; background:#041722; }
+.possession-minimap > svg { width:90px; height:110px; flex:none; }
+.possession-minimap path { fill:#264e56; stroke:#6a9c9c; stroke-width:1.5; }
+.possession-minimap circle { fill:#fff; stroke:#0e252c; stroke-width:2; }
+.possession-minimap circle.home { fill:#efc46d; }
+.possession-minimap circle.viewed { fill:#5ed8ff; stroke:#d4f5ff; }
+.possession-nav :is(button,summary,input):focus-visible { outline:3px solid #96e3ff; outline-offset:2px; }
+:root[data-game-design="v2"] body.game .sim-world.has-possession-nav { top:calc(var(--hud-h,40px) + 58px); overflow:visible; }
+.sim-world > .possession-nav { position:absolute; top:-58px; left:10px; right:10px; z-index:10; }
+#page > .possession-nav { margin-bottom:16px; }
+.sim-interior .int-top { flex-wrap:wrap; }
+.sim-interior .int-top > .possession-nav { order:10; flex:0 0 100%; grid-column:1/-1; grid-row:auto; margin-top:6px; }
+@media(max-width:650px) {
+ .possession-nav { gap:3px; padding:4px; font-size:12px; }
+ .possession-nav summary { padding:9px 8px; }
+ .possession-nav summary::after { margin-left:0; }
+ .possession-utilities { gap:3px; }
+ .possession-utilities button { width:36px; padding:6px; }
+ .possession-nav .possession-location { padding:8px 5px; }
+ .possession-panel { width:320px; padding:12px; max-height:calc(100dvh - var(--hud-h,110px) - 170px); }
+ .sim-interior .possession-panel { position:fixed; top:calc(var(--hud-h,110px) + 12px); left:12px; right:12px; width:auto; max-width:none; max-height:calc(100dvh - var(--hud-h,110px) - 30px); }
+}
+.possession-panel { display:flex; flex-direction:column; max-height:min(660px,calc(100dvh - var(--hud-h,80px) - 230px)); overflow:hidden; }
+.possession-panel > :is(header,.possession-tabs,.possession-search,.possession-minimap) { flex-shrink:0; }
+.possession-list { min-height:60px; overflow:auto; overscroll-behavior:contain; scrollbar-width:thin; }
+.possession-list > * { flex-shrink:0; }
+.possession-panel .possession-minimap { min-height:100px; }
+@media(max-width:650px) {
+ .possession-minimap > svg { width:68px; height:82px; }
+ .possession-panel .possession-minimap { min-height:90px; margin-top:10px; }
+ .sim-interior .possession-panel { max-height:calc(100dvh - var(--hud-h,110px) - 30px); }
+}
+
+@media(max-height:650px) {
+ .possession-nav .possession-panel { position:fixed; left:12px; top:calc(var(--hud-h,60px) + 8px); width:330px; max-height:calc(100dvh - var(--hud-h,60px) - 20px); display:block; overflow:auto; }
+ .possession-list { overflow:visible; }
+}
+.sim-interior .int-pin-link { position:absolute; width:1px; background:#abd9ee; pointer-events:none; box-shadow:0 0 3px #071722; }
+.sim-interior .int-pin-link[hidden] { display:none; }
+
+.possession-minimap span > .i { width:16px; height:16px; vertical-align:middle; }
+.possession-panel header { position:sticky; top:-14px; z-index:2; background:#0a202e; padding-bottom:8px; }
+@media(max-height:650px) {
+ .possession-nav .possession-panel { max-height:calc(100dvh - var(--hud-h,60px) - var(--sim-dock,72px) - 20px); }
+ .sim-interior .possession-nav .possession-panel { max-height:calc(100dvh - var(--hud-h,60px) - 20px); }
+}

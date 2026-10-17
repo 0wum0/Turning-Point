@@ -1,3 +1,4 @@
+import {mountPossessions} from './possessions.js';
 import {simulatorHud,updateYearRing} from './v2-hud.js';
 import {openProvisions} from './provision-dialog.js';
 import { startSplash } from './splash.js';
@@ -62,7 +63,7 @@ async function clockTick() {
 
 function setView(view) {
   const prev = ctx.view;
-  ctx.view = view; ctx.__viewAt = Date.now();
+  ctx.view = view; window.dispatchEvent(new Event('tp-view-change')); ctx.__viewAt = Date.now();
   try { celebrateQuests(prev, view); } catch (_) { /* Hinweis ist nur Zugabe */ }
   if (view) {
     ctx.coins = view.coins; ctx.efsPool = view.efs.pool;
@@ -216,6 +217,7 @@ async function renderPage(animate) {
   page.bind(root, ctx, data);
   mountIntro(root, ctx);
   decoratePageDesign(root, ctx);
+  syncCityPossessions(root);
   showAnnouncement(root);
   if (isV2()) root.scrollTop = scroll; else window.scrollTo(0, scroll);
   if (ctx.route === 'legacy' && ctx.view.status === 'gameover') {
@@ -223,6 +225,12 @@ async function renderPage(animate) {
     document.getElementById('backGO').onclick = () => { ctx.ui.gameoverChron = false; render(); };
   }
   if (animate) document.title = `${page.label} · ${document.title.split(' · ').pop()}`;
+}
+function syncCityPossessions(root){
+  if(!root||root.dataset.route!=='city')return;
+  if(!root.__possessionWired){const previous=root.__dispose;root.__dispose=()=>{root.__possessionsDispose?.();delete root.__possessionsDispose;previous?.();};root.__possessionWired=true;}
+  if(!isV2()){root.__possessionsDispose?.();delete root.__possessionsDispose;return;}
+  if(!root.__possessionsDispose)root.__possessionsDispose=mountPossessions(root,ctx,{cityId:ctx.ui.cityData?.city.id});
 }
 function rerender() { renderHud(); return renderPage(false); }
 
@@ -311,7 +319,7 @@ document.addEventListener('click', (e) => {
     const root = document.getElementById('page');
     syncSimulator(ctx); renderHud(); trackHud();
     if (ctx.route === 'map') { root.__dispose?.(); root.innerHTML = ''; renderPage(false); }
-    else decoratePageDesign(root, ctx);
+    else {decoratePageDesign(root, ctx);syncCityPossessions(root);}
     window.dispatchEvent(new Event('tp-design-change'));
   });
   if (e.target.closest('#hud [data-help]')) openHelp(ctx);

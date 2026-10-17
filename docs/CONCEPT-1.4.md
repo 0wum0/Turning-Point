@@ -50,14 +50,14 @@ Betriebsräume entstehen jetzt über persistente Bauaufträge: vorläufig ein bi
 | Nachweise | Passende echte Berufs-/Meisterqualifikation in jedem zugehörigen V2-Büro | Zusätzliche künftige Abschlussarten |
 | Statusleiste | Echte gemeinsame V2-Leiste auch im Innenraum; vier bedienbare Zustandsanzeigen; Datum/Jahresring | Vollständige Bewertung sämtlicher Materialien, Gegenstände und externer Aktienpositionen |
 | Vermögen | Nettovermögen aus Geld, Firmenwerten/-kassen und Immobilien inklusive zusätzlicher Einrichtung abzüglich Krediten | Bewertungsregeln ohne Doppelzählung für alle übrigen Vermögensarten |
-| Welt und Stadt | Karte, 3D-Stadt, eigene Gebäude, standortbezogene Aktionen und Versorgung | Durchgängiges Besitzfenster/rechte Seitenleiste/Minikarte nach Referenz; deutlich detailliertere Epochenmodelle |
-| Ausbau | Mehrjährige Betriebs- und Wohnbauaufträge, Vorschau, Pausen, Abbruch, Fortschritt und Gerüste; zusätzliche Wohn- und Betriebsräume mit eigenen Türen und Einrichtung; sichtbare Wohnhaus-Anbauten | Versorgungsmodule, freie Grundrisse und individuelle Gewerbeflügel |
+| Welt und Stadt | Karte, 3D-Stadt, eigene Gebäude, standortbezogene Aktionen und Versorgung; gemeinsame Besitznavigation mit Standortkarte in allen drei Ansichten | Deutlich detailliertere Epochenmodelle und dauerhaft sichtbare lokale Stadt-Minimap |
+| Ausbau | Mehrjährige Betriebs- und Wohnbauaufträge, Vorschau, Pausen, Abbruch, Fortschritt und Gerüste; zusätzliche Wohn- und Betriebsräume mit eigenen Türen und Einrichtung; sichtbare Wohnhaus- und Gewerbe-Anbauten | Versorgungsmodule und freie Grundrisse |
 | Beruf, Studium, Kredit, Vermietung, Familie, Ämter | Bereits vorhandene Systeme bleiben nutzbar | Einzelabgleich mit endgültigen Regeln und Balancing von 1.4 |
 
 ## Nächste zusammenhängende Arbeitspakete
 
-1. Bausystem auf weitere Module ausweiten; sichtbare Gewerbeflügel und detailliertere Epochenmodelle der Umbauten verbinden.
-2. Einheitliche Besitznavigation und Minikarte in Land-, Stadt- und Innenansicht, mobil einklappbar und ohne Überdeckung von Aktionen.
+1. Bausystem auf weitere Module ausweiten und detailliertere Epochenmodelle der Umbauten verbinden.
+2. Gemeinsame Besitznavigation weiter um lokale Stadtübersicht und die später festzulegende vierte Besitzkategorie ergänzen. Aktuell dient „Haushalt“ als Zugang zur vorhandenen Versorgung.
 3. Vollständige Vermögensbewertung und nachvollziehbare Aufschlüsselung; keine doppelte Bewertung von börsennotierten Firmen und deren Aktien.
 4. Epochenabhängige Modelle und Infrastruktur weiter ausbauen; Tutorial und nächste sinnvolle Handlung an den aktuellen Lebensweg anpassen.
 
