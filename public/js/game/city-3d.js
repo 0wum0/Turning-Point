@@ -5,6 +5,8 @@ import { buildLandmark } from './city-buildings.js';
 import { createLife } from './city-life.js';
 import { atmosphereAt, seasonAt } from './atmosphere.js';
 import { seeded, gableGeometry } from './mesh-batch.js';
+import { createCityWalker } from './city-walker.js';
+import { createCityMinimap } from './city-minimap.js';
 
 const UNIT = .1, WORLD_W = 200, WORLD_D = 125;
 const lerpHex = (T, a, b, t) => new T.Color(a).lerp(new T.Color(b), t);
@@ -177,6 +179,7 @@ export async function createCity3D(host, aerial, opts) {
   const ring = new T.Mesh(track(new T.RingGeometry(1, 1.07, 64)), track(new T.MeshBasicMaterial({ color: 0xa6ffd3, side: T.DoubleSide, transparent: true, opacity: .9, depthWrite: false }))); ring.rotation.x = -Math.PI / 2; ring.visible = false; scene.add(ring);
   const hoverRing = new T.Mesh(track(new T.RingGeometry(1, 1.12, 64)), track(new T.MeshBasicMaterial({ color: 0xfff1b8, side: T.DoubleSide, transparent: true, opacity: .7, depthWrite: false }))); hoverRing.rotation.x = -Math.PI / 2; hoverRing.visible = false; scene.add(hoverRing);
   const labels = document.createElement('div'); labels.className = 'city3d-labels'; host.append(labels);
+  const playerTag=document.createElement('span');playerTag.className='city-player-tag';playerTag.textContent='Du';playerTag.setAttribute('aria-hidden','true');labels.append(playerTag);
   const tip = document.createElement('div'); tip.className = 'city3d-tip'; tip.hidden = true; tip.setAttribute('role', 'tooltip'); labels.append(tip);
   const card = document.createElement('div'); card.className = 'city3d-card'; card.hidden = true; card.setAttribute('aria-live', 'polite'); labels.append(card);
   const pins = lms.map((b) => {
@@ -187,7 +190,13 @@ export async function createCity3D(host, aerial, opts) {
   });
   const controls = [...(host.closest('.aerial-card')?.querySelectorAll('.city-view-mode,.map-tools') || [])];
   const paintPins = () => {
-    const r = host.getBoundingClientRect(), blocked = controls.filter(el=>el.offsetWidth && el.offsetHeight).map(el=>el.getBoundingClientRect());
+    host.style.setProperty('--city-overlay-space',`${Math.max(card.hidden?0:card.offsetHeight,walker.element.hidden?0:walker.element.offsetHeight)+20}px`);
+    const r = host.getBoundingClientRect(), blocked = [...controls,minimap.element,walker.element,card].filter(el=>el.offsetWidth && el.offsetHeight).map(el=>el.getBoundingClientRect());
+    host.classList.toggle('city-has-selection',!card.hidden);
+    const player=walker.snapshot(),pp=new T.Vector3((player.x-1000)*UNIT,2.8,(player.y-625)*UNIT).project(camera);
+    const px=(pp.x+1)*r.width/2,py=(1-pp.y)*r.height/2;
+    playerTag.hidden=Math.abs(pp.x)>.96 || Math.abs(pp.y)>.9 || pp.z>1 || pp.z< -1 || blocked.some(b=>px+r.left+18>b.left&&px+r.left-18<b.right&&py+r.top+16>b.top&&py+r.top-16<b.bottom);
+    playerTag.style.left=`${px}px`;playerTag.style.top=`${py}px`;
     for (const pin of pins) {
       const p = pin.anchor.clone().project(camera), x=(p.x+1)*.5*r.width, y=(1-p.y)*.5*r.height;
       // Markers remain anchored to the building; the city list also exposes those behind camera controls.
@@ -195,6 +204,8 @@ export async function createCity3D(host, aerial, opts) {
       pin.button.hidden=p.z>1 || p.z< -1 || Math.abs(p.x)>.94 || Math.abs(p.y)>.88 || covered;
       pin.button.style.left=`${x}px`;pin.button.style.top=`${y}px`;
       pin.button.setAttribute('aria-pressed',String(pin.key===focusKey));pin.button.dataset.hover=String(pin.key===hoverKey);
+      const caption=pin.button.querySelector('strong').getBoundingClientRect();
+      pin.button.dataset.captionHidden=String(caption.width>0 && (caption.left<r.left+6 || caption.right>r.right-6 || blocked.some(b=>caption.right>b.left&&caption.left<b.right&&caption.bottom>b.top&&caption.top<b.bottom)));
     }
   };
   const highlight = (key, on) => { const i = info.get(key); if (!i) return; for (const mat of i.surfaceMaterials || [i.litMaterial]) mat.emissive.setHex(on ? 0x3b3010 : 0x000000); };
@@ -234,15 +245,29 @@ export async function createCity3D(host, aerial, opts) {
   const bounds = { x: WORLD_W / 2 - 8, z: WORLD_D / 2 - 6 };
   const target = { x: 0, z: 0, az: .2, el: 1.0, dist: 105 }, shown = { ...target };
   const clampTarget = () => { target.x = Math.max(-bounds.x, Math.min(bounds.x, target.x)); target.z = Math.max(-bounds.z, Math.min(bounds.z, target.z)); };
-  let flight = null;
+  let flight = null, followPlayer = false;
+  const cancelFlight = () => { if(flight){const done=flight.done;flight=null;done(false);} };
+  const walker = createCityWalker(T, scene, host, aerial, {start:opts.playerPosition,onPosition:opts.onPlayerPosition,reduced,invalidate});
+  const minimap = createCityMinimap(T, host, aerial, {camera,player:()=>walker.snapshot(),invalidate,pan:(x,y)=>{
+    cancelFlight();followPlayer=false;target.x=(x-1000)*UNIT;target.z=(y-625)*UNIT;clampTarget();invalidate();
+  }});
+  async function walkTo(key) {
+    if(!info.has(key))return false;
+    cancelFlight();followPlayer=true;focusKey=key;placeRing(ring,key,.78);card.hidden=true;
+    const p=walker.snapshot();target.x=(p.x-1000)*UNIT;target.z=(p.y-625)*UNIT;target.dist=36;target.el=.9;
+    const arrived=await walker.walkTo(key);
+    if(alive && !arrived){showCard(focusKey);invalidate();}
+    return arrived;
+  }
   function focus(key, immediate = false) {
+    if(walker.snapshot().walking && walker.snapshot().destination!==key)walker.cancel();
     const i = info.get(key); if (!i) return; focusKey = key; target.x = i.pos.x; target.z = i.pos.z; target.dist = Math.min(Math.max(target.dist, 40), 68);
     placeRing(ring, key, .78); showCard(key); if (immediate) Object.assign(shown, target); invalidate();
   }
   function flyTo(key, { ms = 650 } = {}) {
-    const i = info.get(key); if (!i) return Promise.resolve();
+    cancelFlight();const i = info.get(key); if (!i || !alive) return Promise.resolve(false);
     focusKey = key; placeRing(ring, key, .78); card.hidden = true;
-    if (reduced()) return Promise.resolve();
+    if (reduced()) return Promise.resolve(true);
     return new Promise((resolve) => {
       const from = { ...shown }, to = { x: i.pos.x, z: i.pos.z, az: 0, el: .5, dist: 17 }; let az0 = from.az; while (az0 > Math.PI) az0 -= Math.PI * 2; while (az0 < -Math.PI) az0 += Math.PI * 2; from.az = az0; shown.az = az0;
       flight = { t0: performance.now(), ms, from, to, done: resolve }; invalidate();
@@ -266,12 +291,13 @@ export async function createCity3D(host, aerial, opts) {
     const animated = !reduced();
     if (animated && t - lastDraw < 30) { invalidate(); return; }
     lastDraw = t; const dt = previous ? Math.min(100, t - previous) : 16; previous = t;
-    let moving = false;
+    let moving = walker.update(dt);
+    if(moving && followPlayer){const p=walker.snapshot();target.x=(p.x-1000)*UNIT;target.z=(p.y-625)*UNIT;clampTarget();}
     if (flight) {
       const k = Math.min(1, (performance.now() - flight.t0) / flight.ms), e = ease(k);
       for (const key of ['x', 'z', 'az', 'el', 'dist']) shown[key] = flight.from[key] + (flight.to[key] - flight.from[key]) * e;
       Object.assign(target, shown); moving = true;
-      if (k >= 1) { const done = flight.done; flight = null; done(); }
+      if (k >= 1 || reduced()) { Object.assign(shown,flight.to);Object.assign(target,shown);const done = flight.done; flight = null; done(true); }
     } else {
       for (const k of Object.keys(target)) { const delta = target[k] - shown[k]; shown[k] += delta * (reduced() ? 1 : 1 - Math.exp(-dt / 110)); if (Math.abs(delta) > .001) moving = true; else shown[k] = target[k]; }
     }
@@ -283,7 +309,7 @@ export async function createCity3D(host, aerial, opts) {
       if (river) river.material.map.offset.x = -(t * .00004 % 1);
     }
     if (moving && (hoverKey || !tip.hidden)) clearHover();
-    placeCamera(); renderer.render(scene, camera); paintPins();
+    placeCamera(); renderer.render(scene, camera); paintPins(); minimap.update(shown);
     frames++; if (t - fpsT > 1000) { fps = Math.round(frames * 1000 / (t - fpsT)); frames = 0; fpsT = t; }
     if (moving || animated) invalidate(); else previous = 0;
   }
@@ -294,7 +320,7 @@ export async function createCity3D(host, aerial, opts) {
   const pts = new Map(); let pinch = 0, lastClick = { key: null, t: 0 };
   const pick = (cx, cy) => { const r = canvas.getBoundingClientRect(); pointer.set((cx - r.left) / r.width * 2 - 1, 1 - (cy - r.top) / r.height * 2); ray.setFromCamera(pointer, camera); const hit = ray.intersectObjects(buildings, true)[0]; let o = hit?.object; while (o && !o.userData.key) o = o.parent; return o?.userData.key || null; };
   canvas.oncontextmenu = (e) => e.preventDefault();
-  canvas.onpointerdown = (e) => { canvas.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]); if (pts.size === 1) drag = { x: e.clientX, y: e.clientY, az: target.az, el: target.el, tx: target.x, tz: target.z, moved: 0, pan: e.button === 2 || e.shiftKey || e.button === 1 }; else if (drag) drag.moved = 99; flight = null; };
+  canvas.onpointerdown = (e) => { canvas.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]); if (pts.size === 1) drag = { x: e.clientX, y: e.clientY, az: target.az, el: target.el, tx: target.x, tz: target.z, moved: 0, pan: e.button === 2 || e.shiftKey || e.button === 1 }; else if (drag) drag.moved = 99; cancelFlight(); };
   let hoverQueued = null;
   const clearHover = () => { if (hoverKey) { highlight(hoverKey, false); hoverKey = null; hoverRing.visible = false; canvas.style.cursor = 'grab'; } tip.hidden = true; };
   const hover = () => { const e = hoverQueued; hoverQueued = null; if (!e || !alive) return; const key = pick(e.clientX, e.clientY); if (key !== hoverKey) { if (hoverKey) highlight(hoverKey, false); hoverKey = key; if (key) { highlight(key, true); placeRing(hoverRing, key, .9); } else hoverRing.visible = false; canvas.style.cursor = key ? 'pointer' : 'grab'; invalidate(); } showTip(key, e.clientX, e.clientY); };
@@ -303,7 +329,7 @@ export async function createCity3D(host, aerial, opts) {
     pts.set(e.pointerId, [e.clientX, e.clientY]);
     if (pts.size === 2) { const [a, b] = [...pts.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]); if (pinch && d > 4) zoom(pinch / d); pinch = d; return; }
     const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag.moved = Math.max(drag.moved, Math.hypot(dx, dy));
-    if (drag.moved > 5) { tip.hidden = true; if (drag.pan) { const s = shown.dist * .0023; target.x = drag.tx - (dx * Math.cos(shown.az) + dy * Math.sin(shown.az)) * s; target.z = drag.tz + (dx * Math.sin(shown.az) - dy * Math.cos(shown.az)) * s; clampTarget(); } else { target.az = drag.az - dx * .005; target.el = Math.max(.25, Math.min(1.45, drag.el + dy * .004)); } invalidate(); }
+    if (drag.moved > 5) { followPlayer=false;tip.hidden = true; if (drag.pan) { const s = shown.dist * .0023; target.x = drag.tx - (dx * Math.cos(shown.az) + dy * Math.sin(shown.az)) * s; target.z = drag.tz + (dx * Math.sin(shown.az) - dy * Math.cos(shown.az)) * s; clampTarget(); } else { target.az = drag.az - dx * .005; target.el = Math.max(.25, Math.min(1.45, drag.el + dy * .004)); } invalidate(); }
   };
   const end = (e) => {
     if (!drag) return; const click = e.type === 'pointerup' && drag.moved < 5; pts.delete(e.pointerId); pinch = 0;
@@ -317,23 +343,23 @@ export async function createCity3D(host, aerial, opts) {
   canvas.onkeydown = (e) => {
     const step = shown.dist * .08, k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
     if (['+', '=', '-', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'w', 'a', 's', 'd'].includes(k)) {
-      e.preventDefault();
+      e.preventDefault();followPlayer=false;
       if (k === '-') zoom(1.2); else if (k === '+' || k === '=') zoom(.8); else if (k === 'Home') reset();
       else if ('wasd'.includes(k)) { const fx = -Math.sin(shown.az), fz = -Math.cos(shown.az); const rx = Math.cos(shown.az), rz = -Math.sin(shown.az); const f = k === 'w' ? 1 : k === 's' ? -1 : 0, r = k === 'd' ? 1 : k === 'a' ? -1 : 0; target.x += (fx * f + rx * r) * step; target.z += (fz * f + rz * r) * step; clampTarget(); invalidate(); }
       else { target.az += (k === 'ArrowLeft' ? -.15 : k === 'ArrowRight' ? .15 : 0); target.el = Math.max(.25, Math.min(1.45, target.el + (k === 'ArrowUp' ? .1 : k === 'ArrowDown' ? -.1 : 0))); invalidate(); }
     }
   };
-  function reset() { Object.assign(target, { x: 0, z: 0, az: .2, el: 1.0, dist: 105 }); invalidate(); }
+  function reset() { followPlayer=false;Object.assign(target, { x: 0, z: 0, az: .2, el: 1.0, dist: 105 }); invalidate(); }
   if (selected) focus(selected, true);
   resize();
   if (reduced()) life.still(atmo, season);
   return {
-    focus, flyTo, zoom, reset, invalidate,
+    focus, flyTo, walkTo, zoom, reset, invalidate,
     /** Kennzahlen für Tests und die Leistungsbeurteilung */
-    stats() { const i = renderer.info; return { calls: i.render.calls, triangles: i.render.triangles, geometries: i.memory.geometries, textures: i.memory.textures, fps, extensions:buildings.filter(b=>b.userData.extensions?.length).map(b=>({key:b.userData.key,rooms:b.userData.extensions})), construction:buildings.filter(b=>b.userData.constructionStage!==null).map(b=>({key:b.userData.key,stage:b.userData.constructionStage})), hour: atmo.hour, season: season.key, ...life.count }; },
+    stats() { const i = renderer.info; return { calls: i.render.calls, triangles: i.render.triangles, geometries: i.memory.geometries, textures: i.memory.textures, fps, player:walker.snapshot(),camera:{...shown}, extensions:buildings.filter(b=>b.userData.extensions?.length).map(b=>({key:b.userData.key,rooms:b.userData.extensions})), construction:buildings.filter(b=>b.userData.constructionStage!==null).map(b=>({key:b.userData.key,stage:b.userData.constructionStage})), hour: atmo.hour, season: season.key, ...life.count }; },
     dispose() {
       alive = false; cancelAnimationFrame(raf); observer.disconnect(); overlayObserver.disconnect(); motionObserver.disconnect(); motionMedia.removeEventListener('change', wake); document.removeEventListener('visibilitychange', wake); if (textureURL) URL.revokeObjectURL(textureURL);
-      life.dispose(); scene.traverse((m) => { m.geometry?.dispose(); for (const material of Array.isArray(m.material) ? m.material : [m.material]) { if (!material) continue; for (const value of Object.values(material)) if (value?.isTexture) value.dispose(); material.dispose(); } });
+      cancelFlight();walker.dispose();minimap.dispose();host.classList.remove('city-has-selection');life.dispose(); scene.traverse((m) => { m.geometry?.dispose(); for (const material of Array.isArray(m.material) ? m.material : [m.material]) { if (!material) continue; for (const value of Object.values(material)) if (value?.isTexture) value.dispose(); material.dispose(); } });
       disposables.forEach((d) => d.dispose?.()); renderer.dispose(); renderer.forceContextLoss(); canvas.remove(); labels.remove();
     },
     get selected() { return focusKey; },

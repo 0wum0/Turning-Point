@@ -77,10 +77,18 @@ export default {
       ctx.ui.cityBuilding = key;
       if (entering || document.querySelector('.interior')) return;
       entering = true;
+      const enteringScene=scene3d, enteringVersion=sceneVersion;
       try {
         const loading = import('../interior.js');
-        if (scene3d) { host3d.classList.add('city-entering'); await Promise.all([scene3d.flyTo(key), loading]); }
-        const { openInterior } = await loading; if (root.isConnected) await openInterior(ctx, b, data);
+        if (enteringScene) {
+          // Keep the street visible during the walk; fade only for the final entrance transition.
+          host3d.scrollIntoView({block:'nearest',behavior:'instant'});
+          const [arrived]=await Promise.all([enteringScene.walkTo(key),loading]);
+          if(!arrived || disposed || enteringVersion!==sceneVersion)return;
+          host3d.classList.add('city-entering');
+          if(!await enteringScene.flyTo(key))return;
+        }
+        const { openInterior } = await loading; if (!disposed && root.isConnected && enteringVersion===sceneVersion) await openInterior(ctx, b, data);
       }
       catch (e) { toast(e.message, 'bad'); } finally { entering = false; host3d.classList.remove('city-entering'); }
     };
@@ -116,7 +124,7 @@ export default {
       try {
         const {createCity3D}=await import('../city-3d.js');
         if(disposed || version!==sceneVersion)return;
-        created=await createCity3D(host,ctx.ui._aerial,{onSelect:select,onEnter:enter,describe,selected:ctx.ui.cityBuilding,reduced:()=>media.matches || document.documentElement.dataset.motion==='off',getHour:hourOf,era:ctx.view.date.eraKey,doy:testDoy() ?? ctx.view.date.doy,cityId:data.city.id});
+        created=await createCity3D(host,ctx.ui._aerial,{onSelect:select,onEnter:enter,describe,selected:ctx.ui.cityBuilding,reduced:()=>media.matches || document.documentElement.dataset.motion==='off',getHour:hourOf,era:ctx.view.date.eraKey,doy:testDoy() ?? ctx.view.date.doy,cityId:data.city.id,playerPosition:ctx.ui.cityPlayers?.[data.city.id],onPlayerPosition:p=>{(ctx.ui.cityPlayers ||= {})[data.city.id]=p;}});
         if(disposed || version!==sceneVersion){created?.dispose();return;}
         scene3d=created;status.hidden=true; host.__city3d = created; // Prüf-/Leistungshilfe: host.__city3d.stats()
       } catch(e) { if(disposed || version!==sceneVersion)return; await switchScene('2d');status.textContent=e.message;status.hidden=false; }

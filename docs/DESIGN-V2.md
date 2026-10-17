@@ -234,6 +234,18 @@ Landkarte, Stadtansicht und Gebäude-Innenräume verwenden dieselbe Navigation �
 
 Der Ortsknopf führt in die betrachtete Stadt; Landkarte, standortbezogene Zeitung und Shop sind rechts erreichbar. Ein Besuch verändert weder Wohnsitz noch die bestehenden Regeln für Aktionen am Wohnort. In Innenräumen wird vor einem Wechsel die alte Szene sauber geschlossen, einschließlich Kamera, Fokus und Ressourcen. Die vorhandene Statusleiste mit Einstellungen bleibt erhalten.
 
-Im ausgeklappten Besitzfenster sitzt unten eine kleine Deutschlandkarte mit dem betrachteten Standort, Wohnort und eigenen Standorten. Sie öffnet die große Karte. Dies ist eine Standortübersicht, noch keine lokale Stadt-Minimap mit Kamerafrustum. Lange Besitzlisten scrollen unabhängig von den Kategorien und der Standortkarte. Escape schließt zuerst das Besitzfenster; die Innenansicht bleibt dabei offen. Classic verwendet weiterhin seine bisherige Navigation.
+Im ausgeklappten Besitzfenster sitzt unten eine kleine Deutschlandkarte mit dem betrachteten Standort, Wohnort und eigenen Standorten. Sie öffnet die große Karte. Zusätzlich besitzt die 3D-Stadt eine eigene lokale Minikarte. Lange Besitzlisten scrollen unabhängig von den Kategorien und der Standortkarte. Escape schließt zuerst das Besitzfenster; die Innenansicht bleibt dabei offen. Classic verwendet weiterhin seine bisherige Navigation.
 
 Prüfungen: `test/e2e/design-possessions.test.js` deckt entfernte Immobilien, direkte Innenraumzugänge, Zeitungskontext, mobile Suche, Escape, Haushalt/Shop und Classic ab. Die zusätzlichen Gewerbeflügel verwenden dieselben fertiggestellten Raumdaten wie der Innenausbau; siehe [CONSTRUCTION.md](CONSTRUCTION.md).
+
+### Lokale Orientierung und sichtbarer Gebäudeeinstieg
+
+Die lokale Stadtübersicht ist nach Norden ausgerichtet und verwendet dieselben Straßen und Grundstücke wie die 3D-Szene. Sie zeigt den Kameraausschnitt, eigene Gebäude in Gold sowie die Spielfigur und ihren aktuellen Weg in Hellblau. Kartenklicks und Pfeiltasten verschieben die Kamera; „Zu mir“ beziehungsweise Pos1 zentriert die Spielfigur. Auf schmalen oder niedrigen Ansichten startet die Karte eingeklappt, damit Gebäudeaktionen lesbar bleiben.
+
+„Gebäude betreten“ führt die sichtbare Spielfigur auf einem rechtwinkligen Weg über das bestehende Straßennetz bis zum nächstgelegenen Straßenpunkt des Gebäudes. Erst danach folgt der Kameraübergang in die vorhandene Innenansicht. Der lokale Weg ist eine kurze visuelle Darstellung, keine neue Zeit- oder Reiseabrechnung: Geld, EFS und gemeldeter Wohnort ändern sich dadurch nicht. „Direkt hinein“ überspringt den Weg; „Abbrechen“ stoppt den Einstieg. Bei reduzierter Bewegung entfällt die Laufanimation. Eine andere Gebäudeauswahl bricht den bisherigen Weg ab. Manuelle Kamerabewegung löst die automatische Verfolgung.
+
+Die Position wird für jede Stadt während der Sitzung behalten. Wechsel zu Classic/2D oder in eine andere Ansicht entsorgen die Szene und beenden ausstehende Übergänge, sodass kein altes Gebäude nachträglich geöffnet wird. Dies ist noch keine freie RPG- oder Familiensteuerung und keine Tür-Kollisionsnavigation innerhalb von Grundstücken.
+
+Gebäudemodelle erhalten Firstabdeckungen, Dachränder und Regenrinnen, frühe Wohnhäuser/Gasthäuser zusätzlich Fensterläden. Profilierte Türen und kleine Eingangsleuchten ergänzen die Fassaden; spätere Wohnhäuser besitzen Balkone mit Geländern und Pflanzkästen. Die zusätzlichen Teile nutzen die vorhandenen Material-Batches.
+
+Prüfung: `test/city-path.test.js` prüft Straßenbindung und Interpolation; `test/e2e/design-city-navigation.test.js` prüft Laufweg, Abbruch, Einstieg, Kamera-Minimap, mobile Überlagerungen und reduzierte Bewegung. Die vorhandenen Stadt-/Gilde-Tests prüfen weiterhin Rendererbudget und Gebäudeaktionen.

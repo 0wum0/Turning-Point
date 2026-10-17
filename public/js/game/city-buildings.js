@@ -47,7 +47,21 @@ export function buildLandmark(T, b, env, shared) {
   const box = (w, h, d, col, x, y, z, o) => { B.box(masonryColors.has(col)?'masonry':'lit', w, h, d, col, x, y, z, o); up(y + h); };
   const cyl = (r, h, col, x, y, z, o) => { B.cyl('lit', r, h, col, x, y, z, o); up(y + h); };
   const cone = (r, h, col, x, y, z, o) => { B.cone('lit', r, h, col, x, y, z, o); up(y + h); };
-  const gable = (w, h, d, col, x, y, z, o) => { B.gable('roof', w, h, d, col, x, y, z, o); up(y + h); };
+  const gable = (w, h, d, col, x, y, z, o) => {
+    B.gable('roof', w, h, d, col, x, y, z, o); up(y + h);
+    const ry=o?.ry || 0,local=(u,v)=>[x+u*Math.cos(ry)+v*Math.sin(ry),z-u*Math.sin(ry)+v*Math.cos(ry)];
+    // Ridge caps, deep fascia and rain gutters make the roof read as a built structure.
+    B.box('lit',.16,.12,d+.12,col,x,y+h-.04,z,{ry});
+    for(const side of [-1,1]){
+      const [ex,ez]=local(side*w/2,0);
+      B.box('lit',.12,.18,d+.10,C.woodDark,ex,y-.10,ez,{ry});
+      if(w>4 && d>4){
+        B.box('lit',.18,.11,d+.16,C.metal,ex,y-.03,ez,{ry});
+        const [px,pz]=local(side*(w/2-.08),d/2-.24);
+        B.cyl('lit',.065,Math.max(.2,y-.2),C.metal,px,.12,pz,{n:6});
+      }
+    }
+  };
   // Fenster: face f (+z), b (-z), l (-x), r (+x). Mittelpunkt liegt auf der Wandfläche.
   const FACE = { f: [0, 0, 1], b: [Math.PI, 0, -1], l: [-Math.PI / 2, -1, 0], r: [Math.PI / 2, 1, 0] };
   const win = (face, x, y, z, w = .5, h = .7, lit) => {
@@ -58,6 +72,14 @@ export function buildLandmark(T, b, env, shared) {
     // A projecting sill and lintel give the openings depth even at street level.
     B.box('lit',w+.24,.09,.20,C.stone,x+nx*.10,y-.11,z+nz*.10,{ry});
     B.box('lit',w+.18,.08,.10,C.stoneDark,x+nx*.06,y+h+.07,z+nz*.06,{ry});
+    if(era<=2 && !b.abandoned && ['home','pension','inn'].includes(style) && w<1){
+      // Open wooden shutters follow each wall's orientation, including side façades.
+      for(const side of [-1,1]){
+        const offset=side*(w/2+.19),sx=x+Math.cos(ry)*offset+nx*.07,sz=z-Math.sin(ry)*offset+nz*.07;
+        B.box('lit',.29,h+.10,.08,C.green,sx,y-.05,sz,{ry});
+        for(const level of [.2,.75])B.box('lit',.31,.045,.10,C.woodDark,sx,y+h*level,sz,{ry});
+      }
+    }
     if (b.abandoned) for (let k = 0; k < 2; k++) B.box('lit', w + .3, .09, .06, 0x7a5a38, x + nx * .1, y + (k ? .2 : -.15), z + nz * .1, { ry, rz: k ? .12 : -.1 });
   };
   /** Fensterreihen an allen vier Seiten eines Quaders (Mitte cx/cz, Maße bw/bd). */
@@ -74,6 +96,12 @@ export function buildLandmark(T, b, env, shared) {
   const door = (x, z, col = C.door, w = .95, h = 1.7) => {
     box(w + .3, h + .15, .1, trim, x, 0, z + .02); B.box('lit', w, h, .1, col, x, 0, z + .08); B.cyl('lit', .045, .12, C.gold, x + w * .3, .85, z + .14, { rx: Math.PI / 2, n: 8 });
     box(w + 1.0, .2, .8, C.stone, x, 0, z + .4); box(w + .6, .2, .55, C.stoneDark, x, .2, z + .3);
+    for(const y of [.32,h*.57])B.box('lit',w*.7,h*.28,.035,C.woodDark,x,y,z+.145);
+    if(!b.abandoned){
+      B.box('lit',.12,.40,.15,C.metal,x+w/2+.28,h*.78,z+.12);
+      B.box('on',.13,.20,.16,0xffd88a,x+w/2+.28,h*.78+.07,z+.15);
+      B.box('lit',.23,.06,.24,C.metal,x+w/2+.28,h*.78+.29,z+.15);
+    }
   };
   const plinth = (w, d, x = 0, z = 0) => box(w + .24, .32, d + .24, C.stone, x, 0, z);
   const timbering = (cx, cz, bw, bd, y0, floors, fh) => {
@@ -221,6 +249,15 @@ export function buildLandmark(T, b, env, shared) {
         chimney(bw * .3, .3 + fl * fh, -bd * .2, 1.0, C.stoneDark);
       }
       door(bw * .12, bd / 2, C.door, 1.0, 1.7);
+      if(era>=3 && !b.abandoned){
+        const bx=-bw*.24,bz=bd/2+.42,balconyW=Math.min(2.3,bw*.38);
+        box(balconyW,.14,.95,C.stone,bx,2.0,bz);
+        for(let i=0;i<6;i++)box(.04,.72,.04,C.metal,bx-balconyW/2+i*balconyW/5,2.14,bz+.44);
+        box(balconyW,.06,.06,C.metal,bx,2.85,bz+.44);
+        for(const side of [-1,1])box(.06,.06,.9,C.metal,bx+side*balconyW/2,2.85,bz);
+        box(balconyW*.7,.22,.25,C.wood,bx,2.16,bz+.3);
+        for(let i=0;i<4;i++)B.sphere('lit',.13,0x52764b,bx-balconyW*.25+i*balconyW*.17,2.43,bz+.3,{sy:.11});
+      }
       if (villa) { box(bw * .35, 2.6, bd * .6, C.plasterWhite, bw / 2 + bw * .15, .3, bd * .05); gable(bd * .6 + .5, 1.2, bw * .35 + .4, roofCol, bw / 2 + bw * .15, 2.9, bd * .05, { ry: Math.PI / 2 }); windows(bw / 2 + bw * .15, bd * .05, bw * .35, bd * .6, .3, 1, 2.4, { door: false, gap: 1.3, back: false }); box(2, .12, 1.0, C.stone, -bw * .25, 1.6, bd / 2 + .5); for (const sx of [-1, 1]) cyl(.07, 1.3, C.white, -bw * .25 + sx * .85, .3, bd / 2 + .9, { n: 6 }); }
       // Completed rooms form a compact two-bay side wing, then a second storey.
       // The wing remains within the reserved landmark footprint.
