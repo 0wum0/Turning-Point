@@ -1,6 +1,6 @@
 # Turning Point – Zielkonzept 1.4
 
-Stand: 17. Oktober 2026. Grundlage ist das vom Projektinhaber vorgegebene Gesamtkonzept 1.4. Dieses Dokument unterscheidet Zielbild, bereits vorhandene Systeme und noch ausstehende Arbeit. Es erklärt nicht die gesamte Version für fertig.
+Stand: 28. Oktober 2026. Grundlage ist das vom Projektinhaber vorgegebene Gesamtkonzept 1.4. Dieses Dokument unterscheidet Zielbild, bereits vorhandene Systeme und noch ausstehende Arbeit. Es erklärt nicht die gesamte Version für fertig.
 
 ## Leitlinie
 
@@ -50,7 +50,7 @@ Betriebsräume entstehen jetzt über persistente Bauaufträge: vorläufig ein bi
 | Nachweise | Passende echte Berufs-/Meisterqualifikation in jedem zugehörigen V2-Büro | Zusätzliche künftige Abschlussarten |
 | Statusleiste | Echte gemeinsame V2-Leiste auch im Innenraum; vier bedienbare Zustandsanzeigen; Datum/Jahresring | Vollständige Bewertung sämtlicher Materialien, Gegenstände und externer Aktienpositionen |
 | Vermögen | Nettovermögen aus Geld, Firmenwerten/-kassen und Immobilien inklusive zusätzlicher Einrichtung abzüglich Krediten | Bewertungsregeln ohne Doppelzählung für alle übrigen Vermögensarten |
-| Welt und Stadt | Karte, 3D-Stadt, eigene Gebäude, standortbezogene Aktionen und Versorgung; gemeinsame Besitznavigation; lokale Minikarte mit Kameraausschnitt und Spielfigur; sichtbare Straßenwege vor dem Gebäudeeinstieg; zusätzliche Fassaden-/Dachdetails | Weiterer Ausbau der Epochenmodelle, direkte Familiensteuerung und freie Bewegung außerhalb des Straßennetzes |
+| Welt und Stadt | Karte, 3D-Stadt, eigene Gebäude, standortbezogene Aktionen und Versorgung; gemeinsame Besitznavigation; lokale Minikarte mit Kameraausschnitt; auswählbare Hauptfigur und verfügbare Familienmitglieder mit getrennten Positionen und Straßenwegen; echte Familienaktionen an Treffpunkten; zusätzliche Fassaden-/Dachdetails | Weiterer Ausbau der Epochenmodelle, gleichzeitige Gruppensteuerung, eigenständige Familien-Arbeitsaufträge und freie Bewegung außerhalb des Straßennetzes |
 | Ausbau | Mehrjährige Betriebs- und Wohnbauaufträge, Vorschau, Pausen, Abbruch, Fortschritt und Gerüste; zusätzliche Wohn- und Betriebsräume mit eigenen Türen und Einrichtung; sichtbare Wohnhaus- und Gewerbe-Anbauten | Versorgungsmodule und freie Grundrisse |
 | Beruf, Studium, Kredit, Vermietung, Familie, Ämter | Bereits vorhandene Systeme bleiben nutzbar | Einzelabgleich mit endgültigen Regeln und Balancing von 1.4 |
 

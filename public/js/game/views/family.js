@@ -19,7 +19,7 @@ function childCard(c, v) {
   </article>`;
 }
 
-export default {
+const familyView = {
   id: 'family', label: 'Familie', icon: 'users',
   render(ctx) {
     const v = ctx.view; const p = v.partner; const cur = v.currency;
@@ -70,3 +70,16 @@ export default {
     });
   },
 };
+export default familyView;
+
+// Reuse the actual family controls and their server actions after arriving in the city.
+export function openCityFamily(ctx, actor, building) {
+  const v=ctx.view,c=actor.kind==='child'?v.children.find(c=>String(c.id)===String(actor.childId)):null,p=v.partner;
+  if(actor.kind==='child'&&!c || actor.kind==='partner'&&!p)return;
+  const m=modal(html`<h3>${actor.name} · ${building.name}</h3>
+    <p class="dim">${actor.kind==='child'&&building.type==='schule'?'Schule, Begabungen und den weiteren Bildungsweg planen.':'Gemeinsame Zeit und die nächsten Schritte deiner Familie.'}</p>
+    ${c?childCard(c,v):html`<section class="card"><h4>${p.name}</h4><p>${p.age} Jahre · ${p.profession}</p><p>Zufriedenheit ${p.sat} %</p>${bar(p.sat,'good')}
+      <div class="row mt"><button class="btn" data-p="gift">${icon('gift')} Geschenk</button><button class="btn" data-p="together" ${p.canTogether?'':'disabled'}>${icon('heart')} Gemeinsame Zeit</button></div></section>`}
+    <div class="row end mt"><button class="btn ghost" data-go="family">Familienübersicht</button><button class="btn" data-close="1">Zur Stadt</button></div>`,{wide:true});
+  familyView.bind(m.el,{...ctx,go:route=>{m.close();ctx.go(route);},act:async(...args)=>{const result=await ctx.act(...args);m.close();return result;}});
+}

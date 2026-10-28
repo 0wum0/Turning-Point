@@ -194,9 +194,11 @@ export async function createCity3D(host, aerial, opts) {
     const r = host.getBoundingClientRect(), blocked = [...controls,minimap.element,walker.element,card].filter(el=>el.offsetWidth && el.offsetHeight).map(el=>el.getBoundingClientRect());
     host.classList.toggle('city-has-selection',!card.hidden);
     const player=walker.snapshot(),pp=new T.Vector3((player.x-1000)*UNIT,2.8,(player.y-625)*UNIT).project(camera);
+    playerTag.textContent=player.label;
     const px=(pp.x+1)*r.width/2,py=(1-pp.y)*r.height/2;
-    playerTag.hidden=Math.abs(pp.x)>.96 || Math.abs(pp.y)>.9 || pp.z>1 || pp.z< -1 || blocked.some(b=>px+r.left+18>b.left&&px+r.left-18<b.right&&py+r.top+16>b.top&&py+r.top-16<b.bottom);
+    playerTag.hidden=Math.abs(pp.x)>.96 || Math.abs(pp.y)>.9 || pp.z>1 || pp.z< -1;
     playerTag.style.left=`${px}px`;playerTag.style.top=`${py}px`;
+    const tagBox=playerTag.getBoundingClientRect();playerTag.style.visibility=blocked.some(b=>tagBox.right>b.left&&tagBox.left<b.right&&tagBox.bottom>b.top&&tagBox.top<b.bottom)?'hidden':'';
     for (const pin of pins) {
       const p = pin.anchor.clone().project(camera), x=(p.x+1)*.5*r.width, y=(1-p.y)*.5*r.height;
       // Markers remain anchored to the building; the city list also exposes those behind camera controls.
@@ -220,7 +222,7 @@ export async function createCity3D(host, aerial, opts) {
     const d = key && describe(key); if (!d) { card.hidden = true; return; }
     card.innerHTML = ''; const eyebrow = document.createElement('span'); eyebrow.textContent = d.kind || ''; const h = document.createElement('strong'); h.textContent = d.title; card.append(eyebrow, h);
     for (const l of d.lines || []) { const s = document.createElement('small'); s.textContent = l; card.append(s); }
-    const row = document.createElement('div'); const enter = document.createElement('button'); enter.type = 'button'; enter.className = 'btn primary'; enter.textContent = 'Gebäude betreten'; enter.onclick = () => onEnter(key);
+    const row = document.createElement('div'); const enter = document.createElement('button'); enter.type = 'button'; enter.className = 'btn primary'; enter.textContent = d.enterLabel || 'Gebäude betreten';enter.disabled=d.canEnter===false;enter.title=d.reason || ''; enter.onclick = () => onEnter(key);
     const close = document.createElement('button'); close.type = 'button'; close.className = 'btn ghost'; close.textContent = 'Schließen'; close.onclick = () => { card.hidden = true; ring.visible = false; focusKey = null; invalidate(); };
     row.append(enter, close); card.append(row); card.hidden = false;
   };
@@ -247,8 +249,13 @@ export async function createCity3D(host, aerial, opts) {
   const clampTarget = () => { target.x = Math.max(-bounds.x, Math.min(bounds.x, target.x)); target.z = Math.max(-bounds.z, Math.min(bounds.z, target.z)); };
   let flight = null, followPlayer = false;
   const cancelFlight = () => { if(flight){const done=flight.done;flight=null;done(false);} };
-  const walker = createCityWalker(T, scene, host, aerial, {start:opts.playerPosition,onPosition:opts.onPlayerPosition,reduced,invalidate});
-  const minimap = createCityMinimap(T, host, aerial, {camera,player:()=>walker.snapshot(),invalidate,pan:(x,y)=>{
+  const walker = createCityWalker(T, scene, host, aerial, {start:opts.playerPosition,onPosition:opts.onPlayerPosition,reduced,invalidate,actor:opts.actor,actorPositions:opts.actorPositions});
+  const minimap = createCityMinimap(T, host, aerial, {camera,player:()=>walker.snapshot(),actors:opts.actors,onActor:id=>{
+    const actor=opts.actors.find(a=>a.id===id&&a.available);if(!actor)return;
+    cancelFlight();walker.setActor(actor);followPlayer=false;opts.onActorChange?.(id);
+    const p=walker.snapshot();target.x=(p.x-1000)*UNIT;target.z=(p.y-625)*UNIT;clampTarget();
+    if(focusKey)showCard(focusKey);invalidate();
+  },invalidate,pan:(x,y)=>{
     cancelFlight();followPlayer=false;target.x=(x-1000)*UNIT;target.z=(y-625)*UNIT;clampTarget();invalidate();
   }});
   async function walkTo(key) {

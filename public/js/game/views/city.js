@@ -2,6 +2,7 @@ import { html, raw, icon, infoBtn, api, on, mount, toast, esc } from '../ui.js';
 import { cityJourney, cityJourneyShortcut, bindCityJourney } from '../city-journey.js';
 import { rememberCity } from '../city-context.js';
 import {openFound} from '../found.js';
+import {cityFamily, familyDestination} from '../city-family.js';
 import { businessLife } from '../business-life.js';
 import { isV2 } from '../design.js';
 import { createCityCamera } from '../city-camera.js';
@@ -49,6 +50,10 @@ export default {
     data.visualHour = ctx.ui._aerial.hour; ctx.ui.cityData = data;
     if (isV2()) rememberCity(ctx, data.city.id);
     let scene3d=null, sceneVersion=0, disposed=false;
+    const actors=cityFamily(ctx.view,data.city.id);
+    if(ctx.ui.enterBuilding || ctx.ui.enterOffice)ctx.ui.cityActor='self';
+    if(!actors.some(a=>a.id===ctx.ui.cityActor&&a.available))ctx.ui.cityActor='self';
+    const activeActor=()=>actors.find(a=>a.id===ctx.ui.cityActor&&a.available)||actors[0];
     const svg = root.querySelector('svg.aerial'); const spots = ctx.ui._aerial.spots;
     const saved = ctx.ui.cityBox?.id === data.city.id ? ctx.ui.cityBox.box : null;
     const camera = createCityCamera(svg, { saved, smooth: isV2, onChange: box => { ctx.ui.cityBox = { id:data.city.id, box }; } });
@@ -71,29 +76,37 @@ export default {
     const hourOf = () => cityHour(ctx), testDoy = () => testNum('cityDoy');
     let entering = false; const host3d = root.querySelector('#city3dHost');
     const KIND = { rathaus:'Ämter, Wahlen & Umzug', bahnhof:'Reisen & Umzug', markt:'Lebensmittel & Handel', arzt:'Gesundheit & Vorsorge', schule:'Schule & Kinder', zeitung:'Nachrichten, Stellen & Wohnungen', lotto:'Lotto', pension:'Wohnen auf Zeit', spielbank:'Spielbank', home:'Wohnen', biz:'Dein Betrieb', work:'Dein Arbeitsplatz' };
-    const describe = (key) => { const b = data.buildings.find(x => x.key === key); if (!b) return null; const ready = b.tasks.filter(t => t.ready && !t.blocked).length; return { title:b.name, kind:b.own ? 'DEIN BESITZ' : 'ÖFFENTLICHER ORT', lines:[KIND[b.type] || '', !data.here ? 'Du bist nicht in dieser Stadt: nur ansehen.' : ready ? `${ready} Aufgabe${ready === 1 ? '' : 'n'} bereit` : 'Keine Aufgabe bereit', 'Klicken = auswählen · Doppelklick = betreten'].filter(Boolean) }; };
+    const describe = (key) => { const b = data.buildings.find(x => x.key === key); if (!b) return null; const ready = b.tasks.filter(t => t.ready && !t.blocked).length, destination=familyDestination(activeActor(),b); return { title:b.name, enterLabel:destination.label,canEnter:destination.allowed,reason:destination.reason,kind:b.own ? 'DEIN BESITZ' : 'ÖFFENTLICHER ORT', lines:[KIND[b.type] || '', !data.here ? 'Du bist nicht in dieser Stadt: nur ansehen.' : ready ? `${ready} Aufgabe${ready === 1 ? '' : 'n'} bereit` : 'Keine Aufgabe bereit', 'Klicken = auswählen · Doppelklick = betreten'].filter(Boolean) }; };
     const enter = async (key) => {
       const b = data.buildings.find((x) => x.key === key); if (!b) return;
+      const actor=isV2()?activeActor():actors[0],destination=familyDestination(actor,b);
+      if(!destination.allowed){toast(destination.reason);return;}
       ctx.ui.cityBuilding = key;
       if (entering || document.querySelector('.interior')) return;
       entering = true;
       const enteringScene=scene3d, enteringVersion=sceneVersion;
       try {
-        const loading = import('../interior.js');
+        const loading = actor.kind==='self'?import('../interior.js'):import('./family.js');
         if (enteringScene) {
           // Keep the street visible during the walk; fade only for the final entrance transition.
           host3d.scrollIntoView({block:'nearest',behavior:'instant'});
           const [arrived]=await Promise.all([enteringScene.walkTo(key),loading]);
           if(!arrived || disposed || enteringVersion!==sceneVersion)return;
+          if(activeActor().id!==actor.id)return;
+          if(actor.kind!=='self'){
+            const current=cityFamily(ctx.view,data.city.id).find(a=>a.id===actor.id&&a.available);
+            if(current)(await loading).openCityFamily(ctx,current,b);
+            return;
+          }
           host3d.classList.add('city-entering');
           if(!await enteringScene.flyTo(key))return;
         }
-        const { openInterior } = await loading; if (!disposed && root.isConnected && enteringVersion===sceneVersion) await openInterior(ctx, b, data);
+        const module = await loading; if (!disposed && root.isConnected && enteringVersion===sceneVersion){if(actor.kind==='self')await module.openInterior(ctx,b,data);else module.openCityFamily(ctx,actor,b);}
       }
       catch (e) { toast(e.message, 'bad'); } finally { entering = false; host3d.classList.remove('city-entering'); }
     };
     if(ctx.ui.enterBuilding||ctx.ui.enterOffice){const key=ctx.ui.enterBuilding||`biz:${ctx.ui.enterOffice}`;delete ctx.ui.enterBuilding;delete ctx.ui.enterOffice;queueMicrotask(()=>{if(root.isConnected)enter(key);});}
-    const select = (key) => {
+    const select = (key, scroll = true) => {
       if (!isV2()) return enter(key);
       const b = data.buildings.find(x => x.key === key); if (!b) return;
       ctx.ui.cityBuilding = key;
@@ -104,17 +117,21 @@ export default {
       const life = b.type === 'biz' ? businessLife(ctx.view.companies.find(c => c.id === b.ref)) : null;
       mount(root.querySelector('#citySelection'), html`<div class="city-selection-icon">${icon(b.icon || 'landmark')}</div><span class="city-eyebrow">${b.own ? 'DEIN BESITZ' : 'ÖFFENTLICHER ORT'}</span><h3>${b.name}</h3><p>${!data.here ? 'Du besuchst diese Stadt. Aktionen sind an deinem Wohnort verfügbar.' : ready ? `${ready} Aufgaben für dich bereit` : 'Entdecke die Möglichkeiten in diesem Gebäude.'}</p><button class="btn primary" id="cityEnter">${icon('arrow-right')} Gebäude betreten</button>`);
       root.querySelector('#cityEnter').onclick = () => enter(key);
+      const destination=familyDestination(activeActor(),b),entry=root.querySelector('#cityEnter');
+      entry.textContent=destination.label;entry.disabled=!destination.allowed;entry.title=destination.reason||'';
+      if(activeActor().kind!=='self')root.querySelector('#citySelection p').textContent=destination.reason || `${activeActor().name}: ${b.type==='schule'?'Bildung und Begabungen planen.':'Hier trefft ihr euch für Familienaktionen.'}`;
       if (life) {
         const summary = document.createElement('p'); summary.className = `city-business-status ${life.tone}`;
         summary.textContent = `${life.status} · ${life.why}`;
         root.querySelector('#cityEnter').before(summary);
       }
       root.querySelector('.bl-panel').scrollTop = 0;
-      if (matchMedia('(max-width:650px) and (orientation:portrait)').matches) root.querySelector('#citySelection').scrollIntoView({ block:'nearest', behavior:media.matches || document.documentElement.dataset.motion === 'off' ? 'instant' : 'smooth' });
+      if (scroll && matchMedia('(max-width:650px) and (orientation:portrait)').matches) root.querySelector('#citySelection').scrollIntoView({ block:'nearest', behavior:media.matches || document.documentElement.dataset.motion === 'off' ? 'instant' : 'smooth' });
     };
     const switchScene = async (mode, remember = true) => {
       const version=++sceneVersion, host=root.querySelector('#city3dHost'), status=root.querySelector('#citySceneStatus');
-      scene3d?.dispose();scene3d=null;if(remember)ctx.ui.cityScene=mode;
+      scene3d?.dispose();scene3d=null;delete host.__city3d;if(remember)ctx.ui.cityScene=mode;
+      if(mode==='2d' && ctx.ui.cityActor!=='self'){ctx.ui.cityActor='self';if(isV2()&&ctx.ui.cityBuilding)select(ctx.ui.cityBuilding,false);}
       const three=mode==='3d' && isV2(); host.hidden=!three;root.querySelector('#aerialHost').hidden=three;
       root.querySelector('.aerial-card').dataset.scene=three?'3d':'2d';
       root.querySelector('.panel-head p').textContent = `${data.city.state} · ${three ? '3D-Stadt – ziehen zum Drehen, Mausrad zum Zoomen, Gebäude oder Marker auswählen.' : 'Luftansicht – ziehen zum Verschieben, Mausrad zum Zoomen, Gebäude auswählen und die Stadt entdecken.'}`;
@@ -124,7 +141,7 @@ export default {
       try {
         const {createCity3D}=await import('../city-3d.js');
         if(disposed || version!==sceneVersion)return;
-        created=await createCity3D(host,ctx.ui._aerial,{onSelect:select,onEnter:enter,describe,selected:ctx.ui.cityBuilding,reduced:()=>media.matches || document.documentElement.dataset.motion==='off',getHour:hourOf,era:ctx.view.date.eraKey,doy:testDoy() ?? ctx.view.date.doy,cityId:data.city.id,playerPosition:ctx.ui.cityPlayers?.[data.city.id],onPlayerPosition:p=>{(ctx.ui.cityPlayers ||= {})[data.city.id]=p;}});
+        created=await createCity3D(host,ctx.ui._aerial,{onSelect:select,onEnter:enter,describe,selected:ctx.ui.cityBuilding,reduced:()=>media.matches || document.documentElement.dataset.motion==='off',getHour:hourOf,era:ctx.view.date.eraKey,doy:testDoy() ?? ctx.view.date.doy,cityId:data.city.id,actor:activeActor(),actors,actorPositions:ctx.ui.cityFamilyPositions?.[data.city.id],onActorChange:id=>{ctx.ui.cityActor=id;if(ctx.ui.cityBuilding)select(ctx.ui.cityBuilding,false);},playerPosition:ctx.ui.cityPlayers?.[data.city.id],onPlayerPosition:(p,id)=>{((ctx.ui.cityFamilyPositions ||= {})[data.city.id] ||= {})[id]=p;if(id==='self')(ctx.ui.cityPlayers ||= {})[data.city.id]=p;}});
         if(disposed || version!==sceneVersion){created?.dispose();return;}
         scene3d=created;status.hidden=true; host.__city3d = created; // Prüf-/Leistungshilfe: host.__city3d.stats()
       } catch(e) { if(disposed || version!==sceneVersion)return; await switchScene('2d');status.textContent=e.message;status.hidden=false; }

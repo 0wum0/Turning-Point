@@ -1,9 +1,10 @@
 import {streetPoint, streetRoute, routeLength, routePosition} from './city-path.js';
 
 /** A visual city avatar. No travel, time, cash or residence mutations are made here. */
-export function createCityWalker(T, scene, host, aerial, {start, onPosition = () => {}, reduced, invalidate}) {
+export function createCityWalker(T, scene, host, aerial, {start, onPosition = () => {}, reduced, invalidate, actor={id:'self',kind:'self',label:'Du',age:25}, actorPositions={}}) {
   const first = aerial.landmarks.find(b=>b.residence) || aerial.landmarks.find(b=>b.own) || aerial.landmarks[0];
-  let position = streetPoint(aerial.roads, start || first), journey = null, disposed = false, phase = 0;
+  const positions={self:start,...actorPositions};
+  let position = streetPoint(aerial.roads, positions[actor.id] || first), journey = null, disposed = false, phase = 0;
   const person = new T.Group(), figure = new T.Group(); person.add(figure); scene.add(person);
   const coat = new T.MeshStandardMaterial({color:0x367e97,roughness:.85});
   const skin = new T.MeshStandardMaterial({color:0xd5a77a,roughness:.9});
@@ -27,24 +28,27 @@ export function createCityWalker(T, scene, host, aerial, {start, onPosition = ()
   const cancel=document.createElement('button');cancel.type='button';cancel.textContent='Abbrechen';
   bar.append(caption,progress,skip,cancel);host.append(bar);
   function place() { person.position.set((position.x-1000)*.1,0,(position.y-625)*.1); }
+  function remember(){positions[actor.id]={x:position.x,y:position.y};onPosition({...positions[actor.id]},actor.id);}
+  function appearance(){figure.scale.setScalar(actor.kind==='child'?Math.min(1,.6+actor.age/45):1);coat.color.setHex(actor.kind==='child'?0xa47638:actor.kind==='partner'?0x95669e:0x367e97);skip.textContent=actor.kind==='self'?'Direkt hinein':'Direkt zum Ziel';}
   function finish(ok) {
     if(!journey)return;
     const current=journey;journey=null;
     if(ok)position={...current.path.at(-1)};
     place();for(const limb of limbs)limb.rotation.x=0;figure.position.y=0;
-    line.visible=false;bar.hidden=true;onPosition({x:position.x,y:position.y});current.resolve(ok);invalidate();
+    line.visible=false;bar.hidden=true;remember();current.resolve(ok);invalidate();
   }
-  skip.onclick=()=>finish(true);cancel.onclick=()=>finish(false);place();
+  skip.onclick=()=>finish(true);cancel.onclick=()=>finish(false);place();appearance();
   bar.onkeydown=e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();finish(false);}};
   return {
     element:bar,
+    setActor(next){if(disposed || next.id===actor.id)return;finish(false);remember();actor=next;position=streetPoint(aerial.roads,positions[actor.id]||first);place();appearance();invalidate();},
     cancel(){finish(false);},
     walkTo(key) {
       if(disposed)return Promise.resolve(false);
       const b=aerial.landmarks.find(b=>b.key===key);if(!b)return Promise.resolve(false);
       finish(false);
       const path=streetRoute(aerial.roads,position,b),length=routeLength(path);
-      if(reduced() || length<1){position={...path.at(-1)};place();onPosition({...position});invalidate();return Promise.resolve(true);}
+      if(reduced() || length<1){position={...path.at(-1)};place();remember();invalidate();return Promise.resolve(true);}
       const vertices=[];
       for(let i=1;i<path.length;i++){
         const a=path[i-1],b=path[i],l=Math.hypot(b.x-a.x,b.y-a.y),nx=-(b.y-a.y)/l*.12,nz=(b.x-a.x)/l*.12;
@@ -52,7 +56,7 @@ export function createCityWalker(T, scene, host, aerial, {start, onPosition = ()
         vertices.push(...point(a,-1),...point(a,1),...point(b,1),...point(a,-1),...point(b,1),...point(b,-1));
       }
       line.geometry.dispose();line.geometry=new T.BufferGeometry();line.geometry.setAttribute('position',new T.Float32BufferAttribute(vertices,3));line.visible=true;
-      caption.textContent=`Unterwegs: ${b.name}`;progress.value=0;bar.hidden=false;
+      caption.textContent=`${actor.label} → ${b.name}`;progress.value=0;bar.hidden=false;
       return new Promise(resolve=>{journey={key,path,length,elapsed:0,duration:Math.min(4200,Math.max(1600,length*5)),resolve};invalidate();});
     },
     update(dt) {
@@ -65,7 +69,7 @@ export function createCityWalker(T, scene, host, aerial, {start, onPosition = ()
       if(ratio===1)finish(true);
       return !!journey;
     },
-    snapshot(){return {x:position.x,y:position.y,walking:!!journey,destination:journey?.key || null,path:journey?.path || []};},
-    dispose(){disposed=true;finish(false);bar.remove();},
+    snapshot(){return {x:position.x,y:position.y,actorId:actor.id,label:actor.label,kind:actor.kind,walking:!!journey,destination:journey?.key || null,path:journey?.path || []};},
+    dispose(){disposed=true;finish(false);remember();bar.remove();},
   };
 }

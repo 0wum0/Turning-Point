@@ -1,8 +1,16 @@
 // Stable north-up local map: the same roads/buildings as the rendered city, not the Germany map.
-export function createCityMinimap(T, host, aerial, {camera, pan, invalidate, player}) {
+export function createCityMinimap(T, host, aerial, {camera, pan, invalidate, player, actors=[], onActor=()=>{}}) {
   const ns='http://www.w3.org/2000/svg';
   const svgNode=(name,attrs,parent)=>{const el=document.createElementNS(ns,name);for(const [k,v]of Object.entries(attrs))el.setAttribute(k,String(v));parent?.append(el);return el;};
   const pane=document.createElement('section');pane.className='city-minimap';pane.setAttribute('aria-label','Lokale Stadtübersicht');
+  let actorSelect;
+  if(actors.length>1){
+    pane.classList.add('city-minimap-family');
+    const label=document.createElement('label');label.className='city-family-control';label.append('Aktive Person');
+    actorSelect=document.createElement('select');actorSelect.setAttribute('aria-label','Person in der Stadt steuern');
+    for(const actor of actors){const option=document.createElement('option');option.value=actor.id;option.textContent=`${actor.label}${actor.available?'':` · ${actor.reason}`}`;option.disabled=!actor.available;actorSelect.append(option);}
+    actorSelect.value=player().actorId;actorSelect.onchange=()=>onActor(actorSelect.value);label.append(actorSelect);pane.append(label);
+  }
   const toggle=document.createElement('button');toggle.type='button';toggle.className='city-minimap-toggle';toggle.textContent='Stadtübersicht';toggle.setAttribute('aria-expanded','true');
   const body=document.createElement('div');body.className='city-minimap-body';
   body.hidden=host.clientWidth<650 || host.clientHeight<320;toggle.setAttribute('aria-expanded',String(!body.hidden));
@@ -26,12 +34,15 @@ export function createCityMinimap(T, host, aerial, {camera, pan, invalidate, pla
   let cx=1000,cy=625;
   map.onkeydown=e=>{const directions={ArrowLeft:[-100,0],ArrowRight:[100,0],ArrowUp:[0,-100],ArrowDown:[0,100]};if(e.key==='Home'){e.preventDefault();locatePlayer();}else if(directions[e.key]){e.preventDefault();const [x,y]=directions[e.key];pan(cx+x,cy+y);}};
   const ray=new T.Raycaster(),hit=new T.Vector3();
-  let lastPath='';
+  let lastPath='',wasWalking=false;
   return {
     element:pane,
     update(shown) {
       cx=shown.x*10+1000;cy=shown.z*10+625;center.setAttribute('cx',cx);center.setAttribute('cy',cy);
       const p=player();dot.setAttribute('cx',p.x);dot.setAttribute('cy',p.y);
+      if(actorSelect && p.walking && !wasWalking && host.clientWidth<650){body.hidden=true;toggle.setAttribute('aria-expanded','false');}
+      wasWalking=p.walking;
+      if(actorSelect){actorSelect.value=p.actorId;locate.textContent=p.kind==='self'?'Zu mir':'Zur Figur';legend.querySelector('span').textContent=p.kind==='self'?'● Du':'● Figur';}
       const points=p.path.map(v=>`${v.x},${v.y}`).join(' ');if(points!==lastPath){route.setAttribute('points',points);lastPath=points;}
       // Clip naturally at the SVG edges; corners above the horizon project to a distant point.
       const corners=[[-1,1],[1,1],[1,-1],[-1,-1]].map(([x,y])=>{

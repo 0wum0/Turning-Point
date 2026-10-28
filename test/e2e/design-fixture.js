@@ -55,7 +55,7 @@ app.get('/api/city',(req,res)=>{
 });
 app.get('/api/social/leaderboard',(_,res)=>res.json({ok:true,cats:[{key:'wealth',label:'Vermögen'}],cat:'wealth',scope:'all',rows:[],total:0,hint:'Testwelt',unit:'money'}));
 app.get('/api/found-options',(req,res)=>res.json({ok:true,found:require(R+'/src/game/business').foundOptions(w,state,Number(req.query.cityId)||state.cityId)}));
-for(const action of ['buyFood','buyProvision','useProvision','restNow','foundBiz','bizCollect','bizBank','furnishingOrder','furnishingMove','bizExpand','bizUpgrade','bizCancelConstruction','homeExpand','homeCancelConstruction'])app.post('/api/action/'+action,(req,res)=>{
+for(const action of ['school','path','giftChild','gift','together','buyFood','buyProvision','useProvision','restNow','foundBiz','bizCollect','bizBank','furnishingOrder','furnishingMove','bizExpand','bizUpgrade','bizCancelConstruction','homeExpand','homeCancelConstruction'])app.post('/api/action/'+action,(req,res)=>{
  try {
   const result=require(R+'/src/game/actions').run(action,{world:w,state,user,input:req.body,now:Date.now()});
   if(['bizCollect','bizBank','furnishingOrder','furnishingMove','bizExpand','bizUpgrade','bizCancelConstruction','homeExpand','homeCancelConstruction'].includes(action)){user.coins+=state.fx.coins||0;user.efs_pool+=state.fx.efs||0;state.fx.coins=0;state.fx.efs=0;}

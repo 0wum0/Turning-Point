@@ -249,3 +249,15 @@ Die Position wird für jede Stadt während der Sitzung behalten. Wechsel zu Clas
 Gebäudemodelle erhalten Firstabdeckungen, Dachränder und Regenrinnen, frühe Wohnhäuser/Gasthäuser zusätzlich Fensterläden. Profilierte Türen und kleine Eingangsleuchten ergänzen die Fassaden; spätere Wohnhäuser besitzen Balkone mit Geländern und Pflanzkästen. Die zusätzlichen Teile nutzen die vorhandenen Material-Batches.
 
 Prüfung: `test/city-path.test.js` prüft Straßenbindung und Interpolation; `test/e2e/design-city-navigation.test.js` prüft Laufweg, Abbruch, Einstieg, Kamera-Minimap, mobile Überlagerungen und reduzierte Bewegung. Die vorhandenen Stadt-/Gilde-Tests prüfen weiterhin Rendererbudget und Gebäudeaktionen.
+
+### Familienmitglieder in der Stadt
+
+Die lokale Minikarte bietet bei vorhandener Familie eine Auswahl „Aktive Person“. Jeweils die ausgewählte Figur wird dargestellt und bewegt; Name, Größe und Kleidungsfarbe unterscheiden sie von der Hauptfigur. Ihre Position wird je Stadt und Person während der Sitzung getrennt gespeichert. Ein Wechsel bricht einen laufenden Weg oder Gebäudeeinstieg ab. Die Auswahl wechselt weder den Erben noch den gemeldeten Wohnort.
+
+Steuerbar sind der zusammenwohnende NPC-Partner am Wohnort sowie zu Hause gemeldete Kinder in ihrer tatsächlich registrierten Stadt. Die vorläufige Bediengrenze für eigene Kinderwege liegt bei sechs Jahren. Jüngere, vermisste oder anderweitig untergebrachte Kinder und verknüpfte Mitspieler erscheinen mit einem Grund als nicht auswählbar. Die Zuordnung verwendet die vom Server gelieferten Stadt-IDs; ein Kind wird nicht automatisch dem Wohnort des Spielers zugeordnet.
+
+Kinder können zur Schule gehen; Markt, Rathaus und das aktuelle Wohngebäude dienen als Familientreffpunkte. Nach Ankunft öffnet sich die vorhandene Familienbedienung für genau diese Person: Schulwahl, Ausbildung/Studium, Begabungen, Geschenke beziehungsweise gemeinsame Zeit. Es gelten die bisherigen Serverregeln, Kosten und Wartezeiten. Das Laufen selbst erzeugt weder Einkommen noch EFS und schließt keine Ausbildung automatisch ab. Betriebs-, Berufs- und sonstige Gebäudeaktionen bleiben bei der Hauptfigur; direkte Besitzverknüpfungen wechseln dafür zurück zu ihr.
+
+Auf kleinen Bildschirmen bleibt die Karte kompakt und klappt beim Beginn eines Familienwegs ein. Der Wechsel zur 2D-Karte setzt die Bedienung auf die Hauptfigur zurück. Classic behält seine vorhandene Familien- und Gebäudeverwaltung. Mehrere gleichzeitig steuerbare Gruppenmitglieder, freie Wege außerhalb der Straßen und eigenständige Arbeitsaufträge für Familienmitglieder bleiben offen.
+
+Prüfung: `test/city-family.test.js` prüft Orts-/Statusregeln, eingeschränkte Ziele und getrennte Kinderwohnorte. `test/e2e/design-city-family.test.js` prüft echte Schulwahl und Geschenke, gemeinsame Zeit, getrennte Positionen, Wegabbruch beim Personenwechsel sowie mobile und Classic-Bedienung.

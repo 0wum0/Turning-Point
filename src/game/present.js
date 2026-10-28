@@ -232,7 +232,7 @@ function present(world, state, user, now) {
     children: state.children.map((c) => ({
       id: c.id, name: c.name, gender: c.gender, age: ageOfChild(state, c), status: c.status, sat: round(c.sat), school: c.school, schoolName: c.school ? SCHOOLS[c.school].name : null,
       schoolDone: c.schoolDone || null, pendingSchool: !!c.pendingSchool, pendingPath: !!c.pendingPath, path: c.path, pkey: c.pkey, profession: c.pkey ? (world.prof(c.pkey) || {}).name : null,
-      daysLeft: c.daysLeft || 0, city: (world.city(c.cityId) || {}).name, searchLeft: c.status === 'runaway' ? Math.max(0, c.searchDeadline - state.day) : 0,
+      daysLeft: c.daysLeft || 0, cityId:c.cityId, city: (world.city(c.cityId) || {}).name, searchLeft: c.status === 'runaway' ? Math.max(0, c.searchDeadline - state.day) : 0,
       tal: TV.childView(world, state, c, idx, ageOfChild(state, c)),
     })),
     talents: TLN.enabled() ? { me: TV.meView(world, state), labels: TLN.C().labels || {}, revealAge: Number(TLN.C().revealAge || 6), edu: TLN.eduOf(world, state.cityId) } : null,
