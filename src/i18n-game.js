@@ -16,6 +16,7 @@ let LOADED = false;
 
 const DEMONYMS = { 'Kölner': 'Cologne', 'Münchner': 'Munich', 'Berliner': 'Berlin', 'Hamburger': 'Hamburg', 'Bremer': 'Bremen', 'Saarbrücker': 'Saarbrücken', 'Frankfurter': 'Frankfurt', 'Freiburger': 'Freiburg' };
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const BOUND = /[a-zäöüß0-9“)]{2}[.!?]\s+[A-ZÄÖÜ„]|[!?]\s+[A-ZÄÖÜ„]/; // Satzgrenze (nicht „Dr. Müller“)
 
 /** Zerlegt einen Text mit ${ausdruck} (auch mit verschachtelten Klammern) in feste und variable Teile. */
 function tokenizeJs(s) {
@@ -56,7 +57,7 @@ function addPair(de, en, tokenizer) {
   let src = '^'; const first = dt[0].lit;
   for (const t of dt) src += t.expr !== undefined ? '(.+?)' : esc(t.lit);
   src += '$';
-  const entry = { re: new RegExp(src, 's'), order, spec: dt.reduce((n, t) => n + (t.expr === undefined ? t.lit.length : 0), 0) };
+  const entry = { re: new RegExp(src, 's'), multi: dt.some((t) => t.expr === undefined && BOUND.test(t.lit)), order, spec: dt.reduce((n, t) => n + (t.expr === undefined ? t.lit.length : 0), 0) };
   const key = first.length >= 6 ? first.slice(0, 6) : null;
   if (key) { if (!BUCKETS.has(key)) BUCKETS.set(key, []); BUCKETS.get(key).push(entry); } else GENERAL.push(entry);
 }
@@ -89,6 +90,17 @@ function applyEntry(e, m) {
   return e.order.map((t) => (t.g !== undefined ? tr(m[t.g + 1]) : t.lit)).join('');
 }
 
+/** Mehrere Sätze: jeder Satz einzeln übersetzt, aber nur, wenn alle Sätze eine Übersetzung haben (sonst null). */
+function bySentences(s, opts) {
+  if (s.length > 700 || !/[.!?]\s+[A-ZÄÖÜ„]/.test(s)) return null;
+  const sents = s.split(/(?<=[.!?])\s+(?=[A-ZÄÖÜ„])/);
+  if (sents.length < 2) return null;
+  const out = sents.map((x) => tr(x, opts));
+  return out.every((x, i) => x !== sents[i]) ? out.join(' ') : null;
+}
+/** Eine Vorlage mit einem einzelnen Satz, deren Platzhalter mehrere Sätze verschluckt, wäre eine Fehlübersetzung – dann gewinnt die satzweise Übersetzung. */
+const viaSentences = (e, m, s, opts) => (!e.multi && m.slice(1).some((x) => BOUND.test(x)) ? bySentences(s, opts) : null);
+
 /**
  * Übersetzt einen Spieltext. Eigennamen (Betriebe, Personen, Städte, Chat, Briefe) werden nie nach dem
  * Kopfwort-Muster („Großbäckerei Koch“ → „Large bakery Koch“) verändert; das geschieht nur mit opts.head
@@ -103,9 +115,10 @@ function tr(s, opts) {
   let r = EXACT.get(s);
   if (r === undefined) {
     const lst = BUCKETS.get(s.slice(0, 6));
-    if (lst) for (const e of lst) { const m = e.re.exec(s); if (m) { r = applyEntry(e, m); break; } }
-    if (r === undefined) for (const e of GENERAL) { const m = e.re.exec(s); if (m) { r = applyEntry(e, m); break; } }
+    if (lst) for (const e of lst) { const m = e.re.exec(s); if (m) { r = viaSentences(e, m, s, opts) || applyEntry(e, m); break; } }
+    if (r === undefined) for (const e of GENERAL) { const m = e.re.exec(s); if (m) { r = viaSentences(e, m, s, opts) || applyEntry(e, m); break; } }
   }
+  if (r === undefined) r = bySentences(s, opts) || undefined; // mehrere Sätze ohne passende Gesamtvorlage
   if (r === undefined && s.length <= 60) { // Kopfwort-Regel nur für allgemeine Listen; Kölner Tageblatt immer
     const sp = s.indexOf(' ');
     if (sp > 3) {
@@ -121,10 +134,6 @@ function tr(s, opts) {
   if (r === undefined && s.length <= 140 && /(: |, )/.test(s)) { // „Sturmschaden: Großes Haus, Lindenallee 12“
     const parts = s.split(/(: |, )/); const out = parts.map((x) => (x === ': ' || x === ', ' ? x : tr(x, opts)));
     if (out.some((x, i) => x !== parts[i])) r = out.join('');
-  }
-  if (r === undefined && s.length <= 700 && /[.!?]\s+[A-ZÄÖÜ„]/.test(s)) { // mehrere Sätze: jeder Satz wird einzeln übersetzt, aber nur, wenn alle Sätze eine Übersetzung haben
-    const sents = s.split(/(?<=[.!?])\s+(?=[A-ZÄÖÜ„])/);
-    if (sents.length > 1) { const out = sents.map((x) => tr(x, opts)); if (out.every((x, i) => x !== sents[i])) r = out.join(' '); }
   }
   if (r === undefined) r = s;
   else if (/^[A-ZÄÖÜ]/.test(s) && /^[a-z]/.test(r)) r = r[0].toUpperCase() + r.slice(1);

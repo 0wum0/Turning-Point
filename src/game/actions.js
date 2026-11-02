@@ -532,7 +532,7 @@ const needActive = (c) => { if (c.abandoned) fail('Der Betrieb steht leer. Reakt
 A.buyBiz = ({ world, state, input }) => {
   const l = resolveListing(world, state, input.listingId);
   if (!l || l.type !== 'biz') fail('Dieses Angebot ist nicht mehr aktuell.');
-  if ((state.companies || []).length >= world.econ.companies.maxCompanies) fail('Du besitzt bereits die maximale Anzahl an Unternehmen.');
+  if ((state.companies || []).length + require('./dynasty').heldCount(state) >= world.econ.companies.maxCompanies) fail('Du besitzt bereits die maximale Anzahl an Unternehmen.');
   if (!biz.qualification(world, state, l.pkey, l.tier).ok) fail('Dir fehlt die Qualifikation für diesen Betrieb.');
   if (state.money < l.price) fail('Dafür reicht dein Geld nicht.');
   pay(state, l.price);

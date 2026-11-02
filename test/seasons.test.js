@@ -209,7 +209,7 @@ test('Betriebe in der Seuche: Krankenstand und Lockdown je Branche begrenzt, Sch
 test('Gesundheit: Anfängerschutz, Schutzmaßnahmen, Impfung, Krankheit begrenzt, Sterblichkeit klein', () => {
   noEpi();
   const run = (opt) => {
-    const s = mk(1957, 200, opt.over || {}); s.day = (1957 - 1945) * 365 + 230 + (opt.dayShift || 0); s.person.birthDay = s.day - 30 * 365;
+    const s = mk(1957, 200, opt.over || {}); if (opt.seed != null) s.seed = opt.seed; /* gleicher Samen für Vergleichsläufe, sonst schwankt der Test mit dem Zufall */ s.day = (1957 - 1945) * 365 + 230 + (opt.dayShift || 0); s.person.birthDay = s.day - 30 * 365;
     s.housing = { type: 'rent', cityId: s.cityId, base: 3000, rooms: 1 }; s.money = 5e7; s.meters.fridge = 100; s.flags.autoMaintain = true;
     if (opt.old) s.person.birthDay = s.day - 70 * 365;
     if (opt.prep) opt.prep(s);
@@ -221,12 +221,12 @@ test('Gesundheit: Anfängerschutz, Schutzmaßnahmen, Impfung, Krankheit begrenzt
       return { s, sick, minHealth, cases: s.epi.cases };
     } finally { w.econ.events = ev; settings.DEFAULTS['game.newbie_protect_days'] = nb; }
   };
-  const base = []; for (let k = 0; k < 6; k++) base.push(run({ over: { firstName: 'Karl' + k }, dayShift: k * 3 }));
+  const base = []; for (let k = 0; k < 6; k++) base.push(run({ over: { firstName: 'Karl' + k }, dayShift: k * 3, seed: 5000 + k }));
   const totalCases = base.reduce((a, x) => a + x.cases, 0);
   assert.ok(totalCases >= 1, 'ohne Schutz erwischt es einige');
   const nb = run({ newbie: true }); assert.strictEqual(nb.cases, 0, 'Anfängerschutz: gesund');
   for (const x of base) { assert.ok(x.minHealth > 5, `Gesundheit fällt nicht ins Bodenlose: ${x.minHealth}`); assert.strictEqual(x.s.status, 'alive', 'Jüngere sterben nicht an der Welle'); }
-  const prot = []; for (let k = 0; k < 6; k++) prot.push(run({ over: { firstName: 'Karl' + k }, dayShift: k * 3, prep: (s) => { s.epi.hygUntil = 99999; s.epi.shieldUntil = 99999; s.insurance.gesundheit = true; } }));
+  const prot = []; for (let k = 0; k < 6; k++) prot.push(run({ over: { firstName: 'Karl' + k }, dayShift: k * 3, seed: 5000 + k, prep: (s) => { s.epi.hygUntil = 99999; s.epi.shieldUntil = 99999; s.insurance.gesundheit = true; } }));
   assert.ok(prot.reduce((a, x) => a + x.cases, 0) <= totalCases, 'Schutz hilft');
   const old = []; for (let k = 0; k < 6; k++) old.push(run({ over: { firstName: 'Opa' + k }, old: true, dayShift: k * 3 }));
   for (const x of old) assert.ok(x.minHealth >= 5 || x.s.status !== 'alive');

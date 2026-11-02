@@ -91,7 +91,6 @@ const pairs = [
   ['Die Familie von ${f} bringt ${amount} als Aussteuer ein.', 'The family of ${f} brings in ${amount} as a dowry.'],
   ['Eine Aussteuer gibt es nur einmal pro Leben.', 'A dowry is given only once in a lifetime.'],
   ['Der Familienbetrieb der Partnerfamilie würde nur zu Geld gemacht: Für ihn fehlen dir die Qualifikation oder ein freier Betriebsplatz.', 'The partner family’s business would only be turned into money: you lack the qualification or a free business slot for it.'],
-  ['Ehe: ${n}', 'Marriage: ${n}'],
   // ---- Scheidung
   ['Die Verfahrenskosten (Anwalt und Gericht) kannst du dir noch nicht leisten.', 'You cannot yet afford the costs of the proceedings (lawyer and court).'],
   ['Der Scheidungsantrag ist gestellt.', 'The divorce petition has been filed.'], ['Nach dem Trennungsjahr (${n} Tage) wird die Ehe geschieden.', 'After the year of separation (${n} days) the marriage will be dissolved.'],
@@ -106,7 +105,7 @@ const pairs = [
   ['Zugewinn: Wer in der Ehe mehr dazugewonnen hat, gibt dem Partner die Hälfte des Unterschieds ab (inflationsbereinigt). Gütertrennung und Mitgift kennen keinen Ausgleich; bei der Mitgift fällt die Aussteuer an die Familie zurück.', 'Accrued gains: whoever gained more during the marriage gives the partner half of the difference (adjusted for inflation). Separation of property and dowry have no settlement; with a dowry the dowry reverts to the family.'],
   ['Die Kinder, die gehen, erben nicht mehr bei dir.', 'The children who leave no longer inherit from you.'],
   ['Mitgift zurückgegeben', 'Dowry returned'], ['An die Familie von ${p} gehen zurück: ${list}.', 'Returned to the family of ${p}: ${list}.'],
-  ['die Aussteuer in bar', 'the dowry in cash'],
+  ['Geld-Aussteuer', 'cash dowry'],
   // ---- Kinder im Familienbetrieb
   ['Die Einarbeitung ist gerade ausgeschaltet.', 'Training in the family business is switched off at the moment.'], ['Kind nicht gefunden.', 'Child not found.'], ['Das Kind lebt nicht bei dir.', 'The child does not live with you.'],
   ['Dein Kind wird schon eingearbeitet.', 'Your child is already being trained.'], ['Zur Einarbeitung muss ein Kind mindestens ${n} Jahre alt sein.', 'A child must be at least ${n} years old to be trained in the business.'],
@@ -133,17 +132,17 @@ const pairs = [
   ['Im Betrieb arbeiten Mitspieler – beende erst deren Arbeitsverhältnisse.', 'Other players work in the business – end their employment first.'], ['Beende zuerst die Lieferverträge des Betriebs.', 'End the business’s supply contracts first.'],
   ['Steuer und Gebühren der Übergabe kannst du dir noch nicht leisten.', 'You cannot yet afford the tax and fees for the handover.'],
   ['${n} übergibt „${firm}“ an ${c}.', '${n} hands “${firm}” over to ${c}.'],
-  ['„${firm}“ gehört jetzt ${f}.', '“${firm}” now belongs to ${f}.'], ['Steuer ${tax}, Gebühren ${fee}.', 'Tax ${tax}, fees ${fee}.'], ['Du gehst in den Ruhestand.', 'You retire.'],
+  ['„${firm}“ gehört jetzt ${f}.', '“${firm}” now belongs to ${f}.'], ['Steuer ${tax}, Gebühren ${fee}.', 'Tax ${tax}, fees ${fee}.'], ['Du bist jetzt im Ruhestand.', 'You are retired now.'],
   ['Nachfolge geregelt', 'Succession settled'],
   ['Du führst „${firm}“ weiter – eingearbeitet, qualifiziert und mit der Erfahrung aus den Jahren im Betrieb.', 'You carry on “${firm}” – trained, qualified and with the experience of your years in the business.'],
   ['Dein Elternteil hat dich im Familienbetrieb eingearbeitet.', 'Your parent trained you in the family business.'],
   ['Der Betrieb bleibt in der Familie und zählt jetzt eine Generation mehr: das bringt Kundenbindung und Ansehen.', 'The business stays in the family and now counts one more generation: that brings customer loyalty and standing.'],
   ['Führe ihn weiter und gib ihn irgendwann an deine Kinder weiter.', 'Carry it on and hand it on to your children some day.'],
   // ---- Traditionsbetrieb
-  ['${c}: ${nm}', '${c}: ${nm}'], ['${c} wird zum „${nm}“.', '${c} becomes a “${nm}”.'],
-  ['Der Betrieb ist seit ${y} Jahren in Familienhand und in der ${g}. Generation.', 'The business has been in family hands for ${y} years and is in its ${g}. generation.'], ['Kunden schätzen das: etwas mehr Umsatz und Ansehen.', 'Customers appreciate that: a little more revenue and standing.'],
+  ['${c} wird zum „${nm}“.', '${c} becomes a “${nm}”.'],
+  ['Seit ${y} Jahren gehört der Betrieb der Familie; ${g} Generationen führen ihn.', 'For ${y} years the business has belonged to the family; ${g} generations have run it.'], ['Kunden schätzen das: etwas mehr Umsatz und Ansehen.', 'Customers appreciate that: a little more revenue and standing.'],
   ['Ein Familienbetrieb über Generationen genießt Vertrauen.', 'A family business over generations enjoys trust.'],
-  ['Die Kundenbindung bringt einen kleinen, gedeckelten Umsatzzuwachs, dazu etwas Ansehen. Ein Titel „Traditionsbetrieb“ gehört der Familie.', 'Customer loyalty brings a small, capped increase in revenue and a little standing. A title “Traditional business” belongs to the family.'],
+  ['Die Kundenbindung bringt einen kleinen, gedeckelten Umsatzzuwachs, dazu etwas Ansehen.', 'Customer loyalty brings a small, capped increase in revenue and a little standing.'],
   ['Führe den Betrieb in die nächste Generation, um die nächste Stufe zu erreichen.', 'Lead the business into the next generation to reach the next level.'],
   // ---- Dynastie
   ['Familienrang: ${nm}', 'Family rank: ${nm}'], ['Die Familie ${last} gilt jetzt als „${nm}“.', 'The ${last} family is now regarded as “${nm}”.'],

@@ -670,3 +670,15 @@ html { scroll-padding-top: calc(var(--hud-h, 62px) + 10px); }
 
 .furnish-room-chooser { display:grid; gap:8px; width:100%; font-weight:600; }
 .furnish-room-chooser select { width:100%; min-height:44px; }
+
+/* Werben, Ehe und Familienunternehmen (Schritt 11): Familienseite, Hochzeitsdialog, Kinder im Familienbetrieb, Dynastie-Wertung */
+.woo .btn { white-space: normal; text-align: left; }
+.woo .avatar { flex: none; }
+.dyn-kind { display: block; cursor: pointer; padding: .75rem .9rem; border: 1px solid var(--border); border-radius: 10px; }
+.dyn-kind input { margin-right: .5rem; }
+.dyn-kind:has(input:checked) { border-color: var(--gold, #c9a23f); box-shadow: 0 0 0 1px var(--gold, #c9a23f) inset; }
+.dyn-marriage, .dyn-kid { border-top: 1px dashed var(--border); padding-top: .6rem; min-width: 0; }
+.dyn-firms { list-style: none; margin: 0; padding: 0; display: grid; gap: .45rem; }
+.dyn-firms li { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .7rem; min-width: 0; overflow-wrap: anywhere; }
+.dyn-kid .btn { white-space: normal; }
+@media (max-width: 560px) { .woo .row.wrap { gap: .35rem; } .dyn-kind { padding: .6rem .7rem; } }

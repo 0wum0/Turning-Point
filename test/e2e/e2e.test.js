@@ -356,6 +356,120 @@ describe('E2E Turning Point', { concurrency: false }, () => {
     });
   });
 
+  describe('Familie: Werben, Heirat mit Ehevertrag, Kind im Familienbetrieb, Übergabe', () => {
+    const G = { username: 'greta_e2e', email: 'greta@e2e.test', password: 'greta-pass-1234' };
+    let g; let gId;
+    const sqlJson = async (path) => L.json((await app.sql(`SELECT JSON_EXTRACT(state, '${path}') s FROM characters WHERE user_id = ? AND status = 'alive'`, [gId]))[0].s);
+    const money = async () => Number((await app.sql("SELECT money FROM characters WHERE user_id = ? AND status = 'alive'", [gId]))[0].money);
+    const freeze = () => app.sql('UPDATE users SET efs_accrued_at = ?, efs_carry = 0 WHERE id = ?', [Date.now() + 3600000, gId]); // die Uhr steht: nichts läuft nebenbei, die Beträge stimmen auf den Cent
+    const patch = async (fn) => { const row = (await app.sql("SELECT state FROM characters WHERE user_id = ? AND status = 'alive'", [gId]))[0]; const st = L.json(row.state); fn(st); await app.sql("UPDATE characters SET state = ?, money = ?, game_day = ? WHERE user_id = ? AND status = 'alive'", [JSON.stringify(st), st.money, st.day, gId]); };
+    const bump = (n) => patch((st) => { st.day += n; st.meters.fridge = 100; st.meters.health = 100; });
+    const view = async () => (await L.api(g, 'GET', '/api/state')).json.view;
+    const waitAct = (name) => g.page.waitForResponse((r) => new RegExp(`/api/action/${name}$`).test(r.url()) && r.request().method() === 'POST');
+    before(async () => {
+      g = await L.newPlayer(browser, app, 'greta');
+      await L.register(g, G); await L.createCharacter(g, { first: 'Greta', last: 'Gold', gender: 'f' });
+      gId = await L.userId(app, G.username);
+      await patch((st) => { st.day = 3000; st.money = 8e9; st.person.birthDay = st.day - 58 * 365; st.housing = { type: 'rent', cityId: st.cityId, base: 70, rooms: 4 }; st.skills.days.baecker = 4000; st.meters.wellbeing = 80; });
+      await freeze(); await L.reloadGame(g); await freeze(); await L.showAll(g);
+    });
+    after(async () => { if (g) await g.ctx.close(); });
+
+    it('Werben: Kennenlernen in der Zeitung, Verlauf mit Wartezeiten und Vorlieben, Antrittsbesuch, Antrag → Paar', async () => {
+      await L.paperTab(g, 'partners');
+      assert.match(await text(g), /Bekanntschaft/);
+      const m0 = await money(); const meet = waitAct('meet');
+      await g.page.click('[data-act="meet"]:not([disabled])'); assert.equal((await meet).status(), 200);
+      await g.page.waitForSelector('[data-woo-box] [data-woo]'); // die Oberfläche führt zur Familienseite
+      assert.ok(m0 - (await money()) > 0, 'ein erstes Treffen kostet eine Aufmerksamkeit');
+      const woo = await sqlJson('$.fam.woo'); const id = Object.keys(woo)[0]; assert.ok(id && woo[id].likes.length === 2 && woo[id].hits === 0);
+      assert.equal((await app.sql('SELECT COUNT(*) n FROM dyn_log WHERE user_id = ? AND kind = ?', [gId, 'woo']))[0].n, 1);
+      // der Antrag soll in diesem Test gelingen: einen Spielstand-Samen wählen, dessen erster Antrags-Würfel niedrig ausfällt
+      const { rngFor } = require('../../src/game/rng'); let seed = 1; while (rngFor('woo-ask', seed, id, 0)() > 0.1) seed++;
+      await patch((st) => { st.seed = seed; }); await freeze();
+      await bump(3); await L.reloadGame(g); await freeze(); await L.nav(g, 'family');
+      // Wartezeit: gleich noch einmal geht nicht
+      await g.page.waitForSelector('[data-woo-best]:not([disabled])'); { const r0 = waitAct('wooAct'); await g.page.click('[data-woo-best]'); assert.equal((await r0).status(), 200); }
+      const w1 = (await sqlJson('$.fam.woo'))[id]; assert.ok(w1.n >= 1, 'die erste Aufmerksamkeit lief');
+      const again = await L.api(g, 'POST', '/api/action/wooAct', { id, act: w1.lastAct }); assert.equal(again.status, 400, 'Wartezeit der Aktion'); assert.match(JSON.stringify(again.json), /Moment|warte/);
+      let tries = 0;
+      while (tries++ < 18) {
+        const cur = (await sqlJson('$.fam.woo'))[id]; if (cur.sym >= 60 && cur.hits >= 3) break;
+        await bump(3); await L.reloadGame(g); await freeze(); await L.nav(g, 'family'); await g.page.waitForSelector('[data-woo-best]');
+        if (!(await g.page.locator('[data-woo-best]:not([disabled])').count())) continue;
+        const r = waitAct('wooAct'); await g.page.click('[data-woo-best]'); await r;
+        if (tries === 12) await patch((st) => { const e = st.fam.woo[id]; e.sym = Math.max(e.sym, 62); e.hits = Math.max(e.hits, 3); });
+      }
+      const cur = (await sqlJson('$.fam.woo'))[id]; assert.ok(cur.known.length >= 1 || cur.hits >= 3, 'eine Vorliebe wurde erkannt');
+      assert.ok((await g.page.locator('[data-woo-box] .chip.good').count()) >= 1, 'bekannte Vorlieben stehen als Chips da');
+      await patch((st) => { const e = st.fam.woo[id]; e.sym = Math.max(e.sym, 62); e.hits = Math.max(e.hits, 3); e.since = st.day - 40; e.askAt = 0; }); await bump(2); await freeze(); await L.reloadGame(g); await freeze(); await L.nav(g, 'family');
+      await g.page.waitForSelector('[data-woo-visit]:not([disabled])'); const vis = waitAct('wooVisit'); await g.page.click('[data-woo-visit]'); assert.equal((await vis).status(), 200);
+      assert.equal((await sqlJson('$.fam.woo'))[id].visited, true);
+      await g.page.waitForSelector('[data-woo-ask]:not([disabled])'); const ask = waitAct('wooAsk'); await g.page.click('[data-woo-ask]'); assert.equal((await ask).status(), 200);
+      await g.page.waitForSelector('[data-dyn-marriage]'); const p = await sqlJson('$.partner'); assert.ok(p && p.name && p.fam && p.fam.visited && p.married === false);
+      assert.deepEqual(await sqlJson('$.fam.woo'), {}); noErrors(g);
+    });
+
+    it('Heirat mit Ehevertrag und Ringen: Dialog vergleicht Güterstände, Geld auf den Cent (Hochzeit, Notar, Ring, Aussteuer), Protokoll genau einmal, Tagesblatt', async () => {
+      await patch((st) => { st.partner.cohabit = true; }); await freeze(); await L.reloadGame(g); await freeze(); await L.nav(g, 'family');
+      const v = await view(); const C = v.fam.contract; const k = C.kinds.find((x) => x.key === 'trennung'); const ring = C.rings.find((x) => x.lv === 1);
+      const dowry = k.dowry && k.dowry.form === 'cash' ? k.dowry.cash : 0; assert.ok(k.dowry && ['cash', 'home', 'firm'].includes(k.dowry.form));
+      const expected = -(C.wedCost + k.notary + ring.price) + dowry;
+      await g.page.click('[data-dyn-marry]'); await g.page.waitForSelector('.modal .dyn-kind');
+      const M = await text(g, '.modal'); assert.match(M, /Zugewinngemeinschaft/); assert.match(M, /Gütertrennung/); assert.match(M, /Ehevertrag mit Mitgift/); assert.match(M, /Eheringe/);
+      await g.page.check('.modal input[name=contract][value=trennung]'); await g.page.check('.modal input[name=ring][value="1"]');
+      const total = await text(g, '#dynTotal'); assert.ok(total.length > 0);
+      const m0 = await money(); const mar = waitAct('marry'); await g.page.click('#dynMarryGo'); assert.equal((await mar).status(), 200);
+      assert.equal((await money()) - m0, expected, 'Hochzeit, Notar, Ring und Aussteuer auf den Cent genau einmal');
+      const st = await sqlJson('$.fam'); assert.equal(st.contract.kind, 'trennung'); assert.equal(st.ring.lv, 1); assert.equal((await sqlJson('$.partner.married')), true);
+      await g.page.waitForSelector('[data-dyn-ring]'); assert.match(await text(g, '[data-dyn-marriage]'), /Gütertrennung/);
+      await L.until(async () => (await app.sql("SELECT COUNT(*) n FROM dyn_log WHERE user_id = ? AND kind = 'wed'", [gId]))[0].n === 1, { what: 'Protokoll Hochzeit' });
+      await L.reloadGame(g); await L.reloadGame(g); assert.equal((await app.sql("SELECT COUNT(*) n FROM dyn_log WHERE user_id = ? AND kind = 'wed'", [gId]))[0].n, 1, 'genau einmal');
+      const ev = await app.sql("SELECT text FROM world_events WHERE title = 'Hochzeit'"); assert.ok(ev.some((e) => /Greta Gold und .* haben in .* geheiratet/.test(e.text)), JSON.stringify(ev));
+      const q = (await view()).onboarding.quests.filter((x) => x.done).map((x) => x.id); assert.ok(q.includes('friend') && q.includes('marry'), `Aufgaben: ${q.join(', ')}`);
+      noErrors(g);
+    });
+
+    it('Kind im Familienbetrieb einarbeiten, bereit als Nachfolger, Übergabe zu Lebzeiten: Steuer und Gebühren auf den Cent genau einmal; Betrieb beim Kind; Dynastie-Wertung im Charakterblatt', async () => {
+      await freeze(); const f = await L.api(g, 'POST', '/api/action/foundBiz', { pkey: 'baecker', tier: 0, name: 'Brotladen Gold' }); assert.equal(f.status, 200);
+      await patch((st) => {
+        const tal = JSON.parse(JSON.stringify(st.talents)); delete tal.xp;
+        st.children = [{ id: 1, personId: 'p-kid', name: 'Hans Gold', gender: 'm', born: st.day - 20 * 365, cityId: st.cityId, status: 'home', sat: 85, school: null, pendingSchool: false, path: 'done', pendingPath: false, pkey: 'baecker', daysLeft: 0, giftBoost: 0, unhappy: 0, coinsGranted: true, schoolDone: 'haupt', skills: ['baecker'], tal }];
+        st.nextChildId = 2; st.tree.persons.push({ id: 'p-kid', name: 'Hans Gold', gender: 'm', status: 'alive', role: 'child', jobs: [], parents: [st.person.id] });
+      }); await freeze(); await L.reloadGame(g); await freeze(); await L.nav(g, 'family');
+      await g.page.waitForSelector('[data-dyn-kid="1"] [data-dyn-groom]:not([disabled])'); await g.page.click('[data-dyn-groom="1"]'); await g.page.waitForSelector('.modal [data-pick]');
+      const gm = waitAct('famGroom'); await g.page.click('.modal [data-pick]'); assert.equal((await gm).status(), 200);
+      const grm = await sqlJson('$.children[0].groom'); assert.equal(grm.kind, 'nachfolge'); await g.page.waitForSelector('[data-dyn-kid="1"] [data-dyn-groom-end]');
+      assert.match(await text(g, '[data-dyn-kid="1"]'), /Brotladen Gold/);
+      // Jahre später: bereit als Nachfolger
+      await patch((st) => { const k = st.children[0]; k.groom.exp = 1200; k.groom.ready = true; }); await freeze(); await L.reloadGame(g); await freeze(); await L.nav(g, 'family');
+      await g.page.waitForSelector('[data-dyn-ready]');
+      let v = await view(); const kid = v.fam.kids.find((x) => x.id === 1); const opt = kid.options[0]; assert.ok(opt.handover.ok, opt.handover.why); const costs = opt.handover.tax + opt.handover.fee; assert.ok(opt.handover.fee > 0);
+      const m0 = await money(); await g.page.click('[data-dyn-hand="1"]'); await g.page.waitForSelector('.modal [data-pick]'); assert.match(await text(g, '.modal'), /Altenteil/);
+      const hd = waitAct('famHandover'); await g.page.click('.modal [data-pick]'); assert.equal((await hd).status(), 200);
+      assert.equal(m0 - (await money()), costs, 'Steuer und Gebühren auf den Cent genau einmal');
+      const st = await sqlJson('$'); assert.equal(st.companies.length, 0); assert.equal(st.children[0].estate.companies.length, 1); assert.equal(st.children[0].estate.companies[0].name, 'Brotladen Gold'); assert.ok(st.children[0].gift[0].real > 0);
+      await g.page.waitForSelector('[data-dyn-estate]'); assert.match(await text(g, '[data-dyn-estate]'), /führt den Betrieb/);
+      await L.until(async () => (await app.sql("SELECT COUNT(*) n FROM dyn_log WHERE user_id = ? AND kind = 'hand'", [gId]))[0].n === 1, { what: 'Protokoll Übergabe' });
+      await L.reloadGame(g); await L.reloadGame(g); assert.equal((await app.sql("SELECT COUNT(*) n FROM dyn_log WHERE user_id = ? AND kind = 'hand'", [gId]))[0].n, 1, 'genau einmal');
+      assert.equal((await app.sql('SELECT COUNT(*) n FROM player_firms WHERE user_id = ?', [gId]))[0].n, 0, 'der Betrieb gehört der Spielfigur nicht mehr');
+      assert.ok((await app.sql("SELECT text FROM world_events WHERE title = 'Nachfolge'")).some((e) => /Brotladen Gold/.test(e.text)));
+      // Charakterblatt: Dynastie-Wertung und Eheringe
+      await L.navOpen(g, 'character'); await g.page.waitForSelector('[data-dyn-card]'); const T = await text(g, '#page'); assert.match(T, /Dynastie-Wertung/i); assert.match(T, /Familienbetriebe/i); assert.match(T, /Eheringe/i);
+      await freeze(); noErrors(g);
+    });
+
+    it('Englische Oberfläche der Familienseite ohne deutsche Reste', async () => {
+      await g.page.goto(`${app.base}/lang/en?next=/play`); await g.page.waitForSelector('#hud .hud-id', { state: 'attached' });
+      try {
+        await L.navOpen(g, 'family'); await g.page.waitForSelector('[data-dyn-kid]');
+        const T = await text(g, '#page'); assert.match(T, /Family business|family business/); assert.match(T, /Dynasty rating/i); assert.match(T, /Marriage contract|separation of property/i);
+        assert.doesNotMatch(T, /\b(Bekanntschaft|Ehevertrag|Einarbeitung|Übergabe|Familienbetrieb|Dynastie|Nachfolge|Gütertrennung|Aussteuer|Altenteil|Traditions)\w*/i, `Deutscher Rest:\n${T}`);
+        noErrors(g);
+      } finally { await g.page.goto(`${app.base}/lang/de?next=/play`); await g.page.waitForSelector('#hud .hud-id', { state: 'attached' }); }
+    });
+  });
+
   describe('Neue Abläufe: Einstieg, Gründung, Lieferverträge, Spieluhr, Preisbarometer', () => {
     const F = { username: 'frieda_e2e', email: 'frieda@e2e.test', password: 'frieda-pass-123' };
     const C = { username: 'cora_e2e', email: 'cora@e2e.test', password: 'cora-pass-12345' };

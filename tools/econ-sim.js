@@ -22,7 +22,7 @@ const argv = process.argv.slice(2);
 const arg = (k, d) => { const i = argv.indexOf(`--${k}`); return i >= 0 ? argv[i + 1] : d; };
 const YEARS = Number(arg('years', 85));
 const SEED = Number(arg('seed', 7));
-const ONLY = String(arg('only', 'employee,landlord0,landlord,owner,mixed')).split(',');
+const ONLY = String(arg('only', 'employee,landlord0,landlord,owner,mixed,familie')).split(',');
 if (arg('trade', 'on') === 'off') require('../src/settings').DEFAULTS.transport.trade.enabled = false; // --trade off: ohne Handelsrouten (Vergleichswert)
 const JSON_OUT = argv.includes('--json');
 // Stadtwirtschaft: off = ohne Stadtindizes (wie vor Schritt 2), era = nur deterministischer Epochenfaktor, live = Indizes folgen Nachfrage/Angebot der Simulation
@@ -35,6 +35,9 @@ if (BETRIEB === 'off') require('../src/settings').DEFAULTS.betrieb.enabled = fal
 // Charakterblatt (src/game/character.js): off = ohne Erfahrung, Ausstattung und Rang (Vergleichswert) · on = Regeln aktiv, die Politik nutzt aber nichts davon (der Rang wirkt trotzdem) · full = der Spieler verteilt Erfahrung und kauft Ausstattung, sobald das Geld locker sitzt (Vollausstattung)
 const CHARAKTER = String(arg('charakter', 'on'));
 if (CHARAKTER === 'off') require('../src/settings').DEFAULTS.charakter.enabled = false;
+// Werben, Ehe und Familienunternehmen (src/game/dynasty.js): off = ohne die Regeln (altes Treffen, einfache Hochzeit) · on = Regeln aktiv, der Spieler wirbt mit „Beste Wahl“ und heiratet im Standard-Güterstand · full = wählt Ehevertrag und Ringe, arbeitet die Kinder im Betrieb ein und übergibt ab 58 Jahren
+const FAMILIE = String(arg('familie', 'on'));
+if (FAMILIE === 'off') require('../src/settings').DEFAULTS.familie.enabled = false;
 const OTHERS = Number(arg('others', 12)); // andere lebende Charaktere in der Stadt des Spielers
 if (arg('seasons', 'on') === 'off') require('../src/settings').DEFAULTS.jahreszeiten.enabled = false; // --seasons off: ohne Jahreszeiten, Ernte und Seuchen (Vergleichswert)
 const cityecon = require('../src/game/cityecon');
@@ -74,7 +77,7 @@ function makeRun(name, pkey, policy) {
   CE_STATE.clear(); cityecon.reset(); if (CITY !== 'off') cityecon.prime();
   const s = createCharacter(w, input(w, { professionKey: pkey }), user());
   s.life.baseYears = 900; s.life.rare = false;
-  const act = (n, i) => { try { const m0 = s.money; const rr = actions.run(n, { world: w, state: s, input: i, user: user(), now: Date.now() }); if (process.env.TRACE2 && ['buy', 'maintain', 'repair', 'sell', 'loanTake'].includes(n)) console.log('ACT', n, yearOf(s.day, s.startYear), Math.round((s.money - m0) / w.idx(yearOf(s.day, s.startYear)) / 100)); return rr; } catch (e) { if (process.env.DBG) console.log('ACT FAIL', n, e.message); return null; } };
+  const act = (n, i) => { try { const m0 = s.money; const rr = actions.run(n, { world: w, state: s, input: i, user: user(), now: Date.now() }); if (process.env.DBG_FAM && /^(woo|marry|fam|meet|divorce)/.test(n)) console.log('FAM', yearOf(s.day, s.startYear), n, JSON.stringify(i), rr && rr.msg, 'Geld', Math.round(s.money / w.idx(yearOf(s.day, s.startYear)) / 100)); if (process.env.TRACE2 && ['buy', 'maintain', 'repair', 'sell', 'loanTake'].includes(n)) console.log('ACT', n, yearOf(s.day, s.startYear), Math.round((s.money - m0) / w.idx(yearOf(s.day, s.startYear)) / 100)); return rr; } catch (e) { if (process.env.DBG) console.log('ACT FAIL', n, e.message); return null; } };
   const dec = [];
   const acc = { wage: 0, rent: 0, tax: 0, loan: 0, bizProfit: 0, bizTax: 0, bizWages: 0, bizInputs: 0, upkeep: 0, spent: 0 };
   const year0 = yearOf(s.day, s.startYear);
@@ -103,9 +106,10 @@ function makeRun(name, pkey, policy) {
   const snap = (year) => {
     const idx = w.idx(year);
     const props = s.properties.reduce((a, p) => a + core.propertyValue(w, s, p, year), 0);
-    const firms = (s.companies || []).reduce((a, c) => a + biz.companyValue(w, s, c, year) + c.cash, 0);
+    const heldF = (s.children || []).reduce((a, k) => a + ((k.estate && k.estate.companies) || []).reduce((b, f) => b + biz.companyValue(w, s, f, year) + f.cash, 0), 0); // übergebene Betriebe zählen zum Familienvermögen
+    const firms = (s.companies || []).reduce((a, c) => a + biz.companyValue(w, s, c, year) + c.cash, 0) + heldF;
     const debt = credit.debt(s);
-    return { year, money: s.money / idx / 100, props: props / idx / 100, firms: firms / idx / 100, debt: debt / idx / 100, net: core.netWorth(w, s) / idx / 100, nProps: s.properties.length, nFirms: s.companies.length };
+    return { year, money: s.money / idx / 100, props: props / idx / 100, firms: firms / idx / 100, debt: debt / idx / 100, net: (core.netWorth(w, s) + heldF) / idx / 100, nProps: s.properties.length, nFirms: s.companies.length };
   };
   const flush = (year) => {
     const idx = w.idx(year);
@@ -237,7 +241,7 @@ function charFull(c, gacc) {
 function runBiz(c, { maxFirms }) {
   const { s, act, w: W, edition: ed, idx, year } = c;
   const E = ed(W, s, s.cityId);
-  if (s.companies.length < maxFirms) {
+  if (s.companies.length + require('../src/game/dynasty').heldCount(s) < maxFirms) { // übergebene Betriebe zählen mit
     const b = (E.biz || []).filter((x) => x.qualified && s.money > x.price * 1.12).sort((a, d) => d.price - a.price)[0];
     if (b) act('buyBiz', { listingId: b.id });
   }
@@ -295,6 +299,37 @@ function runTradeBiz(c, { routes }) {
   if (s.companies.length && !s.occupation) act('bizWork', { id: s.companies[0].id });
 }
 
+/** Familienleben des Archetyps „Familie“: Wohnraum für alle, Werben (neu) oder Treffen (alt), Hochzeit, Einarbeitung der Kinder, Übergabe. */
+function ensureFamilyHome(c) {
+  const { s, act, w: W, edition: ed } = c;
+  const need = 1 + (s.partner ? 1 : 0) + s.children.filter((k) => k.status === 'home').length + (s.partner ? 1 : 0);
+  const have = s.housing.type === 'own' ? ((s.properties.find((p) => p.id === s.housing.propertyId) || {}).rooms || 1) : (s.housing.rooms || 1);
+  if ((s.housing.type === 'own' || s.housing.type === 'rent') && have >= Math.min(need, 4)) return;
+  const E = ed(W, s, s.cityId);
+  const r = E.housing.rent.filter((x) => x.rooms >= Math.min(need, 4) && s.money > x.perDay * 30).sort((a, b) => a.perDay - b.perDay)[0] || E.housing.rent.slice().sort((a, b) => b.rooms - a.rooms || a.perDay - b.perDay)[0];
+  if (r && (r.rooms > have || s.housing.type !== 'rent') && s.money > r.perDay * 20) act('rent', { listingId: r.id });
+}
+function familyLife(c) {
+  const { s, act, w: W, edition: ed, idx } = c; const DYN = require('../src/game/dynasty');
+  const age = Math.floor((s.day - s.person.birthDay) / 365);
+  if (age < 22) return;
+  const rules = DYN.enabled();
+  if (!s.partner) {
+    const E = ed(W, s, s.cityId); const l = E.partners[0];
+    if (rules) {
+      const woo = DYN.activeWoo(DYN.ensure(s));
+      if (!woo.length) { if (l && s.money > 4000 * idx) act('meet', { listingId: l.id }); } else { const e = woo[0]; act('wooAct', { id: e.id, act: 'best' }); if (e.sym >= 40 && !e.visited && s.money > 8000 * idx) act('wooVisit', { id: e.id }); if (DYN.askChance(W, s, e).p >= 0.6 || e.sym >= 85) act('wooAsk', { id: e.id }); }
+    } else if (l && s.money > 4000 * idx) act('meet', { listingId: l.id });
+    return;
+  }
+  if (!s.partner.married && s.money > 15000 * idx) {
+    if (FAMILIE === 'full' && rules) act('marry', { contract: (s.companies || []).length ? 'trennung' : 'zugewinn', ring: 1 }); else act('marry', {});
+  }
+  if (FAMILIE === 'full' && rules && s.companies.length) {
+    for (const k of s.children) if (k.status === 'home' && !k.groom) { const f = s.companies.find((x) => !x.abandoned); if (f && DYN.groomBlock(W, s, k, f) === null) act('famGroom', { childId: k.id, id: f.id }); }
+    if (age >= 58) for (const k of s.children) if (k.groom && k.groom.ready) act('famHandover', { childId: k.id, id: k.groom.cid });
+  }
+}
 const POLICIES = {
   trader0: { pkey: 'einzelhandelsverkaeufer', fn: (c) => { ensureHome(c); if (!c.s.companies.length) ensureJob(c); runTradeBiz(c, { routes: false }); } },
   trader: { pkey: 'einzelhandelsverkaeufer', fn: (c) => { ensureHome(c); if (!c.s.companies.length) ensureJob(c); runTradeBiz(c, { routes: true }); } },
@@ -302,6 +337,7 @@ const POLICIES = {
   landlord0: { pkey: 'baecker', fn: (c) => { ensureHome(c); ensureJob(c); buyLet(c, { loans: false, maxProps: 12 }); } },
   landlord: { pkey: 'baecker', fn: (c) => { ensureHome(c); ensureJob(c); earlyRepay(c); buyLet(c, { loans: true, maxProps: 12 }); } },
   owner: { pkey: 'wirt', fn: (c) => { ensureHome(c); if (!c.s.companies.length) ensureJob(c); runBiz(c, { maxFirms: 3 }); } },
+  familie: { pkey: 'wirt', fn: (c) => { ensureFamilyHome(c); if (!c.s.companies.length) ensureJob(c); runBiz(c, { maxFirms: 2 }); familyLife(c); } },
   mixed: { pkey: 'wirt', fn: (c) => { ensureHome(c); if (!c.s.companies.length) ensureJob(c); runBiz(c, { maxFirms: 2 }); earlyRepay(c); buyLet(c, { loans: true, maxProps: 6 }); } },
 };
 

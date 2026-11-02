@@ -23,7 +23,7 @@
 const settings = require('../settings');
 const D = require('./dynasty-defaults');
 const TL = require('./talents');
-const { rngFor, int, weighted } = require('./rng');
+const { rngFor, weighted } = require('./rng');
 const { yearOf } = require('./calendar');
 
 const num = (x, d) => (Number.isFinite(Number(x)) ? Number(x) : d);
@@ -38,6 +38,7 @@ const sec = (name) => ({ ...D[name], ...(C()[name] || {}) });
 const W = () => sec('woo');
 const ACTS = () => { const a = (C().woo || {}).acts; return isObj(a) && Object.keys(a).length ? a : D.woo.acts; };
 const LIKES = () => { const l = (C().woo || {}).likes; return isObj(l) && Object.keys(l).length ? l : D.woo.likes; };
+const hasOwn = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 const KINDS = () => { const k = (C().contract || {}).kinds; return isObj(k) && k.zugewinn ? k : D.contract.kinds; };
 const FAMILY = () => ({ ...D.family, ...(C().family || {}) });
 const idxOf = (world, state) => Math.max(0.0001, world.idx(yearOf(state.day, state.startYear)));
@@ -78,7 +79,7 @@ function ensure(state) {
   for (const k of Object.keys(f.cool)) if (!Number.isFinite(f.cool[k])) delete f.cool[k];
   const c = f.contract;
   if (c != null) {
-    if (isObj(c) && KINDS()[c.kind] && Number.isFinite(c.startReal)) {
+    if (isObj(c) && typeof c.kind === 'string' && hasOwn(KINDS(), c.kind) && Number.isFinite(c.startReal)) {
       f.contract = { kind: c.kind, day: Math.floor(num(c.day, 0)), startReal: Math.round(c.startReal), pid: typeof c.pid === 'string' ? c.pid.slice(0, 20) : '', dowry: null };
       const d = c.dowry;
       if (isObj(d)) f.contract.dowry = { cash: Math.max(0, Math.round(num(d.cash, 0))), firm: Number.isInteger(d.firm) ? d.firm : null, home: Number.isInteger(d.home) ? d.home : null, real: Math.max(0, Math.round(num(d.real, 0))), form: ['cash', 'home', 'firm'].includes(d.form) ? d.form : 'cash' };
@@ -390,7 +391,7 @@ function dowryPlan(world, state, kind) {
   const biz = require('./business');
   if (K.give && pf.cls === 3 && !state.fam.dowry) {
     const t0 = world.econ.companies.tiers[0]; const base = Math.round(t0.price * num(F.firmTierBasePct, 60) / 100);
-    const can = (state.companies || []).length < world.econ.companies.maxCompanies && biz.qualification(world, state, p.pkey, 0).ok && !!world.prof(p.pkey);
+    const can = (state.companies || []).length + heldCount(state) < world.econ.companies.maxCompanies && biz.qualification(world, state, p.pkey, 0).ok && !!world.prof(p.pkey);
     if (can && base <= budget) { out.form = 'firm'; out.valueReal = base; out.cashReal = 0; out.firm = { pkey: p.pkey, base }; return out; }
     if (!can) out.why = 'Der Familienbetrieb der Partnerfamilie würde nur zu Geld gemacht: Für ihn fehlen dir die Qualifikation oder ein freier Betriebsplatz.';
   }
@@ -471,7 +472,7 @@ function afterDivorce(world, state, rule, wasMarried) {
   ensure(state); const f = state.fam; const idx = idxOf(world, state); const back = [];
   if (rule && rule.restitute) {
     const d = rule.restitute;
-    if (d.cash > 0) { const cents = Math.min(Math.max(0, state.money), Math.round(d.cash * idx)); state.money -= cents; back.push('die Aussteuer in bar'); }
+    if (d.cash > 0) { const cents = Math.min(Math.max(0, state.money), Math.round(d.cash * idx)); state.money -= cents; back.push('Geld-Aussteuer'); }
     if (d.firm != null) { const c = (state.companies || []).find((x) => x.id === d.firm); if (c) { state.companies = state.companies.filter((x) => x.id !== c.id); if (state.occupation && state.occupation.ownCompanyId === c.id) state.occupation = null; back.push(c.name); } }
     if (d.home != null) { const pr = (state.properties || []).find((x) => x.id === d.home); if (pr) { state.properties = state.properties.filter((x) => x.id !== pr.id); if (state.housing.propertyId === pr.id) state.housing = { type: 'street', cityId: state.cityId }; back.push(pr.name); } }
   }
@@ -484,7 +485,7 @@ function afterDivorce(world, state, rule, wasMarried) {
 
 /** Anteil am Nachlass, den ein verheirateter Spieler-Ehepartner erbt: Faktor je Güterstand (Standard 1). */
 function spouseFactor(p) {
-  const k = p && p.contract ? KINDS()[p.contract] : null;
+  const k = p && typeof p.contract === 'string' && hasOwn(KINDS(), p.contract) ? KINDS()[p.contract] : null;
   return k ? num(k.spouseShare, 1) : 1;
 }
 /** Abfindung bei Scheidung zweier Spieler: Faktor je Güterstand (Gütertrennung: kein Ausgleich). */
@@ -590,7 +591,7 @@ function tradDaily(ctx) {
       c.trad = lv;
       const nm = tradName(lv);
       require('./core').chronicle(state, `${c.name} wird zum „${nm}“.`, 'business');
-      require('./core').notice(state, { level: 'good', title: `${c.name}: ${nm}`, tab: 'family', text: `Der Betrieb ist seit ${Math.floor((state.day - c.since) / 365)} Jahren in Familienhand und in der ${c.gen}. Generation. Kunden schätzen das: etwas mehr Umsatz und Ansehen.`, info: ['Ein Familienbetrieb über Generationen genießt Vertrauen.', 'Die Kundenbindung bringt einen kleinen, gedeckelten Umsatzzuwachs, dazu etwas Ansehen. Ein Titel „Traditionsbetrieb“ gehört der Familie.', 'Führe den Betrieb in die nächste Generation, um die nächste Stufe zu erreichen.'] });
+      require('./core').notice(state, { level: 'good', title: `${c.name}: ${nm}`, tab: 'family', text: `Seit ${Math.floor((state.day - c.since) / 365)} Jahren gehört der Betrieb der Familie; ${c.gen} Generationen führen ihn. Kunden schätzen das: etwas mehr Umsatz und Ansehen.`, info: ['Ein Familienbetrieb über Generationen genießt Vertrauen.', 'Die Kundenbindung bringt einen kleinen, gedeckelten Umsatzzuwachs, dazu etwas Ansehen.', 'Führe den Betrieb in die nächste Generation, um die nächste Stufe zu erreichen.'] });
       queueLog(state, { k: 'trad', city: c.cityId, lv, note: c.name });
     }
     if (lv > 0 && state.day % 28 === 0) require('./reputation').queue(state, 'civic', num(((TR().levels || D.tradition.levels)[lv - 1] || {}).rep, 0.2), 'fam_trad', c.id);
@@ -645,6 +646,8 @@ function doHandover(world, state, c, firm, costs) {
   queueLog(state, { k: 'hand', city: firm.cityId, real: costs.valueReal, note: firm.name });
   return held;
 }
+/** Betriebe, die Kinder für die Familie führen: sie zählen zur Höchstzahl der Unternehmen (die Übergabe schafft keinen Platz für weitere). */
+const heldCount = (state) => (state.children || []).reduce((n, c) => n + (c.estate ? c.estate.companies.length : 0), 0);
 function giftReal(c) { return (c.gift || []).reduce((s, g) => s + num(g.real, 0), 0); }
 /** Vorempfänge aller Kinder in Cent heutiger Preise (zählen im Pflichtanteil mit, Wert zum Zeitpunkt der Schenkung inflationsbereinigt). */
 function advances(world, state) { const idx = idxOf(world, state); return (state.children || []).reduce((s, c) => s + giftReal(c) * idx, 0); }
@@ -694,7 +697,7 @@ function dynParts(world, state) {
   parts.kids = clamp(edu / 3, 0, 1) * Wt.kids;
   const p = state.partner; const f = state.fam;
   const marriedYears = p && p.married && f.contract ? (state.day - f.contract.day) / 365 : p && p.married ? 5 : 0;
-  parts.bond = clamp(clamp(marriedYears / 20, 0, 1) * 0.7 + (f.dyn.div > 0 ? 0 : 0.3), 0, 1) * Wt.bond * (p && p.married ? 1 : 0.4);
+  parts.bond = clamp(clamp(marriedYears / 20, 0, 1) * 0.55 + (f.dyn.div > 0 ? 0 : 0.25) + (p && p.churchWed ? 0.2 : 0), 0, 1) * Wt.bond * (p && p.married ? 1 : 0.4); // die Hochzeit in der Gemeinde (Gesellschaft) festigt die Ehe
   parts.inherited = clamp(num(f.dyn.legacy, 0), 0, Wt.inherited);
   const total = r1(clamp(Object.values(parts).reduce((a, b) => a + b, 0), 0, 100));
   for (const k of Object.keys(parts)) parts[k] = r1(parts[k]);
@@ -839,10 +842,9 @@ function view(world, state) {
   };
 }
 
-/** Anzeige-Hinweis fürs Einsteiger-Menü „Was jetzt?“ (rein): offene Bekanntschaften, Antrittsbesuch, bereite Nachfolger. */
 module.exports = {
   C, enabled, strength, ensure, newFam, queueLog, cleanEntry, candKey, classOf, likesOf, opinion, opinionBand, startSym, meetBlock, start, quality, actCostCents, actBlock, act, visitBlock, askChance, askBlock, bestAct, stageOf, wooDaily, drop, makePartner,
   ringDef, ringName, ringPrice, partnerFamily, dowryPlan, applyDowry, wed, divorceRule, afterDivorce, spouseFactor, settlementFactor, KINDS, FAMILY, ACTS, LIKES, W,
-  qualified, groomBlock, groomStart, groomFlow, groomDaily, growKey, tradLevel, tradName, revMult, tradFact, handoverCosts, handoverBlock, doHandover, giftReal, advances, heldDaily, givenTo, heldCompanies, successorValue,
-  dynParts, dynLevels, dynCheck, daily, inherit, wooView, contractView, kidView, dynView, view, activeWoo, nameOf, clamp, num, r1, r2, GR, HO, TR, FAMILY_TITLES,
+  heldCount, qualified, groomBlock, groomStart, groomFlow, groomDaily, growKey, tradLevel, tradName, revMult, tradFact, handoverCosts, handoverBlock, doHandover, giftReal, advances, heldDaily, givenTo, heldCompanies, successorValue,
+  dynParts, dynLevels, dynLevelFor, dynCheck, daily, inherit, wooView, contractView, kidView, dynView, view, activeWoo, nameOf, clamp, num, r1, r2, GR, HO, TR, FAMILY_TITLES,
 };

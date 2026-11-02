@@ -172,6 +172,26 @@ function invariants(s, prev) {
       const q = s.pending && s.pending.char; if (q !== undefined) { need(Array.isArray(q) && q.length <= 20, 'Charakter-Vormerkungen'); for (const e of q || []) need(['buy', 'sell', 'repair', 'svc', 'rank'].includes(e.k), `Vormerkung ${JSON.stringify(e)}`); }
     }
   }
+  { // Werben, Ehe, Familienbetrieb: Bekanntschaften, Ehevertrag, Ring, Dynastie, Einarbeitung, Übergaben – gültige Werte, Betriebe nie doppelt
+    const DX = require('../src/game/dynasty'); const f = s.fam;
+    if (f !== undefined) {
+      need(f && typeof f === 'object' && f.woo && typeof f.woo === 'object' && f.cool && f.dyn && f.hand, 'fam unvollständig');
+      need(Object.keys(f.woo || {}).length <= DX.W().maxActive, `Bekanntschaften ${Object.keys(f.woo || {}).length}`);
+      for (const e of Object.values(f.woo || {})) need(e.sym >= 0 && e.sym <= 100 && Number.isInteger(e.hits) && e.hits >= 0 && Array.isArray(e.likes) && e.likes.length === 2 && e.likes[0] !== e.likes[1] && e.cls >= 0 && e.cls <= 3 && e.hist.length <= 8, `Bekanntschaft ${JSON.stringify({ s: e.sym, h: e.hits, l: e.likes })}`);
+      if (s.status === 'alive') need(!(s.partner && Object.keys(f.woo || {}).length), 'Bekanntschaften trotz Partner');
+      if (f.contract) need(DX.KINDS()[f.contract.kind] && Number.isFinite(f.contract.startReal) && (!f.contract.dowry || (f.contract.dowry.real >= 0 && ['cash', 'home', 'firm'].includes(f.contract.dowry.form))), `Ehevertrag ${JSON.stringify(f.contract)}`);
+      if (f.ring) need(Number.isInteger(f.ring.lv) && f.ring.lv >= 1 && f.ring.lv <= 3 && f.ring.paid >= 0, `Ring ${JSON.stringify(f.ring)}`);
+      need(f.dyn.pts >= 0 && f.dyn.pts <= 100 && f.dyn.lv >= 1 && f.dyn.lv <= 5 && f.dyn.best >= f.dyn.lv && f.dyn.legacy >= 0 && f.dyn.legacy <= 100, `Dynastie ${JSON.stringify(f.dyn)}`);
+      const own = new Set((s.companies || []).map((c) => c.id)); const held = new Set();
+      for (const c of s.children || []) {
+        if (c.groom) need(Number.isInteger(c.groom.cid) && ['lehre', 'nachfolge'].includes(c.groom.kind) && c.groom.exp >= 0 && c.groom.grown >= 0 && c.groom.grown <= DX.GR().growMax + 1, `Einarbeitung ${JSON.stringify(c.groom)}`);
+        for (const x of (c.estate && c.estate.companies) || []) { need(!own.has(x.id) && !held.has(x.id), `Betrieb ${x.id} doppelt (Eltern und Kind)`); held.add(x.id); need(Number.isFinite(x.cash) && x.cash >= 0, 'Kasse des übergebenen Betriebs'); }
+        for (const g of c.gift || []) need(Number.isFinite(g.real) && g.real >= 0, 'Vorempfang');
+      }
+      for (const c of s.companies || []) need(Number.isInteger(c.gen) && c.gen >= 1 || c.gen === undefined, `Generation ${c.gen}`);
+      const q = s.pending && s.pending.dyn; if (q !== undefined) { need(Array.isArray(q) && q.length <= 30, 'Familien-Vormerkungen'); for (const e of q || []) need(['woo', 'wed', 'div', 'hand', 'trad', 'dyn', 'gen'].includes(e.k), `Vormerkung ${JSON.stringify(e)}`); }
+    }
+  }
   { // Jahreszeiten, Ernte, Seuchen: Zustand sauber, alle Faktoren endlich und begrenzt
     const e = s.epi;
     need(e && typeof e === 'object', 'epi fehlt');
@@ -281,6 +301,12 @@ function inputFor0(name, s, r, user) {
     case 'chAuto': return { on: maybe(r() < 0.5) };
     case 'chBuy': case 'chService': return { slot: maybe(pickOf(r, ['kleidung', 'uhr', 'schmuck', 'fahrzeug', 'mittel', 'pflege', 'schutz', 'x', '__proto__'])), level: maybe(Math.floor(r() * 5)) };
     case 'chSell': case 'chRepair': return { slot: maybe(pickOf(r, ['kleidung', 'uhr', 'schmuck', 'fahrzeug', 'mittel', 'pflege', 'schutz', 'x'])) };
+    case 'wooAct': { const woo = Object.values(s.fam ? s.fam.woo : {}); const e = woo.length ? pickOf(r, woo) : null; return { id: maybe(e ? e.id : 'x'), act: maybe(pickOf(r, ['best', 'kompliment', 'brief', 'gespraech', 'essen', 'geschenk', 'konzert', 'ausflug', 'sport', 'x', '__proto__'])) }; }
+    case 'wooVisit': case 'wooAsk': case 'wooDrop': { const woo = Object.values(s.fam ? s.fam.woo : {}); const e = woo.length ? pickOf(r, woo) : null; return { id: maybe(e ? e.id : 'x') }; }
+    case 'marry': return { contract: maybe(pickOf(r, ['zugewinn', 'trennung', 'mitgift', 'x', '__proto__'])), ring: maybe(Math.floor(r() * 5)) };
+    case 'famGroom': return { childId: maybe(kid()), id: maybe(comp()) };
+    case 'famGroomEnd': return { childId: maybe(kid()) };
+    case 'famHandover': return { childId: maybe(kid()), id: maybe(comp()) };
     case 'readNotices': return { ids: r() < 0.5 ? null : [1, 2, junk()] };
     default: return r() < 0.3 ? {} : { a: junk() };
   }
@@ -321,7 +347,7 @@ function smartMoves(s, r, user) {
 
 /* ---------------- Lauf ---------------- */
 // Aktionen, die legitim Geld einbringen (Verkauf, Kredit, Glücksspiel, Trinkgeld, Gewinnentnahme)
-const MONEY_UP = new Set(['sell', 'bizSell', 'bizCollect', 'loanTake', 'lotto', 'casino', 'taskFinish', 'chSell']);
+const MONEY_UP = new Set(['sell', 'bizSell', 'bizCollect', 'loanTake', 'lotto', 'casino', 'taskFinish', 'chSell', 'marry']); // marry: die Aussteuer der Partnerfamilie kann die Hochzeitskosten übersteigen (einmalig, Obergrenze im Verhältnis zum Vermögen)
 class Failure extends Error {}
 
 function runScenario(seed, steps = 300, opts = {}) {
@@ -647,6 +673,73 @@ function runCharScenario(seed, rounds = 60) {
 }
 
 /**
+ * Werben, Ehe und Familienunternehmen über viele Spieltage mit zufälligen und unsinnigen Eingaben: Hochzeit bucht Kosten und Aussteuer genau einmal, Scheidung zahlt höchstens den
+ * Zugewinn, Übergabe bucht Steuer und Gebühren genau einmal, Altenteil + Rest = Gewinn, Erbe: kein Betrieb doppelt, Geld entsteht nicht.
+ */
+function runFamScenario(seed, rounds = 50) {
+  const realRandom = Math.random; Math.random = mulberry32(seed ^ 91);
+  const r = mulberry32(seed + 9); const failures = []; const DX = require('../src/game/dynasty'); const biz = require('../src/game/business'); const fam = require('../src/game/family');
+  const bad = (m) => failures.push({ seed, msg: `Familie: ${m}` });
+  try {
+    const u = () => ({ meta: {}, coins: 50, efs_pool: 0 });
+    const s = createCharacter(world, { gender: r() < 0.5 ? 'f' : 'm', firstName: 'Anna', lastName: 'Tester', birthCityId: pickOf(r, world.cityList).id, professionKey: 'baecker', fatherName: 'a', motherName: 'b' }, u());
+    s.life.baseYears = 900; s.life.rare = false; s.day = 3000 + Math.floor(r() * 30000); s.person.birthDay = s.day - (30 + Math.floor(r() * 40)) * 365;
+    s.money = 5e9; s.housing = { type: 'rent', cityId: s.cityId, base: 70, rooms: 5 }; s.skills.days.baecker = 4000; s.occupation = { kind: 'work', pkey: 'baecker', employer: 'X', cityId: s.cityId, factor: 1, since: s.day };
+    const run = (n, i) => { try { return actions.run(n, { world, state: s, input: i, user: u(), now: 1 }); } catch (e) { if (!(e instanceof actions.ActionError)) throw e; return null; } };
+    for (let i = 0; i < rounds && s.status === 'alive'; i++) {
+      s.meters.fridge = 100; s.meters.health = 100; s.meters.rest = 100; s.meters.wellbeing = Math.max(s.meters.wellbeing, 60); s.money = Math.max(s.money, 5e8);
+      const pick = r(); const m0 = s.money; const year = yearOf(s.day, s.startYear); const idx = world.idx(year);
+      if (!s.partner) {
+        const woo = DX.activeWoo(DX.ensure(s));
+        if (!woo.length || pick < 0.08) { const l = edition(world, s, s.cityId).partners[Math.floor(r() * 3)]; if (l) run('meet', { listingId: l.id }); }
+        else if (pick < 0.62) { const e = pickOf(r, woo); const sym0 = e.sym; run('wooAct', { id: e.id, act: pickOf(r, ['best', 'best', 'kompliment', 'essen', 'brief', 'ausflug', 'x']) }); const cur = s.fam.woo[e.id]; if (cur && cur.sym < sym0 - 4 - 3 - 1e-9) bad(`Sympathie fällt zu stark: ${sym0} -> ${cur.sym}`); }
+        else if (pick < 0.7) run('wooVisit', { id: pickOf(r, woo).id });
+        else if (pick < 0.92) { const e = pickOf(r, woo); if (r() < 0.8 && s.fam.woo[e.id]) { s.fam.woo[e.id].sym = 100; s.fam.woo[e.id].hits = 5; s.fam.woo[e.id].askAt = 0; s.fam.woo[e.id].since = 0; } run('wooAsk', { id: e.id }); }
+        else run('wooDrop', { id: pickOf(r, woo).id });
+      } else if (!s.partner.married) {
+        const kind = pickOf(r, ['zugewinn', 'trennung', 'mitgift']); const ring = Math.floor(r() * 4); const K = DX.KINDS()[kind];
+        const plan = DX.dowryPlan(world, s, kind); const wed = Math.round(world.econ.marriageCost * idx); const notary = Math.round(K.notaryMult * wed); const rp = ring ? DX.ringPrice(world, s, ring) : 0; const m1 = s.money;
+        if (run('marry', { contract: kind, ring })) { const got = plan.form === 'cash' ? Math.round(plan.cashReal * idx) : 0; if (s.money - m1 !== got - wed - notary - rp) bad(`Hochzeit bucht ${s.money - m1} statt ${got - wed - notary - rp}`); if (!s.fam.contract || s.fam.contract.kind !== kind) bad('Ehevertrag fehlt'); if (plan.cashReal > plan.capReal + 1) bad('Aussteuer über der Obergrenze'); }
+        else if (s.money !== m1) bad('Fehlschlag (Hochzeit) verändert das Geld');
+      } else {
+        const held = s.children.some((c) => c.estate);
+        if (!s.companies.length && !held) run('foundBiz', { pkey: 'baecker', tier: 0, name: `Laden ${i}` });
+        else if (s.children.length < 2 && pick < 0.7) fam.bornChild({ world, state: s, idx: 1 }, mulberry32(seed + i));
+        else if (pick < 0.12) { const m2 = s.money; run('divorce', {}); if (s.pending.divorce && m2 - s.money <= 0) bad('Scheidungsantrag ohne Kosten'); }
+        else if (pick < 0.2) run('divorceCancel', {});
+        else if (pick < 0.55 && s.children.length && s.companies.length) {
+          const k = pickOf(r, s.children); k.born = Math.min(k.born, s.day - 20 * 365); k.school = null; k.pendingSchool = false; k.status = 'home'; if (r() < 0.7) { k.skills = ['baecker']; k.path = 'done'; k.pkey = 'baecker'; }
+          run('famGroom', { childId: k.id, id: s.companies[0].id });
+        } else if (pick < 0.85 && s.children.length && s.companies.length) {
+          s.person.birthDay = Math.min(s.person.birthDay, s.day - 60 * 365); const k = pickOf(r, s.children); const f = s.companies[0]; k.born = Math.min(k.born, s.day - 20 * 365); k.status = 'home'; if (r() < 0.8) { k.skills = ['baecker']; k.path = 'done'; k.pkey = 'baecker'; }
+          const costs = DX.handoverCosts(world, s, biz.companyValue(world, s, f, year) + f.cash); const m3 = s.money; const n0 = s.companies.length;
+          if (run('famHandover', { childId: k.id, id: f.id })) { if (m3 - s.money !== costs.tax + costs.fee) bad(`Übergabe bucht ${m3 - s.money} statt ${costs.tax + costs.fee}`); if (s.companies.length !== n0 - 1) bad('Betrieb nicht abgegeben'); if (s.companies.some((c) => c.id === f.id)) bad('Betrieb noch beim Elternteil'); }
+          else if (s.money !== m3) bad('Fehlschlag (Übergabe) verändert das Geld');
+        } else run('famGroomEnd', { childId: s.children.length ? pickOf(r, s.children).id : 1 });
+      }
+      void m0;
+      const days = i % 9 === 8 ? 200 + Math.floor(r() * 300) : 3 + Math.floor(r() * 40);
+      for (let d = 0; d < days && s.status === 'alive'; d++) { const before = s.money; advance(world, s, 1); s.interrupts = []; if (s.money < 1) s.money = 1; void before; }
+      if (r() < 0.5) s.money = Math.max(s.money, 1e9);
+      for (const b of invariants(s, null)) bad(b);
+      s.pending.dyn = []; s.pending.char = [];
+    }
+    // Erbe: kein Betrieb doppelt, Geld entsteht nicht
+    if (s.status === 'alive' && s.children.length) {
+      for (const k of s.children) { k.born = Math.min(k.born, s.day - 20 * 365); k.status = 'home'; }
+      const was = JSON.parse(JSON.stringify(s)); const est = fam.estateShare(world, was); const k = was.children[Math.floor(r() * was.children.length)];
+      const { state: h } = createHeirState(world, was, k.id, (was.companies || []).map((c) => `c:${c.id}`).concat((was.properties || []).map((p) => p.id)));
+      for (const b of invariants(h, null)) bad(`Erbe: ${b}`);
+      const ids = h.companies.map((c) => c.id); if (new Set(ids).size !== ids.length) bad('Erbe: Betrieb doppelt');
+      const total = h.money + h.companies.reduce((a, c) => a + biz.companyValue(world, h, c, yearOf(h.day, h.startYear)) + c.cash, 0) + h.properties.reduce((a, p) => a + require('../src/game/core').propertyValue(world, h, p, yearOf(h.day, h.startYear)), 0);
+      const held = (k.estate && k.estate.companies || []).reduce((a, c) => a + biz.companyValue(world, was, c, yearOf(was.day, was.startYear)) + c.cash, 0);
+      if (total > est.total + held + est.adv + 10) bad(`Erbe erzeugt Geld: ${total} > ${est.total + held + est.adv}`);
+    }
+  } catch (e) { failures.push({ seed, msg: `Familienlauf: ${e.stack}` }); } finally { Math.random = realRandom; }
+  return failures;
+}
+
+/**
  * Lieferverträge zwischen zwei Spielern in verschiedenen Epochen: Was der Käufer zahlt, wird in Realwert genau einmal vorgemerkt
  * und – nach dem Verbuchen (Liste leeren) – nie ein zweites Mal; Gutschriften sind nie negativ; der Verkäufer verliert nie Ware ohne Gegenwert.
  * Geld entsteht nicht: Σ vorgemerkter Realwert = Σ Zahlungen des Käufers ÷ Index (je Tag exakt).
@@ -893,4 +986,4 @@ function runTransportScenario(seed, rounds = 14) {
   return { failures, digest };
 }
 
-module.exports = { runCharScenario, runOpsScenario, runCivicScenario, runTransportScenario, runCourtScenario, runRepScenario, world, runScenario, runTradeScenario, runSupplyScenario, runCityEconScenario, invariants, inputFor, JUNK, clone };
+module.exports = { runFamScenario, runCharScenario, runOpsScenario, runCivicScenario, runTransportScenario, runCourtScenario, runRepScenario, world, runScenario, runTradeScenario, runSupplyScenario, runCityEconScenario, invariants, inputFor, JUNK, clone };

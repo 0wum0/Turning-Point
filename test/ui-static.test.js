@@ -162,3 +162,38 @@ test('Charakterblatt: Knöpfe sind verdrahtet, Aktionen existieren, Glossar/Spot
   assert.match(fs.readFileSync(path.join(ROOT, 'public/js/game/views/newspaper.js'), 'utf8'), /h\.vip/); assert.match(fs.readFileSync(path.join(ROOT, 'public/js/game/views/social.js'), 'utf8'), /s\.rankName/);
 
 });
+
+test('Werben, Ehe und Familienunternehmen: Knöpfe sind verdrahtet, Aktionen existieren, Glossar/Spots vorhanden; Classic und Design V2 sind angebunden', () => {
+  const dy = fs.readFileSync(path.join(ROOT, 'public/js/game/dyn.js'), 'utf8');
+  const sels = new Set([...dy.matchAll(/on\(root, 'click', '\[(data-[a-z-]+)\]'/g)].map((m) => m[1]));
+  assert.ok(sels.size >= 10, [...sels].join());
+  for (const a of sels) assert.ok(new RegExp(`${a}(=|[ >])`).test(dy), `Kein Knopf mit ${a}`);
+  assert.ok(!/(?<!html)`data-[a-z-]+=/.test(dy), 'Attribute dürfen nicht als Text in html`` stehen (würden maskiert)');
+  const A = require('../src/game/actions').ACTIONS;
+  const used = new Set([...dy.matchAll(/(?:act|ctx\.act)\('([A-Za-z]+)'/g)].map((m) => m[1]));
+  for (const n of used) assert.ok(A.includes(n), `Aktion ${n} fehlt im Server`);
+  for (const n of ['wooAct', 'wooVisit', 'wooAsk', 'wooDrop', 'marry', 'divorce', 'divorceCancel', 'famGroom', 'famGroomEnd', 'famHandover']) { assert.ok(A.includes(n), n); assert.ok(used.has(n) || dy.includes(`'${n}'`), `Oberfläche ruft ${n} auf`); }
+  const gl = fs.readFileSync(path.join(ROOT, 'public/js/game/glossary-dyn.js'), 'utf8');
+  const keys = new Set([...gl.matchAll(/^\s*\['([^']+)'/gm)].map((m) => m[1]));
+  for (const m of dy.matchAll(/term\('([^']+)'/g)) assert.ok(keys.has(m[1]), `Glossar fehlt: ${m[1]}`);
+  assert.match(fs.readFileSync(path.join(ROOT, 'public/js/game/glossary.js'), 'utf8'), /GLOSSARY_DYN/);
+  // Einsteiger-Spots zeigen auf vorhandene Elemente
+  const ob = fs.readFileSync(path.join(ROOT, 'public/js/game/onboarding.js'), 'utf8');
+  assert.match(ob, /woo: \{ sel: '\[data-woo-best\]/); assert.match(ob, /marry: \{ sel: '\[data-dyn-marry\]'/); assert.match(ob, /groom: \{ sel: '\[data-dyn-groom\]/);
+  assert.match(dy, /data-woo-box/); assert.match(dy, /data-dyn-card/); assert.match(dy, /data-dyn-marriage/); assert.match(dy, /data-dyn-kid="\$\{c\.id\}"/);
+  // Familienseite (Classic und V2 gleich), Stadt-Familienmitglieder, Charakterblatt, Zeitung, Live-Kanal, Wohnhaus
+  const fam = fs.readFileSync(path.join(ROOT, 'public/js/game/views/family.js'), 'utf8');
+  assert.match(fam, /import \{ wooSection, marriageBlock, kidBlock, dynastyCard, bindDyn \} from '\.\.\/dyn\.js'/); assert.match(fam, /bindDyn\(root, ctx\)/); assert.match(fam, /\$\{wooSection\(ctx\)\}/); assert.match(fam, /\$\{dynastyCard\(ctx\)\}/); assert.match(fam, /kidBlock\(c, v\)/);
+  const city = fam.slice(fam.indexOf('export function openCityFamily')); assert.match(city, /marriageBlock\(ctx\)/); assert.match(city, /familyView\.bind/);
+  assert.match(fs.readFileSync(path.join(ROOT, 'public/js/game/char.js'), 'utf8'), /dynastyCard\(ctx\)/);
+  assert.match(fs.readFileSync(path.join(ROOT, 'public/js/game/views/newspaper.js'), 'utf8'), /Kennenlernen/);
+  assert.match(fs.readFileSync(path.join(ROOT, 'public/js/game/live.js'), 'utf8'), /family: \['family', 'character', 'overview', 'business'\]/);
+  const rooms = fs.readFileSync(path.join(ROOT, 'public/js/game/rooms.js'), 'utf8');
+  assert.match(rooms, /\['rings', 'Eheringe', 'gem'\]/); assert.match(rooms, /spot\(rb, 'rings'[^;]+'family'/); assert.match(rooms, /spot\(ph, 'family'/);
+  // Server liefert, was die Oberfläche braucht
+  const { present } = require('../src/game/present'); assert.ok(present.toString().includes('view.fam'));
+  const D2 = require('../src/game/dynasty'); for (const f of ['view', 'wooView', 'contractView', 'kidView', 'dynView']) assert.strictEqual(typeof D2[f], 'function', f);
+  // Spielerehen: Güterstand wird im Antrag gewählt
+  const soc = fs.readFileSync(path.join(ROOT, 'public/js/game/views/social.js'), 'utf8'); assert.match(soc, /id="lregime"/); assert.match(soc, /regime: \(root\.querySelector\('#lregime'\)/);
+  assert.match(fs.readFileSync(path.join(ROOT, 'src/routes/social.js'), 'utf8'), /bonds\.propose\(uid\(req\), req\.body && req\.body\.regime\)/);
+});

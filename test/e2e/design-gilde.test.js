@@ -122,3 +122,34 @@ test('Charakterblatt in Design V2: Garderobe im Wohnhaus öffnet die Seite, alle
   }
  }finally{await browser?.close();server.closeAllConnections();await new Promise(r=>server.close(r));}
 });
+test('Familie in Design V2: Eheringe im Wohnhaus öffnen die Familienseite (Ehevertrag, Kind im Familienbetrieb, Dynastie), Dynastie-Karte im Charakterblatt, kein Überlauf auf dem Handy',{timeout:180000},async()=>{
+ const {state,view,user,gameWorld}=require('./design-fixture');const {present}=require('../../src/game/present');
+ state.housing={type:'rent',cityId:state.cityId,base:70,rooms:4};
+ state.partner={personId:'p-fam',name:'Eva Müller',gender:'f',born:state.day-30*365,pkey:'friseur',profession:'Friseurin',sat:80,married:true,cohabit:true,giftBoost:0,unhappyDays:0,since:0,fam:{cls:1,visited:true}};
+ state.fam.contract={kind:'zugewinn',day:state.day-400,startReal:1000000,pid:'p-fam',dowry:null};state.fam.ring={lv:2,paid:12000,day:state.day-400};
+ state.children=[{id:1,personId:'p-kid',name:'Anna Müller',gender:'f',born:state.day-19*365,cityId:state.cityId,status:'home',sat:70,school:null,pendingSchool:false,path:'done',pkey:'baecker',skills:['baecker'],schoolDone:'haupt'}];
+ const onboarding=view.onboarding;Object.assign(view,present(gameWorld,state,user,Date.now()),{onboarding});
+ const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));let browser;
+ try{
+  browser=await launch();const port=server.address().port;
+  for(const cfg of [{viewport:{width:1280,height:850}},{viewport:{width:412,height:915},reducedMotion:'reduce'}]){
+   const {page,errors}=await open(browser,port,cfg);
+   const key=await page.evaluate(async()=>{const b=(await (await fetch('/api/city')).json()).buildings.find(x=>x.type==='home');return b&&b.key;});
+   assert.ok(key,'ein eigenes Wohnhaus in der Stadt');
+   await page.locator(`.city3d-pin[data-city-key="${key}"]`).click();await page.waitForTimeout(800);
+   await page.locator('.city3d-card .btn.primary').click();await page.waitForSelector('.interior [data-bar]');
+   const verbs=await page.locator('.interior [data-bar] b').allInnerTexts();assert.ok(verbs.includes('Eheringe'),`Eheringe fehlen: ${verbs.join('|')}`);
+   await page.locator('.interior [data-bar]').filter({hasText:'Eheringe'}).first().click();
+   const panel=await page.locator('.int-panel').innerText();assert.ok(panel.includes('Familie und Ehevertrag'),panel);
+   await page.locator('.int-panel .act').filter({hasText:'Familie und Ehevertrag'}).first().click();
+   await page.waitForFunction(()=>document.getElementById('page')&&document.getElementById('page').dataset.route==='family'&&document.querySelector('[data-dyn-marriage]'));
+   const t=await page.locator('#page').innerText();for(const w of ['Ehevertrag','Zugewinngemeinschaft','Im Familienbetrieb','Dynastie-Wertung','Familienbetriebe'])assert.ok(t.toLowerCase().includes(w.toLowerCase()),`${w} fehlt`);
+   assert.equal(await page.locator('[data-dyn-ring]').count(),1);assert.equal(await page.locator('[data-dyn-kid="1"] [data-dyn-groom]').count(),1,'Kind kann im Familienbetrieb eingearbeitet werden');assert.equal(await page.locator('[data-dyn-card]').count(),1);
+   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'kein horizontaler Überlauf (Familie)');
+   await page.evaluate(()=>{location.hash='#/character';});await page.waitForFunction(()=>document.getElementById('page').dataset.route==='character'&&document.querySelector('[data-dyn-card]'));
+   assert.ok((await page.locator('[data-ch-ring]').innerText()).length>0,'Eheringe im Charakterblatt');
+   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'kein horizontaler Überlauf (Charakterblatt)');
+   assert.deepEqual(errors,[]);await page.close();
+  }
+ }finally{await browser?.close();server.closeAllConnections();await new Promise(r=>server.close(r));}
+});

@@ -389,8 +389,8 @@ test('Bots (mild): bauen nur kleine Stufen, versichern ihre Betriebe, loben ihr 
 test('Rate-Limit: Ausbau und Führungsaktionen laufen über eine eigene Bremse je Spieler; alle Aktionsnamen sind echte Aktionen', () => {
   const fs = require('fs'); const path = require('path');
   const api = fs.readFileSync(path.join(__dirname, '../src/routes/api.js'), 'utf8');
-  assert.match(api, /OPS_ACTIONS = new Set\(require\('\.\.\/game\/operations-actions'\)\.ACTIONS\.concat\(require\('\.\.\/game\/character-actions'\)\.ACTIONS\)\)/); // Charakterblatt teilt die Bremse assert.match(api, /userLimit\(45,/); assert.match(api, /OPS_ACTIONS\.has\(req\.params\.name\) \? opsLimit/);
-  const names = require('../src/game/operations-actions').ACTIONS; for (const n of names) assert.ok(actions.ACTIONS.includes(n), n);
+  assert.match(api, /OPS_ACTIONS = new Set\(require\('\.\.\/game\/operations-actions'\)\.ACTIONS\.concat\(require\('\.\.\/game\/character-actions'\)\.ACTIONS, require\('\.\.\/game\/dynasty-actions'\)\.ACTIONS\)\)/); // Charakterblatt und Familie teilen die Bremse assert.match(api, /userLimit\(45,/); assert.match(api, /OPS_ACTIONS\.has\(req\.params\.name\) \? opsLimit/);
+  const names = require('../src/game/operations-actions').ACTIONS.concat(require('../src/game/dynasty-actions').ACTIONS); for (const n of names) assert.ok(actions.ACTIONS.includes(n), n);
 });
 
 test('Regression aus dem Langlauf: setLevel setzt den alten Schalter immer (upgradeState idempotent), Teamliste folgt der Belegschaft, Prototyp-Schlüssel sind keine Förderprogramme', () => {

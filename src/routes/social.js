@@ -137,7 +137,7 @@ router.get('/couple', wrap(async (req, res) => res.json({ ok: true, ...(await bo
 router.post('/couple/request', wrap(async (req, res) => { await bonds.request(await worldSvc.get(), uid(req), int(req.body.userId)); res.json({ ok: true }); }));
 router.post('/couple/respond', wrap(async (req, res) => { await bonds.respond(await worldSvc.get(), uid(req), int(req.body.id), !!req.body.accept); await fresh(req, res); }));
 router.post('/couple/cancel', wrap(async (req, res) => { await bonds.cancelRequest(uid(req), int(req.body.id)); res.json({ ok: true }); }));
-router.post('/couple/propose', wrap(async (req, res) => { await bonds.propose(uid(req)); res.json({ ok: true }); }));
+router.post('/couple/propose', wrap(async (req, res) => { await bonds.propose(uid(req), req.body && req.body.regime); res.json({ ok: true }); }));
 router.post('/couple/answer', wrap(async (req, res) => { await bonds.answerProposal(await worldSvc.get(), uid(req), !!req.body.accept); await fresh(req, res); }));
 router.post('/couple/breakup', wrap(async (req, res) => { await bonds.breakup(uid(req)); await fresh(req, res); }));
 

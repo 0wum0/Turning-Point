@@ -14,13 +14,14 @@ const { resolveListing } = require('./newspaper');
 const biz = require('./business');
 
 const intOf = (x) => (typeof x === 'number' && Number.isInteger(x)) || (typeof x === 'string' && /^\d{1,9}$/.test(x)) ? Number(x) : NaN;
+const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 const idOf = (x) => (typeof x === 'string' && /^[A-Za-z0-9:_-]{1,40}$/.test(x) ? x : '');
 
 function install(A, fail, { yr, pay }) {
   const on = () => { if (!DYN.enabled()) fail('Das Werben und die Familienplanung sind gerade ausgeschaltet.'); };
   const cur = (world, state) => world.currency(yr(state));
   const money = (world, state, cents) => formatMoney(cents, cur(world, state));
-  const entry = (state, input) => { DYN.ensure(state); const id = idOf(input && input.id); const e = id ? state.fam.woo[id] : null; if (!e) fail('Diese Bekanntschaft gibt es nicht (mehr).'); return e; };
+  const entry = (state, input) => { DYN.ensure(state); const id = idOf(input && input.id); const e = id && own(state.fam.woo, id) ? state.fam.woo[id] : null; if (!e) fail('Diese Bekanntschaft gibt es nicht (mehr).'); return e; };
   const child = (state, id) => { const n = intOf(id); const c = Number.isFinite(n) ? state.children.find((x) => x.id === n) : null; if (!c) fail('Kind nicht gefunden.'); return c; };
   const firm = (state, id) => { const n = intOf(id); const c = Number.isFinite(n) ? (state.companies || []).find((x) => x.id === n) : null; if (!c) fail('Unternehmen nicht gefunden.'); return c; };
 
@@ -46,7 +47,7 @@ function install(A, fail, { yr, pay }) {
     const raw = String(input.act == null ? '' : input.act);
     const key = raw === 'best' ? DYN.bestAct(world, state, e) : raw;
     if (!key) fail('Gerade lässt sich nichts unternehmen – warte ein paar Tage.');
-    if (!Object.prototype.hasOwnProperty.call(DYN.ACTS(), key)) fail('Das kennt hier niemand.');
+    if (!own(DYN.ACTS(), key)) fail('Das kennt hier niemand.');
     const b = DYN.actBlock(world, state, e, key); if (b) fail(b);
     const cost = DYN.actCostCents(world, state, key); if (cost > 0) pay(state, cost);
     const had = e.known.length;
@@ -107,7 +108,7 @@ function install(A, fail, { yr, pay }) {
     if (p.married) fail('Ihr seid bereits verheiratet.');
     if (p.gender === state.person.gender) fail('Eine Ehe gibt es nur zwischen Mann und Frau.');
     const kind = input.contract == null || input.contract === '' ? 'zugewinn' : String(input.contract);
-    const K = DYN.KINDS()[kind]; if (!K) fail('Diesen Ehevertrag gibt es nicht.');
+    const K = own(DYN.KINDS(), kind) ? DYN.KINDS()[kind] : null; if (!K) fail('Diesen Ehevertrag gibt es nicht.');
     const ring = input.ring == null || input.ring === '' ? 0 : intOf(input.ring);
     if (!Number.isFinite(ring) || ring < 0 || ring > 3) fail('Bitte Eheringe von Stufe 0 bis 3 wählen.');
     const idx = world.idx(yr(state));
@@ -179,7 +180,7 @@ function install(A, fail, { yr, pay }) {
     chronicle(state, `${state.person.first} übergibt „${f.name}“ an ${c.name}.`, 'business');
     require('./reputation').queue(state, 'civic', 1.5, 'fam_succession', f.id);
     const first = c.name.split(' ')[0];
-    return { msg: `„${f.name}“ gehört jetzt ${first}. Steuer ${money(world, state, costs.tax)}, Gebühren ${money(world, state, costs.fee)}.${worked ? ' Du gehst in den Ruhestand.' : ''}`, level: 'good' };
+    return { msg: `„${f.name}“ gehört jetzt ${first}. Steuer ${money(world, state, costs.tax)}, Gebühren ${money(world, state, costs.fee)}.${worked ? ' Du bist jetzt im Ruhestand.' : ''}`, level: 'good' };
   };
 }
 

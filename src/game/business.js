@@ -335,7 +335,7 @@ function foundOptions(world, state, cityId = state.cityId) {
   const econ = world.econ.companies;
   const tiers = tiersOf(world);
   const goods = require('./goods');
-  const count = (state.companies || []).length;
+  const count = (state.companies || []).length + require('./dynasty').heldCount(state);
   const full = count >= econ.maxCompanies;
   const options = [];
   if (city) {
@@ -379,7 +379,7 @@ function checkFound(world, state, input) {
   const cityId = inp.cityId == null ? state.cityId : Number(inp.cityId);
   const city = Number.isInteger(cityId) ? world.city(cityId) : null;
   if (!city) return { ok: false, err: 'Unbekannte Stadt.' };
-  if ((state.companies || []).length >= world.econ.companies.maxCompanies) return { ok: false, err: 'Du besitzt bereits die maximale Anzahl an Unternehmen.' };
+  if ((state.companies || []).length + require('./dynasty').heldCount(state) >= world.econ.companies.maxCompanies) return { ok: false, err: 'Du besitzt bereits die maximale Anzahl an Unternehmen.' };
   if (!qualification(world, state, pkey, tier).ok) return { ok: false, err: 'Dir fehlt die Qualifikation für diesen Betrieb.' };
   const nm = inp.name == null || inp.name === '' ? { ok: true, name: suggestName(world, state, pkey, tier) } : validName(state, inp.name);
   if (!nm.ok) return nm;

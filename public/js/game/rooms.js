@@ -14,7 +14,7 @@ const hex = (n) => `#${n.toString(16).padStart(6, '0')}`;
 
 /** Aktionsleiste im Raum: [Gegenstand-ID, Verb, Symbol, optionaler Filter auf die echten Aktionen]. Ruft ausschließlich vorhandene Spielaktionen auf. */
 const BAR = {
-  home: [['bed', 'Ausruhen', 'bed'], ['fridge', 'Vorrat kaufen', 'shopping-basket'], ['stove', 'Kochen', 'flame'], ['leisure', 'Entspannen', 'smile'], ['tidy', 'Aufräumen', 'sparkles'], ['desk', 'Finanzen', 'wallet'], ['family', 'Familie', 'heart'], ['shelf', 'Chronik', 'book-open'], ['wardrobe', 'Garderobe', 'shirt'], ['mail', 'Post', 'mail']],
+  home: [['bed', 'Ausruhen', 'bed'], ['fridge', 'Vorrat kaufen', 'shopping-basket'], ['stove', 'Kochen', 'flame'], ['leisure', 'Entspannen', 'smile'], ['tidy', 'Aufräumen', 'sparkles'], ['desk', 'Finanzen', 'wallet'], ['family', 'Familie', 'heart'], ['shelf', 'Chronik', 'book-open'], ['wardrobe', 'Garderobe', 'shirt'], ['rings', 'Eheringe', 'gem'], ['mail', 'Post', 'mail']],
   pension: [['bed', 'Ausruhen', 'bed'], ['reception', 'Wohnungsmarkt', 'house']],
   rathaus: [['amt', 'Arbeiten', 'briefcase'], ['wahl', 'Wahlen', 'landmark'], ['plan', 'Umziehen', 'map']],
   bahnhof: [['ticket', 'Fahrkarte kaufen', 'ticket'], ['train', 'Reisen', 'train-front']],
@@ -151,8 +151,9 @@ export function buildRoom(T, b, ctx, { enhanced=false, hour=new Date().getHours(
       const mb = group(-w / 2 + 0.5, d / 2 - 0.6); box(0.5, 0.6, 0.3, 0xc9a23f, 0, 0.6, 0, mb); box(0.06, 0.6, 0.06, 0x555555, 0, 0, 0, mb); spot(mb, 'mail', 'Briefkasten – Post', goAct('Postfach öffnen', 'overview', 'Meldungen und Nachrichten'));
       const kids = Math.min(6, v.children.filter((c) => c.status === 'home').length);
       for (let i = 0; i < kids; i++) bed(-w / 2 + 1.6 + (i % 3) * 1.8, -d / 2 + 3.6 + Math.floor(i / 3) * 2.2, Math.PI / 2, true, 0x4a7a9a + i * 3000);
-      if (v.partner && v.partner.cohabit) { person(0.2, 0.2, 0xb04a6a, 0.4); const ph = frame(-w / 4, 2.1, 0, 'back'); spot(ph, 'family', 'Familienfoto', goAct('Familie ansehen', 'family', 'Partner und Kinder')); }
+      if (v.partner && v.partner.cohabit) { person(0.2, 0.2, 0xb04a6a, 0.4); const ph = frame(-w / 4, 2.1, 0, 'back'); spot(ph, 'family', 'Familienfoto', goAct('Familie ansehen', 'family', 'Partner, Kinder, Ehevertrag und Familienbetrieb')); }
       else { const ph = frame(-w / 4, 2.1, 0, 'back', 0x888888); spot(ph, 'family', 'Leerer Bilderrahmen', goAct('Familie ansehen', 'family', 'Partner und Kinder')); }
+      if (v.fam && v.fam.contract && v.fam.contract.ring) { const rb = group(-w / 2 + 1.6, d / 4 - 0.9, 0); cyl(0.22, 0.28, 0.9, 0x6a4526, 0, 0, 0, rb); box(0.34, 0.12, 0.26, 0x7a1f2b, 0, 0.9, 0, rb, { noShadow: true }); cyl(0.07, 0.07, 0.03, 0xe8c25a, -0.06, 1.02, 0, rb, { noShadow: true }); cyl(0.07, 0.07, 0.03, 0xe8c25a, 0.07, 1.02, 0, rb, { noShadow: true }); spot(rb, 'rings', 'Eheringe – Ehevertrag', goAct('Familie und Ehevertrag', 'family', 'Eheringe, Ehevertrag und Familienbetrieb')); }
       const ep = group(w / 2 - 1.6, d / 4 + 0.5, -Math.PI / 2);
       if (era === 1) { box(1.6, 0.9, 0.7, 0x6a4526, 0, 0, 0, ep); box(0.9, 0.55, 0.45, 0x4a3320, 0, 0.9, 0, ep); cyl(0.17, 0.17, 0.05, 0xd8c070, -0.2, 1.15, 0.24, ep, { rot: [Math.PI / 2, 0, 0], noShadow: true }); cyl(0.07, 0.07, 0.05, 0xd8c070, 0.25, 1.15, 0.24, ep, { rot: [Math.PI / 2, 0, 0], noShadow: true }); }
       else if (era === 2) { box(1.6, 0.8, 0.8, 0x6a4526, 0, 0, 0, ep); box(1.1, 0.8, 0.7, 0x3a2d22, 0, 0.8, 0, ep); box(0.8, 0.6, 0.05, 0x7aa0a8, 0, 0.9, 0.36, ep, { noShadow: true }); cyl(0.02, 0.02, 0.8, 0x999999, 0.3, 1.6, 0, ep, { rot: [0, 0, 0.5] }); }

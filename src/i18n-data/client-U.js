@@ -15,6 +15,7 @@ T('Stufe {n} von 5', 'Level $1 of 5');
 T('{} kaufen?', 'Buy $1?');
 
 X([
+  ['Güterstand:', 'Property regime:'], ['Zugewinngemeinschaft', 'Community of accrued gains'],
   // Bekanntschaften
   ['Bekanntschaften', 'Acquaintances'], ['Sympathie', 'Affection'], ['Vorlieben:', 'Likes:'], ['Familienmeinung', 'Family opinion'], ['Familienmeinung:', 'Family opinion:'],
   ['Bekannt', 'Acquainted'], ['Verabredet', 'Dating'], ['Bereit für den Antrag', 'Ready to propose'],
@@ -79,6 +80,7 @@ X([
   ['Tippe auf „Heiraten – mit Ehevertrag“ und vergleiche die Güterstände.', 'Tap “Get married – with a marriage contract” and compare the property regimes.'],
   ['Tippe bei einem Kind auf „Im Familienbetrieb einarbeiten“.', 'On a child, tap “Train in the family business”.'],
   ['Nachfolge & Dynastie', 'Succession & dynasty'],
+  ['Dein Partner muss zustimmen. Die Hochzeitskosten teilt ihr euch. Mit der Gütertrennung gibt es bei einer Scheidung keine Abfindung, und der Ehepartner erbt nur die Hälfte des üblichen Anteils.', 'Your partner must agree. You share the wedding costs. With separation of property there is no settlement in a divorce, and the spouse inherits only half the usual share.'],
 ]);
 
 // Glossar

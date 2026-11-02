@@ -195,7 +195,7 @@ async function coupleView(world, userId) {
   return {
     singles,
     me: ps ? { cityId: ps.city_id } : null,
-    couple: cp ? { id: cp.id, status: cp.status, engagedByMe: cp.engaged_by === userId, other: await nameOf(other(cp)), since: cp.created_at, marriedAt: cp.married_at } : null,
+    couple: cp ? { id: cp.id, status: cp.status, regime: cp.regime || 'zugewinn', engagedByMe: cp.engaged_by === userId, other: await nameOf(other(cp)), since: cp.created_at, marriedAt: cp.married_at } : null,
     incoming: await Promise.all(incoming.map(async (r) => ({ id: r.id, other: await nameOf(other(r)) }))),
     outgoing: await Promise.all(outgoing.map(async (r) => ({ id: r.id, other: await nameOf(other(r)) }))),
     rules: { minAge: cfg().couples.minAge, sameCity: cfg().couples.requireSameCity, spouseShare: cfg().couples.spouseSharePct, divorce: cfg().couples.divorceSettlementPct },
@@ -259,9 +259,10 @@ async function respond(world, userId, coupleId, accept) {
     await social.upsertStats(conn, { id: userId, username: stA.username, meta: {}, social_public: 1 }, rowA, sA, world);
   });
 }
-async function propose(userId) {
+async function propose(userId, regime) {
   const cp = await activeCouple(db, userId); if (!cp || cp.status !== 'dating') fail('Ein Heiratsantrag ist nur in einer Beziehung möglich.');
-  await db.query("UPDATE couples SET status = 'engaged', engaged_by = ? WHERE id = ?", [userId, cp.id]);
+  const rg = regime == null || regime === '' ? 'zugewinn' : String(regime); if (!['zugewinn', 'trennung'].includes(rg)) fail('Diesen Güterstand gibt es für Spielerehen nicht.'); // Mitgift gibt es nur bei Computer-Partnern
+  await db.query("UPDATE couples SET status = 'engaged', engaged_by = ?, regime = ? WHERE id = ?", [userId, rg, cp.id]);
   const other = cp.user_a === userId ? cp.user_b : cp.user_a; const me = await stat(userId);
   await social.sendSystemLetter(other, 'Heiratsantrag!', `${me ? me.name : 'Dein Partner'} macht dir einen Heiratsantrag. Antworte unter „Spieler → Beziehung“.`, userId);
 }
@@ -277,7 +278,7 @@ async function answerProposal(world, userId, accept) {
     const costB = Math.round(scale(world.econ.marriageCost, world.idx(yearOf(sB.day, sB.startYear))) * pct);
     if (sA.money < costA) fail('Dir fehlt das Geld für deinen Hochzeitsanteil.'); if (sB.money < costB) fail('Deiner Partnerin bzw. deinem Partner fehlt das Geld für den Hochzeitsanteil.');
     sA.money -= costA; sA.stats.spent += costA; sB.money -= costB; sB.stats.spent += costB;
-    for (const st of [sA, sB]) { st.partner.married = true; st.partner.sat = clamp(st.partner.sat + 15, 0, 100); }
+    for (const st of [sA, sB]) { st.partner.married = true; st.partner.contract = ['zugewinn', 'trennung'].includes(cp.regime) ? cp.regime : 'zugewinn'; st.partner.sat = clamp(st.partner.sat + 15, 0, 100); } // Güterstand (Schritt 11): wirkt auf Abfindung und Erbanteil
     await conn.query("UPDATE couples SET status = 'married', married_at = NOW() WHERE id = ?", [cp.id]);
     const nA = sA.partner.name; const nB = sB.partner.name;
     for (const [st, nm] of [[sA, nA], [sB, nB]]) { chronicle(st, `${st.person.first} heiratet ${nm}.`, 'family'); press.story(world, st, 'marriage', { partner: nm }); notice(st, { level: 'good', title: 'Ihr habt geheiratet!', text: `Herzlichen Glückwunsch zur Hochzeit mit ${nm}.`, interrupt: true, tab: 'social' }); }
@@ -390,7 +391,10 @@ async function reconcileCouple(conn, user, state, world) {
     notice(state, { level: widow ? 'bad' : 'warn', title: widow ? `${p.name} ist gestorben` : wasMarried ? 'Scheidung' : 'Trennung', text: widow ? 'Dein Ehepartner ist verstorben. Ein Teil des Nachlasses geht an dich.' : `Die Beziehung zu ${p.name} ist beendet.`, tab: 'family', interrupt: true });
     if (!widow) press.story(world, state, 'separation', { partner: p.name });
     // Abfindung bei Scheidung (zahlt, wer sie beendet hat)
-    if (cp && cp.end_reason === 'divorce' && cp.ended_by === user.id && state.money > 0) {
+    if (cp && cp.end_reason === 'divorce' && cp.ended_by === user.id && state.money > 0 && require('../game/dynasty').settlementFactor(p) === 0) {
+      await conn.query("UPDATE couples SET end_reason = 'divorce_paid' WHERE id = ?", [cp.id]);
+      notice(state, { level: 'info', title: 'Gütertrennung: keine Abfindung', text: `Ihr hattet Gütertrennung vereinbart – ${p.name} bekommt bei der Scheidung keine Abfindung.` });
+    } else if (cp && cp.end_reason === 'divorce' && cp.ended_by === user.id && state.money > 0) {
       const share = Math.floor(state.money * cfg().couples.divorceSettlementPct / 100); const real = share / Math.max(0.0001, world.idx(yearOf(state.day, state.startYear)));
       state.money -= share; state.stats.spent += share;
       const other = cp.user_a === user.id ? cp.user_b : cp.user_a;
@@ -402,6 +406,7 @@ async function reconcileCouple(conn, user, state, world) {
   }
   // aktive Beziehung: Daten des Partners auffrischen
   p.married = cp.status === 'married'; p.head = cp.user_a === user.id;
+  if (p.married) p.contract = ['zugewinn', 'trennung'].includes(cp.regime) ? cp.regime : 'zugewinn';
   const ps = await conn.one('SELECT name, pkey, occupation FROM player_stats WHERE user_id = ?', [p.userId]);
   if (ps) { p.name = ps.name; p.pkey = ps.pkey; p.profession = (world.prof(ps.pkey) || {}).name || ps.occupation || p.profession; }
   // gemeinsame Kinder des „führenden“ Partners übernehmen

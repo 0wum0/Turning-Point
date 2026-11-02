@@ -5,7 +5,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert');
-const { runCharScenario, runOpsScenario, runTransportScenario, runScenario, runTradeScenario, runSupplyScenario, runCityEconScenario, runRepScenario, runCourtScenario, runCivicScenario } = require('./fuzz-lib');
+const { runFamScenario, runCharScenario, runOpsScenario, runTransportScenario, runScenario, runTradeScenario, runSupplyScenario, runCityEconScenario, runRepScenario, runCourtScenario, runCivicScenario } = require('./fuzz-lib');
 
 const report = (failures) => failures.map((f) => `Seed ${f.seed}: ${f.msg}\n  Spur: ${(f.trace || []).slice(-6).join(' | ')}`).join('\n');
 
@@ -97,6 +97,13 @@ test('Fuzz: Handelsrouten – Kasse stimmt auf den Cent, Gewinn unter dem Rendit
 test('Fuzz: Betrieb 2.0 – Module, Klima und Brände halten Geld, Stimmung, Lager und Wirkungsgrenzen ein', () => {
   for (const seed of [91, 92, 93, 94, 95, 96]) {
     const failures = runOpsScenario(seed, 40);
+    assert.deepStrictEqual(failures, [], report(failures));
+  }
+});
+
+test('Fuzz: Werben, Ehe und Familienunternehmen – Hochzeit, Scheidung, Einarbeitung, Übergabe und Erbe halten Geld, Betriebe und Grenzen ein', () => {
+  for (const seed of [131, 132, 133, 134, 135, 136]) {
+    const failures = runFamScenario(seed, 40);
     assert.deepStrictEqual(failures, [], report(failures));
   }
 });
