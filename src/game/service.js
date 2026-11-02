@@ -183,6 +183,7 @@ async function withCharacterOnce(userId, fn, { needAlive = false } = {}) {
       try { await require('../lib/transport').flush(conn, user, state, w); } catch (e) { require('../lib/log').warn(`[transport] ${e.message}`); }
       try { await require('../lib/operations').flush(conn, user, state, w); } catch (e) { require('../lib/log').warn(`[betrieb] ${e.message}`); }
       try { await require('../lib/character').flush(conn, user, state, w); } catch (e) { require('../lib/log').warn(`[charakter] ${e.message}`); }
+      try { await require('../lib/dynasty').flush(conn, user, state, w); } catch (e) { require('../lib/log').warn(`[familie] ${e.message}`); }
       try { await require('../lib/exchange').flushDividends(conn, state); } catch (e) { require('../lib/log').warn(`[exchange] ${e.message}`); }
       await saveCharacter(conn, row, state);
       const social = require('../lib/social');
@@ -310,7 +311,7 @@ async function previewHeir(userId, childId, bequest) {
   const will = await require('../lib/civic').previewWill(userId, state, w); // Vermächtnis an die Stiftung (Cent), mindert den Nachlass
   if (will) state.money -= will;
   const plan = planInheritance(w, state, childId, Array.isArray(bequest) ? bequest : []);
-  return { n: plan.est.n, share: plan.est.share, cash: plan.cash, properties: plan.properties.concat(plan.companies).map((p) => p.name), will };
+  return { n: plan.est.n, share: plan.est.share, cash: plan.cash, properties: plan.properties.concat(plan.companies, plan.held || []).map((p) => p.name), will };
 }
 
 /** Nur lesen (ohne Sperre/Sync) – für Zeitung, Karte, Kostenvoranschläge. */

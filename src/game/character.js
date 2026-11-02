@@ -113,9 +113,12 @@ const heirOf = (state, slot) => (state && state.char && Array.isArray(state.char
 /** Wirksames Stück eines Platzes: das bessere aus eigenem Stück und Erbstück. */
 function piece(state, slot) {
   const o = own(state, slot); const h = heirOf(state, slot);
-  if (o && (!h || o.lv >= h.lv)) return { lv: o.lv, cond: o.cond, y: o.y, own: true, item: o };
-  if (h) return { lv: h.lv, cond: h.cond, y: null, own: false, heir: h };
-  return null;
+  const rg = slot === 'schmuck' && state && state.fam && state.fam.ring ? state.fam.ring : null; // Eheringe (Schritt 11) zählen als Schmuck: nicht verkäuflich, nutzen sich nicht ab, werden vererbt
+  let best = null;
+  if (o && (!h || o.lv >= h.lv)) best = { lv: o.lv, cond: o.cond, y: o.y, own: true, item: o };
+  else if (h) best = { lv: h.lv, cond: h.cond, y: null, own: false, heir: h };
+  if (rg && (!best || rg.lv > best.lv)) return { lv: rg.lv, cond: 100, y: null, own: false, ring: true };
+  return best;
 }
 const wornFactor = (cond) => { const f = clamp(num(GEAR().wornFloorPct, 55), 0, 100) / 100; return f + (1 - f) * clamp(cond, 0, 100) / 100; };
 const isDated = (slot, p, year) => !!p && p.y != null && year - p.y >= num(slotCfg(slot).modeYears, 12);

@@ -1,5 +1,6 @@
 import { html, icon, money, infoBtn, bar, on, modal, yearsText } from '../ui.js';
 import { childTalent, schoolFitMark, bindChildTalents, talentBars, fitChip } from '../talents.js';
+import { wooSection, marriageBlock, kidBlock, dynastyCard, bindDyn } from '../dyn.js';
 
 const STATUS = { home: 'zu Hause', runaway: 'weggelaufen', care: 'Jugendhilfe', withPartner: 'beim Ex-Partner' };
 
@@ -13,6 +14,7 @@ function childCard(c, v) {
       ${c.pendingSchool ? html`<div class="alert warn mt small">${icon('lightbulb')}<div><b>Schulwahl:</b> Welche Schule soll ${c.name} besuchen?<div class="row mt">${[['haupt', 'Hauptschule'], ['real', 'Realschule'], ['gym', 'Gymnasium']].map((s) => html`<button class="btn sm" data-school="${c.id}" data-type="${s[0]}">${s[1]} ${schoolFitMark(c, s[0])}</button>`)}</div></div></div>` : ''}
       ${c.pendingPath ? html`<div class="alert warn mt small">${icon('lightbulb')}<div><b>Wie geht es weiter?</b><div class="row mt"><button class="btn sm primary" data-path="${c.id}">Ausbildung / Studium wählen</button><button class="btn sm" data-nopath="${c.id}">Nichts</button></div></div></div>` : ''}
       ${childTalent(c, v)}
+      ${kidBlock(c, v)}
       <div class="row mt"><button class="btn sm" data-gift="${c.id}">${icon('gift')} Geschenk</button></div>`
     : c.status === 'runaway' ? html`<div class="alert bad mt small">${icon('siren')}<div>Noch ${c.searchLeft} Tage, um ${c.name} zu finden. Sonst zieht das Kind dauerhaft in eine Jugendhilfeeinrichtung.<div class="row mt"><button class="btn sm primary" data-search="${c.id}">${icon('search')} Suchen</button></div></div></div>`
     : c.status === 'care' ? html`<div class="dim small mt">Bleibt im Stammbaum. Du zahlst weiter Unterhalt.</div>` : ''}
@@ -35,19 +37,22 @@ const familyView = {
         <div class="row mt">
           <button class="btn sm" data-p="gift">${icon('gift')} Geschenk · ${money(Math.round(400 * v.idx), cur)}</button>
           <button class="btn sm" data-p="together" ${p.canTogether ? '' : 'disabled'}>${icon('sparkles')} Gemeinsame Zeit</button>
-          ${!p.married ? html`<button class="btn sm" data-p="marry">${icon('party-popper')} Heiraten · ${money(Math.round(2500 * v.idx), cur)}</button>` : ''}
+          ${!p.married && !(v.fam && v.fam.on) ? html`<button class="btn sm" data-p="marry">${icon('party-popper')} Heiraten · ${money(Math.round(2500 * v.idx), cur)}</button>` : ''}
           ${v.adoption && v.adoption.pending != null ? html`<button class="btn sm ghost" data-p="adoptCancel" title="Antrag zurückziehen">${icon('baby')} Adoption läuft · noch ca. ${Math.ceil(v.adoption.pending / 30)} Mon.</button>` : (p.married && p.cohabit && !p.linked ? html`<button class="btn sm" data-p="adopt" ${v.adoption && v.adoption.block ? 'disabled' : ''} title="${v.adoption && v.adoption.block ? v.adoption.block : 'Ein Kind adoptieren (Verfahren dauert etwa fünf Monate)'}">${icon('baby')} Kind adoptieren · ${money(v.adoption ? v.adoption.cost : 0, cur)}</button>` : '')}
           <label class="row nowrap" style="margin-left:auto;gap:.5rem">${infoBtn(['Hier legst du fest, wie viele Kinder ihr euch wünscht. Kinder kommen nur, solange diese Zahl nicht erreicht ist.', 'Jedes Kind kostet Lebensmittel, Zimmer, Schule und Lebenshaltung. Das Kindergeld deckt nur etwa die Hälfte. Dafür gibt es einmalig Coins und spätere Erben.', 'Stelle die Wunsch-Kinderzahl passend zu deinem Einkommen und deinem Wohnraum ein.'], 'Kinderwunsch')}<span class="dim small">Wunsch-Kinderzahl</span><select id="plan" style="width:auto;padding:.35rem 2rem .35rem .7rem">${Array.from({ length: v.maxChildren + 1 }, (_, i) => html`<option value="${i}" ${i === v.plan.target ? 'selected' : ''}>${i}</option>`)}</select></label>
-        </div>`
+        </div>${marriageBlock(ctx)}`
       : html`<div class="empty-note">${icon('heart')}<span>Du lebst allein. In der Zeitung (Kontakte) findest du Menschen, die jemanden suchen.</span><button class="btn sm primary" data-go="newspaper">Kontakte ansehen</button></div>`}
     </section>
+    ${wooSection(ctx)}
 
     <div class="panel-head mt2"><div><h3 style="font-size:1.5rem">Kinder (${v.children.length} / ${v.maxChildren})</h3><p>Zimmer: ${v.rooms.have} vorhanden, ${v.rooms.need} benötigt. Kindergeld deckt etwa die Hälfte der Kosten.</p></div></div>
     ${v.children.length ? html`<div class="grid auto" style="--gap:1rem">${v.children.map((c) => childCard(c, v))}</div>`
-      : html`<div class="card flat empty-note">${icon('baby')}<span>Noch keine Kinder. Kinder bringen einmalig Coins, Kindergeld und später die Erben deiner Familie.</span></div>`}`;
+      : html`<div class="card flat empty-note">${icon('baby')}<span>Noch keine Kinder. Kinder bringen einmalig Coins, Kindergeld und später die Erben deiner Familie.</span></div>`}
+    ${dynastyCard(ctx)}`;
   },
   bind(root, ctx) {
     bindChildTalents(root, ctx);
+    bindDyn(root, ctx);
     on(root, 'click', '[data-go]', (e, t) => ctx.go(t.dataset.go));
     on(root, 'click', '[data-p]', (e, t) => ctx.act(t.dataset.p, {}));
     const plan = root.querySelector('#plan'); if (plan) plan.addEventListener('change', (e) => ctx.act('plan', { target: Number(e.target.value) }, { noRender: true }));
@@ -79,7 +84,7 @@ export function openCityFamily(ctx, actor, building) {
   const m=modal(html`<h3>${actor.name} · ${building.name}</h3>
     <p class="dim">${actor.kind==='child'&&building.type==='schule'?'Schule, Begabungen und den weiteren Bildungsweg planen.':'Gemeinsame Zeit und die nächsten Schritte deiner Familie.'}</p>
     ${c?childCard(c,v):html`<section class="card"><h4>${p.name}</h4><p>${p.age} Jahre · ${p.profession}</p><p>Zufriedenheit ${p.sat} %</p>${bar(p.sat,'good')}
-      <div class="row mt"><button class="btn" data-p="gift">${icon('gift')} Geschenk</button><button class="btn" data-p="together" ${p.canTogether?'':'disabled'}>${icon('heart')} Gemeinsame Zeit</button></div></section>`}
+      <div class="row mt"><button class="btn" data-p="gift">${icon('gift')} Geschenk</button><button class="btn" data-p="together" ${p.canTogether?'':'disabled'}>${icon('heart')} Gemeinsame Zeit</button></div>${marriageBlock(ctx)}</section>`}
     <div class="row end mt"><button class="btn ghost" data-go="family">Familienübersicht</button><button class="btn" data-close="1">Zur Stadt</button></div>`,{wide:true});
   familyView.bind(m.el,{...ctx,go:route=>{m.close();ctx.go(route);},act:async(...args)=>{const result=await ctx.act(...args);m.close();return result;}});
 }

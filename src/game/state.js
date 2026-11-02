@@ -85,6 +85,7 @@ function createCharacter(world, input, user, { cycle = 1 } = {}) {
   for (const d of user.meta.degrees || []) learn(state, d);
   me.jobs.push(world.prof(v.prof).name);
   require('./character').ensure(state); // Charakterblatt: Erfahrungskonto, Ausstattung, Rang (neutraler Zustand)
+  require('./dynasty').ensure(state); // Werben, Ehe, Familienbetrieb: neutraler Zustand
   if (state.talents && state.talents.xp) state.talents.xp.bal = Number(require('./character').XP().startBal) || 0; // Startguthaben: zwei erste Steigerungen zum Ausprobieren
   onboarding.initFresh(state);
   require('./epidemics').ensure(state);
@@ -120,6 +121,7 @@ function upgradeState(s) {
   if (s.insurance && s.insurance.betrieb == null) s.insurance.betrieb = false; // Betrieb 2.0: Betriebsversicherung
   for (const c of s.companies) require('./operations').normalize(c); // Betrieb 2.0: alter Sicherheitsdienst-Schalter → Schutz Stufe 1 (idempotent)
   require('./character').ensure(s); // Charakterblatt: xp = 0, keine Ausstattung, Rang 1 (idempotent; vorhandene Werte werden nur bereinigt)
+  require('./dynasty').ensure(s); // Werben, Ehe, Familienbetrieb: leere Bekanntschaften, kein Ehevertrag bei Altständen (dann gilt die alte Trennungsregel), Dynastie-Wertung 0
   s.foodReserve=Number.isFinite(s.foodReserve)?Math.max(0,s.foodReserve):0;
   if(!s.provisions || typeof s.provisions!=='object' || Array.isArray(s.provisions))s.provisions={};
   onboarding.ensure(s); // Altstände: Einsteiger-Aufgaben werden beim nächsten Abgleich still nachgeführt (kein Belohnungsregen)

@@ -93,7 +93,7 @@ function partnerCard(p, v, here) {
     <div class="lic">${icon('heart', 'lg')}</div>
     <div class="grow"><div class="row nowrap spread"><h4>${p.name}, ${p.age}</h4><span class="chip">${p.profession}</span></div>
       <div class="dim small">„…${p.blurb}“</div></div>
-    <button class="btn primary sm" data-act="meet" data-id="${p.id}" ${!here ? 'disabled' : ''}>Treffen</button></article>`;
+    <button class="btn primary sm" data-act="meet" data-id="${p.id}" ${!here ? 'disabled' : ''}>Kennenlernen</button></article>`;
 }
 
 export default {
@@ -119,7 +119,7 @@ export default {
       housing: () => html`<h4 class="sec">Pensionen &amp; Zimmer</h4><div class="listings">${e.housing.pension.map((h) => housingCard(h, v, here))}</div>
         <h4 class="sec">Mietwohnungen</h4><div class="listings">${e.housing.rent.map((h) => housingCard(h, v, here))}</div>
         <h4 class="sec">Zu verkaufen</h4><div class="listings">${e.housing.sale.map((h) => housingCard(h, v, here))}</div>`,
-      partners: () => v.partner ? html`<div class="empty-note">${icon('heart')}<span>Du bist mit ${v.partner.name} zusammen.</span></div>` : html`<p class="dim">Ein Treffen kostet eine kleine Aufmerksamkeit. Ob es funkt, hängt von deiner Stimmung, deiner Lage und etwas Glück ab.</p><div class="listings">${e.partners.map((p) => partnerCard(p, v, here))}</div>`,
+      partners: () => v.partner ? html`<div class="empty-note">${icon('heart')}<span>Du bist mit ${v.partner.name} zusammen.</span></div>` : html`<p class="dim">${v.fam && v.fam.on ? 'Ein erstes Treffen kostet eine kleine Aufmerksamkeit und ist der Anfang einer Bekanntschaft. Wie es weitergeht, entscheidest du unter „Familie“: Treffen, Briefe, Gespräche – und irgendwann der Antrag.' : 'Ein Treffen kostet eine kleine Aufmerksamkeit. Ob es funkt, hängt von deiner Stimmung, deiner Lage und etwas Glück ab.'}</p>${v.fam && v.fam.on && v.fam.woo.length ? html`<div class="alert info small">${icon('heart')}<div><span>Du pflegst gerade Bekanntschaften.</span> <button class="btn sm" data-go="family">Zur Familie</button></div></div>` : ''}<div class="listings">${e.partners.map((p) => partnerCard(p, v, here))}</div>`,
       biz: () => html`<div class="alert info small">${icon('info')}<div>Du musst nicht auf ein Angebot warten: Unter „Unternehmen“ kannst du jederzeit selbst gründen. <button class="btn sm" data-go-found="1">Unternehmen gründen</button></div></div>${e.biz.length ? html`<p class="dim">Betriebe darfst du nur mit passender Qualifikation führen. Die Angebote richten sich nach deinen Berufen (und dem deines Partners).</p><div class="listings">${e.biz.map((b) => bizCard(b, v, here))}</div>` : html`<div class="empty-note">${icon('store')}<span>Gerade keine passenden Betriebe zum Verkauf. Mit einem erlernten Beruf (z. B. Wirt, Bäcker, Tischler) kannst du selbst gründen.</span></div>`}`,
       economy: () => html`<p class="dim">Was kostet das Leben in ${e.city.name}? Das Preisbarometer vergleicht Lebensmittel, Mieten, Dienste, Baukosten und Löhne mit dem Rest des Landes.</p>${econSkeleton('econBox')}`,
       guide: () => html`<div class="grid c2">${e.tutorial.length ? e.tutorial.map((t) => html`<article class="card flat"><h4>${t.title} ${infoBtn(t.info, t.title)}</h4><p class="dim small mb0">${t.text}</p></article>`) : html`<div class="dim">Der Ratgeber ist ausgeblendet.</div>`}</div>
@@ -142,6 +142,7 @@ export default {
     on(root, 'click', '[data-gosoc]', (ev, t) => { ctx.ui.soc = ctx.ui.soc || {}; ctx.ui.soc.tab = t.dataset.gosoc; ctx.go('social'); });
     on(root, 'click', '[data-profile]', (ev, t) => { ev.preventDefault(); openProfile(ctx, Number(t.dataset.profile)); });
     on(root, 'click', '[data-read]', (ev, t) => { const n = data._list[Number(t.dataset.read)]; if (n) openReader(n, data.edition); });
+    on(root, 'click', '[data-go]', (e, t) => ctx.go(t.dataset.go));
     on(root, 'click', '[data-go-found]', () => { ctx.ui.foundCityId = data.edition.city.id; ctx.ui.openFound = true; ctx.go('business'); });
     on(root, 'click', '[data-tab]', (e, t) => { ctx.ui.newsTab = t.dataset.tab; ctx.rerender(); });
     bindPlaceSearch(root.querySelector('#nCity'), root.querySelector('#nCityRes'), ctx, { year: ctx.view.date.year, onPick: (c) => { ctx.ui.newsCity = c.id; ctx.rerender(); } });
@@ -153,6 +154,7 @@ export default {
       if (name === 'buy') { const ok = await ctx.confirm({ title: 'Immobilie kaufen?', text: 'Der Kaufpreis wird sofort vom Konto abgebucht. Ein Kauf gibt EFS-Bonus und gehört zu deinem vererbbaren Vermögen.', ok: 'Kaufen' }); if (!ok) return; }
       if (name === 'apply' && ctx.view.occupation && ctx.view.occupation.kind !== 'work') { const ok = await ctx.confirm({ title: 'Ausbildung/Studium abbrechen?', text: 'Du hast aktuell eine Ausbildung oder ein Studium. Ein Wechsel beendet es – Fortschritt geht verloren.', ok: 'Wechseln', danger: true }); if (!ok) return; }
       await ctx.act(name, input);
+      if (name === 'meet' && ctx.view.fam && ctx.view.fam.woo.length) ctx.go('family');
     });
   },
 };

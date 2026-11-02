@@ -1,0 +1,17 @@
+/* Glossar: Begriffe zu Werben, Ehe und Familienunternehmen (die englischen Texte stehen in src/i18n-data/client-U.js). */
+export const GLOSSARY_DYN = [
+  ['Sympathie', 'Sympathie', 'Wie gern dich jemand mag (0 bis 100). Sie wächst mit Treffen, Briefen und Gesprächen, die der Person gefallen, und sinkt bei Fehlgriffen oder wenn du dich lange nicht meldest. Für den Antrag braucht es genug Sympathie und ein paar gelungene Treffen.'],
+  ['Familienmeinung', 'Familienmeinung', 'Was die Familie deiner Bekanntschaft von dir hält. Ansehen, Rang, Beruf, Betrieb, Auftreten und ein Antrittsbesuch heben sie. Sie beeinflusst die Chance beim Antrag und die Höhe der Aussteuer.'],
+  ['Antrittsbesuch', 'Antrittsbesuch', 'Du besuchst die Familie deiner Bekanntschaft. Das kostet etwas, stimmt die Familie freundlicher und verrät dir ihre Herkunft und die Vorlieben der Person.'],
+  ['Ehevertrag', 'Ehevertrag', 'Ein Vertrag beim Notar (oder der gesetzliche Standard), der regelt, was bei einer Scheidung gilt: Zugewinngemeinschaft, Gütertrennung oder Mitgift. Du wählst ihn beim Heiraten.'],
+  ['Zugewinn', 'Zugewinn', 'Der Zuwachs deines Vermögens seit der Hochzeit, inflationsbereinigt. Bei einer Scheidung gibt der Partner mit dem größeren Zuwachs die Hälfte des Unterschieds ab. Aussteuer und Erbe zählen nicht als Zugewinn.'],
+  ['Gütertrennung', 'Gütertrennung', 'Jeder behält sein Vermögen, bei einer Scheidung gibt es keinen Ausgleich. Die Familie des Partners gibt dafür nur die halbe Aussteuer. Unternehmer wählen sie oft, damit der Betrieb nicht geteilt wird.'],
+  ['Aussteuer', 'Aussteuer und Mitgift', 'Was die Familie des Partners zur Hochzeit mitbringt: Geld, eine Wohnung oder bei Unternehmerfamilien ein Familienbetrieb. Sie hängt von Herkunft und Familienmeinung ab, ist durch dein Vermögen begrenzt und gibt es nur einmal pro Leben. Bei der Mitgift fällt sie bei einer Scheidung zurück.'],
+  ['Eheringe', 'Eheringe', 'Trauringe in drei Stufen. Sie zählen als Schmuck für dein Auftreten, lassen sich nicht verkaufen und gehen als Erbstück an das erbende Kind.'],
+  ['Einarbeitung', 'Einarbeitung im Familienbetrieb', 'Ein Kind lernt im eigenen Betrieb: erst als Lehrling, später als Fachkraft. Seine Talente wachsen, der Betrieb zahlt die Vergütung, und die Berufserfahrung bleibt dem Erben.'],
+  ['Nachfolger', 'Nachfolger', 'Ein Kind, das lange genug im Betrieb mitgearbeitet hat. Der Betrieb wird ihm im Pflichtanteil mit Abschlag angerechnet, und es kann ihn leichter weiterführen.'],
+  ['Übergabe zu Lebzeiten', 'Übergabe zu Lebzeiten', 'Ab etwa 55 Jahren kannst du einen Betrieb schon zu Lebzeiten an ein volljähriges, qualifiziertes Kind übergeben. Es fallen Schenkungsteuer (mit Freibetrag und Verschonung für Familienunternehmen) und Gebühren an; die Übergabe wird im Pflichtanteil angerechnet.'],
+  ['Altenteil', 'Altenteil', 'Nach einer Übergabe bekommst du einen Teil des Tagesgewinns des Betriebs als Versorgung, solange du lebst.'],
+  ['Traditionsbetrieb', 'Traditionsbetrieb', 'Ein Betrieb, der über Generationen in der Familie bleibt: nach 15 Jahren in zweiter Generation, 50 Jahren als Traditionsunternehmen, 100 Jahren als Jahrhundertunternehmen. Er genießt etwas mehr Kundenbindung (gedeckelt) und Ansehen.'],
+  ['Dynastie', 'Dynastie-Wertung', 'Eine Wertung von 0 bis 100 und fünf Stufen, die zeigt, wie fest deine Familie über Generationen steht: Generationen, Familienbetriebe, Vermögen, Ansehen, Kinder und eine beständige Ehe. Ein Teil wird an die nächste Generation weitergegeben.'],
+];

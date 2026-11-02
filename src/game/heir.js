@@ -15,17 +15,21 @@ const { formatMoney } = require('./economy');
 function planInheritance(world, state, childId, bequestIds = []) {
   const year = yearOf(state.day, state.startYear);
   const est = estateShare(world, state);
-  let remaining = est.share;
+  const DYN = require('./dynasty');
+  const kid = state.children.find((x) => x.id === Number(childId)) || null;
+  let remaining = Math.max(0, est.share - (kid ? DYN.givenTo(world, state, kid) : 0)); // Vorempfang (Übergabe zu Lebzeiten) wird angerechnet
   const taken = [];
   const companies = [];
   for (const raw of bequestIds) {
     const key = String(raw).includes(':') ? String(raw) : `p:${raw}`;
     const it = est.props.find((x) => x.key === key);
-    if (!it || it.value > remaining) continue;
-    if (it.kind === 'property') { const p = state.properties.find((x) => x.id === it.id); if (p && !taken.includes(p)) { taken.push(p); remaining -= it.value; } }
-    else { const c = state.companies.find((x) => x.id === it.id); if (c && !companies.includes(c)) { companies.push(c); remaining -= it.value; } }
+    if (!it) continue;
+    const val = it.kind === 'company' ? DYN.successorValue(kid, it.id, it.value) : it.value; // Fortführungsprivileg: ein bereiter Nachfolger bekommt den Betrieb mit Abschlag angerechnet
+    if (val > remaining) continue;
+    if (it.kind === 'property') { const p = state.properties.find((x) => x.id === it.id); if (p && !taken.includes(p)) { taken.push(p); remaining -= val; } }
+    else { const c = state.companies.find((x) => x.id === it.id); if (c && !companies.includes(c)) { companies.push(c); remaining -= val; } }
   }
-  return { est, properties: taken, companies, cash: remaining };
+  return { est, properties: taken, companies, held: DYN.heldCompanies(kid), cash: remaining };
 }
 
 function createHeirState(world, old, childId, bequestIds) {
@@ -48,7 +52,7 @@ function createHeirState(world, old, childId, bequestIds) {
     skills: { learned: [], days: {} },
     properties: plan.properties.map((p) => ({ ...p, closedUntil: p.closedUntil })), nextPropId: old.nextPropId,
     politics: { term: null, completed: {} },
-    companies: plan.companies.map((c) => ({ ...c, staff: c.abandoned ? 0 : c.staff })), nextCompanyId: old.nextCompanyId,
+    companies: plan.companies.concat(plan.held || []).map((c) => ({ ...c, staff: c.abandoned ? 0 : c.staff })), nextCompanyId: old.nextCompanyId,
     insurance: { ...old.insurance }, cards: { health: old.cards.health }, butler: null,
     partner: null, plan: { target: 3 }, children: [], nextChildId: 1,
     tree: old.tree,
@@ -79,9 +83,10 @@ function createHeirState(world, old, childId, bequestIds) {
   press.story(world, state, 'heir', { child: c.name.split(' ')[0] });
   notice(state, {
     level: 'good', title: `Generation ${state.generation}: Das Erbe ist angetreten`, tab: 'legacy',
-    text: `${c.name} erbt ${plan.properties.concat(plan.companies).length ? plan.properties.concat(plan.companies).map((p) => p.name).join(', ') + ' und ' : ''}${formatMoney(plan.cash, world.currency(year))} in bar (Pflichtanteil 1/${plan.est.n}).`,
+    text: `${c.name} erbt ${plan.properties.concat(plan.companies, plan.held || []).length ? plan.properties.concat(plan.companies, plan.held || []).map((p) => p.name).join(', ') + ' und ' : ''}${formatMoney(plan.cash, world.currency(year))} in bar (Pflichtanteil 1/${plan.est.n}).`,
     info: ['Du spielst jetzt das Kind des Verstorbenen.', 'Das Erbe wird nach Pflichtanteil verteilt: Je mehr Kinder, desto kleiner der Anteil.', 'Suche dir Arbeit, halte die Familie zusammen und führe das Lebenswerk fort.'],
   });
+  require('./dynasty').inherit(world, old, state, c, plan); // Werben, Ehe, Familienbetrieb: Dynastie-Wertung anteilig, Generationen der Betriebe, Berufserfahrung aus der Einarbeitung
   require('./character').inherit(world, old, state, plan.est.n); // Charakterblatt: kleiner Bildungsvorsprung, Erbstücke (Uhr, Schmuck), Herkunft; Ausstattung und Rang selbst bleiben beim Verstorbenen
   require('./epidemics').ensure(state); require('./trade').ensure(state); // der Erbe hat sofort einen vollständigen Spielstand (nicht erst beim nächsten Laden)
   return { state, plan };

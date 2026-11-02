@@ -656,6 +656,7 @@ require('./society').install(A, fail, { yr, pay });
 require('./career').install(A, fail, { yr, pay });
 require('./talent-actions').install(A, fail, { yr, pay }); // Talente: Bewerberpool, Kurse, Lohnforderungen, Kinder fördern (ersetzt das einfache „+/− Mitarbeiter“)
 require('./operations-actions').install(A, fail, { yr, pay }); // Betrieb 2.0: Module bauen, Mitarbeiter führen (ersetzt den einfachen Sicherheitsdienst-Schalter)
+require('./dynasty-actions').install(A, fail, { yr, pay }); // Werben, Ehevertrag, Scheidung, Kinder im Familienbetrieb, Übergabe zu Lebzeiten (ersetzt das einmalige Treffen und die einfache Hochzeit)
 require('./character-actions').install(A, fail, { yr, pay }); // Charakterblatt: Erfahrung verteilen, Ausstattung kaufen/wechseln/verkaufen, Dienstleistungen buchen
 require('./season-actions').install(A, fail, { yr, pay }); // Seuchen: Schutz mit einem Klick
 require('./places').install(A, fail, { yr, pay, settings });

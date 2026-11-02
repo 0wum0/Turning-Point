@@ -225,7 +225,7 @@ function present(world, state, user, now) {
     autoMaintain: !!state.flags.autoMaintain,
     partner: state.partner ? {
       name: state.partner.name, gender: state.partner.gender, age: ageYears(state.partner.born, state.day), profession: state.partner.profession,
-      tal: state.partner.tal ? TV.barsOf(state.partner.tal, false) : null, sat: round(state.partner.sat), linked: !!state.partner.linked, userId: state.partner.userId || null, married: state.partner.married, cohabit: state.partner.cohabit, canTogether: state.day - (state.partner.lastTogether || -99) >= 5,
+      tal: state.partner.tal ? TV.barsOf(state.partner.tal, false) : null, sat: round(state.partner.sat), linked: !!state.partner.linked, userId: state.partner.userId || null, married: state.partner.married, cohabit: state.partner.cohabit, canTogether: state.day - (state.partner.lastTogether || -99) >= 5, contract: state.partner.contract || null,
     } : null,
     plan: state.plan,
     adoption: (() => { const fam = require('./family'); const block = fam.adoptionBlock(state, settings.get('game.max_children')); return { block, pending: state.pending.adopt ? Math.max(0, state.pending.adopt.day - state.day) : null, cost: Math.round(world.econ.marriageCost * 2 * world.idx(yearOf(state.day, state.startYear))) }; })(),
@@ -256,6 +256,7 @@ function present(world, state, user, now) {
     const sb = require('./seasonfx').brief(world, state);
     view.season = { ...sb.season, year: sb.year, doy: sb.doy, epi: sb.epi, harvest: sb.harvest, weather: sb.weather, heat: flows.heat };
   }
+  view.fam = state.status === 'alive' ? require('./dynasty').view(world, state) : null; // Werben, Ehevertrag, Eheringe, Kinder im Familienbetrieb, Übergabe, Traditionsbetrieb, Dynastie-Wertung
   view.char = state.status === 'alive' ? CHR.view(world, state) : null; // Charakterblatt: Erfahrung, Ausstattung, Rang (Classic und Design V2 zeigen dieselben Daten)
   view.onboarding = onboarding.view(world, state, user, view);
 

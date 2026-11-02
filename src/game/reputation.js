@@ -97,6 +97,9 @@ const REASONS = {
   title_lost: { kind: 'scandal', d: 6, cap: 12, label: 'Titel aberkannt', why: 'Dir wurde ein Titel aberkannt, weil du die Voraussetzungen nicht mehr erfüllst.' },
   club_embezzle: { kind: 'scandal', d: 12, cap: 24, label: 'Vereinskasse veruntreut', why: 'Du hast Geld aus der Vereinskasse in die eigene Tasche genommen. Alle Mitglieder können es im Kassenbuch lesen.' },
   club_ousted: { kind: 'scandal', d: 3, cap: 6, label: 'Als Vereinsvorsitzender abgewählt', why: 'Die Mitglieder haben dir das Vertrauen entzogen und dich als Vorsitzenden abgewählt.' },
+  fam_wedding: { kind: 'civic', d: 0.6, cap: 2.4, label: 'Hochzeit in eine angesehene Familie', why: 'Du hast in eine Familie mit gutem Namen eingeheiratet. Das spricht sich herum.' },
+  fam_trad: { kind: 'civic', d: 0.2, cap: 1.5, label: 'Traditionsbetrieb', why: 'Ein Betrieb, der über Generationen in der Familie bleibt, genießt das Vertrauen der Kunden.' },
+  fam_succession: { kind: 'civic', d: 1.5, cap: 3, label: 'Nachfolge geregelt', why: 'Du hast einen Betrieb rechtzeitig an das nächste Familienmitglied übergeben. Arbeitsplätze bleiben sicher.' },
   admin: { kind: 'rel', d: 0, cap: 100, label: 'Von der Spielleitung angepasst', why: 'Die Spielleitung hat deinen Ruf angepasst.' },
 };
 

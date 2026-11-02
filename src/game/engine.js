@@ -217,6 +217,7 @@ function dayStep(ctx) {
   society.politicsDaily(ctx);
   CIV.daily(ctx); // Gesellschaft: Bildungstöpfe der Stadt, verfallende Trauerfeiern
   CHR.daily(ctx); // Charakterblatt: Abnutzung, laufende Kosten der Ausstattung, Erfahrung aus Tätigkeiten, Rang
+  require('./dynasty').daily(ctx); // Werben, Einarbeitung der Kinder, übergebene Betriebe, Traditionsbetrieb, Scheidung nach dem Trennungsjahr, Dynastie-Wertung
   applyTownEvents(ctx);
   seasonalFestivals(ctx);
   rollPrivateEvent(ctx, flows);

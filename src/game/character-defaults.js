@@ -33,9 +33,9 @@ module.exports = {
     sources: {
       arbeit: { label: 'Berufspraxis', icon: 'hammer', talent: 'job', perDay: 0.01, capEp: 3.6, act: {}, text: 'Wer arbeitet – im Beruf oder im eigenen Betrieb –, sammelt Erfahrung im Berufsfeld.' },
       handel: { label: 'Verhandeln und Handeln', icon: 'handshake', talent: 'handel', perDay: 0.004, capEp: 2.5, act: { askRaise: 1 }, text: 'Gehaltsgespräche, Lieferverträge und Handelsrouten schulen das Verhandeln.' },
-      fuehrung: { label: 'Menschen führen', icon: 'crown', talent: 'fuehrung', perDay: 0.005, capEp: 3, act: { bizPraise: 0.25, bizBonus: 0.4, bizParty: 0.5, bizGift: 0.2, bizHireApplicant: 0.3, runOffice: 1 }, text: 'Ein Team leiten, loben und fördern – und ein politisches Amt ausüben.' },
+      fuehrung: { label: 'Menschen führen', icon: 'crown', talent: 'fuehrung', perDay: 0.005, capEp: 3, act: { bizPraise: 0.25, bizBonus: 0.4, bizParty: 0.5, bizGift: 0.2, bizHireApplicant: 0.3, runOffice: 1, famGroom: 0.3, famHandover: 1 }, text: 'Ein Team leiten, loben und fördern – und ein politisches Amt ausüben.' },
       lernen: { label: 'Lernen', icon: 'graduation-cap', talent: 'bildung', perDay: 0.012, capEp: 3.5, act: {}, text: 'Studium, Ausbildung und Weiterbildung kosten Zeit und bringen Erfahrung.' },
-      begegnung: { label: 'Begegnungen', icon: 'sparkles', talent: 'charme', perDay: 0.004, capEp: 2, act: { gift: 0.3, together: 0.3, meet: 0.5, giftChild: 0.2 }, text: 'Vereine, Feste, Verabredungen und Geschenke: Menschen für sich gewinnen.' },
+      begegnung: { label: 'Begegnungen', icon: 'sparkles', talent: 'charme', perDay: 0.004, capEp: 2, act: { gift: 0.3, together: 0.3, meet: 0.5, giftChild: 0.2, wooAct: 0.4, wooVisit: 0.5, wooAsk: 0.5 }, text: 'Vereine, Feste, Verabredungen und Geschenke: Menschen für sich gewinnen.' },
       sport: { label: 'Sport', icon: 'activity', talent: 'kondition', perDay: 0.006, capEp: 1.8, act: {}, text: 'Wer im Sportverein aktiv ist, bleibt fit.' },
     },
   },

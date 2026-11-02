@@ -3,6 +3,7 @@
  * (für die englische Oberfläche). Alle Knöpfe rufen ausschließlich Spielaktionen des Servers auf (chTrain, chAuto, chBuy, chSell, chRepair, chService). */
 import { html, icon, money, infoBtn, bar, on, modal, term } from './ui.js';
 import { isOpen } from './onboarding.js';
+import { dynastyCard } from './dyn.js';
 
 const lang = () => document.documentElement.lang;
 const dec = (x, d = 1) => (Math.round(x * 10 ** d) / 10 ** d).toLocaleString(lang() === 'en' ? 'en-US' : 'de-DE', { maximumFractionDigits: d });
@@ -155,6 +156,12 @@ function chronCard(ctx, c) {
     <div class="row end mt"><button class="btn sm ghost" data-go="legacy">${icon('git-fork')} <span>Ganze Chronik im Vermächtnis</span></button></div></section>`;
 }
 
+/** Eheringe (Schritt 11) zählen als Schmuck: ein Hinweis mit Name, Wert und Erbstück. */
+function ringNote(ctx) {
+  const f = ctx.view.fam; const r = f && f.contract && f.contract.ring; if (!r) return '';
+  return html`<section class="card mt flat" data-ch-ring><div class="row wrap small">${icon('gem')} <b data-i18n-skip>${r.name}</b> <span>– deine Eheringe zählen als Schmuck, lassen sich nicht verkaufen und gehen als Erbstück an das erbende Kind.</span></div></section>`;
+}
+
 export const page = {
   id: 'character', label: 'Charakter', icon: 'id-card',
   render(ctx) {
@@ -164,7 +171,9 @@ export const page = {
     <div class="panel-head"><div><h2>Charakterblatt</h2><p>Talente, Ausstattung und dein Platz in der Gesellschaft – alles auf einen Blick.</p></div></div>
     ${heroCard(ctx, c)}
     <div class="grid c2 mt" style="--gap:1rem;align-items:start">${talentCardHtml(ctx, c)}${rankCardHtml(ctx, c)}</div>
+    ${ringNote(ctx)}
     ${gearCardHtml(ctx, c)}
+    ${dynastyCard(ctx)}
     ${chronCard(ctx, c)}`;
   },
   bind(root, ctx) { bindChar(root, ctx); },

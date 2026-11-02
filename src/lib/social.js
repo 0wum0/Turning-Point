@@ -64,6 +64,7 @@ async function upsertStats(conn, user, charRow, state, world) {
     }
     try { await conn.query('UPDATE player_stats SET talents = ? WHERE user_id = ?', [require('../game/talents').pack(state.talents), user.id]); } catch (e) { log.warn(`[social] Talente: ${e.message}`); }
     await require('./character').publish(conn, user, state); // Rang und Auftreten (Charakterblatt) fürs öffentliche Profil
+    await require('./dynasty').publish(conn, user, state); // Familienrang (Dynastie-Wertung) fürs öffentliche Profil und die Rangliste
     await conn.query('DELETE FROM player_props WHERE user_id = ?', [user.id]);
     const { propertyValue } = require('../game/core');
     for (const p of (state.properties || [])) {
@@ -129,7 +130,7 @@ const CATS = {
   wealth: { label: 'Vermögen', expr: 'ps.wealth', unit: 'money', hint: 'Geld, Immobilien und Betriebe. Alle Beträge sind auf den Geldwert von 1945 umgerechnet (Preise steigen im Lauf der Jahre) – so sind Spieler aus verschiedenen Jahren fair vergleichbar.' },
   business: { label: 'Unternehmer', expr: 'ps.biz_value', unit: 'money', hint: 'Wert aller Betriebe samt Firmenkasse (inflationsbereinigt).' },
   politics: { label: 'Politik', expr: 'ps.influence', unit: 'pts', hint: 'Einfluss, den du über alle Leben gesammelt hast.' },
-  dynasty: { label: 'Dynastie', expr: 'ps.generation * 1000 + ps.cycle', unit: 'gen', hint: 'Wie viele Generationen deine Familie schon trägt.' },
+  dynasty: { label: 'Dynastie', expr: 'ps.dyn_pts * 100000 + ps.generation * 1000 + ps.cycle', unit: 'dyn', hint: 'Familienrang über die Generationen: Generationen, Familienbetriebe und Traditionsbetriebe, Vermögen, Ansehen, Kinder und eine beständige Ehe.' },
   family: { label: 'Familie', expr: 'ps.children * 1000 + ps.generation', unit: 'kids', hint: 'Anzahl der Kinder.' },
   time: { label: 'Zeitreise', expr: 'ps.days', unit: 'days', hint: 'Wie weit du in der Zeit gekommen bist.' },
 };

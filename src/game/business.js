@@ -63,13 +63,14 @@ function companyFlows(world, state, c, year) {
   const ps = c.playerStaff || [];
   const goods = require('./goods'); const gw = goods.W(); const ef = goods.effectsFor(world, c.cityId);
   const sfx = require('./seasonfx').firmFactor(world, state, c, year, ef); // Jahreszeit, Feste, Ernte und Seuchen: Umsatzfaktor (rev) und Leistung durch kranke Mitarbeiter (eff)
-  const eff = Math.max(0.2, Math.min(1, (c.staff + ps.length + ownerHere) / needed)) * (c.manager || c.playerManager || ownerHere ? 1 : 0.6) * OPS.sickEff(sfx.eff, ox);
+  const DYN = require('./dynasty'); const gr = DYN.groomFlow(world, state, c, idx); // Schritt 11: Kinder, die im Familienbetrieb eingearbeitet werden (Köpfe und Vergütung)
+  const eff = Math.max(0.2, Math.min(1, (c.staff + ps.length + ownerHere + gr.units) / needed)) * (c.manager || c.playerManager || ownerHere ? 1 : 0.6) * OPS.sickEff(sfx.eff, ox);
   const strike = c.strikeUntil && state.day < c.strikeUntil ? 0 : 1;
   const comp = require('./competition').info(world, c.cityId, c.pkey, c.rooms);
   const hit = c.hit && state.day < c.hit.until ? c.hit.factor : 1; const outage = c.outageUntil && state.day < c.outageUntil ? 0 : 1;
   const ce = require('./cityecon'); // Stadtwirtschaft: Sektor-Index (Umsatz, abgeschwächt) und örtliches Lohnniveau; ohne Stadtindizes = 1
   const tfx = TL.firmEffects(world, state, c, ef.edu); // Talente: Teamqualität → Umsatz (±12 %), Lieferverlässlichkeit, Lohnsumme
-  const raw = OPS.revFactor(tfx.rev, ox) * c.rooms * t.incomePerRoom * idx * cityMult(world.city(c.cityId)) * eff * marketPhase(year).factor * strike * comp.factor * hit * outage * ce.revenueMult(world, c.cityId, c.pkey, year) * sfx.rev * require('./civic').revMult(state);
+  const raw = OPS.revFactor(tfx.rev, ox) * c.rooms * t.incomePerRoom * idx * cityMult(world.city(c.cityId)) * eff * marketPhase(year).factor * strike * comp.factor * hit * outage * ce.revenueMult(world, c.cityId, c.pkey, year) * sfx.rev * require('./civic').revMult(state) * DYN.revMult(state, c); // Traditionsbetrieb: Kundenbindung über Generationen (gedeckelt)
   // Warenkreislauf: Rezept, Versorgung, Verträge, Politik (siehe goods.js). Ohne Rezeptzutaten/aus: identisch zur früheren Rechnung.
   const ar = goods.activeRecipe(world, c.pkey, year, c.cityId);
   const rPot = Math.round(raw * ar.mult * goods.outputFactor(ar, year, ef));
@@ -78,7 +79,7 @@ function companyFlows(world, state, c, year) {
   const rAct = Math.round(rPot * lg.factor);
   const sell = goods.sellPlan(world, state, c, year, rAct, ar, gw, tfx.rel);
   const income = Math.round(rAct * sell.npcShare);
-  const wages = Math.round(((tfx.wageUnits == null ? c.staff : tfx.wageUnits) * econ.staffWage * idx + (c.manager ? econ.managerWage * idx : 0)) * ce.wageMult(c.cityId, year) + ps.reduce((s, x) => s + x.wage * idx, 0) + (c.playerManager ? c.playerManager.wage * idx : 0));
+  const wages = Math.round(((tfx.wageUnits == null ? c.staff : tfx.wageUnits) * econ.staffWage * idx + (c.manager ? econ.managerWage * idx : 0)) * ce.wageMult(c.cityId, year) + ps.reduce((s, x) => s + x.wage * idx, 0) + (c.playerManager ? c.playerManager.wage * idx : 0) + gr.wage);
   const upkeep = Math.round(((companyValue(world, state, c, year) - (c.construction?.baseAdded || 0) * idx) * econ.upkeepYearPct) / 100 / 365) + OPS.upkeepDay(world, state, c, year); // Module (Lager, Brandschutz, Schutz, Arbeitsplätze)
   const inputs = lg.cost;
   const vat = Math.round((ef.vat / 100) * Math.max(0, income - inputs));

@@ -71,7 +71,7 @@ function load() {
   if (LOADED) return; LOADED = true;
   const dir = path.join(__dirname, 'i18n-data');
   const tryReq = (f) => { try { return require(path.join(dir, f)); } catch (_) { return null; } };
-  for (const f of ['messages-G', 'messages-E', 'messages-D', 'messages-A', 'messages-B', 'messages-C', 'messages-F', 'messages-I', 'messages-J', 'messages-K', 'messages-L', 'messages-M', 'messages-N', 'messages-O', 'messages-P', 'messages-Q', 'messages-R', 'messages-S', 'messages-T']) (tryReq(f) || []).forEach(([de, en]) => addPair(de, en, tokenizeJs));
+  for (const f of ['messages-G', 'messages-E', 'messages-D', 'messages-A', 'messages-B', 'messages-C', 'messages-F', 'messages-I', 'messages-J', 'messages-K', 'messages-L', 'messages-M', 'messages-N', 'messages-O', 'messages-P', 'messages-Q', 'messages-R', 'messages-S', 'messages-T', 'messages-U']) (tryReq(f) || []).forEach(([de, en]) => addPair(de, en, tokenizeJs));
   (tryReq('extra') || []).forEach(([de, en]) => addPair(de, en, tokenizeJs));
   (tryReq('names-en') || []).forEach(([de, en]) => addPair(de, en, tokenizeJs));
   const en = tryReq('texts-en');
@@ -121,6 +121,10 @@ function tr(s, opts) {
   if (r === undefined && s.length <= 140 && /(: |, )/.test(s)) { // „Sturmschaden: Großes Haus, Lindenallee 12“
     const parts = s.split(/(: |, )/); const out = parts.map((x) => (x === ': ' || x === ', ' ? x : tr(x, opts)));
     if (out.some((x, i) => x !== parts[i])) r = out.join('');
+  }
+  if (r === undefined && s.length <= 700 && /[.!?]\s+[A-ZÄÖÜ„]/.test(s)) { // mehrere Sätze: jeder Satz wird einzeln übersetzt, aber nur, wenn alle Sätze eine Übersetzung haben
+    const sents = s.split(/(?<=[.!?])\s+(?=[A-ZÄÖÜ„])/);
+    if (sents.length > 1) { const out = sents.map((x) => tr(x, opts)); if (out.every((x, i) => x !== sents[i])) r = out.join(' '); }
   }
   if (r === undefined) r = s;
   else if (/^[A-ZÄÖÜ]/.test(s) && /^[a-z]/.test(r)) r = r[0].toUpperCase() + r.slice(1);

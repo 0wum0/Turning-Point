@@ -133,8 +133,24 @@ function decide(ctx, P) {
   // Versicherungen
   if (s.money > 600 * 30 * idx) { for (const k of ['hausrat', 'gesundheit']) if (!s.insurance[k] && chance(0.3)) tryAct(ctx, 'insurance', { key: k, on: true }); if (s.properties.length && !s.insurance.gebaeude) tryAct(ctx, 'insurance', { key: 'gebaeude', on: true }); }
   // Familie
-  if (!s.partner && ageOfPerson(s) >= 21 && chance(0.12 + P.social * 0.1) && s.money > 400 * idx) { const l = E.partners && E.partners[0]; if (l) tryAct(ctx, 'meet', { listingId: pick(E.partners).id }); }
-  if (s.partner && !s.partner.married && !s.partner.linked && s.money > 6000 * idx && chance(0.25)) tryAct(ctx, 'marry', {});
+  const DYN = require('../game/dynasty'); const BC = DYN.C().bots || {};
+  if (!s.partner && ageOfPerson(s) >= 21 && DYN.enabled() && BC.enabled !== false) {
+    // Werben (mild): erst kennenlernen, dann gelegentlich ein Treffen, Antrittsbesuch und Antrag – Bots heiraten nur Mann und Frau (die Anzeigen zeigen nur das andere Geschlecht)
+    const woo = DYN.activeWoo(DYN.ensure(s));
+    if (!woo.length) { if (chance(0.12 + P.social * 0.1) && s.money > 400 * idx && E.partners && E.partners.length) tryAct(ctx, 'meet', { listingId: pick(E.partners).id }); }
+    else {
+      const e = woo[0];
+      if (chance(BC.woo == null ? 0.5 : BC.woo) && s.money > 200 * idx) tryAct(ctx, 'wooAct', { id: e.id, act: 'best' });
+      if (e.sym >= 40 && !e.visited && chance(0.4)) tryAct(ctx, 'wooVisit', { id: e.id });
+      if (e.sym >= 58 && chance(BC.ask == null ? 0.5 : BC.ask)) tryAct(ctx, 'wooAsk', { id: e.id });
+    }
+  } else if (!s.partner && ageOfPerson(s) >= 21 && chance(0.12 + P.social * 0.1) && s.money > 400 * idx) { const l = E.partners && E.partners[0]; if (l) tryAct(ctx, 'meet', { listingId: pick(E.partners).id }); }
+  if (s.partner && !s.partner.married && !s.partner.linked && s.money > 6000 * idx && chance(BC.marry == null ? 0.25 : BC.marry)) tryAct(ctx, 'marry', { contract: (s.companies || []).length && chance(BC.contractTrennung == null ? 0.35 : BC.contractTrennung) ? 'trennung' : 'zugewinn', ring: chance(BC.ring == null ? 0.3 : BC.ring) ? 1 : 0 });
+  if (DYN.enabled() && BC.enabled !== false && (s.companies || []).length && chance(BC.groom == null ? 0.15 : BC.groom)) {
+    const kid = s.children.find((c) => c.status === 'home' && !c.groom && !c.school && c.path !== 'training' && c.path !== 'study'); const firm = (s.companies || []).find((c) => !c.abandoned);
+    if (kid && firm) tryAct(ctx, 'famGroom', { childId: kid.id, id: firm.id });
+    const heirKid = s.children.find((c) => c.groom && c.groom.ready); if (heirKid && chance(BC.handover == null ? 0.01 : BC.handover)) tryAct(ctx, 'famHandover', { childId: heirKid.id, id: heirKid.groom.cid });
+  }
   if (s.partner && chance(0.2)) tryAct(ctx, 'together', {});
   if (s.partner && s.partner.sat < 50) tryAct(ctx, 'gift', {});
   if (s.plan && s.plan.target !== P.kids) tryAct(ctx, 'plan', { target: P.kids });

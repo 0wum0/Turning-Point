@@ -82,6 +82,7 @@ const DEFAULTS = {
     clubLogDays: 120, parishLogDays: 120, foundationLogDays: 120, clubsClosedDays: 30,   // Gesellschaft: Kassenbücher und aufgelöste Vereine
     opsLogDays: 120,        // Betrieb 2.0: Protokoll der Betriebsvorfälle (Brand, Abwehr, Streik)
     charLogDays: 120,       // Charakterblatt: Protokoll der Käufe, Verkäufe und Rangaufstiege
+    dynLogDays: 120,        // Werben, Ehe und Familienunternehmen: Protokoll (Hochzeiten, Übergaben, Traditionsstufen, Familienrang)
   },
   push: {
     enabled: true,         // Web-Push (Handy-Benachrichtigungen) global an/aus
@@ -255,6 +256,8 @@ const DEFAULTS = {
   betrieb: require('./game/operations-defaults'),
   // Charakterblatt (src/game/character.js): Erfahrungspunkte, Ausstattung, gesellschaftlicher Rang
   charakter: require('./game/character-defaults'),
+  // Werben, Ehe und Familienunternehmen (src/game/dynasty.js): Werbeverlauf, Ehevertrag, Eheringe, Einarbeitung der Kinder, Übergabe, Traditionsbetrieb, Dynastie-Wertung
+  familie: require('./game/dynasty-defaults'),
   cycles: { realEstate: [[1945, 0.75], [1950, 0.85], [1957, 1.0], [1965, 1.08], [1973, 1.15], [1976, 1.05], [1985, 1.0], [1990, 1.2], [1993, 1.3], [1996, 1.0], [2005, 0.9], [2010, 1.0], [2015, 1.2], [2021, 1.5], [2023, 1.35], [2035, 1.4], [2060, 1.5], [2100, 1.6]] },
   exchange: { enabled: true, shares: 1000, minValueReal: 300000, minGameDays: 90, minFloatPct: 10, maxFloatPct: 49, makerSpreadPct: 5, makerDailyPct: 5, maxOrderShares: 500, openOrdersMax: 12, takeoverPct: 50,
     // Grenzen des Marktteilnehmers: Tageslimit je Nutzer (Gesamtwert real in Cent, 0 = kein Limit), Mindest-Haltedauer vor dem Rückverkauf an ihn,

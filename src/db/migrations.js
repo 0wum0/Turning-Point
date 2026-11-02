@@ -1193,6 +1193,25 @@ const MIGRATIONS = [
     if(t.damageCooldownDays==null)t.damageCooldownDays=365;
     await db.query("UPDATE settings SET value = ? WHERE `key` = 'economy'",[JSON.stringify(o)]);
   }] },
+  { id: '037_dynasty', up: [
+    // Werben, Ehe und Familienunternehmen: Protokoll (Hochzeiten, Scheidungen, Übergaben zu Lebzeiten, Traditionsstufen, Familienrang), genau einmal aus dem Spielstand geschrieben (src/lib/dynasty.js)
+    `CREATE TABLE IF NOT EXISTS dyn_log (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      user_id INT UNSIGNED NOT NULL,
+      city_id INT UNSIGNED NOT NULL DEFAULT 0,
+      kind VARCHAR(8) NOT NULL,
+      lvl TINYINT NOT NULL DEFAULT 0,
+      real_amount BIGINT NOT NULL DEFAULT 0,
+      note VARCHAR(120) NOT NULL DEFAULT '',
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      KEY idx_dyn_user (user_id, id),
+      KEY idx_dyn_time (created_at),
+      CONSTRAINT fk_dyn_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    // Familienrang (Dynastie-Wertung ×10, Stufe 1–5) im öffentlichen Profil und in der Rangliste; Güterstand bei Spielerehen
+    'ALTER TABLE player_stats ADD COLUMN dyn_pts SMALLINT NOT NULL DEFAULT 0, ADD COLUMN dyn_lv TINYINT NOT NULL DEFAULT 1',
+    "ALTER TABLE couples ADD COLUMN regime VARCHAR(10) NOT NULL DEFAULT 'zugewinn'",
+  ] },
 ];
 
 async function ensureTable(db) {

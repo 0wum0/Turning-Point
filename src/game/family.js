@@ -213,12 +213,16 @@ function runawayDaily(ctx, c) {
   }
 }
 
-function separate(ctx) {
+function separate(ctx, opts = {}) {
   const { world, state } = ctx;
   const p = state.partner;
   const year = yearOf(state.day, state.startYear);
+  const DYN = require('./dynasty'); DYN.ensure(state);
+  const rule = DYN.enabled() ? DYN.divorceRule(world, state) : null; // Ehevertrag (Schritt 11): Zugewinn, Gütertrennung oder Mitgift; ohne Vertrag gilt die alte Regel (Hälfte des Vermögens)
   const total = netWorth(world, state);
   let owed = Math.floor(total / 2);
+  if (rule) owed = Math.max(0, Math.min(rule.owed, total));
+  const owedStart = owed;
   const fromMoney = Math.max(0, Math.min(state.money, owed));
   state.money -= fromMoney; owed -= fromMoney;
   const lostProps = [];
@@ -251,9 +255,18 @@ function separate(ctx) {
   for (const c of leaving) { c.status = 'withPartner'; const pr = state.tree.persons.find((x) => x.id === c.personId); if (pr) pr.note = `lebt bei ${p.name}`; }
   const pr = state.tree.persons.find((x) => x.id === p.personId);
   if (pr) { pr.note = 'Trennung'; pr.status = 'away'; }
-  chronicle(state, `Trennung von ${p.name}. ${leaving.length} Kind(er) ziehen mit.`, 'family');
+  const back = DYN.afterDivorce(world, state, rule, !!p.married);
+  chronicle(state, `${opts.divorce || rule ? 'Scheidung' : 'Trennung'} von ${p.name}. ${leaving.length} Kind(er) ziehen mit.`, 'family');
   press.story(ctx.world, state, 'separation', { partner: p.name });
-  notice(state, {
+  if (rule) {
+    const kn = DYN.KINDS()[rule.kind].name; const paid = require('./economy').formatMoney(owedStart, world.currency(year));
+    notice(state, {
+      level: 'warn', title: opts.divorce ? `Scheidung von ${p.name}` : `${p.name} hat dich verlassen`, tab: 'family', interrupt: true,
+      text: owedStart > 0 ? `Laut Ehevertrag („${kn}“) gehen ${paid} an ${p.name}; ${leaving.length} Kind(er) ziehen mit.` : `Laut Ehevertrag („${kn}“) gibt es keinen Ausgleich; ${leaving.length} Kind(er) ziehen mit.`,
+      info: ['Der Ehevertrag regelt, wer bei der Trennung was bekommt.', 'Zugewinn: Wer in der Ehe mehr dazugewonnen hat, gibt dem Partner die Hälfte des Unterschieds ab (inflationsbereinigt). Gütertrennung und Mitgift kennen keinen Ausgleich; bei der Mitgift fällt die Aussteuer an die Familie zurück.', 'Die Kinder, die gehen, erben nicht mehr bei dir.'],
+    });
+    if (back.length) notice(state, { level: 'info', title: 'Mitgift zurückgegeben', tab: 'family', text: `An die Familie von ${p.name} gehen zurück: ${back.join(', ')}.` });
+  } else notice(state, {
     level: 'bad', title: `${p.name} hat dich verlassen`, tab: 'family', interrupt: true,
     text: `Die Hälfte des Vermögens${lostProps.length ? ' (u. a. ' + lostProps.join(', ') + ')' : ''} und ${leaving.length} Kind(er) gehen mit. Die Trennung steht im Stammbaum.`,
     info: ['Die Zufriedenheit deines Partners war zu lange sehr niedrig.', 'Bei einer Trennung geht die Hälfte des Vermögens und die größere Hälfte der Kinder zur Partnerin bzw. zum Partner. Die Kinder, die gehen, erben nicht mehr bei dir.', 'Achte künftig früher auf Warnmeldungen – Geschenke, gemeinsame Zeit, bessere Wohnung.'],
@@ -273,7 +286,7 @@ function endLife(ctx, reason, cause) {
   // Verheiratete Spieler-Partner erben einen Anteil in bar (Rest: Pflichtanteil der Kinder)
   if (state.partner && state.partner.linked && state.partner.married && state.money > 0) {
     const pct = (settings.get('social').couples || {}).spouseSharePct || 0;
-    const share = Math.floor(state.money * pct / 100);
+    const share = Math.floor(state.money * pct / 100 * require('./dynasty').spouseFactor(state.partner)); // Ehevertrag: bei Gütertrennung der halbe Satz
     if (share > 0) { state.money -= share; state.pending.spouseShare = { userId: state.partner.userId, real: share / Math.max(0.0001, world.idx(yearOf(state.day, state.startYear))) }; }
   }
   const heirs = eligibleHeirs(state);
@@ -302,7 +315,8 @@ function estateShare(world, state) {
   // Schulden (Kredite) werden aus dem Nachlass beglichen – sonst könnte man einen Kredit aufnehmen, sterben und das Geld schuldenfrei vererben
   const debt = require('./credit').debt(state);
   const total = Math.max(0, Math.max(0, state.money) + props.reduce((s, p) => s + p.value, 0) - debt);
-  return { n, total, share: Math.floor(total / n), props, money: Math.max(0, state.money), debt };
+  const adv = Math.round(require('./dynasty').advances(world, state)); // Übergaben zu Lebzeiten (Vorempfänge) zählen im Pflichtanteil mit
+  return { n, total, share: Math.floor((total + adv) / n), props, money: Math.max(0, state.money), debt, adv };
 }
 
 module.exports = { adoptionBlock, familyDaily, endLife, eligibleHeirs, estateShare, bornChild, ageOfChild, separate };
