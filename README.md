@@ -65,6 +65,7 @@ Im Admin-Panel unter **System** siehst du jederzeit, welcher Ordner gewählt wur
 | `TP_SESSION_SECRET`, `TP_SITE_URL` | nur zusammen mit den `TP_DB_*`-Variablen relevant |
 | `TP_API_RATE` | API-Anfragen/Minute je Spieler (Standard 180); skaliert auch die Bremsen für Handel/Verzeichnis |
 | `TP_TRUST_PROXY` | Anzahl der Proxys vor der App (Standard 1 = Hostinger; `0` = direkt erreichbar) oder Liste (`loopback, 10.0.0.0/8`) |
+| `TP_AUTH_LIMIT` | Versuche je 15 Minuten und IP für Anmelden/Registrieren (Standard 25; nur die E2E-Suite erhöht sie, sie legt viele Testkonten von einer Adresse an) |
 | `TP_IP_RATE`, `TP_WEBHOOK_RATE` | Anfragen/Minute je IP für Seiten (300) bzw. Webhooks (300) |
 | `TP_SSE_PER_IP`, `TP_SSE_TOTAL` | Obergrenzen für Live-Verbindungen je IP (15) und insgesamt (800) |
 

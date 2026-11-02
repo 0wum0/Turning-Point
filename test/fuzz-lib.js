@@ -705,7 +705,7 @@ function runFamScenario(seed, rounds = 50) {
         const held = s.children.some((c) => c.estate);
         if (!s.companies.length && !held) run('foundBiz', { pkey: 'baecker', tier: 0, name: `Laden ${i}` });
         else if (s.children.length < 2 && pick < 0.7) fam.bornChild({ world, state: s, idx: 1 }, mulberry32(seed + i));
-        else if (pick < 0.12) { const m2 = s.money; run('divorce', {}); if (s.pending.divorce && m2 - s.money <= 0) bad('Scheidungsantrag ohne Kosten'); }
+        else if (pick < 0.12) { const m2 = s.money; if (run('divorce', {}) && m2 - s.money <= 0) bad('Scheidungsantrag ohne Kosten'); }
         else if (pick < 0.2) run('divorceCancel', {});
         else if (pick < 0.55 && s.children.length && s.companies.length) {
           const k = pickOf(r, s.children); k.born = Math.min(k.born, s.day - 20 * 365); k.school = null; k.pendingSchool = false; k.status = 'home'; if (r() < 0.7) { k.skills = ['baecker']; k.path = 'done'; k.pkey = 'baecker'; }
