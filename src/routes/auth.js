@@ -12,7 +12,8 @@ const { audit } = require('../lib/audit');
 const anticheat = require('../lib/anticheat');
 
 const router = express.Router();
-const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 25, standardHeaders: true, legacyHeaders: false, message: 'Zu viele Versuche. Bitte warte einige Minuten.' });
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: Math.max(1, Number(process.env.TP_AUTH_LIMIT) || 25), // die E2E-Suite meldet viele Testkonten von einer Adresse an (TP_AUTH_LIMIT nur dort erhöht)
+  standardHeaders: true, legacyHeaders: false, message: 'Zu viele Versuche. Bitte warte einige Minuten.' });
 // Zweite Bremse je Konto (nicht nur je IP): verteilte Passwort-Versuche gegen denselben Namen werden ebenfalls gestoppt. Zählt nur Fehlversuche.
 // Je Konto UND Adresse: so kann ein Fremder ein Konto nicht allein durch gezielte Fehlversuche für den Besitzer sperren …
 const accountLimiter = rateLimit({

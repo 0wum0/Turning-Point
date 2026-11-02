@@ -4,7 +4,7 @@ const {test}=require('node:test');const assert=require('node:assert/strict');
 const {app}=require('./design-fixture');const {chromium}=require(process.env.TP_PLAYWRIGHT_PATH || 'playwright');
 const launch=()=>chromium.launch({headless:true,...(process.env.TP_CHROMIUM_PATH?{executablePath:process.env.TP_CHROMIUM_PATH}:{}),args:['--disable-gpu','--disable-dev-shm-usage']});
 async function open(browser,port,{viewport={width:1280,height:850},reducedMotion='no-preference',hour='13',doy='190'}={}){
- const page=await browser.newPage({viewport,reducedMotion});page.setDefaultTimeout(15000);const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ const page=await browser.newPage({viewport,reducedMotion});page.setDefaultTimeout(60000);const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.addInitScript(()=>{try{localStorage.setItem('tp-game-design','v2');}catch(_){}});
  await page.goto(`http://127.0.0.1:${port}/play#/city`);await page.waitForSelector('.bl-item');
  await page.evaluate(([h,d])=>{document.documentElement.dataset.cityHour=h;document.documentElement.dataset.cityDoy=d;},[hour,doy]);

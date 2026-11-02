@@ -159,6 +159,7 @@ const pairs = [
   ['Hochzeit', 'Wedding'], ['${who} und ${p} haben in ${where} geheiratet.', '${who} and ${p} got married in ${where}.'],
   ['Nachfolge', 'Succession'], ['${who} übergibt „${note}“ in ${where} an die nächste Generation.', '${who} hands “${note}” in ${where} over to the next generation.'],
   ['Traditionsbetrieb', 'Traditional business'], ['„${note}“ in ${where} ist jetzt ein ${nm}.', '“${note}” in ${where} is now a ${nm}.'],
+  ['Ein Bürger übergibt einen Familienbetrieb in ${where} an die nächste Generation.', 'A citizen hands a family business in ${where} over to the next generation.'], ['Ein Familienbetrieb in ${where} ist jetzt ein ${nm}.', 'A family business in ${where} is now a ${nm}.'],
   ['Familie', 'Family'], ['Die Familie ${last} gilt in ${where} jetzt als „${note}“.', 'The ${last} family is now regarded as “${note}” in ${where}.'],
   // ---- Aufgaben, Freischaltung, Hinweise
   ['Heirate – mit Ehevertrag', 'Get married – with a marriage contract'],

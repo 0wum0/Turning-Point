@@ -59,6 +59,8 @@ test('Englisch (Server): Meldungen, Rückmeldungen, Fehler, Tagesblatt und Hinwe
     ['Eine Übergabe zu Lebzeiten ist ab 55 Jahren möglich.', 'A handover during your lifetime is possible from age 55.'],
     ['„Brotladen“ gehört jetzt Karl. Steuer 1,2k DM, Gebühren 3k DM. Du bist jetzt im Ruhestand.', '“Brotladen” now belongs to Karl. Tax 1.2k DM, fees 3k DM. You are retired now.'],
     ['Karl Becker übergibt „Brotladen“ in Köln an die nächste Generation.', 'Karl Becker hands “Brotladen” in Cologne over to the next generation.'],
+    ['Ein Bürger übergibt einen Familienbetrieb in Köln an die nächste Generation.', 'A citizen hands a family business in Cologne over to the next generation.'],
+    ['Ein Familienbetrieb in Köln ist jetzt ein Traditionsunternehmen.', 'A family business in Cologne is now a Traditional company.'],
     ['Brotladen wird zum „Traditionsunternehmen“.', 'Brotladen becomes a “Traditional company”.'],
     ['Seit 52 Jahren gehört der Betrieb der Familie; 2 Generationen führen ihn. Kunden schätzen das: etwas mehr Umsatz und Ansehen.', 'For 52 years the business has belonged to the family; 2 generations have run it. Customers appreciate that: a little more revenue and standing.'],
     ['Die Familie Becker gilt jetzt als „Alteingesessene Familie“. Generationen, Familienbetriebe, Ansehen und Zusammenhalt zahlen sich aus.', 'The Becker family is now regarded as “Old-established family”. Generations, family businesses, standing and cohesion pay off.'],

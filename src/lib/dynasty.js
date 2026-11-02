@@ -25,8 +25,8 @@ async function flush(conn, user, state, world) {
         [user.id, Number(e.city) || 0, kind, Math.round(Number(e.lv) || 0), Math.round(Number(e.real) || 0), note]);
       const tb = require('./tagesblatt'); const where = city(e.city);
       if (kind === 'wed' && user.social_public && state.partner) await tb.post('life', 'Hochzeit', `${who} und ${state.partner.name} haben in ${where} geheiratet.`, e.city, conn);
-      else if (kind === 'hand') await tb.post('life', 'Nachfolge', `${who} übergibt „${note}“ in ${where} an die nächste Generation.`, e.city, conn);
-      else if (kind === 'trad') await tb.post('life', 'Traditionsbetrieb', `„${note}“ in ${where} ist jetzt ein ${M.tradName(Number(e.lv))}.`, e.city, conn);
+      else if (kind === 'hand') await tb.post('life', 'Nachfolge', user.social_public ? `${who} übergibt „${note}“ in ${where} an die nächste Generation.` : `Ein Bürger übergibt einen Familienbetrieb in ${where} an die nächste Generation.`, e.city, conn); // Namen nur bei sichtbarem Profil
+      else if (kind === 'trad') await tb.post('life', 'Traditionsbetrieb', user.social_public ? `„${note}“ in ${where} ist jetzt ein ${M.tradName(Number(e.lv))}.` : `Ein Familienbetrieb in ${where} ist jetzt ein ${M.tradName(Number(e.lv))}.`, e.city, conn);
       else if (kind === 'dyn' && Number(e.lv) >= Number(M.C().dynasty.tagesblattFrom || 3) && Number(e.lv) > Number(e.from || 0) && user.social_public) await tb.post('life', 'Familie', `Die Familie ${state.person.last} gilt in ${where} jetzt als „${note}“.`, e.city, conn);
     } catch (err) { log.warn(`[familie] ${err.message}`); }
   }

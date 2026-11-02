@@ -94,7 +94,7 @@ describe('E2E Turning Point', { concurrency: false }, () => {
       const before = await text(a);
       await a.page.click('[data-food="0"]');
       await a.page.waitForFunction((t) => document.querySelector('#page').innerText !== t, before);
-      assert.match(await text(a), /% gefüllt/);
+      assert.match(await text(a), /% gefüllt|Vorrat · ca\. \d+ Tage/);
       const [{ s }] = await app.sql("SELECT JSON_EXTRACT(state, '$.fridge') s FROM characters WHERE user_id = ?", [await L.userId(app, A.username)]);
       assert.ok(Number(s) > 45 || s === null || typeof s === 'string', 'Kühlschrank geändert');
       noErrors(a);

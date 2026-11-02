@@ -174,7 +174,7 @@ test('Wirkungen: gedeckelt, null ohne Auftreten, steigen monoton, Stärke 0 scha
   try { const z = CH.wirkungen(s); assert.deepStrictEqual([z.repGain, z.raise, z.apply, z.vote, z.chance, z.court, z.comfort, z.burglary], [1, 0, 0, 1, 0, 0, 0, 1]); } finally { settings.DEFAULTS.charakter.effects.strength = 1; }
   settings.DEFAULTS.charakter.effects.strength = 2;
   try { assert.ok(CH.repGain(s) <= 1 + 2 * D.effects.repGainPct / 100 + 1e-9); } finally { settings.DEFAULTS.charakter.effects.strength = 1; }
-  const rp = require('../src/game/reputation'); s.pending = {}; rp.queue(s, 'civic', 10, 'gift'); assert.ok(s.pending.rep[0].d <= 12.0001 && s.pending.rep[0].d > 10, 'Zuwachs mit Auftreten, höchstens +20 %');
+  const rp = require('../src/game/reputation'); s.pending = {}; s.talents.v[TL.IDX.charme] = 50; /* Charme neutral, sonst schwankt der Test mit dem Zufallsprofil */ rp.queue(s, 'civic', 10, 'gift'); assert.ok(s.pending.rep[0].d <= 12.0001 && s.pending.rep[0].d > 10, 'Zuwachs mit Auftreten, höchstens +20 %');
 });
 
 test('Wirkungen greifen: Gehaltsgespräch, Bewerbung, Kandidatur, Wohlbefinden', () => {

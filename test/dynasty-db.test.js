@@ -96,7 +96,7 @@ test('Familie gegen echte Datenbank', { skip }, async (t) => {
       const s = ctx.state; s.money = 9e9; require('../src/game/actions').run('foundBiz', { world: ctx.world, state: s, input: { pkey: 'baecker', tier: 0, name: 'Altes Brot' }, user: ctx.user, now: Date.now() });
       const c = s.companies[0]; c.since = s.day - 60 * 365; c.gen = 2; c.trad = 0; s.day -= s.day % 7; DYN.daily({ world: ctx.world, state: s, offline: false });
     });
-    await service.getView(B); await service.getView(B); assert.strictEqual((await logs(B, 'trad')).length, 1); assert.strictEqual((await db.one("SELECT COUNT(*) n FROM world_events WHERE title = 'Traditionsbetrieb'")).n, 1);
+    await service.getView(B); await service.getView(B); assert.strictEqual((await logs(B, 'trad')).length, 1); const te = await db.query("SELECT text FROM world_events WHERE title = 'Traditionsbetrieb'"); assert.strictEqual(te.length, 1); assert.ok(!/Altes Brot/.test(te[0].text), 'stilles Profil: kein Betriebsname im Tagesblatt'); assert.match(te[0].text, /^Ein Familienbetrieb in .* ist jetzt ein Traditionsunternehmen\.$/);
   });
 
   await t.test('Spielerehe: Güterstand wird beim Antrag gewählt; Gütertrennung = keine Abfindung, halber Erbanteil; Zugewinn = wie bisher', async () => {
